@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Trash2, CircleCheck } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
@@ -155,7 +155,7 @@ export default function ReportDetailScreen() {
           headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
           headerRight: () => (
             <Pressable onPress={onDelete} hitSlop={12} style={{ marginRight: 8 }}>
-              <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+              <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
             </Pressable>
           ),
         }}
@@ -172,7 +172,7 @@ export default function ReportDetailScreen() {
             {report.slides.length} სლაიდი · {formatShortDateTime(report.created_at)}
           </Text>
           <View style={styles.statusChip}>
-            <Ionicons name="checkmark-circle" size={14} color={theme.colors.semantic.success} />
+            <CircleCheck size={14} color={theme.colors.semantic.success} strokeWidth={1.5} />
             <Text style={[styles.statusText, { color: theme.colors.semantic.success }]}>
               დასრულებული
             </Text>

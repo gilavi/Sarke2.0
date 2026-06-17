@@ -11,10 +11,10 @@
 // 160 ms after the arch starts curving.
 //
 // The hook returns:
-//   archProps — animated SVG path d (rebound to `<ProjectArchSvg>`)
-//   logoStyle — `Animated.View` style for the logo container
-//   scrollHandler — bind to `Reanimated.ScrollView.onScroll`
-//   mountArch — call when initial data has loaded so the animation kicks off
+//   archProps - animated SVG path d (rebound to `<ProjectArchSvg>`)
+//   logoStyle - `Animated.View` style for the logo container
+//   scrollHandler - bind to `Reanimated.ScrollView.onScroll`
+//   mountArch - call when initial data has loaded so the animation kicks off
 
 import { useEffect } from 'react';
 import { Dimensions } from 'react-native';

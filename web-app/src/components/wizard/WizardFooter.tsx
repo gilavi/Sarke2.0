@@ -1,9 +1,9 @@
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 
 /**
- * Shared wizard footer — fixed, full viewport width, edge-to-edge top border.
+ * Shared wizard footer - fixed, full viewport width, edge-to-edge top border.
  * Exactly two controls: a text-only back link and a green primary button.
- * The primary button never changes style when disabled — only its opacity.
+ * The primary button never changes style when disabled - only its opacity.
  */
 export function WizardFooter({
   onBack,

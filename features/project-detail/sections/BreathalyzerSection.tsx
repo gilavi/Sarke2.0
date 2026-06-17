@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { BookOpen, ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
@@ -31,7 +31,7 @@ export function BreathalyzerSection({
     <>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="journal-outline" size={16} color={theme.colors.inkSoft} />
+          <BookOpen size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>ჟურნალები</Text>
           <Text style={styles.sectionCount}>{breathalyzerLogs.length}</Text>
         </View>
@@ -70,12 +70,12 @@ export function BreathalyzerSection({
                     ? theme.colors.semantic.successSoft
                     : theme.colors.semantic.warningSoft,
                 }]}>
-                  <Ionicons
-                    name={log.status === 'closed' ? 'journal' : 'journal-outline'}
+                    <BookOpen
                     size={14}
                     color={log.status === 'closed'
                       ? theme.colors.semantic.success
                       : theme.colors.certTint}
+                    strokeWidth={1.5}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -105,7 +105,7 @@ export function BreathalyzerSection({
                     </Text>
                   </View>
                 ) : null}
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
               </Pressable>
             );
           })}

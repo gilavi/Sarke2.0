@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -42,7 +42,7 @@ export const CargoRow = memo(function CargoRow({ index, row, canDelete, onChange
             style={styles.deleteBtn}
             {...a11y('სტრიქონის წაშლა', undefined, 'button')}
           >
-            <Ionicons name="close" size={16} color={theme.colors.danger} />
+            <X size={16} color={theme.colors.danger} strokeWidth={1.5} />
           </Pressable>
         )}
       </View>

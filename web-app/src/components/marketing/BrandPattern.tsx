@@ -1,15 +1,15 @@
 import { cn } from '@/lib/utils';
 
 /**
- * Hubble brand pattern system — the "orbital paths" motif from the brand board
+ * Hubble brand pattern system - the "orbital paths" motif from the brand board
  * (the mark is inspired by orbital paths; the name echoes the telescope). These
  * are decorative, `aria-hidden`, and positioned absolutely by the caller.
  *
- * - `OrbitRings` — concentric rings + orbiting bodies (orange / hi-vis dots).
+ * - `OrbitRings` - concentric rings + orbiting bodies (orange / hi-vis dots).
  *   Rings use `currentColor` so the caller tints them (graphite/10 on light,
  *   white/10 on dark); the orbiting dots are fixed brand accents.
- * - `DotGrid` — the board's dot-grid texture, `currentColor`.
- * - `HazardSticker` / `RoundSticker` — die-cut "sticker system" badges.
+ * - `DotGrid` - the board's dot-grid texture, `currentColor`.
+ * - `HazardSticker` / `RoundSticker` - die-cut "sticker system" badges.
  */
 
 export function OrbitRings({ className, dotted = false }: { className?: string; dotted?: boolean }) {
@@ -21,7 +21,7 @@ export function OrbitRings({ className, dotted = false }: { className?: string; 
         <circle cx="240" cy="240" r="178" opacity="0.4" strokeDasharray={dotted ? '2 9' : undefined} />
         <circle cx="240" cy="240" r="232" opacity="0.22" />
       </g>
-      {/* orbiting bodies — fixed brand accents */}
+      {/* orbiting bodies - fixed brand accents */}
       <circle cx="240" cy="122" r="9" fill="#FF5A1F" />
       <circle cx="418" cy="240" r="6" fill="#E6FF4D" />
       <circle cx="178" cy="240" r="4.5" fill="currentColor" opacity="0.55" />
@@ -43,7 +43,7 @@ export function DotGrid({ className, id = 'hubble-dotgrid' }: { className?: stri
   );
 }
 
-/** Hi-vis hazard triangle — the board's "HAZARD" sticker, icon-only. */
+/** Hi-vis hazard triangle - the board's "HAZARD" sticker, icon-only. */
 export function HazardSticker({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 104 96" className={cn('select-none', className)} aria-hidden="true">
@@ -58,7 +58,7 @@ export function HazardSticker({ className }: { className?: string }) {
 }
 
 /**
- * Round die-cut badge — graphite ring + bold centered label, slightly rotated.
+ * Round die-cut badge - graphite ring + bold centered label, slightly rotated.
  * `tone="orange"` flips it to a safety-orange fill with white ink.
  */
 export function RoundSticker({ label, tone = 'light', className }: { label: string; tone?: 'light' | 'orange'; className?: string }) {

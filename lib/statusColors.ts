@@ -20,7 +20,7 @@ export type CalendarStatus =
 
 /** Solid background colour for the small circular StatusBadge overlay. */
 export const STATUS_BADGE_BG: Record<CalendarStatus, string> = {
-  completed: '#1D9E75',
+  completed: theme.colors.semantic.success,
   draft:     theme.colors.semantic.warning,   // #F59E0B
   overdue:   '#DC2626',
   due_today: theme.colors.semantic.warning,
@@ -43,7 +43,7 @@ export const STATUS_BADGE_ICON: Record<
 
 /** Foreground colour used for status dots and row labels. */
 export const STATUS_DOT_COLOR: Record<CalendarStatus, string> = {
-  completed: '#1D9E75',
+  completed: theme.colors.semantic.success,
   draft:     theme.colors.semantic.warning,
   overdue:   '#DC2626',
   due_today: theme.colors.semantic.warning,

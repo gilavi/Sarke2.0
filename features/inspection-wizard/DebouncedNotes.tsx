@@ -26,7 +26,7 @@ export function DebouncedNotes({
     }
   }, [initial]);
 
-  // Debounced commit — matches the freetext/measure pattern so notes survive
+  // Debounced commit - matches the freetext/measure pattern so notes survive
   // backgrounding, keyboard dismiss, etc. without waiting on onBlur.
   useEffect(() => {
     if (text === lastCommitted.current) return;
@@ -52,7 +52,7 @@ export function DebouncedNotes({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // No iOS "Done" accessory bar here — on a yes/no step the keyboard is
+  // No iOS "Done" accessory bar here - on a yes/no step the keyboard is
   // dismissed by tapping კი/არა (see InspectionWizard) or by dragging.
   return (
     <View>

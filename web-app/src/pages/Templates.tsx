@@ -53,14 +53,14 @@ export default function Templates() {
               <CardHeader>
                 <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{inspectionDisplayName(t.name)}</CardTitle>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {categoryLabel(t)} · {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '—'}
+                  {categoryLabel(t)} · {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '-'}
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="text-xs text-neutral-600 dark:text-neutral-400">
                   <span className="font-medium text-neutral-700">საჭირო ხელმომწერები:</span>{' '}
                   {t.required_signer_roles.length === 0
-                    ? '—'
+                    ? '-'
                     : t.required_signer_roles
                         .map((r) => SIGNER_ROLE_LABEL[r] ?? r)
                         .join(', ')}

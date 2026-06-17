@@ -1,4 +1,4 @@
-// Bottom action sheet — unified component for menus AND form sheets.
+// Bottom action sheet - unified component for menus AND form sheets.
 //
 // Behaviors (all sheets):
 // - Spring-up + scale entrance with haptic
@@ -34,7 +34,7 @@ import {
 } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Check } from 'lucide-react-native';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import { useTheme } from '../lib/ThemeContext';
@@ -95,7 +95,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   // Drag offset in pixels (added on top of the spring-driven slide).
   const dragY = useRef(new Animated.Value(0)).current;
   // Bottom margin animated to the keyboard frame with the iOS curve so the
-  // sheet rides the keyboard 1:1 (no overshoot, no overlap). Layout prop —
+  // sheet rides the keyboard 1:1 (no overshoot, no overlap). Layout prop -
   // separate Animated.View wraps the native-driven slide/drag transform.
   const keyboardMargin = useSheetKeyboardMargin();
 
@@ -151,7 +151,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         if (finished) {
           setSheet(null);
           isSheetOpen = false;
-          // Fire callback after Modal is fully gone — prevents two Modals
+          // Fire callback after Modal is fully gone - prevents two Modals
           // being open simultaneously which freezes iOS.
           cb?.(idx);
         }
@@ -166,7 +166,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const show: ShowBottomSheet = useCallback(
     (options, callback) => {
       if (isSheetOpen) {
-        // iOS freezes when two Modals are open simultaneously — bail out.
+        // iOS freezes when two Modals are open simultaneously - bail out.
         return { dismiss: () => {} };
       }
       const prev = callbackRef.current;
@@ -260,7 +260,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
     if (!sheet) return null;
     const { content, options, title, cancelButtonIndex, destructiveButtonIndex, selectedOptionIndex } = sheet.options;
     if (content) {
-      // Custom content (e.g. SheetLayout) manages its own layout — render
+      // Custom content (e.g. SheetLayout) manages its own layout - render
       // directly with no wrapper so we don't get competing maxHeight constraints,
       // double rounded corners, or unwanted horizontal padding.
       return typeof content === 'function'
@@ -320,7 +320,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
 
                   {/* Checkmark */}
                   {isSelected && (
-                    <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+                    <Check size={20} color={theme.colors.accent} strokeWidth={1.5} />
                   )}
                 </Pressable>
                 {!isLast && <View style={styles.divider} />}

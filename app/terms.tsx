@@ -8,7 +8,7 @@ import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { termsEn, termsKa, TERMS_PUBLIC_URL, TERMS_VERSION, type TermsBody } from '../lib/terms';
 import { useTheme } from '../lib/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, ShieldCheck } from 'lucide-react-native';
 
 import { toErrorMessage } from '../lib/logError';
 import { friendlyError } from '../lib/errorMap';
@@ -27,7 +27,7 @@ function TermsIllustration({ theme }: { theme: any }) {
         marginBottom: 12,
       }}
     >
-      <Ionicons name="document-text-outline" size={36} color={theme.colors.regsTint} />
+      <FileText size={36} color={theme.colors.regsTint} strokeWidth={1.5} />
     </View>
   );
 }
@@ -144,7 +144,7 @@ export default function TermsScreen() {
               <View style={{ padding: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                   <View style={[styles.numberBadge, { backgroundColor: theme.colors.accentSoft }]}>
-                    <Ionicons name="shield-checkmark" size={14} color={theme.colors.accent} />
+                    <ShieldCheck size={14} color={theme.colors.accent} strokeWidth={1.5} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>

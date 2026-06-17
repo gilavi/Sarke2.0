@@ -3,14 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORE_KEY = '@calendar:schedules';
 const MIGRATION_KEY = 'calendar_migration_v1_done';
 
-// Public type — the shape callers work with.
+// Public type - the shape callers work with.
 export type ScheduleEntry = {
   completedAt: string;
   nextDueDate: string;
   nextDueDateOverride?: string;
 };
 
-// Internal stored shape — includes groupKey for early-detection across restarts.
+// Internal stored shape - includes groupKey for early-detection across restarts.
 type StoredEntry = ScheduleEntry & { groupKey: string };
 
 export type ScheduleStore = {
@@ -57,7 +57,7 @@ async function writeRawStore(store: StoredStore): Promise<void> {
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Returns the full schedule store (public shape — groupKey stripped).
+ * Returns the full schedule store (public shape - groupKey stripped).
  */
 export async function getStore(): Promise<ScheduleStore> {
   const raw = await readRawStore();
@@ -82,7 +82,7 @@ export async function getStore(): Promise<ScheduleStore> {
  * @param entityType  'inspections' | 'briefings'
  * @param entityId    the row id used as the store key
  * @param completedAt ISO string of the completion timestamp
- * @param groupKey    "projectId:templateId" for inspections, "projectId" for briefings —
+ * @param groupKey    "projectId:templateId" for inspections, "projectId" for briefings -
  *                    used to detect whether this completion is early (before the
  *                    previous cycle's effective due date)
  */
@@ -131,7 +131,7 @@ function findMostRecentForGroup(
 /**
  * One-time migration: seeds schedule entries for all previously completed
  * inspections and briefings that have no entry yet.
- * Safe to call multiple times — skips if migration flag is already set.
+ * Safe to call multiple times - skips if migration flag is already set.
  */
 export async function runMigrationIfNeeded(
   completedInspections: Array<{

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { FlowHeader } from './FlowHeader';
 import { Button } from './ui';
@@ -24,11 +24,11 @@ const NEW_ROUTE: Record<FlowAction, string> = {
 interface FlowProjectPickerProps {
   /** Centered header title, e.g. "ინციდენტი". */
   flowTitle: string;
-  /** Which flow this picker precedes — drives the new-project redirect route. */
+  /** Which flow this picker precedes - drives the new-project redirect route. */
   action: FlowAction;
   /** Called with the chosen project once the user taps "გაგრძელება". */
   onPicked: (project: Project) => void;
-  /** Leading back control — typically `router.back()`. */
+  /** Leading back control - typically `router.back()`. */
   onBack: () => void;
 }
 
@@ -77,11 +77,11 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
           }}
           {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}
         >
-          <Ionicons name="add" size={18} color={theme.colors.accent} />
+          <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: theme.colors.accent }}>
             ახალი პროექტი
           </Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+          <ChevronRight size={16} color={theme.colors.accent} strokeWidth={1.5} />
         </Pressable>
 
         <ProjectPickerStep selectedId={selected?.id ?? null} onSelect={setSelected} />

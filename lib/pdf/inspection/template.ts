@@ -1,4 +1,4 @@
-﻿// template.ts — single-source HTML builder for generic inspection PDFs
+﻿// template.ts - single-source HTML builder for generic inspection PDFs
 // (harness, bobcat-generic, etc.). Pure synchronous; zero platform-specific
 // deps. Photo URLs/data-URIs must be pre-resolved.
 
@@ -51,7 +51,7 @@ export interface PdfTemplateArgs {
 /**
  * Build the complete HTML string for an inspection PDF.
  *
- * Synchronous — all photo paths in `photosByAnswer[id][*].storage_path`
+ * Synchronous - all photo paths in `photosByAnswer[id][*].storage_path`
  * must already be resolved to renderable URLs (data-URIs for mobile,
  * signed HTTPS URLs for web) before calling this function.
  */
@@ -79,7 +79,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
         month: 'long',
         day: 'numeric',
       })
-    : '—';
+    : '-';
   const reportId = questionnaire.id.slice(0, 8).toUpperCase();
 
   // ── Inspection location from first photo that has an address ──
@@ -237,7 +237,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
     </div>
     <div class="info-row">
       <span class="info-label">${t('pdf.infoObject')}</span>
-      <span class="info-value">${escapeHtml(project.address ?? '—')}</span>
+      <span class="info-value">${escapeHtml(project.address ?? '-')}</span>
     </div>
     <div class="info-row">
       <span class="info-label">${t('pdf.metaDate', { date: '' }).replace(/[:：].*/, '').trim() || 'თარიღი'}</span>
@@ -250,7 +250,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
     ${template.category === 'harness' ? `
     <div class="info-row" style="grid-column:1 / -1;">
       <span class="info-label">${t('pdf.infoHarness')}</span>
-      <span class="info-value">${escapeHtml(questionnaire.harness_name ?? '—')}</span>
+      <span class="info-value">${escapeHtml(questionnaire.harness_name ?? '-')}</span>
     </div>` : ''}
     ${inspectionLocation ? `
     <div class="info-row" style="grid-column:1 / -1;">
@@ -276,7 +276,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
 
   <div class="conclusion-card">
     <div class="conclusion-label">${t('pdf.conclusionTitle')}</div>
-    <div class="conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '—')}</div>
+    <div class="conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '-')}</div>
     ${statusBadge}
   </div>
 

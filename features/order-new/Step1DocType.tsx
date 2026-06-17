@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import type { OrderDocumentType } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
@@ -17,7 +17,7 @@ export function Step1DocType({
   return (
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>ბრძანების ტიპი</Text>
-      {DOC_TYPES.map(({ type, icon }) => {
+      {DOC_TYPES.map(({ type, Icon }) => {
         const selected = docType === type;
         return (
           <Pressable
@@ -26,17 +26,17 @@ export function Step1DocType({
             style={[s.typeCard, selected && s.typeCardSelected]}
           >
             <View style={[s.typeIcon, selected && s.typeIconSelected]}>
-              <Ionicons
-                name={icon}
+              <Icon
                 size={22}
                 color={selected ? theme.colors.white : theme.colors.accent}
+                strokeWidth={1.5}
               />
             </View>
             <Text style={[s.typeLabel, selected && { color: theme.colors.accent, fontWeight: '700' }]}>
               {ORDER_DOCUMENT_TYPE_LABEL[type]}
             </Text>
             {selected && (
-              <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+              <CircleCheck size={22} color={theme.colors.accent} strokeWidth={1.5} />
             )}
           </Pressable>
         );

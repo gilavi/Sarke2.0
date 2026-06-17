@@ -5,12 +5,12 @@
 // (renders the base64 PNG + creator name + date with a "შეცვლა" button).
 //
 // The creator's name is pulled from the user profile by the parent screen
-// and is NOT editable here — by design this single signature represents the
+// and is NOT editable here - by design this single signature represents the
 // inspector who is conducting the act, identified by their account.
 
 import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Pencil } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -65,11 +65,11 @@ export function CreatorSignatureCard({ creatorName, signature, onTap }: Props) {
     <Pressable
       onPress={onTap}
       style={({ pressed }) => [styles.cardPressable, pressed && styles.pressed]}
-      {...a11y(`ხელმოწერა — ${creatorName}`, 'შეეხეთ ხელმოწერისთვის', 'button')}
+      {...a11y(`ხელმოწერა - ${creatorName}`, 'შეეხეთ ხელმოწერისთვის', 'button')}
     >
       <View style={styles.emptyRow}>
         <View style={styles.placeholderImgBox}>
-          <Ionicons name="create-outline" size={28} color={theme.colors.inkFaint} />
+          <Pencil size={28} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </View>
         <View style={styles.signedMeta}>
           <Text style={styles.creatorName} numberOfLines={1}>{creatorName}</Text>

@@ -84,7 +84,7 @@ export default function Reports() {
                       {reportDisplayName(r.title)}
                     </p>
                     <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                      {proj?.name ?? '—'}
+                      {proj?.name ?? '-'}
                       {' · '}
                       <span className="font-mono tabular-nums text-neutral-400 dark:text-neutral-500">
                         {new Date(r.created_at).toLocaleDateString('ka-GE')}

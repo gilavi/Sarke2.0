@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Trash2, FileText, ChevronRight } from 'lucide-react-native';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
@@ -81,7 +81,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
       }}
       renderRightActions={() => (
         <Pressable onPress={() => onDelete(q)} style={styles.swipeDelete} {...a11y(t('common.delete'), 'შემოწმების აქტის წაშლა', 'button')}>
-          <Ionicons name="trash" size={18} color={theme.colors.white} />
+          <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
           <Text style={{ color: theme.colors.white, fontSize: 11, fontWeight: '700' }}>
             {t('common.delete')}
           </Text>
@@ -95,7 +95,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
         }}
         style={({ pressed }) => pressed ? { opacity: 0.7 } : undefined}
         {...a11y(
-          `${inspectionDisplayName(tpl?.name)} — ${p?.company_name || p?.name || ''}`.trim(),
+          `${inspectionDisplayName(tpl?.name)} - ${p?.company_name || p?.name || ''}`.trim(),
           q.status === 'completed' ? 'დასრულებული შემოწმების აქტის ნახვა' : 'დრაფტის გაგრძელება',
           'button'
         )}
@@ -121,15 +121,15 @@ const MemoizedHistoryItem = memo(function HistoryItem({
             </View>
             {certCounts[q.id] ? (
               <View style={styles.certBadge}>
-                <Ionicons
-                  name="document-text"
+                <FileText
                   size={11}
                   color={theme.colors.accent}
+                  strokeWidth={1.5}
                 />
                 <Text style={styles.certBadgeText}>{certCounts[q.id]}</Text>
               </View>
             ) : null}
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </View>
         </Card>
       </Pressable>

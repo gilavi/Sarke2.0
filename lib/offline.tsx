@@ -153,7 +153,7 @@ async function readQueue(): Promise<QueueOp[]> {
     if (!Array.isArray(parsed)) return [];
     return parsed as QueueOp[];
   } catch (e) {
-    // Primary corrupted — try backup
+    // Primary corrupted - try backup
     const backup = await AsyncStorage.getItem(QUEUE_BACKUP_KEY);
     if (backup) {
       try {
@@ -241,7 +241,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     await runExclusive(async () => {
       let ops = await readQueue();
       // Cap iterations to the starting count so a single bad payload
-      // can't stall the queue — failing ops rotate to the back.
+      // can't stall the queue - failing ops rotate to the back.
       let processed = 0;
       const startCount = ops.length;
       while (ops.length > 0 && onlineRef.current && processed < startCount) {
@@ -262,7 +262,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
           } else if (op.kind === 'photo_delete') {
             await answersApi.removePhoto(op.payload.photoId);
           } else {
-            // photo_upload — defer if the prerequisite answer hasn't been
+            // photo_upload - defer if the prerequisite answer hasn't been
             // flushed yet. The answer_photos table has an FK on answers.id,
             // so inserting before the answer row exists causes a permanent
             // FK violation and the photo is lost after max retries.
@@ -363,7 +363,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   /**
    * Enqueue a partial update against the `inspections` table. Method name
    * still says "Questionnaire" to preserve AsyncStorage cache keys from
-   * before the 0006 rename — a key change would silently orphan any
+   * before the 0006 rename - a key change would silently orphan any
    * in-flight drafts on upgrade. Semantics: inspection.
    */
   const enqueueQuestionnaireUpdate = useCallback<
@@ -459,7 +459,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             FileSystem.deleteAsync(localUriHint, { idempotent: true }).catch(() => undefined);
           }
         } else {
-          // Real server photo — queue a deferred deletion.
+          // Real server photo - queue a deferred deletion.
           // Also drop any pending upload for the same path (edge case:
           // photo was taken offline then deleted before flush).
           ops = ops.filter(
@@ -525,7 +525,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     return ids;
   }, []);
 
-  // Memoize so consumers don't re-render on every parent render — only when
+  // Memoize so consumers don't re-render on every parent render - only when
   // an actual field they care about changes. The five callbacks are already
   // stable via useCallback, so the value identity is driven by the three
   // observable state fields.

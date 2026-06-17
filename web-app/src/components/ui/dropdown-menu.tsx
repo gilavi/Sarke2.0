@@ -6,7 +6,7 @@ export const DropdownMenu = ({ children, ...props }: MenuProps) => (
   <Menu shadow="md" radius="md" {...props}>{children}</Menu>
 );
 
-// DropdownMenuTrigger — supports `asChild` (ignored; Menu.Target wraps children as trigger)
+// DropdownMenuTrigger - supports `asChild` (ignored; Menu.Target wraps children as trigger)
 export const DropdownMenuTrigger = ({
   children,
   asChild: _asChild,
@@ -17,7 +17,7 @@ export const DropdownMenuTrigger = ({
   [key: string]: any;
 }) => <Menu.Target {...props}>{children}</Menu.Target>;
 
-// DropdownMenuContent — maps Radix `align` prop (ignored by Mantine; positioning handled by Menu)
+// DropdownMenuContent - maps Radix `align` prop (ignored by Mantine; positioning handled by Menu)
 export const DropdownMenuContent = ({
   children,
   align: _align,
@@ -36,7 +36,7 @@ export const DropdownMenuContent = ({
   </Menu.Dropdown>
 );
 
-// DropdownMenuItem — maps Radix `onSelect` to Mantine `onClick`
+// DropdownMenuItem - maps Radix `onSelect` to Mantine `onClick`
 export const DropdownMenuItem = ({
   children,
   onSelect,

@@ -48,7 +48,7 @@ const PHOTOS = {
   'ml/x/sum.jpg': 'data:image/jpeg;base64,SUM',
 };
 
-describe('buildInspectionPdf — mobileLadder', () => {
+describe('buildInspectionPdf - mobileLadder', () => {
   const html = buildInspectionPdf(
     mobileLadderSchema,
     { inspection: mockInsp(), projectName: 'პროექტი' },
@@ -76,7 +76,7 @@ describe('buildInspectionPdf — mobileLadder', () => {
   });
 });
 
-describe('buildInspectionPdf — mobileLadder verdict variants', () => {
+describe('buildInspectionPdf - mobileLadder verdict variants', () => {
   it('renders minor verdict', () => {
     const insp = buildDefaultMLInspection('ml', 'p1', 'u1', MOBILE_LADDER_TEMPLATE_ID, '2026-05-20T10:00:00Z');
     insp.verdict = 'minor';
@@ -92,7 +92,7 @@ describe('buildInspectionPdf — mobileLadder verdict variants', () => {
   });
 });
 
-describe('buildInspectionPdf — mobileLadder default state', () => {
+describe('buildInspectionPdf - mobileLadder default state', () => {
   const insp = buildDefaultMLInspection('ml-id', 'p1', 'u1', MOBILE_LADDER_TEMPLATE_ID, '2026-05-20T10:00:00Z');
   const html = buildInspectionPdf(mobileLadderSchema, { inspection: insp, projectName: 'P' }, {});
 

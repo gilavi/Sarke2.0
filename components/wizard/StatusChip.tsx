@@ -7,19 +7,17 @@ import Animated, {
   withTiming,
   withSpring,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
-
 export interface StatusChipProps {
   selected: boolean;
   label: string;
-  icon?: IconName;
+  icon?: LucideIcon;
   onPress: () => void;
   /** 'pill' stacks the icon above the label (large yes/no); 'chip' is a compact inline row. */
   layout?: 'pill' | 'chip';
@@ -90,14 +88,7 @@ export function StatusChip({
       ]}
       {...a11y(a11yLabel ?? label, a11yHint, 'button', { selected })}
     >
-      {icon ? (
-        <Ionicons
-          name={icon}
-          size={layout === 'pill' ? 20 : 18}
-          color={iconColor}
-          style={layout === 'pill' ? styles.pillIcon : undefined}
-        />
-      ) : null}
+      {icon ? (() => { const Icon = icon; return <Icon size={layout === 'pill' ? 20 : 18} color={iconColor} strokeWidth={1.5} style={layout === 'pill' ? styles.pillIcon : undefined} />; })() : null}
       {label ? (
         <Text style={[layout === 'pill' ? styles.pillLabel : styles.chipLabel, { color: contentColor }]}>
           {label}

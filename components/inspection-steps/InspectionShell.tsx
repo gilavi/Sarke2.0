@@ -7,6 +7,7 @@ import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../ui';
 import { FlowHeader } from '../FlowHeader';
@@ -33,17 +34,12 @@ export interface InspectionShellProps {
   finishLabel?: string;
   /** When true, the non-last Next button is disabled while `canGoNext` is false (no skip). */
   blockNext?: boolean;
-  saving?: boolean;
   completing?: boolean;
-  /** Whether to show the PDF icon in the header trailing slot */
-  showPdfIcon?: boolean;
-  generatingPdf?: boolean;
   /** Optional banner rendered between the header and the step content (e.g. PdfLockedBanner). */
   banner?: ReactNode;
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
-  onPdf?: () => void;
   children: ReactNode;
 }
 
@@ -97,28 +93,30 @@ export function InspectionShell({
           {children}
         </WizardStepTransition>
 
-        <View style={styles.footer}>
-          {isLastStep ? (
-            <Button
-              title={finishLabel ?? 'შენახვა და დასრულება'}
-              style={{ paddingVertical: 14 }}
-              rightIcon="checkmark"
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={onNext}
-            />
-          ) : (
-            <Button
-              title={!blockNext && !canGoNext ? 'გაგრძელება' : 'შემდეგი'}
-              variant={blockNext || canGoNext ? 'primary' : 'secondary'}
-              size="lg"
-              style={styles.nextBtn}
-              rightIcon={blockNext || canGoNext ? 'chevron-forward' : undefined}
-              disabled={blockNext && !canGoNext}
-              onPress={onNext}
-            />
-          )}
-        </View>
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+          <View style={styles.footer}>
+            {isLastStep ? (
+              <Button
+                title={finishLabel ?? 'შენახვა და დასრულება'}
+                style={{ paddingVertical: 14 }}
+                rightIcon="checkmark"
+                loading={completing}
+                disabled={!canGoNext || completing}
+                onPress={onNext}
+              />
+            ) : (
+              <Button
+                title={!blockNext && !canGoNext ? 'გაგრძელება' : 'შემდეგი'}
+                variant={blockNext || canGoNext ? 'primary' : 'secondary'}
+                size="lg"
+                style={styles.nextBtn}
+                rightIcon={blockNext || canGoNext ? 'chevron-forward' : undefined}
+                disabled={blockNext && !canGoNext}
+                onPress={onNext}
+              />
+            )}
+          </View>
+        </KeyboardStickyView>
       </View>
     </View>
   );
@@ -129,11 +127,6 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme'], bottomInset: num
     root: {
       flex: 1,
       backgroundColor: theme.colors.card,
-    },
-    savingHint: {
-      textAlign: 'center',
-      fontSize: 12,
-      paddingVertical: 2,
     },
     footer: {
       paddingHorizontal: 16,

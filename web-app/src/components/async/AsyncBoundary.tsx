@@ -12,7 +12,7 @@
  * non-null value.
  *
  * When used WITHOUT a `query` prop, AsyncBoundary acts as a section-level
- * error isolation shell — it renders `children` directly and, if any child
+ * error isolation shell - it renders `children` directly and, if any child
  * throws during render, shows an inline ErrorView instead of propagating to
  * the nearest root error boundary.
  *

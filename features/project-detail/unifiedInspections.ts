@@ -3,7 +3,7 @@
 // The unified per-project list now comes pre-merged from the
 // get_project_inspections_unified() RPC (see lib/apiHooks
 // useUnifiedInspectionsByProject). The `source` field IS the value of
-// public.inspections.type — same value set that `routeForInspection` already
+// public.inspections.type - same value set that `routeForInspection` already
 // understands ('bobcat', 'excavator', …, plus the generic categories like
 // 'harness' / 'xaracho' / 'mobile_scaffold' / 'mobile_scaffold_n3').
 //

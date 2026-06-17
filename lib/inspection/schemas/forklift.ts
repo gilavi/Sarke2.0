@@ -63,7 +63,7 @@ function resultPill(result: string | null): string {
   if (result === 'good') return '<span class="pill pill-good">✓ კარგია</span>';
   if (result === 'deficient') return '<span class="pill pill-def">⚠ ნაკლი</span>';
   if (result === 'unusable') return '<span class="pill pill-bad">✗ გამოუსადეგ.</span>';
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function renderIdentification(insp: ForkliftInspection): string {
@@ -74,22 +74,22 @@ function renderIdentification(insp: ForkliftInspection): string {
     })
     .join('');
   return `
-    <div class="section-title">I — საიდენტიფიკაციო მონაცემები</div>
+    <div class="section-title">I - საიდენტიფიკაციო მონაცემები</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">ობიექტი / კომპანია</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
-        <td><span class="lbl">მარკა / მოდელი</span><span class="val">${escapeHtml(insp.brandModel) || '—'}</span></td>
+        <td><span class="lbl">ობიექტი / კომპანია</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
+        <td><span class="lbl">მარკა / მოდელი</span><span class="val">${escapeHtml(insp.brandModel) || '-'}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">ინვენტ. / სერიული ნომერი</span><span class="val">${escapeHtml(insp.inventoryNumber) || '—'}</span></td>
+        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">ინვენტ. / სერიული ნომერი</span><span class="val">${escapeHtml(insp.inventoryNumber) || '-'}</span></td>
       </tr>
       <tr>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${escapeHtml(fmtDate(insp.inspectionDate))}</span></td>
         <td><span class="lbl">ძრავის ტიპი</span><div class="engine-chips">${engineChipsHtml}</div></td>
       </tr>
       <tr>
-        <td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
         <td></td>
       </tr>
     </table>
@@ -101,7 +101,7 @@ function renderComponentDiagram(): string {
     (c) => `<div class="comp-item"><span class="comp-key">${escapeHtml(c.key)}</span>${escapeHtml(c.label)}</div>`,
   ).join('');
   return `
-    <div class="section-title">II — კომპონენტების სქემა</div>
+    <div class="section-title">II - კომპონენტების სქემა</div>
     <div class="comp-card">
       <div class="comp-title">ძირითადი კომპონენტები (A–K)</div>
       <div class="comp-grid">${compItems}</div>
@@ -137,10 +137,10 @@ function renderChecklist(insp: ForkliftInspection, photos: PhotoMap): string {
       </tr>`;
   }
   return `
-    <div class="section-title">III — შემოწმების ჩეკლისტი</div>
+    <div class="section-title">III - შემოწმების ჩეკლისტი</div>
     <div class="legend">
-      <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი — ნორმაში</span>
-      <span class="legend-item"><span class="dot dot-def"></span>⚠ ნაკლი — საჭიროებს მომსახურებას</span>
+      <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი - ნორმაში</span>
+      <span class="legend-item"><span class="dot dot-def"></span>⚠ ნაკლი - საჭიროებს მომსახურებას</span>
       <span class="legend-item"><span class="dot dot-bad"></span>✗ გამოუსადეგარი</span>
     </div>
     <table class="cl-table">
@@ -184,7 +184,7 @@ function renderSummaryAndVerdict(insp: ForkliftInspection, photos: PhotoMap): st
     : '';
 
   return `
-    <div class="section-title">IV — შეჯამება და დასკვნა</div>
+    <div class="section-title">IV - შეჯამება და დასკვნა</div>
     <table class="sum-table">
       <thead>
         <tr>
@@ -213,11 +213,11 @@ function renderSignature(insp: ForkliftInspection): string {
     ? `<img class="sig-img" src="${escapeHtml(sigDataUrl)}" alt="ხელმოწერა" />`
     : '<div style="height:48px;border-bottom:1px dashed var(--hairline);"></div>';
   return `
-    <div class="section-title">V — პასუხისმგებელი პირი</div>
+    <div class="section-title">V - პასუხისმგებელი პირი</div>
     <div class="sig-block">
       <div class="sig-cell">
         <div class="sig-lbl">უსაფრთ.სპეც. / ტექნიკოსი / ოპერატორი</div>
-        <div class="sig-name">${escapeHtml(insp.signerName || insp.inspectorName) || '—'}</div>
+        <div class="sig-name">${escapeHtml(insp.signerName || insp.inspectorName) || '-'}</div>
         <div class="sig-role">${escapeHtml(insp.signerPosition) || 'თანამდებობა'}</div>
         ${insp.signerPhone ? `<div class="sig-role" style="margin-top:2px;">${escapeHtml(insp.signerPhone)}</div>` : ''}
       </div>
@@ -235,7 +235,7 @@ export const forkliftSchema: InspectionSchema<ForkliftInspection> = {
 
   docTitle: 'ჩანგლიანი დამტვირთველის<br>შემოწმების აქტი',
   docSubtitle: 'Forklift Technical Inspection Act',
-  pdfFooterLabel: 'Hubble — ჩანგლიანი დამტვირთველის შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble - ჩანგლიანი დამტვირთველის შემოწმების აქტი',
   pdfNameLabel: 'ForkliftInspection',
   extraCss: EXTRA_CSS,
 

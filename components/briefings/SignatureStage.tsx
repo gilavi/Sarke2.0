@@ -4,7 +4,7 @@
  * "sign here" hint). Shared by the worker and inspector phases so the two
  * near-identical canvas blocks stay in sync.
  *
- * Side effects: none of its own — the canvas ref, stroke tracking and the
+ * Side effects: none of its own - the canvas ref, stroke tracking and the
  * read/clear lifecycle are owned by the caller (the signing route).
  */
 import { useMemo, type Ref } from 'react';
@@ -13,7 +13,7 @@ import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-c
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 
-// WebView canvas styles — same pattern as SignatureCanvas.tsx
+// WebView canvas styles - same pattern as SignatureCanvas.tsx
 const WEB_STYLE = `
   html, body { width: 100%; height: 100%; margin: 0; padding: 0; background: #fff; overflow: hidden; }
   .m-signature-pad { position: fixed; top: 0; left: 0; right: 0; bottom: 0; box-shadow: none; border: none; background: #fff; margin: 0; }

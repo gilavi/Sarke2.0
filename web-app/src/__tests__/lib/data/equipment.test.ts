@@ -199,7 +199,7 @@ describe('cargo-platform data module', () => {
     expect(arg.template_id).toBe(CARGO_PLATFORM_TEMPLATE_ID);
     expect(arg.cargo).toEqual([]);
     expect(arg.items).toHaveLength(CP_ITEMS.length);
-    // Signatures are never persisted (regulatory) — not seeded on insert.
+    // Signatures are never persisted (regulatory) - not seeded on insert.
     expect(arg.signatures).toBeUndefined();
   });
 

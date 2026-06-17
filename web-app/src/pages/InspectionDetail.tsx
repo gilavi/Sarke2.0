@@ -135,7 +135,7 @@ export default function InspectionDetail() {
   const userClosedWizard = useRef(false);
 
   /* If we arrived right after completing the create wizard (router state carries
-     the success payload), never auto-open the wizard — otherwise a stale list-cache
+     the success payload), never auto-open the wizard - otherwise a stale list-cache
      copy still reading `draft` would re-open it on the last step instead of showing
      the completed detail. Captured once at mount so it survives the modal closing. */
   const arrivedFromSuccessRef = useRef(
@@ -360,7 +360,7 @@ export default function InspectionDetail() {
             ) : (
               <>
                 <p className="text-sm font-medium text-neutral-700">დეპარტამენტი</p>
-                <p className="text-sm text-neutral-700">{inspection.department || '—'}</p>
+                <p className="text-sm text-neutral-700">{inspection.department || '-'}</p>
               </>
             )}
           </div>
@@ -385,7 +385,7 @@ export default function InspectionDetail() {
             ) : (
               <>
                 <p className="text-sm font-medium text-neutral-700">ინსპექტორის სახელი</p>
-                <p className="text-sm text-neutral-700">{inspection.inspector_name || '—'}</p>
+                <p className="text-sm text-neutral-700">{inspection.inspector_name || '-'}</p>
               </>
             )}
           </div>
@@ -472,7 +472,7 @@ export default function InspectionDetail() {
                 <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ინსპექტორის ხელმოწერა</p>
                 {/* Regulatory: signatures are never captured/stored here. The
                     generated PDF carries an empty signature block to sign by hand. */}
-                <p className="text-xs text-neutral-400">ხელმოწერისთვის ადგილი დაერთვება PDF-ს — ხელით ხელმოსაწერად.</p>
+                <p className="text-xs text-neutral-400">ხელმოწერისთვის ადგილი დაერთვება PDF-ს - ხელით ხელმოსაწერად.</p>
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button
@@ -498,11 +498,11 @@ export default function InspectionDetail() {
             </>
           ) : (
             <div className="space-y-2 text-sm text-neutral-700">
-              <div>{inspection.conclusion_text || '—'}</div>
+              <div>{inspection.conclusion_text || '-'}</div>
               <div>
                 გამოყენებისთვის უსაფრთხო:{' '}
                 {inspection.is_safe_for_use === null
-                  ? '—'
+                  ? '-'
                   : inspection.is_safe_for_use
                     ? 'კი'
                     : 'არა'}
@@ -585,7 +585,7 @@ function QuestionRow({
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Photos — only loaded for photo_upload questions where an answer exists
+  // Photos - only loaded for photo_upload questions where an answer exists
   const photosQ = useQuery<AnswerPhoto[]>({
     queryKey: inspectionKeys.answerPhotos(ans?.id),
     queryFn: () => listAnswerPhotos(ans!.id),
@@ -655,7 +655,7 @@ function QuestionRow({
         answerId = saved.id;
         qc.invalidateQueries({ queryKey: inspectionKeys.answers(inspectionId) });
       }
-      // Best-effort geolocation — don't block upload if denied/unavailable
+      // Best-effort geolocation - don't block upload if denied/unavailable
       const geo = await new Promise<{ latitude?: number; longitude?: number; address?: string } | null>((resolve) => {
         if (!navigator.geolocation) { resolve(null); return; }
         navigator.geolocation.getCurrentPosition(
@@ -669,7 +669,7 @@ function QuestionRow({
         try {
           await addAnswerPhoto(answerId, path, null, geo ?? undefined);
         } catch (rowErr) {
-          // Photo blob uploaded but the answer-photo row write failed — roll the
+          // Photo blob uploaded but the answer-photo row write failed - roll the
           // orphaned blob back (best-effort) before surfacing the error.
           const { deleteInspectionPhoto } = await import('@/lib/photoUpload');
           await deleteInspectionPhoto(path);
@@ -916,13 +916,13 @@ function ComponentGridReadOnly({ question, answer }: { question: Question; answe
                     values[row]?.[col] ? 'bg-neutral-100 text-neutral-600' :
                     'text-neutral-300'
                   }`}>
-                    {values[row]?.[col] || '—'}
+                    {values[row]?.[col] || '-'}
                   </span>
                 </td>
               ))}
               {hasCommentCol && (
                 <td className="px-3 py-2 text-neutral-500">
-                  {values[row]?.['კომენტარი'] || '—'}
+                  {values[row]?.['კომენტარი'] || '-'}
                 </td>
               )}
             </tr>

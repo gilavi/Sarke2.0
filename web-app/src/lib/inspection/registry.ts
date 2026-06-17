@@ -1,5 +1,5 @@
 /**
- * Web-app inspection schema registry — maps a category tag (which equals both
+ * Web-app inspection schema registry - maps a category tag (which equals both
  * `templates.category` and `inspections.type`) to its descriptor-driven PDF
  * schema. Web mirror of the schema half of the Expo app's
  * `lib/inspection/registry.ts` (the per-type create services live on web in

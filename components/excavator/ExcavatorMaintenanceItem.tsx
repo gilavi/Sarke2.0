@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check, X } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { A11yText as Text } from '../primitives/A11yText';
 import { DateTimeField } from '../DateTimeField';
@@ -53,10 +53,10 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('კი', undefined, 'button', { selected: yesActive })}
           >
-            <Ionicons
-              name="checkmark"
+            <Check
               size={14}
               color={yesActive ? theme.colors.ink : theme.colors.inkFaint}
+              strokeWidth={1.5}
             />
             <Text style={[styles.toggleText, yesActive && styles.toggleTextActive]}>კი</Text>
           </Pressable>
@@ -67,10 +67,10 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('არა', undefined, 'button', { selected: noActive })}
           >
-            <Ionicons
-              name="close"
+            <X
               size={14}
               color={noActive ? theme.colors.ink : theme.colors.inkFaint}
+              strokeWidth={1.5}
             />
             <Text style={[styles.toggleText, noActive && styles.toggleTextActive]}>არა</Text>
           </Pressable>

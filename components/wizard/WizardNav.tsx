@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 import { Button } from '../ui';
@@ -39,10 +39,10 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
         style={[styles.prevBtn, !canGoPrev && styles.disabled]}
         {...a11y('წინა კითხვა', 'შეეხეთ წინა კითხვაზე დასაბრუნებლად', 'button')}
       >
-        <Ionicons
-          name="arrow-back"
+        <ArrowLeft
           size={18}
           color={canGoPrev ? theme.colors.inkSoft : theme.colors.inkFaint}
+          strokeWidth={1.5}
         />
         <Text
           style={[
@@ -56,7 +56,7 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
 
       <Button
         title={isLast ? '✓ დასრულება' : 'შემდეგი'}
-        rightIcon={!isLast ? 'arrow-forward' : undefined}
+        rightIcon={!isLast ? ArrowRight : undefined}
         size="lg"
         onPress={handleNext}
         disabled={!canGoNext}

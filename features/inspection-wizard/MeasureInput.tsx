@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -18,9 +18,15 @@ export function MeasureInput({
 }) {
   const { theme } = useTheme();
 
+  const inputRef = useRef<TextInput>(null);
   const [text, setText] = useState(initial == null ? '' : String(initial));
   const lastCommitted = useRef<number | null>(initial);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => inputRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (initial !== lastCommitted.current) {
@@ -61,6 +67,7 @@ export function MeasureInput({
     <View style={{ gap: 6 }}>
       <View style={staticStyles.rowCenterGap10}>
         <FloatingLabelInput
+          ref={inputRef}
           label={`${question.title ?? ''}${question.unit ? ` (${question.unit})` : ''}`}
           value={text}
           onChangeText={setText}
@@ -74,7 +81,7 @@ export function MeasureInput({
       </View>
       {hasRange ? (
         <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
-          დიაპაზონი: {question.min_val ?? '—'} – {question.max_val ?? '—'}
+          დიაპაზონი: {question.min_val ?? '-'} – {question.max_val ?? '-'}
           {question.unit ? ` ${question.unit}` : ''}
         </Text>
       ) : null}

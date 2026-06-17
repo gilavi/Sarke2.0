@@ -23,7 +23,7 @@ export function WizardHeader({
   onBack: () => void;
   onClose: () => void;
 }) {
-  // step is unused now that the header always shows the flow title — kept in
+  // step is unused now that the header always shows the flow title - kept in
   // the signature so the call site doesn't have to change shape.
   void step;
   const { theme } = useTheme();

@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, ShieldCheck, Hourglass, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -74,7 +74,7 @@ export default function ProjectBriefingsList() {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
+            <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
         ) : (
@@ -100,21 +100,29 @@ export default function ProjectBriefingsList() {
                           },
                         ]}
                       >
-                        <Ionicons
-                          name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
-                          size={14}
-                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
-                        />
+                        {isCompleted ? (
+                          <ShieldCheck
+                            size={14}
+                            color={theme.colors.semantic.success}
+                            strokeWidth={1.5}
+                          />
+                        ) : (
+                          <Hourglass
+                            size={14}
+                            color={theme.colors.certTint}
+                            strokeWidth={1.5}
+                          />
+                        )}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.listRowTitle} numberOfLines={1}>
-                          {b.topics.map(topicLabel).join(', ') || '—'}
+                          {b.topics.map(topicLabel).join(', ') || '-'}
                         </Text>
                         <Text style={styles.listRowSubtitle}>
                           {b.participants.length} მონაწილე · {formatShortDateTime(b.dateTime)}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
                     </Pressable>
                   );
                 })}

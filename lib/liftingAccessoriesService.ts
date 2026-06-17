@@ -97,7 +97,7 @@ function toModel(row: DbRow): LiftingAccessoriesInspection {
   };
 }
 
-// signatures are ephemeral (memory-only) — never persisted via patch.
+// signatures are ephemeral (memory-only) - never persisted via patch.
 type LiftingAccessoriesPatch = Partial<{
   company: string;
   address: string;

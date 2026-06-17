@@ -32,7 +32,7 @@ interface Props {
  *   child naturally pushes to the bottom on short forms.
  * - Tapping outside any input dismisses the keyboard.
  *
- * Place the primary action button as the last element inside `children` —
+ * Place the primary action button as the last element inside `children` -
  * there is no separate footer slot.
  */
 export function KeyboardSafeArea({

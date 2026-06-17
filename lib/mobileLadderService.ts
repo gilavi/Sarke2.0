@@ -83,7 +83,7 @@ function toModel(row: DbRow): MobileLadderInspection {
   };
 }
 
-// signature is ephemeral (memory-only) — never persisted via patch.
+// signature is ephemeral (memory-only) - never persisted via patch.
 type MobileLadderPatch = Partial<{
   company: string;
   address: string;

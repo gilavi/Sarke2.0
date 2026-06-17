@@ -12,7 +12,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SheetLayout } from '../../../components/SheetLayout';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus, ChevronRight, Check } from 'lucide-react-native';
 import { Button, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Skeleton } from '../../../components/Skeleton';
@@ -101,7 +101,7 @@ export default function StartTemplateScreen() {
 
           <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}>
             <View style={styles.newIcon}>
-              <Ionicons name="add" size={22} color={theme.colors.accent} />
+              <Plus size={22} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>
@@ -111,7 +111,7 @@ export default function StartTemplateScreen() {
                 შექმნი ახლავე
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+            <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
 
           {!loaded && projects.length === 0 ? (
@@ -139,7 +139,7 @@ export default function StartTemplateScreen() {
                   >
                     <View style={[styles.radio, isSelected && styles.radioOn]}>
                       {isSelected ? (
-                        <Ionicons name="checkmark" size={16} color={theme.colors.white} />
+                        <Check size={16} color={theme.colors.white} strokeWidth={1.5} />
                       ) : null}
                     </View>
                     <View style={{ flex: 1 }}>
@@ -232,7 +232,7 @@ function CreateProjectSheet({
           onPress={onClose}
           {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
         />
-        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        {/* Card - marginBottom rides the iOS keyboard 1:1 */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
         <Pressable style={{ width: '100%' }} onPress={() => {}}>
           <SheetLayout

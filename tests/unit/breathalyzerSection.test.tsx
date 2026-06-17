@@ -92,7 +92,7 @@ afterEach(() => {
   lastSectionEmptyProps = {};
 });
 
-describe('BreathalyzerSection — empty state', () => {
+describe('BreathalyzerSection - empty state', () => {
   it('shows the breathalyzer-specific subtitle when logs are empty', () => {
     const { getByTestId } = render(
       React.createElement(BreathalyzerSection, {
@@ -141,7 +141,7 @@ describe('BreathalyzerSection — empty state', () => {
   });
 });
 
-describe('BreathalyzerSection — section header', () => {
+describe('BreathalyzerSection - section header', () => {
   it('renders the "ჟურნალები" section title', () => {
     const { getByText } = render(
       React.createElement(BreathalyzerSection, {

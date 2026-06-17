@@ -1,7 +1,7 @@
 // Project-selection entry for inspections started without a project (i.e. from
 // Home). Renders the project picker as the first full-screen step, then creates
 // the inspection for the given template and replaces into the real inspection
-// flow. Inspections launched from a project screen skip this — they are created
+// flow. Inspections launched from a project screen skip this - they are created
 // with a project already attached.
 //
 // Handles every template category uniformly: equipment categories dispatch via
@@ -9,7 +9,7 @@
 // falls back to the generic `questionnairesApi.create`.
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus, ChevronRight } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { InspectionShell, ProjectPickerStep } from '../../components/inspection-steps';
@@ -56,7 +56,7 @@ export default function NewInspectionProjectStep() {
     (category && category.length > 0 ? category : template?.category) ?? null;
   const registryEntry = resolvedCategory ? inspectionRegistry[resolvedCategory] : undefined;
 
-  // Defer the redirect into an effect — calling router.back() during render
+  // Defer the redirect into an effect - calling router.back() during render
   // can re-fire on every render and looks like a freeze (the user gets bounced
   // back to wherever they came from before any of their state can persist).
   useEffect(() => {
@@ -118,11 +118,11 @@ export default function NewInspectionProjectStep() {
             }}
             {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}
           >
-            <Ionicons name="add" size={18} color={theme.colors.accent} />
+            <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: theme.colors.accent }}>
               ახალი პროექტი
             </Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+            <ChevronRight size={16} color={theme.colors.accent} strokeWidth={1.5} />
           </Pressable>
           <ProjectPickerStep selectedId={selected?.id ?? null} onSelect={setSelected} />
         </View>

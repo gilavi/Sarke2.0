@@ -1,9 +1,9 @@
-// Mobile ladder inspection types — მობილური კიბის შემოწმების აქტი.
+// Mobile ladder inspection types - მობილური კიბის შემოწმების აქტი.
 // DB-backed by `mobile_ladder_inspections` (migration 0045).
 //
 // Web mirror of the Expo app's `types/mobileLadder.ts` (kept in sync by hand; the
 // `@root` import is eslint-banned). The single `signature` column is NOT written
-// by the web data layer — captured inspection signatures are never persisted
+// by the web data layer - captured inspection signatures are never persisted
 // (regulatory); they live in result-screen state and are rasterized into the PDF.
 
 export const MOBILE_LADDER_TEMPLATE_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -60,8 +60,8 @@ export const ML_CHECKLIST_ITEMS: MLChecklistEntry[] = [
 ];
 
 export const ML_SECTION_LABELS: Record<'A' | 'B', string> = {
-  A: 'A — სტრუქტურული მდგომარეობა',
-  B: 'B — სამობილო სისტემა',
+  A: 'A - სტრუქტურული მდგომარეობა',
+  B: 'B - სამობილო სისტემა',
 };
 
 export const ML_RESULT_TO_CHIP: Record<MLResult, string> = {
@@ -72,8 +72,8 @@ export const ML_RESULT_TO_CHIP: Record<MLResult, string> = {
 
 export const ML_VERDICT_LABELS: Record<MLVerdict, string> = {
   safe: 'უსაფრთხოა გამოსაყენებლად',
-  minor: 'მცირე დაზიანება — დასაშვებია',
-  banned: 'დაზიანებულია — აკრძალულია',
+  minor: 'მცირე დაზიანება - დასაშვებია',
+  banned: 'დაზიანებულია - აკრძალულია',
 };
 
 export function buildDefaultMLItems(): MLItemState[] {

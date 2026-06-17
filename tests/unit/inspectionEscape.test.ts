@@ -7,7 +7,7 @@ import {
   tPdf,
 } from '../../lib/pdf/inspection/_shared';
 
-describe('lib/inspection/escape — escapeHtml', () => {
+describe('lib/inspection/escape - escapeHtml', () => {
   it('returns "" for null/undefined', () => {
     expect(escapeHtml(null)).toBe('');
     expect(escapeHtml(undefined)).toBe('');
@@ -27,11 +27,11 @@ describe('lib/inspection/escape — escapeHtml', () => {
   });
 });
 
-describe('lib/inspection/escape — fmtDate', () => {
+describe('lib/inspection/escape - fmtDate', () => {
   it('returns em-dash for null/empty', () => {
-    expect(fmtDate(null)).toBe('—');
-    expect(fmtDate('')).toBe('—');
-    expect(fmtDate(undefined)).toBe('—');
+    expect(fmtDate(null)).toBe('-');
+    expect(fmtDate('')).toBe('-');
+    expect(fmtDate(undefined)).toBe('-');
   });
 
   it('echoes unparseable strings unchanged', () => {
@@ -45,7 +45,7 @@ describe('lib/inspection/escape — fmtDate', () => {
   });
 });
 
-describe('lib/inspection/escape — fmtDateTime', () => {
+describe('lib/inspection/escape - fmtDateTime', () => {
   it('returns "" for null/empty', () => {
     expect(fmtDateTime(null)).toBe('');
     expect(fmtDateTime('')).toBe('');
@@ -62,7 +62,7 @@ describe('lib/inspection/escape — fmtDateTime', () => {
   });
 });
 
-describe('lib/pdf/inspection/_shared — escapeHtml', () => {
+describe('lib/pdf/inspection/_shared - escapeHtml', () => {
   it('escapes the standard HTML metacharacters', () => {
     expect(pdfEscapeHtml('<a>&"\'')).toBe('&lt;a&gt;&amp;&quot;&#39;');
   });
@@ -73,14 +73,14 @@ describe('lib/pdf/inspection/_shared — escapeHtml', () => {
   });
 });
 
-describe('lib/pdf/inspection/_shared — formatDate', () => {
+describe('lib/pdf/inspection/_shared - formatDate', () => {
   it('formats ISO as dd.mm.yyyy hh:mm', () => {
     const out = pdfFormatDate('2026-05-20T10:30:00');
     expect(out).toMatch(/^20\.05\.2026 \d{2}:30$/);
   });
 });
 
-describe('lib/pdf/inspection/_shared — pad2', () => {
+describe('lib/pdf/inspection/_shared - pad2', () => {
   it('left-pads single-digit numbers', () => {
     expect(pad2(0)).toBe('00');
     expect(pad2(7)).toBe('07');
@@ -90,7 +90,7 @@ describe('lib/pdf/inspection/_shared — pad2', () => {
   });
 });
 
-describe('lib/pdf/inspection/_shared — tPdf', () => {
+describe('lib/pdf/inspection/_shared - tPdf', () => {
   it('returns undefined for unknown keys', () => {
     expect(tPdf('this.is.not.a.real.key')).toBeUndefined();
   });

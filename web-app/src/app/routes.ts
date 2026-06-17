@@ -2,9 +2,9 @@
  * Centralized, typed route definitions.
  *
  * Two parallel surfaces:
- *   - `routePattern.*` — the path pattern with `:param` placeholders, used in
+ *   - `routePattern.*` - the path pattern with `:param` placeholders, used in
  *     <Route path={...} /> declarations.
- *   - `routes.*` — builders that produce concrete URLs, used in <Link to={...}>
+ *   - `routes.*` - builders that produce concrete URLs, used in <Link to={...}>
  *     and navigate(). Static routes are plain strings; parameterized routes
  *     are functions: routes.projects.detail(id).
  *
@@ -46,7 +46,7 @@ export const routePattern = {
   privacy: '/privacy',
 
   // Public marketing pages (multi-page landing). `legislation` is the PUBLIC
-  // regulations/blog page — distinct from the protected `/regulations` dashboard.
+  // regulations/blog page - distinct from the protected `/regulations` dashboard.
   about: '/about',
   contact: '/contact',
   pricing: '/pricing',

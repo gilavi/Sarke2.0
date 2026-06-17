@@ -1,12 +1,12 @@
 /**
- * SuccessModal — completion confirmation shown on top of the destination screen
+ * SuccessModal - completion confirmation shown on top of the destination screen
  * after an inspection wizard closes. Reusable for any inspection flow.
  *
  * Desktop: small centered modal (max-width 400px).
  * Mobile:  bottom sheet that slides up.
  *
  * Styling follows the app design system: brand-colored primary Button,
- * neutral text tokens, and md radius — no bespoke colors.
+ * neutral text tokens, and md radius - no bespoke colors.
  */
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -83,7 +83,7 @@ export default function SuccessModal({ isOpen, onClose, onGeneratePDF, data }: S
             <div className="px-6 py-5 text-center leading-relaxed">
               <span className="text-[32px] font-bold text-neutral-900 dark:text-neutral-100">{data.totalCount}</span>
               <span className="ml-1.5 text-[16px] text-neutral-500 dark:text-neutral-400">
-                {data.itemLabel} შემოწმდა —
+                {data.itemLabel} შემოწმდა -
               </span>
               <span className="ml-1.5 text-[16px] font-medium text-brand-600 dark:text-brand-400">
                 {data.safeCount} კარგია,

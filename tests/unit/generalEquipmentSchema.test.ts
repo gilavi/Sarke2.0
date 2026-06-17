@@ -16,7 +16,7 @@ function buildInspection(over: Partial<GeneralEquipmentInspection> = {}): Genera
     templateId: GENERAL_EQUIPMENT_TEMPLATE_ID,
     userId: 'u1',
     status: 'completed',
-    objectName: 'შპს Acme — საწყობი',
+    objectName: 'შპს Acme - საწყობი',
     address: 'რუსთავი',
     activityType: 'სამშენებლო',
     inspectionDate: '2026-05-20',
@@ -46,7 +46,7 @@ const PHOTOS = {
   'ge/x/sum.jpg': 'data:image/jpeg;base64,SUM',
 };
 
-describe('buildInspectionPdf — generalEquipment', () => {
+describe('buildInspectionPdf - generalEquipment', () => {
   const html = buildInspectionPdf(
     generalEquipmentSchema,
     { inspection: buildInspection(), projectName: 'პროექტი' },
@@ -85,7 +85,7 @@ describe('buildInspectionPdf — generalEquipment', () => {
   });
 });
 
-describe('buildInspectionPdf — generalEquipment custom signer role', () => {
+describe('buildInspectionPdf - generalEquipment custom signer role', () => {
   const html = buildInspectionPdf(
     generalEquipmentSchema,
     {
@@ -103,7 +103,7 @@ describe('buildInspectionPdf — generalEquipment custom signer role', () => {
   });
 });
 
-describe('buildInspectionPdf — generalEquipment defaults', () => {
+describe('buildInspectionPdf - generalEquipment defaults', () => {
   it('renders with mostly null/default fields', () => {
     const html = buildInspectionPdf(
       generalEquipmentSchema,

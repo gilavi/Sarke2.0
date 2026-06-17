@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { ErrorScreen } from '../../components/ErrorScreen';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Share2, FileText } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
@@ -96,7 +96,7 @@ export default function BriefingDetailScreen() {
               {sharing ? (
                 <ActivityIndicator size="small" color={theme.colors.accent} />
               ) : (
-                <Ionicons name="share-outline" size={22} color={theme.colors.accent} />
+                <Share2 size={22} color={theme.colors.accent} strokeWidth={1.5} />
               )}
             </Pressable>
           ),
@@ -127,7 +127,7 @@ export default function BriefingDetailScreen() {
         </View>
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Ionicons name="document-text-outline" size={48} color={theme.colors.borderStrong} />
+          <FileText size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
           <Text style={{ color: theme.colors.inkFaint, fontSize: 14 }}>
             გადახედვა მიუწვდომელია
           </Text>
@@ -145,7 +145,7 @@ export default function BriefingDetailScreen() {
           {sharing ? (
             <ActivityIndicator size="small" color={theme.colors.white} />
           ) : (
-            <Ionicons name="share-outline" size={20} color={theme.colors.white} />
+            <Share2 size={20} color={theme.colors.white} strokeWidth={1.5} />
           )}
           <Text style={styles.shareBtnText}>
             {sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}

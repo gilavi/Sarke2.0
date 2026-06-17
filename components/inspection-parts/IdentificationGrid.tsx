@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -27,7 +26,7 @@ export interface IdentificationField {
   // ── Multi-select (type='chips' only) ───────────────────────────────────────
   /** Allow multiple chips to be toggled simultaneously */
   multiSelect?: boolean;
-  /** Currently selected values (multiSelect mode — replaces value/onChange) */
+  /** Currently selected values (multiSelect mode - replaces value/onChange) */
   values?: string[];
   /** Callback when selection changes in multiSelect mode */
   onValuesChange?: (vals: string[]) => void;
@@ -88,11 +87,9 @@ export function IdentificationGrid({
                   }}
                   {...a11y('მონაცემი ვერ დგინდება', undefined, 'checkbox')}
                 >
-                  <Ionicons
-                    name={field.unknown ? 'checkbox' : 'square-outline'}
-                    size={15}
-                    color={field.unknown ? theme.colors.accent : theme.colors.inkSoft}
-                  />
+                  <View style={[styles.checkbox, field.unknown && styles.checkboxActive]}>
+                    {field.unknown && <View style={styles.checkboxInner} />}
+                  </View>
                   <Text style={styles.unknownLabel}>მონაცემი ვერ დგინდება</Text>
                 </Pressable>
               ) : null}
@@ -104,7 +101,7 @@ export function IdentificationGrid({
   );
 }
 
-// ── Single-select "form selector" — full-width selectable list rows ──────────
+// ── Single-select "form selector" - full-width selectable list rows ──────────
 
 function SelectField({ field }: { field: IdentificationField }) {
   const { theme } = useTheme();
@@ -217,7 +214,7 @@ function MultiChipsField({ field }: { field: IdentificationField }) {
       </View>
       {otherActive && field.onOtherValueChange ? (
         <FloatingLabelInput
-          label={`${field.otherOptionValue} — კონკრეტული სახელი`}
+          label={`${field.otherOptionValue} - კონკრეტული სახელი`}
           value={field.otherValue ?? ''}
           onChangeText={field.onOtherValueChange}
         />
@@ -246,6 +243,26 @@ function getstyles(theme: Theme) {
       gap: 6,
       paddingVertical: 4,
       paddingHorizontal: 2,
+    },
+    checkbox: {
+      width: 15,
+      height: 15,
+      borderRadius: 3,
+      borderWidth: 1.5,
+      borderColor: theme.colors.inkSoft,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    checkboxInner: {
+      width: 7,
+      height: 7,
+      borderRadius: 1,
+      backgroundColor: theme.colors.white,
     },
     unknownLabel: { fontSize: 11, color: theme.colors.inkSoft },
     chipsGroup: { gap: 8 },

@@ -1,4 +1,4 @@
-// Qualifications list — the expert's professional credentials
+// Qualifications list - the expert's professional credentials
 // (xaracho_inspector etc.). Reached from the More tab.
 //
 // Layout: a fixed "Required" section with one slot per REQUIRED_TYPES entry
@@ -20,7 +20,7 @@ import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus, Trash2, CloudUpload, CirclePlus, ImageIcon } from 'lucide-react-native';
 import { Button, Card, Screen } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { haptic } from '../../lib/haptics';
@@ -181,7 +181,7 @@ export default function QualificationsScreen() {
         style={[qStyles.fab, theme.shadow.button]}
         {...a11y('ახალი სერტიფიკატი', 'სერტიფიკატის დამატება', 'button')}
       >
-        <Ionicons name="add" size={28} color={theme.colors.white} />
+        <Plus size={28} color={theme.colors.white} strokeWidth={1.5} />
       </Pressable>
     </Screen>
   );
@@ -219,7 +219,7 @@ function QualThumb({ uri }: { uri?: string | null }) {
   if (!uri || errored) {
     return (
       <View style={qStyles.thumbEmpty}>
-        <Ionicons name="image-outline" size={22} color={theme.colors.inkFaint} />
+        <ImageIcon size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
       </View>
     );
   }
@@ -267,7 +267,7 @@ function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => v
           style={{ padding: 6 }}
           {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
         >
-          <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+          <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
         </Pressable>
       </View>
     </Card>
@@ -285,7 +285,7 @@ function EmptySlot({ label, onPress }: { label: string; onPress: () => void }) {
       {...a11y(label, 'სერტიფიკატის ატვირთვა', 'button')}
     >
       <View style={qStyles.thumbEmptyDashed}>
-        <Ionicons name="cloud-upload-outline" size={22} color={theme.colors.accent} />
+        <CloudUpload size={22} color={theme.colors.accent} strokeWidth={1.5} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{label}</Text>
@@ -293,7 +293,7 @@ function EmptySlot({ label, onPress }: { label: string; onPress: () => void }) {
           ატვირთვა
         </Text>
       </View>
-      <Ionicons name="add-circle-outline" size={22} color={theme.colors.accent} />
+      <CirclePlus size={22} color={theme.colors.accent} strokeWidth={1.5} />
     </Pressable>
   );
 }
@@ -362,14 +362,14 @@ function DeleteModal({
           <View style={qStyles.modalCard}>
             <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <View style={qStyles.iconCircle}>
-                <Ionicons name="trash" size={28} color={theme.colors.danger} />
+                <Trash2 size={28} color={theme.colors.danger} strokeWidth={1.5} />
               </View>
               <Text style={qStyles.modalTitle}>წაშლა?</Text>
               <Text style={qStyles.modalBody}>{title}</Text>
             </View>
             <View style={{ gap: 10, marginTop: 8 }}>
               <Button title="გაუქმება" variant="secondary" onPress={onClose} {...a11y('გაუქმება', undefined, 'button')} />
-              <Button title="წაშლა" variant="danger" onPress={onConfirm} iconLeft={<Ionicons name="trash-outline" size={18} color={theme.colors.danger} />} {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')} />
+              <Button title="წაშლა" variant="danger" onPress={onConfirm} iconLeft={<Trash2 size={18} color={theme.colors.danger} strokeWidth={1.5} />} {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')} />
             </View>
           </View>
         </View>

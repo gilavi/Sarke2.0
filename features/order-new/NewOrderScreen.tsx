@@ -1,4 +1,4 @@
-// NewOrderScreen.tsx — orchestrator for the order wizard.
+// NewOrderScreen.tsx - orchestrator for the order wizard.
 // All step renderers, types, validation, and styles live in sibling files.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

@@ -1,5 +1,5 @@
 /**
- * Batch mount tests for many remaining pages — each one is a render-with-empty
+ * Batch mount tests for many remaining pages - each one is a render-with-empty
  * (or not-found) test that covers the component body, query setup, and the
  * relevant headline UI. Heavy children (modals, signature pad, photo zone,
  * inspection wizard) are stubbed so we exercise the page itself without dragging
@@ -121,7 +121,7 @@ beforeEach(() => {
 describe('Calendar', () => {
   it('renders the month/year header for the current month', async () => {
     renderPage(<Calendar />);
-    // Header shows `{MONTH_NAMES[month]} {year}` — match any Georgian month name.
+    // Header shows `{MONTH_NAMES[month]} {year}` - match any Georgian month name.
     expect(
       await screen.findByText(
         /(იანვარი|თებერვალი|მარტი|აპრილი|მაისი|ივნისი|ივლისი|აგვისტო|სექტემბერი|ოქტომბერი|ნოემბერი|დეკემბერი)\s+\d{4}/,

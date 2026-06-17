@@ -11,7 +11,7 @@ export function LoadingSkeletonScreen() {
   const { theme } = useTheme();
   // This screen disables the automatic content inset (to mirror the loaded
   // ProjectDetail, whose first element is a full-bleed map hero), so it must
-  // add the safe-area top inset manually — otherwise the first skeleton card
+  // add the safe-area top inset manually - otherwise the first skeleton card
   // clips under the status bar / Dynamic Island.
   const insets = useSafeAreaInsets();
   return (

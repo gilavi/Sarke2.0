@@ -1,5 +1,5 @@
 /**
- * Certificates page (35% covered) — list rendering + upload + open PDF.
+ * Certificates page (35% covered) - list rendering + upload + open PDF.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';

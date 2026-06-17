@@ -13,7 +13,7 @@ import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck, Check, Info, User, CircleX, Plus, Camera, Pencil, TriangleAlert } from 'lucide-react-native';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -116,7 +116,7 @@ export default function NewIncident() {
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
-  // stable incident id — lets us upload photos before the row is created
+  // stable incident id - lets us upload photos before the row is created
   const incidentId = useRef(Crypto.randomUUID()).current;
 
   // witness text input buffer
@@ -309,7 +309,7 @@ export default function NewIncident() {
       savedId = saved.id;
       incidentCommitted = true;
 
-      // 3. load signature data URL — strict so we never embed a signed URL
+      // 3. load signature data URL - strict so we never embed a signed URL
       // the print WebView can't fetch.
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
@@ -319,7 +319,7 @@ export default function NewIncident() {
         ).catch(() => undefined);
       }
 
-      // 4. load photo data URLs (strict — drop ones that fail rather than
+      // 4. load photo data URLs (strict - drop ones that fail rather than
       // embedding an unreachable signed URL fallback).
       const photoDataUrls = await Promise.all(
         photoPaths.map(p =>
@@ -389,7 +389,7 @@ export default function NewIncident() {
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       if (!incidentCommitted) {
-        // Incident was never written to DB — clean up any photos that made it to storage
+        // Incident was never written to DB - clean up any photos that made it to storage
         for (const path of uploadedPhotoPaths) {
           storageApi.remove(STORAGE_BUCKETS.incidentPhotos, path).catch(() => {});
         }
@@ -397,7 +397,7 @@ export default function NewIncident() {
         return;
       }
       console.warn('[incident] PDF generation failed', e);
-      toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა — ინციდენტი შენახულია'));
+      toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა - ინციდენტი შენახულია'));
       router.replace(`/incidents/${savedId}` as any);
     } finally {
       setSaving(false);
@@ -406,7 +406,7 @@ export default function NewIncident() {
 
   // ── render ──────────────────────────────────────────────────────────────────
 
-  // Launched from Home without a project — pick one as the first full-screen step.
+  // Launched from Home without a project - pick one as the first full-screen step.
   if (!projectId) {
     return (
       <FlowProjectPicker
@@ -506,7 +506,7 @@ export default function NewIncident() {
   );
 }
 
-// ─── Step 1 — type selection ──────────────────────────────────────────────────
+// ─── Step 1 - type selection ──────────────────────────────────────────────────
 
 function Step1({
   form, setForm, theme, isDark, s,
@@ -545,11 +545,11 @@ function Step1({
               {INCIDENT_TYPE_FULL_LABEL[t]}
             </Text>
             {selected && (
-              <Ionicons
-                name="checkmark-circle"
+              <CircleCheck
                 size={22}
                 color={theme.colors.ink}
                 style={{ marginLeft: 'auto' }}
+                strokeWidth={1.5}
               />
             )}
           </Pressable>
@@ -558,7 +558,7 @@ function Step1({
 
       {needsNotice && (
         <View style={s.warningBanner}>
-          <Ionicons name="warning" size={18} color={theme.colors.danger} />
+          <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
           <Text style={s.warningBannerText}>
             კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
             განმავლობაში
@@ -569,7 +569,7 @@ function Step1({
   );
 }
 
-// ─── Step 2 — person + details ────────────────────────────────────────────────
+// ─── Step 2 - person + details ────────────────────────────────────────────────
 
 function Step2({
   form, setForm, theme, s,
@@ -587,9 +587,9 @@ function Step2({
 
       {isNearMiss ? (
         <View style={s.nearMissNote}>
-          <Ionicons name="information-circle" size={18} color={theme.colors.inkSoft} />
+          <Info size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={s.nearMissNoteText}>
-            საშიში შემთხვევა — დაზიანება არ მომხდარა
+            საშიში შემთხვევა - დაზიანება არ მომხდარა
           </Text>
         </View>
       ) : (
@@ -627,7 +627,7 @@ function Step2({
   );
 }
 
-// ─── Step 3 — description ─────────────────────────────────────────────────────
+// ─── Step 3 - description ─────────────────────────────────────────────────────
 
 function Step3({
   form, setForm, theme, s,
@@ -678,10 +678,10 @@ function Step3({
         <Text style={s.fieldLabel}>მოწმეები</Text>
         {form.witnesses.map((w, i) => (
           <View key={`${i}-${w}`} style={s.witnessRow}>
-            <Ionicons name="person-outline" size={15} color={theme.colors.inkSoft} />
+            <User size={15} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={s.witnessName}>{w}</Text>
             <Pressable onPress={() => onRemoveWitness(i)} hitSlop={12}>
-              <Ionicons name="close-circle" size={18} color={theme.colors.danger} />
+              <CircleX size={18} color={theme.colors.danger} strokeWidth={1.5} />
             </Pressable>
           </View>
         ))}
@@ -697,7 +697,7 @@ function Step3({
             />
           </View>
           <Pressable onPress={onAddWitness} style={s.addWitnessBtn} hitSlop={2}>
-            <Ionicons name="add" size={20} color={theme.colors.accent} />
+            <Plus size={20} color={theme.colors.accent} strokeWidth={1.5} />
           </Pressable>
         </View>
       </View>
@@ -720,14 +720,14 @@ function Step3({
                   style={s.photoRemoveBtn}
                   hitSlop={12}
                 >
-                  <Ionicons name="close-circle" size={20} color={theme.colors.white} />
+                  <CircleX size={20} color={theme.colors.white} strokeWidth={1.5} />
                 </Pressable>
               </View>
             ))}
           </View>
         )}
         <Pressable onPress={onAddPhoto} style={s.addPhotoBtn}>
-          <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
+          <Camera size={18} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={s.addPhotoBtnText}>ფოტოს დამატება</Text>
         </Pressable>
       </View>
@@ -735,7 +735,7 @@ function Step3({
   );
 }
 
-// ─── Step 4 — summary + sign ──────────────────────────────────────────────────
+// ─── Step 4 - summary + sign ──────────────────────────────────────────────────
 
 function Step4({
   form, inspectorName, sigPath, project, theme, isDark, s,
@@ -776,14 +776,14 @@ function Step4({
 
         <SummaryRow
           label="პროექტი"
-          value={project?.name ?? '—'}
+          value={project?.name ?? '-'}
           theme={theme}
           s={s}
         />
         {form.type !== 'nearmiss' && form.injuredName ? (
           <SummaryRow
             label="დაზარალებული"
-            value={`${form.injuredName}${form.injuredRole ? ` — ${form.injuredRole}` : ''}`}
+            value={`${form.injuredName}${form.injuredRole ? ` - ${form.injuredRole}` : ''}`}
             theme={theme}
             s={s}
           />
@@ -796,7 +796,7 @@ function Step4({
         />
         <SummaryRow
           label="ადგილი"
-          value={form.location || '—'}
+          value={form.location || '-'}
           theme={theme}
           s={s}
         />
@@ -828,7 +828,7 @@ function Step4({
               contentFit="contain"
             />
           ) : (
-            <Ionicons name="create-outline" size={20} color={theme.colors.inkFaint} />
+            <Pencil size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
           )}
         </View>
         <View style={{ flex: 1 }}>
@@ -836,14 +836,14 @@ function Step4({
           <Text style={s.inspectorRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
         </View>
         <View style={s.signedChip}>
-          <Ionicons name="checkmark" size={13} color={theme.colors.semantic.success} />
+          <Check size={13} color={theme.colors.semantic.success} strokeWidth={1.5} />
           <Text style={s.signedChipText}>ხელმოწერილია ✓</Text>
         </View>
       </View>
 
       {(form.type === 'severe' || form.type === 'fatal') && (
         <View style={s.warningBanner}>
-          <Ionicons name="warning" size={18} color={theme.colors.danger} />
+          <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
           <Text style={s.warningBannerText}>
             კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
             განმავლობაში

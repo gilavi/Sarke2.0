@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 
@@ -21,11 +21,11 @@ interface ButtonProps extends Omit<PressableProps, 'children'> {
   size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
-  /** @deprecated Use leftIcon (string) instead */
+  leftIcon?: LucideIcon;
+  rightIcon?: LucideIcon;
+  /** @deprecated Use leftIcon instead */
   iconLeft?: React.ReactNode;
-  /** @deprecated Use rightIcon (string) instead */
+  /** @deprecated Use rightIcon instead */
   iconRight?: React.ReactNode;
   onPress?: () => void;
   style?: any;
@@ -37,8 +37,8 @@ export function Button({
   size = 'md',
   loading,
   disabled,
-  leftIcon,
-  rightIcon,
+  leftIcon: LeftIcon,
+  rightIcon: RightIcon,
   iconLeft,
   iconRight,
   onPress,
@@ -238,13 +238,13 @@ export function Button({
             ]}
           />
         )}
-        {(leftIcon || iconLeft) && (
+        {(LeftIcon || iconLeft) && (
           <View style={{ marginRight: 8 }}>
             {iconLeft ?? (
-              <Ionicons
-                name={leftIcon}
+              <LeftIcon
                 size={textSizes[size].fontSize + 2}
                 color={v.color}
+                strokeWidth={1.5}
               />
             )}
           </View>
@@ -259,13 +259,13 @@ export function Button({
         >
           {title}
         </Text>
-        {(rightIcon || iconRight) && (
+        {(RightIcon || iconRight) && (
           <View style={{ marginLeft: 8 }}>
             {iconRight ?? (
-              <Ionicons
-                name={rightIcon}
+              <RightIcon
                 size={textSizes[size].fontSize + 2}
                 color={v.color}
+                strokeWidth={1.5}
               />
             )}
           </View>

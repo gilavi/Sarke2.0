@@ -66,46 +66,46 @@ export interface BobcatChecklistEntry {
   unusableIsNeutral?: boolean;
 }
 
-// ── Bobcat (Skid-Steer) — 30 items ──────────────────────────────────────────
+// ── Bobcat (Skid-Steer) - 30 items ──────────────────────────────────────────
 
 export const BOBCAT_ITEMS: BobcatChecklistEntry[] = [
-  // Category A — თვლები და სამუხრუჭე სისტემა
-  { id: 1,  category: 'A', label: 'თვლები',   description: '4 თვლის საბურავის მდგომარეობა — გარეგნული დაზიანება, ბზარი' },
-  { id: 2,  category: 'A', label: 'თვლები',   description: 'საბურავების წნევა — ვიზუალურად ნორმაშია' },
-  { id: 3,  category: 'A', label: 'თვლები',   description: 'საბურავის ჭანჭიკები — მოჭიმულია, დაკარგული ბოლტი არ არის' },
-  { id: 4,  category: 'A', label: 'მუხრუჭი',  description: 'სამუხრუჭე პედალი — ნორმაშია, ჩავარდნა არ ჩანს' },
-  { id: 5,  category: 'A', label: 'მუხრუჭი',  description: 'სადგომი მუხრუჭი (parking brake) — ნორმაშია' },
-  // Category B — ციცხვი, მკლავი და ჰიდრავლიკა
-  { id: 6,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის კბილები — ცვეთა, ბზარი, დაკარგული კბილი' },
-  { id: 7,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის ფირფიტა — ცვეთა 50%-ზე ნაკლებია' },
-  { id: 8,  category: 'B', label: 'მკლავი',    description: 'მკლავი — ბზარი, მოხრა არ ჩანს' },
-  { id: 9,  category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ცილინდრები — ნაჟური/დენა არ ჩანს' },
-  { id: 10, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური შლანგები — ბზარი, ხახუნი, დენა არ აღენიშნება' },
-  { id: 11, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ზეთის დონე — ნორმაშია მაჩვენებლის მიხედვით' },
-  { id: 12, category: 'B', label: 'ჰიდრავლ.', description: 'ამომწევი/ჩამომწევი ფუნქცია — გლუვი, ჭახჭახი/ვიბრაცია არ ჩანს' },
-  { id: 13, category: 'B', label: 'ჰიდრავლ.', description: 'ციცხვის დახრის ფუნქცია — ნორმაშია' },
-  // Category C — ძრავი (გარეგნული შემოწმება)
-  { id: 14, category: 'C', label: 'ძრავი',    description: 'ძრავის ზეთის დონე — ზეთმზომი ნორმის ფარგლებში' },
-  { id: 15, category: 'C', label: 'ძრავი',    description: 'გამაგრილებელი სითხე — საჰაერო სარეზერვუარო ნორმაშია' },
-  { id: 16, category: 'C', label: 'ძრავი',    description: 'ძრავის გარეგნული ნაჟური — ზეთი/სითხის დენა არ ჩანს' },
-  { id: 17, category: 'C', label: 'ძრავი',    description: 'ჰაერის ფილტრის ინდიკატორი — წითელი სიგნალი არ ანათებს' },
-  { id: 18, category: 'C', label: 'ძრავი',    description: 'ამომშვები მილი (exhaust) — შავი კვამლი/ნაჟური არ ჩანს' },
-  { id: 19, category: 'C', label: 'ძრავი',    description: 'საწვავის სისტემა, ბაკი — ნაჟური/ბზარი არ ჩანს' },
-  // Category D — კაბინა, მართვა, უსაფრთხოება
-  { id: 20, category: 'D', label: 'კაბინა',   description: 'კარები — ნორმაშია' },
-  { id: 21, category: 'D', label: 'კაბინა',   description: 'მინები — სუფთა, ბზარი/დაზიანება არ ჩანს' },
-  { id: 22, category: 'D', label: 'კაბინა',   description: 'სავარძელი — მაგარია, ფუნქციონალი მუშაობს' },
-  { id: 23, category: 'D', label: 'მართვა',   description: 'ბერკეტები/ჯოისტიკი/მართვის პანელი — მუშაობს, ჩარჩება არ ჩანს' },
-  { id: 24, category: 'D', label: 'მართვა',   description: 'ყველა გამშვები/ინდიკატორი — მუშაობს, გაფრთხილება არ ჩანს' },
-  { id: 25, category: 'D', label: 'მართვა',   description: 'სიგნალი/ჰორნი — მუშაობს' },
-  { id: 26, category: 'D', label: 'განათება', description: 'ყველა შუქი: წინა/უკანა, ციმციმა — მუშაობს' },
-  { id: 27, category: 'D', label: 'უსაფრ.',   description: 'სარკეები — ორი გვერდი, სუფთა, კუთხე სწორია' },
-  { id: 28, category: 'D', label: 'უსაფრ.',   description: 'ტვირთის მაჩვენებელი ფირფიტა (load plate) — ხილვადია' },
-  { id: 29, category: 'D', label: 'უსაფრ.',   description: 'უსაფრთხოების ქამარი — ადგილზე, ვადა ნორმაშია' },
-  { id: 30, category: 'D', label: 'უსაფრ.',   description: 'ასასვლელი კიბე — მყარია' },
+  // Category A - თვლები და სამუხრუჭე სისტემა
+  { id: 1,  category: 'A', label: 'თვლები',   description: '4 თვლის საბურავის მდგომარეობა - გარეგნული დაზიანება, ბზარი' },
+  { id: 2,  category: 'A', label: 'თვლები',   description: 'საბურავების წნევა - ვიზუალურად ნორმაშია' },
+  { id: 3,  category: 'A', label: 'თვლები',   description: 'საბურავის ჭანჭიკები - მოჭიმულია, დაკარგული ბოლტი არ არის' },
+  { id: 4,  category: 'A', label: 'მუხრუჭი',  description: 'სამუხრუჭე პედალი - ნორმაშია, ჩავარდნა არ ჩანს' },
+  { id: 5,  category: 'A', label: 'მუხრუჭი',  description: 'სადგომი მუხრუჭი (parking brake) - ნორმაშია' },
+  // Category B - ციცხვი, მკლავი და ჰიდრავლიკა
+  { id: 6,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის კბილები - ცვეთა, ბზარი, დაკარგული კბილი' },
+  { id: 7,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის ფირფიტა - ცვეთა 50%-ზე ნაკლებია' },
+  { id: 8,  category: 'B', label: 'მკლავი',    description: 'მკლავი - ბზარი, მოხრა არ ჩანს' },
+  { id: 9,  category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ცილინდრები - ნაჟური/დენა არ ჩანს' },
+  { id: 10, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური შლანგები - ბზარი, ხახუნი, დენა არ აღენიშნება' },
+  { id: 11, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ზეთის დონე - ნორმაშია მაჩვენებლის მიხედვით' },
+  { id: 12, category: 'B', label: 'ჰიდრავლ.', description: 'ამომწევი/ჩამომწევი ფუნქცია - გლუვი, ჭახჭახი/ვიბრაცია არ ჩანს' },
+  { id: 13, category: 'B', label: 'ჰიდრავლ.', description: 'ციცხვის დახრის ფუნქცია - ნორმაშია' },
+  // Category C - ძრავი (გარეგნული შემოწმება)
+  { id: 14, category: 'C', label: 'ძრავი',    description: 'ძრავის ზეთის დონე - ზეთმზომი ნორმის ფარგლებში' },
+  { id: 15, category: 'C', label: 'ძრავი',    description: 'გამაგრილებელი სითხე - საჰაერო სარეზერვუარო ნორმაშია' },
+  { id: 16, category: 'C', label: 'ძრავი',    description: 'ძრავის გარეგნული ნაჟური - ზეთი/სითხის დენა არ ჩანს' },
+  { id: 17, category: 'C', label: 'ძრავი',    description: 'ჰაერის ფილტრის ინდიკატორი - წითელი სიგნალი არ ანათებს' },
+  { id: 18, category: 'C', label: 'ძრავი',    description: 'ამომშვები მილი (exhaust) - შავი კვამლი/ნაჟური არ ჩანს' },
+  { id: 19, category: 'C', label: 'ძრავი',    description: 'საწვავის სისტემა, ბაკი - ნაჟური/ბზარი არ ჩანს' },
+  // Category D - კაბინა, მართვა, უსაფრთხოება
+  { id: 20, category: 'D', label: 'კაბინა',   description: 'კარები - ნორმაშია' },
+  { id: 21, category: 'D', label: 'კაბინა',   description: 'მინები - სუფთა, ბზარი/დაზიანება არ ჩანს' },
+  { id: 22, category: 'D', label: 'კაბინა',   description: 'სავარძელი - მაგარია, ფუნქციონალი მუშაობს' },
+  { id: 23, category: 'D', label: 'მართვა',   description: 'ბერკეტები/ჯოისტიკი/მართვის პანელი - მუშაობს, ჩარჩება არ ჩანს' },
+  { id: 24, category: 'D', label: 'მართვა',   description: 'ყველა გამშვები/ინდიკატორი - მუშაობს, გაფრთხილება არ ჩანს' },
+  { id: 25, category: 'D', label: 'მართვა',   description: 'სიგნალი/ჰორნი - მუშაობს' },
+  { id: 26, category: 'D', label: 'განათება', description: 'ყველა შუქი: წინა/უკანა, ციმციმა - მუშაობს' },
+  { id: 27, category: 'D', label: 'უსაფრ.',   description: 'სარკეები - ორი გვერდი, სუფთა, კუთხე სწორია' },
+  { id: 28, category: 'D', label: 'უსაფრ.',   description: 'ტვირთის მაჩვენებელი ფირფიტა (load plate) - ხილვადია' },
+  { id: 29, category: 'D', label: 'უსაფრ.',   description: 'უსაფრთხოების ქამარი - ადგილზე, ვადა ნორმაშია' },
+  { id: 30, category: 'D', label: 'უსაფრ.',   description: 'ასასვლელი კიბე - მყარია' },
 ];
 
-// ── Large Loader — 33 items (IDs 1-32 + 40) ──────────────────────────────────
+// ── Large Loader - 33 items (IDs 1-32 + 40) ──────────────────────────────────
 //
 // Derived from BOBCAT_ITEMS with:
 //   • Cat B: new item #10 (Z-bar mechanism) inserted; old #10-13 → #11-14
@@ -115,58 +115,58 @@ export const BOBCAT_ITEMS: BobcatChecklistEntry[] = [
 //       #30 (was: ქამარი)      → სავარძელი + სარტყელი
 //       #31 (was: ასასვლელი)  → ბერკეტები/ჯოისტიკი return-to-centre
 //   • New #32: საჭე (steering)
-//   • New #40: უკუსვლის ვიდეო თვალი — neutral 3rd option "არ გააჩნია"
+//   • New #40: უკუსვლის ვიდეო თვალი - neutral 3rd option "არ გააჩნია"
 
 export const LARGE_LOADER_ITEMS: BobcatChecklistEntry[] = [
-  // A — same as bobcat
-  { id: 1,  category: 'A', label: 'თვლები',    description: '4 თვლის საბურავის მდგომარეობა — გარეგნული დაზიანება, ბზარი' },
-  { id: 2,  category: 'A', label: 'თვლები',    description: 'საბურავების წნევა — ვიზუალურად ნორმაშია' },
-  { id: 3,  category: 'A', label: 'თვლები',    description: 'საბურავის ჭანჭიკები — მოჭიმულია, დაკარგული ბოლტი არ არის' },
-  { id: 4,  category: 'A', label: 'მუხრუჭი',   description: 'სამუხრუჭე პედალი — ნორმაშია, ჩავარდნა არ ჩანს' },
-  { id: 5,  category: 'A', label: 'მუხრუჭი',   description: 'სადგომი მუხრუჭი (parking brake) — ნორმაშია' },
-  // B — new #10 (Z-bar); old #10-13 → #11-14
-  { id: 6,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის კბილები — ცვეთა, ბზარი, დაკარგული კბილი' },
-  { id: 7,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის ფირფიტა — ცვეთა 50%-ზე ნაკლებია' },
-  { id: 8,  category: 'B', label: 'მკლავი',    description: 'მკლავი — ბზარი, მოხრა არ ჩანს' },
-  { id: 9,  category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ცილინდრები — ნაჟური/დენა არ ჩანს' },
-  { id: 10, category: 'B', label: 'მკლავი',    description: 'Z-bar მექანიზმი — ბმული, ბოლტები მოჭიმულია' },
-  { id: 11, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური შლანგები — ბზარი, ხახუნი, დენა არ აღენიშნება' },
-  { id: 12, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ზეთის დონე — ნორმაშია მაჩვენებლის მიხედვით' },
-  { id: 13, category: 'B', label: 'ჰიდრავლ.', description: 'ამომწევი/ჩამომწევი ფუნქცია — გლუვი, ჭახჭახი/ვიბრაცია არ ჩანს' },
-  { id: 14, category: 'B', label: 'ჰიდრავლ.', description: 'ციცხვის დახრის ფუნქცია — ნორმაშია' },
-  // C — old #14-19 → #15-20
-  { id: 15, category: 'C', label: 'ძრავი',     description: 'ძრავის ზეთის დონე — ზეთმზომი ნორმის ფარგლებში' },
-  { id: 16, category: 'C', label: 'ძრავი',     description: 'გამაგრილებელი სითხე — საჰაერო სარეზერვუარო ნორმაშია' },
-  { id: 17, category: 'C', label: 'ძრავი',     description: 'ძრავის გარეგნული ნაჟური — ზეთი/სითხის დენა არ ჩანს' },
-  { id: 18, category: 'C', label: 'ძრავი',     description: 'ჰაერის ფილტრის ინდიკატორი — წითელი სიგნალი არ ანათებს' },
-  { id: 19, category: 'C', label: 'ძრავი',     description: 'ამომშვები მილი (exhaust) — შავი კვამლი/ნაჟური არ ჩანს' },
-  { id: 20, category: 'C', label: 'ძრავი',     description: 'საწვავის სისტემა, ბაკი — ნაჟური/ბზარი არ ჩანს' },
-  // D — old #20-30 → #21-31, with description replacements at #28, #30, #31
-  { id: 21, category: 'D', label: 'კაბინა',    description: 'კარები — ნორმაშია' },
-  { id: 22, category: 'D', label: 'კაბინა',    description: 'მინები — სუფთა, ბზარი/დაზიანება არ ჩანს' },
-  { id: 23, category: 'D', label: 'კაბინა',    description: 'სავარძელი — მაგარია, ფუნქციონალი მუშაობს' },
-  { id: 24, category: 'D', label: 'მართვა',    description: 'ბერკეტები/ჯოისტიკი/მართვის პანელი — მუშაობს, ჩარჩება არ ჩანს' },
-  { id: 25, category: 'D', label: 'მართვა',    description: 'ყველა გამშვები/ინდიკატორი — მუშაობს, გაფრთხილება არ ჩანს' },
-  { id: 26, category: 'D', label: 'მართვა',    description: 'სიგნალი/ჰორნი — მუშაობს' },
-  { id: 27, category: 'D', label: 'განათება',  description: 'ყველა შუქი: წინა/უკანა, ციმციმა — მუშაობს' },
+  // A - same as bobcat
+  { id: 1,  category: 'A', label: 'თვლები',    description: '4 თვლის საბურავის მდგომარეობა - გარეგნული დაზიანება, ბზარი' },
+  { id: 2,  category: 'A', label: 'თვლები',    description: 'საბურავების წნევა - ვიზუალურად ნორმაშია' },
+  { id: 3,  category: 'A', label: 'თვლები',    description: 'საბურავის ჭანჭიკები - მოჭიმულია, დაკარგული ბოლტი არ არის' },
+  { id: 4,  category: 'A', label: 'მუხრუჭი',   description: 'სამუხრუჭე პედალი - ნორმაშია, ჩავარდნა არ ჩანს' },
+  { id: 5,  category: 'A', label: 'მუხრუჭი',   description: 'სადგომი მუხრუჭი (parking brake) - ნორმაშია' },
+  // B - new #10 (Z-bar); old #10-13 → #11-14
+  { id: 6,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის კბილები - ცვეთა, ბზარი, დაკარგული კბილი' },
+  { id: 7,  category: 'B', label: 'ციცხვი',    description: 'ციცხვის ფირფიტა - ცვეთა 50%-ზე ნაკლებია' },
+  { id: 8,  category: 'B', label: 'მკლავი',    description: 'მკლავი - ბზარი, მოხრა არ ჩანს' },
+  { id: 9,  category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ცილინდრები - ნაჟური/დენა არ ჩანს' },
+  { id: 10, category: 'B', label: 'მკლავი',    description: 'Z-bar მექანიზმი - ბმული, ბოლტები მოჭიმულია' },
+  { id: 11, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური შლანგები - ბზარი, ხახუნი, დენა არ აღენიშნება' },
+  { id: 12, category: 'B', label: 'ჰიდრავლ.', description: 'ჰიდრავლიკური ზეთის დონე - ნორმაშია მაჩვენებლის მიხედვით' },
+  { id: 13, category: 'B', label: 'ჰიდრავლ.', description: 'ამომწევი/ჩამომწევი ფუნქცია - გლუვი, ჭახჭახი/ვიბრაცია არ ჩანს' },
+  { id: 14, category: 'B', label: 'ჰიდრავლ.', description: 'ციცხვის დახრის ფუნქცია - ნორმაშია' },
+  // C - old #14-19 → #15-20
+  { id: 15, category: 'C', label: 'ძრავი',     description: 'ძრავის ზეთის დონე - ზეთმზომი ნორმის ფარგლებში' },
+  { id: 16, category: 'C', label: 'ძრავი',     description: 'გამაგრილებელი სითხე - საჰაერო სარეზერვუარო ნორმაშია' },
+  { id: 17, category: 'C', label: 'ძრავი',     description: 'ძრავის გარეგნული ნაჟური - ზეთი/სითხის დენა არ ჩანს' },
+  { id: 18, category: 'C', label: 'ძრავი',     description: 'ჰაერის ფილტრის ინდიკატორი - წითელი სიგნალი არ ანათებს' },
+  { id: 19, category: 'C', label: 'ძრავი',     description: 'ამომშვები მილი (exhaust) - შავი კვამლი/ნაჟური არ ჩანს' },
+  { id: 20, category: 'C', label: 'ძრავი',     description: 'საწვავის სისტემა, ბაკი - ნაჟური/ბზარი არ ჩანს' },
+  // D - old #20-30 → #21-31, with description replacements at #28, #30, #31
+  { id: 21, category: 'D', label: 'კაბინა',    description: 'კარები - ნორმაშია' },
+  { id: 22, category: 'D', label: 'კაბინა',    description: 'მინები - სუფთა, ბზარი/დაზიანება არ ჩანს' },
+  { id: 23, category: 'D', label: 'კაბინა',    description: 'სავარძელი - მაგარია, ფუნქციონალი მუშაობს' },
+  { id: 24, category: 'D', label: 'მართვა',    description: 'ბერკეტები/ჯოისტიკი/მართვის პანელი - მუშაობს, ჩარჩება არ ჩანს' },
+  { id: 25, category: 'D', label: 'მართვა',    description: 'ყველა გამშვები/ინდიკატორი - მუშაობს, გაფრთხილება არ ჩანს' },
+  { id: 26, category: 'D', label: 'მართვა',    description: 'სიგნალი/ჰორნი - მუშაობს' },
+  { id: 27, category: 'D', label: 'განათება',  description: 'ყველა შუქი: წინა/უკანა, ციმციმა - მუშაობს' },
   // #28: replaces bobcat's "სარკეები" with door-seal check
-  { id: 28, category: 'D', label: 'კარები',    description: 'კარები, სარეზინები — ნორმ. იხსნება, ჰაეროვანია' },
-  { id: 29, category: 'D', label: 'უსაფრ.',    description: 'ტვირთის მაჩვენებელი ფირფიტა (load plate) — ხილვადია' },
+  { id: 28, category: 'D', label: 'კარები',    description: 'კარები, სარეზინები - ნორმ. იხსნება, ჰაეროვანია' },
+  { id: 29, category: 'D', label: 'უსაფრ.',    description: 'ტვირთის მაჩვენებელი ფირფიტა (load plate) - ხილვადია' },
   // #30: replaces bobcat's "ქამარი" with combined seat+belt check
-  { id: 30, category: 'D', label: 'კაბინა',    description: 'სავარძელი — მაგარია, სარტყელი ფუნქციონარი მუშაობს' },
+  { id: 30, category: 'D', label: 'კაბინა',    description: 'სავარძელი - მაგარია, სარტყელი ფუნქციონარი მუშაობს' },
   // #31: replaces bobcat's "ასასვლელი კიბე" with joystick return-to-centre check
-  { id: 31, category: 'D', label: 'მართვა',    description: 'ბერკეტები/ჯოისტიკი (joystick/lever) — ნორმ. ბრუნდება, ჩარჩება არ ჩანს' },
-  // #32: new — steering wheel
-  { id: 32, category: 'D', label: 'მართვა',    description: 'საჭე — ლაფსუსი ≤ 15°, ბრუნვა გლუვია' },
-  // #40: new — reverse camera; "not present" is neutral (does not trigger rejected verdict)
+  { id: 31, category: 'D', label: 'მართვა',    description: 'ბერკეტები/ჯოისტიკი (joystick/lever) - ნორმ. ბრუნდება, ჩარჩება არ ჩანს' },
+  // #32: new - steering wheel
+  { id: 32, category: 'D', label: 'მართვა',    description: 'საჭე - ლაფსუსი ≤ 15°, ბრუნვა გლუვია' },
+  // #40: new - reverse camera; "not present" is neutral (does not trigger rejected verdict)
   { id: 40, category: 'D', label: 'უსაფრ.',    description: 'უკუსვლის ვიდეო თვალი', unusableLabel: 'არ გააჩნია', unusableIsNeutral: true },
 ];
 
 export const BOBCAT_CATEGORY_LABELS: Record<BobcatCategory, string> = {
-  A: 'A — თვლები და სამუხრუჭე სისტემა',
-  B: 'B — ციცხვი, მკლავი, ჰიდრავლიკა',
-  C: 'C — ძრავი (გარეგნული შემოწმება)',
-  D: 'D — კაბინა, მართვა, უსაფრთხოება',
+  A: 'A - თვლები და სამუხრუჭე სისტემა',
+  B: 'B - ციცხვი, მკლავი, ჰიდრავლიკა',
+  C: 'C - ძრავი (გარეგნული შემოწმება)',
+  D: 'D - კაბინა, მართვა, უსაფრთხოება',
 };
 
 export const INSPECTION_TYPE_LABEL: Record<BobcatInspectionType, string> = {
@@ -176,9 +176,9 @@ export const INSPECTION_TYPE_LABEL: Record<BobcatInspectionType, string> = {
 };
 
 export const VERDICT_LABEL: Record<BobcatVerdict, string> = {
-  approved: 'დაშვებულია სამუშაოდ — ყველა პუნქტი ნორმაშია',
-  limited:  'დაშვებულია შეზღუდულად — ხარვეზების მოსაგვარებლად',
-  rejected: 'არ დაიშვება სამუშაოდ — გადაცემა ტექ. მომსახურებაში',
+  approved: 'დაშვებულია სამუშაოდ - ყველა პუნქტი ნორმაშია',
+  limited:  'დაშვებულია შეზღუდულად - ხარვეზების მოსაგვარებლად',
+  rejected: 'არ დაიშვება სამუშაოდ - გადაცემა ტექ. მომსახურებაში',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -64,7 +64,7 @@ export function HeatmapCalendar({ data }: HeatmapCalendarProps) {
         ))}
       </div>
 
-      {/* Grid — rows = weeks, cols = days */}
+      {/* Grid - rows = weeks, cols = days */}
       <div className="flex flex-1 flex-col gap-1">
         {rows.map((week, wi) => (
           <div key={wi} className="flex flex-1 gap-1">

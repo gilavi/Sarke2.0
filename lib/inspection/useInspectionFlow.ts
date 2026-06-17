@@ -6,7 +6,7 @@
  * autosave, the complete handler (validate → patch → complete → recordCompletion
  * → status → celebration), PDF preview + share, and limit-notice state. This hook
  * owns all of that ("when"); each screen supplies only the genuinely type-specific
- * parts ("what") via callbacks — so behaviour is preserved exactly while the
+ * parts ("what") via callbacks - so behaviour is preserved exactly while the
  * boilerplate is shared.
  *
  * Type-specific UI (steps, item reducers, signature wiring) stays in the screen.
@@ -326,7 +326,7 @@ export function useInspectionFlow<T extends BaseInspection>(
         documentId: insp.id,
         subject: cfg.pdf.subject,
       });
-      // No store to clear — the result-view snapshot lives only in component
+      // No store to clear - the result-view snapshot lives only in component
       // state and dies when the screen unmounts.
       invalidatePdfUsage();
     } catch (e) {

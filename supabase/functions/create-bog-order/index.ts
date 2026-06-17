@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     // Optional client-supplied redirect URLs (web flow). Mobile callers send no
     // body and fall back to the sarke2:// deep links below.
     let body: { success_url?: string; fail_url?: string } = {};
-    try { body = await req.json(); } catch { /* no body — mobile path */ }
+    try { body = await req.json(); } catch { /* no body - mobile path */ }
 
     // github.io kept alongside hubble.ge: shipped mobile builds still open the
     // old URL, which 301s to the hubble.ge CNAME.
@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
               quantity: 1,
               unit_price: 1,
               product_id: 'sarke_pro_monthly',
-              description: 'Hubble Pro — ყოველთვიური გამოწერა',
+              description: 'Hubble Pro - ყოველთვიური გამოწერა',
             },
           ],
         },

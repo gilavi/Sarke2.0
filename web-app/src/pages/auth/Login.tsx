@@ -9,7 +9,7 @@ import { AuthLayout } from './AuthLayout';
 
 /**
  * Translate Supabase auth errors (English) into Georgian. Falls back to the
- * raw message only for cases we don't recognise — keeps the Georgian UI
+ * raw message only for cases we don't recognise - keeps the Georgian UI
  * consistent and avoids surfacing internal English text on the login screen.
  */
 function localizeAuthError(err: unknown): string {

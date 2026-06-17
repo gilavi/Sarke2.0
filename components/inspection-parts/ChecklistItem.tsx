@@ -2,11 +2,11 @@ import { memo, useMemo } from 'react';
 import { ChecklistItemRow, type ChecklistRowOption } from './ChecklistItemRow';
 
 export interface ChecklistItemOptions {
-  a: string;           // good — "კარგი" / "კი" / "აკმაყოფილებს" / "✓"
+  a: string;           // good - "კარგი" / "კი" / "აკმაყოფილებს" / "✓"
   b: string;           // deficient (three_state) / fail (binary) / critical (four_state)
-  c?: string;          // optional 3rd — "N/A" / minor
+  c?: string;          // optional 3rd - "N/A" / minor
   cIsNeutral?: boolean; // text (N/A) chip when true (three_state)
-  d?: string;          // optional 4th (four_state) — neutral "not checked"
+  d?: string;          // optional 4th (four_state) - neutral "not checked"
 }
 
 export interface ChecklistItemProps {
@@ -30,7 +30,7 @@ export interface ChecklistItemProps {
 /**
  * One equipment checklist item. Thin adapter over the shared monochrome
  * {@link ChecklistItemRow}: maps the 2–4 state vocabulary (binary / three_state
- * / four_state, incl. N/A) to result chips — good is a ✓, deficient a ⚠, fail a
+ * / four_state, incl. N/A) to result chips - good is a ✓, deficient a ⚠, fail a
  * ✗, and N/A-style states render as a short text chip. No per-row note/photo;
  * the `result` still drives the PDF pills, counts, and verdict.
  */
@@ -65,7 +65,7 @@ function buildOptions(
 ): ChecklistRowOption[] {
   const mk = (value: string, extra: Partial<ChecklistRowOption>): ChecklistRowOption => ({
     value,
-    a11yLabel: `${label} — ${value}`,
+    a11yLabel: `${label} - ${value}`,
     ...extra,
   });
   const out: ChecklistRowOption[] = [mk(options.a, { icon: 'checkmark' })];
@@ -73,7 +73,7 @@ function buildOptions(
   if (type === 'binary') {
     out.push(mk(options.b, { icon: 'close' }));
   } else if (type === 'four_state') {
-    // a=good (icon), b=critical, c=minor, d=not-checked — severity short labels.
+    // a=good (icon), b=critical, c=minor, d=not-checked - severity short labels.
     out.push(mk(options.b, { shortLabel: options.b }));
     if (options.c) out.push(mk(options.c, { shortLabel: options.c }));
     if (options.d) out.push(mk(options.d, { shortLabel: options.d }));

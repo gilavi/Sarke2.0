@@ -17,7 +17,7 @@ import { ChipRow } from './ChipRow';
 
 // Survives remounts within a session (keyed by inspection id) so an
 // unexpected unmount of this full-screen takeover doesn't bounce the user
-// back to the count picker — it restores their place (list + active harness).
+// back to the count picker - it restores their place (list + active harness).
 const flowPos = new Map<string, { step: 'count' | 'list'; rowIdx: number }>();
 
 function cloneGrid(g?: GridValues | null): GridValues {
@@ -37,7 +37,7 @@ const LEGEND = [
 export type HarnessListFlowProps = {
   inspectionId: string;
   template: Template;
-  /** Only the name is shown (header subtitle) — kept loose so callers can pass a partial. */
+  /** Only the name is shown (header subtitle) - kept loose so callers can pass a partial. */
   project: { name: string; logo?: string | null } | null;
   questions: Question[];
   answers: Record<string, Answer>;
@@ -47,7 +47,7 @@ export type HarnessListFlowProps = {
   stepIndex: number;
   totalSteps: number;
   onPatchAnswer: (q: Question, m: (a: Answer) => Answer) => Promise<void>;
-  /** Wizard "go to previous step" — used by the header back from the count screen. */
+  /** Wizard "go to previous step" - used by the header back from the count screen. */
   onBack: () => void;
   onClose: () => void;
   onConclude: () => void;
@@ -89,7 +89,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   const showHelp = useScaffoldHelpSheet();
 
   // Local draft of grid values (row → col → value), keyed by question id, seeded
-  // from the persisted answers. ✓/✗ taps mutate this ONLY — we persist to the
+  // from the persisted answers. ✓/✗ taps mutate this ONLY - we persist to the
   // server (onPatchAnswer) when the user advances or leaves, never on every tap.
   const [draft, setDraft] = useState<Record<string, GridValues>>(() => {
     const d: Record<string, GridValues> = {};
@@ -220,7 +220,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
   const row = rowLabels[safeRowIdx];
 
   // Snapshot of the draft with every unanswered cell in the current row defaulted
-  // to 'ok' — the harness convention so the legal PDF has a value for every cell.
+  // to 'ok' - the harness convention so the legal PDF has a value for every cell.
   const buildAutoOkSnapshot = (): Record<string, GridValues> => {
     const snap: Record<string, GridValues> = {};
     for (const [qid, g] of Object.entries(draftRef.current)) snap[qid] = cloneGrid(g);
@@ -242,7 +242,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
       setDraft(snap);
       void flush(snap).then(onConclude);
     } else {
-      // Advancing between harnesses is purely local — persistence happens on
+      // Advancing between harnesses is purely local - persistence happens on
       // conclude/close, so there's no full-screen reload.
       setDraft(snap);
       setCurrentRowIdx(safeRowIdx + 1);
@@ -308,7 +308,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
           accessibilityLabel={`ქამარი ${safeRowIdx + 1} დადასტურება`}
         >
           <Text style={s.bigCtaText}>
-            {`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} — დადასტურება →`}
+            {`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} - დადასტურება →`}
           </Text>
         </Pressable>
       </View>

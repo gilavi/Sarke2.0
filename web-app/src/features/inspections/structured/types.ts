@@ -58,7 +58,7 @@ export interface WizardSpecField<T, P> {
   placeholder?: string;
 }
 
-/** info/specs step — a grid of labeled text fields + the project (create only). */
+/** info/specs step - a grid of labeled text fields + the project (create only). */
 export interface WizardSpecStep<T, P> {
   kind: 'specs';
   key: string;
@@ -75,7 +75,7 @@ export interface WizardChecklistStep<T, P> {
   resultOptions: WizardResultOption[];
   /** Storage prefix for item photos (e.g. 'bobcat'); omit to hide comment/photos. */
   photoPrefix?: string;
-  /** When false, render result pills only (no comment/photo) — e.g. post-test. */
+  /** When false, render result pills only (no comment/photo) - e.g. post-test. */
   withDetails?: boolean;
   getStates: (m: T) => WizardItemState[];
   patch: (states: WizardItemState[]) => P;

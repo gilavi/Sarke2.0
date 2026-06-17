@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
-import { Ionicons } from '@expo/vector-icons';
+import { MailOpen, X, CircleAlert, Key, Globe } from 'lucide-react-native';
 import { HubbleMark } from '../../components/HubbleMark';
 import { OrbitField } from '../../components/OrbitField';
 import { useSession } from '../../lib/session';
@@ -141,7 +141,7 @@ function ForgotPasswordModal({
           {sent ? (
             <View style={{ gap: 16, alignItems: 'center', marginTop: 12 }}>
               <View style={styles.iconCircle}>
-                <Ionicons name="mail-open-outline" size={36} color={theme.colors.accent} />
+                <MailOpen size={36} color={theme.colors.accent} strokeWidth={1.5} />
               </View>
               <Text style={[styles.modalBody, { textAlign: 'center' }]}>
                 {t('auth.resetSent', { email })}
@@ -191,7 +191,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
   const [error, setError] = useState<string | null>(null);
   // Counts consecutive wrong-password failures for the CURRENT email. Resets
   // whenever the email changes or a sign-in succeeds. AccountNotFound failures
-  // (typo'd email) do NOT increment — a different problem, different remedy.
+  // (typo'd email) do NOT increment - a different problem, different remedy.
   const [wrongPwCount, setWrongPwCount] = useState(0);
   const passwordRef = useRef<TextInput>(null);
 
@@ -226,7 +226,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         setWrongPwCount(n => n + 1);
       } else if (isAccountNotFoundError(e)) {
         setError(t('auth.accountNotFound'));
-        // Different problem (wrong email, not wrong password) — don't count
+        // Different problem (wrong email, not wrong password) - don't count
         // toward the reset-password CTA threshold.
       } else {
         setError(friendlyError(e));
@@ -295,7 +295,7 @@ function ResetPasswordPrompt({ onReset }: { onReset: () => void }) {
   const { t } = useTranslation();
   return (
     <View style={styles.resetPromptBox}>
-      <Ionicons name="key-outline" size={18} color={theme.colors.accent} />
+      <Key size={18} color={theme.colors.accent} strokeWidth={1.5} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.ink }}>
           {t('auth.tooManyAttemptsTitle')}
@@ -448,7 +448,7 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
     <View style={styles.modalHeader}>
       <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
       <Pressable onPress={onClose} hitSlop={12}>
-        <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+        <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
       </Pressable>
     </View>
   );
@@ -460,7 +460,7 @@ function InlineError({ children }: { children: React.ReactNode }) {
 
   return (
     <View style={styles.errorBox}>
-      <Ionicons name="alert-circle-outline" size={15} color={theme.colors.danger} />
+      <CircleAlert size={15} color={theme.colors.danger} strokeWidth={1.5} />
       <Text style={{ color: theme.colors.danger, fontSize: 13, flex: 1, lineHeight: 18 }}>
         {children}
       </Text>
@@ -570,7 +570,7 @@ function LanguageSwitcher() {
           busy && { opacity: 0.6 },
         ]}
       >
-        <Ionicons name="globe" size={16} color={theme.colors.accent} />
+        <Globe size={16} color={theme.colors.accent} strokeWidth={1.5} />
         <Text style={styles.languageSwitcherText}>
           {i18n.language === 'ka' ? 'English' : 'ქართული'}
         </Text>

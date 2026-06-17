@@ -40,7 +40,7 @@ export const remoteSigningApi = {
     return row;
   },
   sendSMS: async (id: string): Promise<void> => {
-    // Mock: just mark as sent locally — no real HTTP call.
+    // Mock: just mark as sent locally - no real HTTP call.
     const r = _remoteSigningMem.find(x => x.id === id);
     if (r) { r.status = 'sent'; r.last_sent_at = new Date().toISOString(); }
   },

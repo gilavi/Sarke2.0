@@ -8,7 +8,9 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, File, ChevronRight } from 'lucide-react-native';
+import { Image as ImageIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
@@ -30,11 +32,11 @@ function formatGeorgianDate(isoDate: string): string {
 function toDateKey(isoDatetime: string): string {
   return isoDatetime.slice(0, 10);
 }
-function fileIcon(mime: string | null): keyof typeof Ionicons.glyphMap {
-  if (!mime) return 'document-outline';
-  if (mime.includes('pdf')) return 'document-text-outline';
-  if (mime.startsWith('image/')) return 'image-outline';
-  return 'document-outline';
+function fileIcon(mime: string | null): LucideIcon {
+  if (!mime) return File;
+  if (mime.includes('pdf')) return FileText;
+  if (mime.startsWith('image/')) return ImageIcon;
+  return File;
 }
 function humanSize(bytes: number | null): string {
   if (!bytes) return '';
@@ -84,7 +86,7 @@ export default function ProjectFilesList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
-      
+
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
         }
@@ -104,7 +106,7 @@ export default function ProjectFilesList() {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
+            <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
         ) : (
@@ -129,7 +131,7 @@ export default function ProjectFilesList() {
                           .join(' · ')}
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                    <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
                   </Pressable>
                 ))}
               </View>
@@ -177,9 +179,10 @@ function FileThumbnail({ file }: { file: ProjectFile }) {
       </View>
     );
   }
+  const IconComp = fileIcon(file.mime_type);
   return (
     <View style={tile}>
-      <Ionicons name={fileIcon(file.mime_type)} size={20} color={theme.colors.inkSoft} />
+      <IconComp size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
     </View>
   );
 }

@@ -52,7 +52,7 @@ describe('BOBCAT_ITEMS catalog integrity', () => {
   it('no description ends with bare "ბზარი" or "ნაჟური" without negation', () => {
     for (const item of BOBCAT_ITEMS) {
       if (item.description.endsWith('ბზარი')) {
-        // If it ends with bare ბზარი, that's a dangling check — should have negation elsewhere
+        // If it ends with bare ბზარი, that's a dangling check - should have negation elsewhere
         // The catalog entries that list ბზარი in the description are in a list context, not as a standalone verdict.
         // This test verifies no item description ends with ბზარი as the only word (the issue was descriptions
         // ending with affirmative defect words as if saying "has a crack").
@@ -60,10 +60,10 @@ describe('BOBCAT_ITEMS catalog integrity', () => {
         // so we simply assert the pattern is consistent: the description must NOT end with ' ბზარი' after a space
         // unless it's part of a comma-separated defect list (acceptable pattern).
         // A simpler check: if it ends with ბზარი, there must be a comma or dash before it in the description.
-        expect(item.description).toMatch(/[,—/].*ბზარი$/);
+        expect(item.description).toMatch(/[,-/].*ბზარი$/);
       }
       if (item.description.endsWith('ნაჟური')) {
-        expect(item.description).toMatch(/[,—/].*ნაჟური$/);
+        expect(item.description).toMatch(/[,-/].*ნაჟური$/);
       }
     }
   });
@@ -286,7 +286,7 @@ describe('computeVerdictSuggestion', () => {
   });
 
   it('returns "rejected" when both a neutral-unusable and a non-neutral-unusable item exist', () => {
-    // id=40 is neutral, id=6 is non-neutral — the non-neutral unusable triggers rejected
+    // id=40 is neutral, id=6 is non-neutral - the non-neutral unusable triggers rejected
     const items = buildDefaultItems(LARGE_LOADER_ITEMS).map(it => {
       if (it.id === 40) return { ...it, result: 'unusable' as const };
       if (it.id === 6)  return { ...it, result: 'unusable' as const };
@@ -296,7 +296,7 @@ describe('computeVerdictSuggestion', () => {
   });
 
   it('returns "approved" when only some items are filled and all filled are "good"', () => {
-    // The function approves when every *filled* item is good — partial fill is fine
+    // The function approves when every *filled* item is good - partial fill is fine
     const items = buildDefaultItems();
     const partial = items.map((it, i) =>
       i < 3 ? { ...it, result: 'good' as const } : it,
@@ -339,7 +339,7 @@ describe('categoryCounts', () => {
       if (it.id === 2) return { ...it, result: 'good' as const };
       if (it.id === 3) return { ...it, result: 'deficient' as const };
       if (it.id === 4) return { ...it, result: 'unusable' as const };
-      return it; // id=5 remains null — not counted
+      return it; // id=5 remains null - not counted
     });
     expect(categoryCounts(items, 'A')).toEqual({ good: 2, deficient: 1, unusable: 1 });
   });

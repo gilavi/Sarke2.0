@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera, Check, CircleX, Trash2, TriangleAlert, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { SuggestionPills } from '../SuggestionPills';
@@ -80,7 +80,7 @@ export const EquipmentRow = memo(function EquipmentRow({
               hitSlop={10}
               {...a11y('სტრიქონის წაშლა', undefined, 'button')}
             >
-              <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+              <Trash2 size={16} color={theme.colors.danger} strokeWidth={1.5} />
             </Pressable>
           )}
         </View>
@@ -109,7 +109,7 @@ export const EquipmentRow = memo(function EquipmentRow({
           visible={focusedField === 'name' || (!nameDraft.trim() && nameHistory.suggestions.length > 0)}
         />
 
-        {/* Model + Serial — 2 columns */}
+        {/* Model + Serial - 2 columns */}
         <View style={styles.twoCol}>
           <View style={styles.colHalf}>
             <FloatingLabelInput
@@ -169,7 +169,7 @@ export const EquipmentRow = memo(function EquipmentRow({
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('კარგი', '✓ კარგია', 'button', { selected: goodActive })}
           >
-            <Ionicons name="checkmark" size={13} color={goodActive ? theme.colors.ink : theme.colors.inkFaint} />
+            <Check size={13} color={goodActive ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
             <Text style={[styles.chipLabel, goodActive ? styles.chipLabelGoodActive : styles.chipLabelGood]}>კარგი</Text>
           </Pressable>
 
@@ -179,7 +179,7 @@ export const EquipmentRow = memo(function EquipmentRow({
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('საჭ. მომსახ.', '⚠ საჭ. მომსახ.', 'button', { selected: warnActive })}
           >
-            <Ionicons name="warning-outline" size={12} color={warnActive ? theme.colors.ink : theme.colors.inkFaint} />
+            <TriangleAlert size={12} color={warnActive ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
             <Text style={[styles.chipLabel, warnActive ? styles.chipLabelWarnActive : styles.chipLabelWarn]}>საჭ. მომს.</Text>
           </Pressable>
 
@@ -189,7 +189,7 @@ export const EquipmentRow = memo(function EquipmentRow({
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
             {...a11y('გამოუსადეგ.', '✗ გამოუსადეგარია', 'button', { selected: badActive })}
           >
-            <Ionicons name="close" size={13} color={badActive ? theme.colors.ink : theme.colors.inkFaint} />
+            <X size={13} color={badActive ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
             <Text style={[styles.chipLabel, badActive ? styles.chipLabelBadActive : styles.chipLabelBad]}>გამოუსადეგ.</Text>
           </Pressable>
         </View>
@@ -226,7 +226,7 @@ export const EquipmentRow = memo(function EquipmentRow({
               onPress={onAddPhoto}
               {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
             >
-              <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+              <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
               <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
             </Pressable>
           </ScrollView>
@@ -255,7 +255,7 @@ const PhotoThumb = memo(function PhotoThumb({
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
       <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={1.5} />
       </Pressable>
     </View>
   );

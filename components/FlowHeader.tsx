@@ -1,6 +1,6 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
@@ -13,20 +13,20 @@ type TrailingControl = 'help' | 'close' | 'none';
 interface FlowHeaderProps {
   flowTitle: string;
   project?: { name: string; logo?: string | null } | null;
-  /** 1-based. Omit (with `totalSteps`) to hide the progress bar — used by the post-completion result view. */
+  /** 1-based. Omit (with `totalSteps`) to hide the progress bar - used by the post-completion result view. */
   step?: number;
   totalSteps?: number;
   /** When provided, renders segmented stepper with labels instead of a plain progress bar. */
   stepLabels?: string[];
   /**
-   * `back` (default) — pill "< უკან" on the left.
-   * `none` — no leading control (used by კითხვარი which has X-close on the right).
+   * `back` (default) - pill "< უკან" on the left.
+   * `none` - no leading control (used by კითხვარი which has X-close on the right).
    */
   leading?: LeadingControl;
   /**
-   * `help` — circle "?" button on the right.
-   * `close` — X close button on the right.
-   * `none` — nothing on the right.
+   * `help` - circle "?" button on the right.
+   * `close` - X close button on the right.
+   * `none` - nothing on the right.
    */
   trailing?: TrailingControl;
   onBack?: () => void;
@@ -107,10 +107,10 @@ export function FlowHeader({
             ]}
             {...a11y('უკან', 'წინა ეკრანზე დაბრუნება', 'button')}
           >
-            <Ionicons
-              name="chevron-back"
+            <ChevronLeft
               size={22}
               color={backDisabled ? theme.colors.inkFaint : theme.colors.ink}
+              strokeWidth={1.5}
             />
           </Pressable>
         ) : null}
@@ -160,7 +160,7 @@ export function FlowHeader({
                   ]}
                   {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
                 >
-                  <Ionicons name="close" size={22} color={theme.colors.ink} />
+                  <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
                 </Pressable>
               ) : null}
             </>

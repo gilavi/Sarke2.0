@@ -94,7 +94,7 @@ describe('maybeRefreshRegulations', () => {
     });
     expect(localStorage.getItem(dateKey(REGULATIONS[0].id))).toBe('2026-05-01');
     expect(localStorage.getItem(dateKey(REGULATIONS[2].id))).toBe('2026-05-02');
-    // Stamp is written via `new Date().toISOString()` (real clock) — assert it exists.
+    // Stamp is written via `new Date().toISOString()` (real clock) - assert it exists.
     expect(getLastFetchAt()).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 

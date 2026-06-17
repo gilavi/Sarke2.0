@@ -7,15 +7,15 @@ import { a11y } from '../lib/accessibility';
 function HardHatIllustration() {
   return (
     <Svg width="88" height="88" viewBox="0 0 88 88">
-      {/* Background disc */}
-      <Circle cx="44" cy="44" r="42" fill="#E1F5EE" />
-      {/* Hard hat dome */}
-      <Path d="M16 54 Q16 26 44 23 Q72 26 72 54 Z" fill="#1D9E75" />
+      {/* Background disc - soft primary wash */}
+      <Circle cx="44" cy="44" r="42" fill="#FFF3EE" />
+      {/* Hard hat dome - brand orange */}
+      <Path d="M16 54 Q16 26 44 23 Q72 26 72 54 Z" fill="#FF6D2E" />
       {/* Dome highlight (inner lighter arc) */}
-      <Path d="M22 54 Q22 32 44 29 Q66 32 66 54 Z" fill="#25B589" opacity="0.30" />
-      {/* Brim */}
-      <Ellipse cx="44" cy="54" rx="30" ry="5.5" fill="#1D9E75" />
-      {/* Question mark — arc */}
+      <Path d="M22 54 Q22 32 44 29 Q66 32 66 54 Z" fill="#FF8A57" opacity="0.45" />
+      {/* Brim - deeper orange for depth */}
+      <Ellipse cx="44" cy="54" rx="30" ry="5.5" fill="#E85510" />
+      {/* Question mark - arc */}
       <Path
         d="M40 37 Q40 32 44 32 Q48 32 48 36.5 Q48 40 44 41.5 L44 44"
         stroke="white"
@@ -24,7 +24,7 @@ function HardHatIllustration() {
         strokeLinejoin="round"
         fill="none"
       />
-      {/* Question mark — dot */}
+      {/* Question mark - dot */}
       <Circle cx="44" cy="47.5" r="1.6" fill="white" />
     </Svg>
   );

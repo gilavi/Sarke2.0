@@ -1,5 +1,5 @@
 /**
- * InspectionDetail draft-walk — mounts the 945-LOC page with a draft inspection
+ * InspectionDetail draft-walk - mounts the 945-LOC page with a draft inspection
  * plus questions + answers + project, then exercises the editable code paths:
  * editing department/inspector via TextInput onBlur → updateInspection, clicking
  * the safe-for-use pills (sets safeDraft), and clicking the start-wizard +

@@ -30,7 +30,7 @@ function writePersistedCooldown(email: string, seconds: number): void {
 
 function friendlyMessage(msg: string): string {
   const lower = msg.toLowerCase();
-  if (lower.includes('expired')) return 'კოდის ვადა ამოიწურა — მოითხოვე ახალი.';
+  if (lower.includes('expired')) return 'კოდის ვადა ამოიწურა - მოითხოვე ახალი.';
   if (lower.includes('invalid') || lower.includes('token')) return 'არასწორი კოდი.';
   if (lower.includes('rate limit') || lower.includes('too many')) return 'ძალიან ბევრი მცდელობა. ცადეთ მოგვიანებით.';
   if (lower.includes('network') || lower.includes('fetch')) return 'ქსელის შეცდომა.';

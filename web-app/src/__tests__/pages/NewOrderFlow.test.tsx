@@ -1,5 +1,5 @@
 /**
- * NewOrder full-flow tests — walk the step state machine to exercise
+ * NewOrder full-flow tests - walk the step state machine to exercise
  * Step2Company + Step3LaborSafety branches that the mount-only test misses.
  * The wizard renders different child components per step, so each "next"
  * click brings in a new block of render code.
@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.mocked(createOrder).mockResolvedValue({ id: 'o1' } as never);
 });
 
-describe('NewOrder — step walkthrough', () => {
+describe('NewOrder - step walkthrough', () => {
   it('starts on the type-picker step with all four order types', () => {
     renderPage(<NewOrder />, '/orders/new?project=p1');
     expect(screen.getByText('ბრძანების ტიპი')).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('NewOrder — step walkthrough', () => {
     fireEvent.click(screen.getByText('შრომის უსაფრთხოების სპეციალისტის დანიშვნა'));
     // The wizard footer enables once docType + project are set.
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
-    // Step 1 — Step2Company — shows the company fieldset labels.
+    // Step 1 - Step2Company - shows the company fieldset labels.
     expect(screen.getByText('ბრძანების ნომერი *')).toBeInTheDocument();
     expect(screen.getByText('კომპანიის დასახელება *')).toBeInTheDocument();
     expect(screen.getByText('დირექტორი (სახელი, გვარი) *')).toBeInTheDocument();

@@ -76,7 +76,7 @@ function toModel(row: DbRow): ExcavatorInspection {
   };
 }
 
-// Signatures are ephemeral (memory-only) — inspectorPosition/inspectorSignature
+// Signatures are ephemeral (memory-only) - inspectorPosition/inspectorSignature
 // are intentionally NOT persisted, matching prior behavior.
 type ExcavatorPatch = Partial<{
   serialNumber: string | null;

@@ -30,7 +30,7 @@ function CountingNumber({ value, className, format }: { value: number; className
   const [display, setDisplay] = useState(() => format(0));
 
   useEffect(() => {
-    mv.set(value); // motion-value setter, not React state — drives the spring
+    mv.set(value); // motion-value setter, not React state - drives the spring
     return spring.on('change', (v) => setDisplay(format(v)));
   }, [value, mv, spring, format]);
 

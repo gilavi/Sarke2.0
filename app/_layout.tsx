@@ -39,7 +39,7 @@ void migrateLegacyStorage();
 
 // Codes we've already tried to exchange. Prevents a double-exchange when both
 // `getInitialURL()` (cold start) and the `url` listener (warm app) fire for the
-// same recovery link — the second exchange would fail and replace the user's
+// same recovery link - the second exchange would fail and replace the user's
 // session with an error.
 const exchangedCodes = new Set<string>();
 // Deep-link codes are single-use; cap the set so it can't grow unbounded
@@ -80,13 +80,13 @@ function AuthGate() {
   const isTermsViewMode = params.mode === 'view';
   const { theme } = useTheme();
 
-  // NOTE: removed __unsafe_action__ GO_BACK listener — it was intercepting
+  // NOTE: removed __unsafe_action__ GO_BACK listener - it was intercepting
   // legitimate back navigations from modals (photo-picker → wizard) and
   // redirecting to home, breaking the photo flow.
 
   // Handle deep links:
-  //   sarke2://reset?code=...        — password-recovery PKCE exchange
-  //   sarke2://verify-email?code=... — email-verification PKCE exchange
+  //   sarke2://reset?code=...        - password-recovery PKCE exchange
+  //   sarke2://verify-email?code=... - email-verification PKCE exchange
   useEffect(() => {
     const handle = async (url: string | null) => {
       if (!url) return;
@@ -112,7 +112,7 @@ function AuthGate() {
       const isReset = parsed.path === 'reset' || parsed.hostname === 'reset';
       if (!isReset || !code) return;
       if (exchangedCodes.has(code)) {
-        // Already handled this code in this session — just route.
+        // Already handled this code in this session - just route.
         router.replace('/(auth)/reset');
         return;
       }
@@ -171,7 +171,7 @@ function AuthGate() {
   }, [state, segments, isTermsViewMode]);
 
   if (state.status === 'loading') {
-    // Subtle full-screen skeleton instead of a spinner — hides the auth
+    // Subtle full-screen skeleton instead of a spinner - hides the auth
     // boot latency. If the user is heading into a draft/detail screen, the
     // transition from this skeleton into the target screen's own skeleton
     // feels continuous.

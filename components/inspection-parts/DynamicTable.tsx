@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CirclePlus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -69,7 +69,7 @@ export function DynamicTable({
         onPress={handleAdd}
         {...a11y('სტრიქონის დამატება', undefined, 'button')}
       >
-        <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
+        <CirclePlus size={18} color={theme.colors.accent} strokeWidth={1.5} />
         <Text style={styles.addText}>+ სტრიქონის დამატება</Text>
       </Pressable>
 
@@ -113,7 +113,7 @@ const DynamicTableRow = memo(function DynamicTableRow({
             style={styles.deleteBtn}
             {...a11y('სტრიქონის წაშლა', undefined, 'button')}
           >
-            <Ionicons name="close" size={16} color={theme.colors.danger} />
+            <X size={16} color={theme.colors.danger} strokeWidth={1.5} />
           </Pressable>
         )}
       </View>
@@ -122,7 +122,7 @@ const DynamicTableRow = memo(function DynamicTableRow({
         const rawVal = row[col.key];
 
         if (col.type === 'readonly') {
-          const display = rawVal != null ? String(rawVal) : '—';
+          const display = rawVal != null ? String(rawVal) : '-';
           return (
             <View key={col.key} style={styles.readonlyField}>
               <Text style={styles.readonlyLabel}>{col.label}</Text>
@@ -158,7 +158,7 @@ function EditableCell({
   const [draft, setDraft] = useState<string>(
     value != null ? String(value) : '',
   );
-  // Resync the draft when `value` changes from outside this cell — e.g. when
+  // Resync the draft when `value` changes from outside this cell - e.g. when
   // the parent list reuses this instance for a different row after a mid-list
   // delete (rows are keyed by index). Without this the cell would show the
   // previous row's stale text. Guarded by `lastEmitted` so in-progress numeric

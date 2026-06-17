@@ -4,14 +4,14 @@
 // მახასიათებლები, მარკირება, მომდევნო შემოწმება.
 //
 // Abbreviations in field labels and the equipment-type catalog are
-// preserved verbatim per the route's AGENTS.md — they come from the
+// preserved verbatim per the route's AGENTS.md - they come from the
 // paper form and must not be expanded. See
 // `app/inspections/lifting-accessories/AGENTS.md`.
 
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { DateTimeField } from '../DateTimeField';
@@ -115,7 +115,7 @@ export function SlingsIdentificationStep({
         >
           {summarizeTypes(equipmentTypes, equipmentTypeOther)}
         </Text>
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+        <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
       </Pressable>
 
       {/* Section: Identification */}

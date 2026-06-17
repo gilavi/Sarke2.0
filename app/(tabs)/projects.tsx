@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { List, LayoutGrid, MapPin, X, Trash2, ChevronRight, Building2 } from 'lucide-react-native';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -90,7 +90,7 @@ export default function ProjectsScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Backed by the get_overdue_counts() RPC — one tiny query instead of three
+  // Backed by the get_overdue_counts() RPC - one tiny query instead of three
   // full-table SELECTs (useAllInspections + useAllBriefings + useTemplates)
   // that used to fire on this screen via useCalendarEvents().
   const overdueQ = useQuery<Record<string, number>>({
@@ -195,10 +195,10 @@ export default function ProjectsScreen() {
             hitSlop={8}
             style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
           >
-            <Ionicons
-              name="list"
+            <List
               size={22}
               color={viewMode === 'list' ? theme.colors.accent : theme.colors.inkSoft}
+              strokeWidth={1.5}
             />
           </Pressable>
           <Pressable
@@ -206,10 +206,10 @@ export default function ProjectsScreen() {
             hitSlop={8}
             style={[styles.toggleBtn, viewMode === 'grid' && styles.toggleBtnActive]}
           >
-            <Ionicons
-              name="grid"
+            <LayoutGrid
               size={19}
               color={viewMode === 'grid' ? theme.colors.accent : theme.colors.inkSoft}
+              strokeWidth={1.5}
             />
           </Pressable>
           <Pressable
@@ -217,10 +217,10 @@ export default function ProjectsScreen() {
             hitSlop={8}
             style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
           >
-            <Ionicons
-              name="location"
+            <MapPin
               size={20}
               color={viewMode === 'map' ? theme.colors.accent : theme.colors.inkSoft}
+              strokeWidth={1.5}
             />
           </Pressable>
         </View>
@@ -304,7 +304,7 @@ export default function ProjectsScreen() {
         onCreated={p => {
           // Seed the cache directly so the new row appears instantly without
           // a refetch round-trip. Stats will pick up the new project on its
-          // next natural refresh — a brand new project has no inspections so
+          // next natural refresh - a brand new project has no inspections so
           // its badge would be 0/0 anyway.
           qc.setQueryData<Project[]>(
             qk.projects.list,
@@ -392,7 +392,7 @@ function CreateProjectSheet({
           onPress={() => mapVisible ? setMapVisible(false) : onClose()}
           {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
         />
-        {/* Card — marginBottom rides the iOS keyboard so the card stops exactly at the keyboard top */}
+        {/* Card - marginBottom rides the iOS keyboard so the card stops exactly at the keyboard top */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
               <SheetLayout
@@ -411,7 +411,7 @@ function CreateProjectSheet({
               >
                 <View style={{ alignItems: 'center', gap: 8 }}>
                   <ProjectAvatar
-                    project={{ name: company || '—', logo }}
+                    project={{ name: company || '-', logo }}
                     size={88}
                     editable
                     onEdit={onPickLogo}
@@ -451,7 +451,7 @@ function CreateProjectSheet({
           </Pressable>
         </Animated.View>
 
-        {/* Full-screen map overlay — no nested Modal */}
+        {/* Full-screen map overlay - no nested Modal */}
         {mapVisible && (
           <View style={StyleSheet.absoluteFillObject}>
             <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -461,7 +461,7 @@ function CreateProjectSheet({
                   მდებარეობის არჩევა
                 </Text>
                 <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
-                  <Ionicons name="close" size={24} color={theme.colors.ink} />
+                  <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
                 </Pressable>
               </View>
               <MapPickerInline
@@ -619,7 +619,7 @@ const ProjectRow = memo(function ProjectRow({
 
   const renderRightActions = () => (
     <Pressable onPress={onDelete} style={styles.swipeDelete}>
-      <Ionicons name="trash" size={20} color={theme.colors.white} />
+      <Trash2 size={20} color={theme.colors.white} strokeWidth={2} />
       <A11yText size="xs" weight="semibold" color={theme.colors.white}>{t('common.delete')}</A11yText>
     </Pressable>
   );
@@ -685,7 +685,7 @@ const ProjectRow = memo(function ProjectRow({
                   {status.text}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+              <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
             </View>
           </Card>
         </PressableScale>
@@ -794,7 +794,7 @@ function ProjectsMapView({
                     elevation: 5,
                   }}
                 >
-                  <Ionicons name="business" size={15} color={theme.colors.white} />
+                  <Building2 size={15} color={theme.colors.white} strokeWidth={1.5} />
                 </View>
                 {/* Pin tail */}
                 <View
@@ -834,7 +834,7 @@ function ProjectsMapView({
             paddingVertical: 8,
           }}
         >
-          <Ionicons name="location-outline" size={14} color="#fff" />
+          <MapPin size={14} color="#fff" strokeWidth={1.5} />
           <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
             {unmappedCount} პროექტს ლოკაცია არ აქვს
           </Text>
@@ -1037,7 +1037,7 @@ function UnmappedSheet({
                     {item.company_name || item.name}
                   </A11yText>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>
             )}
           />

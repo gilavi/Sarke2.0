@@ -13,7 +13,7 @@ import { hashPdf } from '../../lib/pdfSecurity';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -263,7 +263,7 @@ export default function IncidentDetail() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <Stack.Screen options={{ headerShown: true, title: 'ინციდენტი' }} />
-        <Ionicons name="alert-circle-outline" size={48} color={theme.colors.borderStrong} />
+        <CircleAlert size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
         <Text style={{ color: theme.colors.inkFaint, fontSize: 15 }}>ინციდენტი ვერ მოიძებნა</Text>
       </View>
     );
@@ -303,7 +303,7 @@ export default function IncidentDetail() {
           </Text>
           {incident.status === 'draft' && (
             <View style={s.draftChip}>
-              <Ionicons name="hourglass-outline" size={12} color={theme.colors.certTint} />
+              <Hourglass size={12} color={theme.colors.certTint} strokeWidth={1.5} />
               <Text style={s.draftChipText}>დრაფტი</Text>
             </View>
           )}
@@ -316,13 +316,13 @@ export default function IncidentDetail() {
           </Text>
           {isNearMiss ? (
             <Text style={s.nearMissNote}>
-              საშიში შემთხვევა — დაზიანება არ მომხდარა
+              საშიში შემთხვევა - დაზიანება არ მომხდარა
             </Text>
           ) : (
             <>
               {incident.injured_name ? (
                 <DetailRow
-                  icon="person-outline"
+                  Icon={User}
                   label="სახელი, გვარი"
                   value={incident.injured_name}
                   theme={theme}
@@ -331,7 +331,7 @@ export default function IncidentDetail() {
               ) : null}
               {incident.injured_role ? (
                 <DetailRow
-                  icon="briefcase-outline"
+                  Icon={Briefcase}
                   label="თანამდებობა"
                   value={incident.injured_role}
                   theme={theme}
@@ -341,15 +341,15 @@ export default function IncidentDetail() {
             </>
           )}
           <DetailRow
-            icon="location-outline"
+            Icon={MapPin}
             label="ადგილი"
-            value={incident.location || '—'}
+            value={incident.location || '-'}
             theme={theme}
             s={s}
           />
           {project && (
             <DetailRow
-              icon="business-outline"
+              Icon={Building2}
               label="პროექტი"
               value={project.company_name || project.name}
               theme={theme}
@@ -388,7 +388,7 @@ export default function IncidentDetail() {
             <Text style={s.sectionTitle}>მოწმეები</Text>
             {incident.witnesses.map((w, i) => (
               <View key={`${i}-${w}`} style={s.witnessRow}>
-                <Ionicons name="person-outline" size={14} color={theme.colors.inkSoft} />
+                <User size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
                 <Text style={s.witnessText}>{w}</Text>
               </View>
             ))}
@@ -417,7 +417,7 @@ export default function IncidentDetail() {
         {/* Labour inspection notice */}
         {(incident.type === 'severe' || incident.type === 'fatal') && (
           <View style={s.warningBanner}>
-            <Ionicons name="warning" size={18} color={theme.colors.danger} />
+            <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
             <Text style={s.warningText}>
               შრომის შემოწმების აქტის სამსახური უნდა ეცნობოს 24 საათის
               განმავლობაში:{'\n'}
@@ -475,9 +475,9 @@ export default function IncidentDetail() {
 }
 
 function DetailRow({
-  icon, label, value, theme, s,
+  Icon, label, value, theme, s,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  Icon: LucideIcon;
   label: string;
   value: string;
   theme: any;
@@ -485,7 +485,7 @@ function DetailRow({
 }) {
   return (
     <View style={s.detailRow}>
-      <Ionicons name={icon} size={15} color={theme.colors.inkSoft} style={{ marginTop: 1 }} />
+      <Icon size={15} color={theme.colors.inkSoft} style={{ marginTop: 1 }} strokeWidth={1.5} />
       <View style={{ flex: 1 }}>
         <Text style={s.detailLabel}>{label}</Text>
         <Text style={s.detailValue}>{value}</Text>

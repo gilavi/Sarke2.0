@@ -4,7 +4,7 @@ import { storageApi } from './services';
 import { blobToDataUrl } from './blob';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Public API — three functions, named by purpose so the right default falls
+// Public API - three functions, named by purpose so the right default falls
 // out of picking the right name:
 //
 //   imageForDisplay(bucket, path)
@@ -23,7 +23,7 @@ import { blobToDataUrl } from './blob';
 //       signature sheet. Throws if no data-URL strategy yields a non-empty
 //       payload.
 //
-// Do NOT add new public helpers here. If a fourth need arises, push back —
+// Do NOT add new public helpers here. If a fourth need arises, push back -
 // almost certainly it's one of these three with a different opt. Adding a
 // fourth name is exactly how this file ended up with four overlapping
 // helpers and silently-wrong defaults to begin with.
@@ -91,11 +91,11 @@ export async function signatureAsDataUrl(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Internals — not exported. If you find yourself reaching for one of these
+// Internals - not exported. If you find yourself reaching for one of these
 // from outside this file, add an option to the public API instead.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Marker error thrown by step 1 when the signed URL returns 200 + 0 bytes —
+// Marker error thrown by step 1 when the signed URL returns 200 + 0 bytes -
 // the storage object exists but has no content. Subsequent URL-based fallback
 // steps (2-4) hit the same backend and would re-confirm the same emptiness;
 // short-circuit to the auth-download step (5) instead of paying 4 more
@@ -115,7 +115,7 @@ function logStepFailure(
 /**
  * Fetch a signed URL via XMLHttpRequest, get a Blob back, and turn it into
  * a `data:` URL using FileReader. This is the **canonical** binary-download
- * pattern on React Native — `fetch().arrayBuffer()` and the new
+ * pattern on React Native - `fetch().arrayBuffer()` and the new
  * `expo-file-system` download API both return 0 bytes for binary responses
  * in Hermes on SDK 54, but XHR's `responseType = 'blob'` path is the one
  * Supabase / Firebase / every RN tutorial actually uses, and it works.
@@ -302,7 +302,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 // PDF generation embeds storage images as base64 data URLs in the rendered
 // HTML. Stock 12MP iPhone photos serialize to ~2 MB of base64 each, and a
 // report with N photos produces an N×2 MB HTML string that WKWebView has to
-// parse + decode on the JS thread — observed at 5.4 MB for 2 photos in the
+// parse + decode on the JS thread - observed at 5.4 MB for 2 photos in the
 // field. The fix is twofold:
 //
 //   1. Resize via `expo-image-manipulator` to max 1200px / JPEG 0.7 before

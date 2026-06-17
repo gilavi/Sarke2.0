@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MapPin, Map } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
 
 export type LatLng = { latitude: number; longitude: number };
@@ -24,7 +24,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   return (
     <View style={styles.wrap}>
       <View style={styles.searchRow}>
-        <Ionicons name="location-outline" size={16} color={theme.colors.inkFaint} />
+        <MapPin size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
         <TextInput
           value={address}
           onChangeText={onAddressChange}
@@ -35,9 +35,9 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
       </View>
       <View style={[styles.mapWrap, { height }]}>
         <View style={styles.placeholder}>
-          <Ionicons name="map-outline" size={28} color={theme.colors.inkFaint} />
+          <Map size={28} color={theme.colors.inkFaint} strokeWidth={1.5} />
           <Text style={styles.placeholderText}>
-            რუკა ხელმიუწვდომელია ვებში — გამოიყენეთ მისამართის ველი
+            რუკა ხელმიუწვდომელია ვებში - გამოიყენეთ მისამართის ველი
           </Text>
           {value ? (
             <Text style={styles.coords}>

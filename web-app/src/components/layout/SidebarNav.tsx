@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { topNavItems, moreNavItems, type NavItemDef } from './navItems';
 import { NavGem } from './NavGem';
 
-/* Shared item chrome. Single permanent state — always full + labeled. The
+/* Shared item chrome. Single permanent state - always full + labeled. The
    active row is a soft brand-tinted pill driven by theme tokens. */
 const itemBase =
   'rail-link relative mx-2 flex h-10 w-[calc(100%-1rem)] items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-colors duration-200';

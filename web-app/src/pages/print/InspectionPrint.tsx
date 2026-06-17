@@ -27,7 +27,7 @@ export default function InspectionPrint() {
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get('preview') === '1';
   // Signature snapshot captured in memory on the detail page and handed over via
-  // router state — never persisted (regulatory). Null on direct nav / refresh.
+  // router state - never persisted (regulatory). Null on direct nav / refresh.
   const location = useLocation();
   const signaturesSession =
     (location.state as { signaturesSession?: SignaturesSectionData } | null)?.signaturesSession ?? null;

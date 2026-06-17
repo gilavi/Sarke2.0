@@ -12,7 +12,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, CalendarDays, Infinity, TriangleAlert, Moon, Languages, FileText, Box, ExternalLink, LogOut, Clock, Award, BookOpen } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { Badge, Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
@@ -109,7 +110,7 @@ export default function MoreScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 24, gap: 18 }}>
-        <Text style={{ fontSize: 22, fontWeight: '700', fontFamily: theme.typography.fontFamily.heading, paddingHorizontal: 20, color: theme.colors.ink }}>
+        <Text style={{ fontSize: 28, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, paddingHorizontal: 20, color: theme.colors.ink }}>
           {t('more.title')}
         </Text>
 
@@ -123,18 +124,18 @@ export default function MoreScreen() {
             <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', fontSize: 17, color: theme.colors.ink }}>
-                {`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || '—'}
+                {`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || '-'}
               </Text>
               <Text style={{ color: theme.colors.inkSoft, fontSize: 12 }}>{user?.email ?? ''}</Text>
             </View>
-            <Ionicons name="create-outline" size={20} color={theme.colors.inkSoft} />
+            <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </View>
         </Card>
 
-        {/* Subscription status (read-only — no purchase UI, Apple guideline 3.1.1) */}
+        {/* Subscription status (read-only - no purchase UI, Apple guideline 3.1.1) */}
         <SubscriptionSection pdfUsage={pdfUsage} />
 
-        {/* Payment history — renders only when records exist (web-side
+        {/* Payment history - renders only when records exist (web-side
             purchases). Free accounts and App Review see no payment surfaces
             at all (guideline 3.1.1); the VAT-invoices scaffold was removed
             with the purchase UI. */}
@@ -144,18 +145,18 @@ export default function MoreScreen() {
         <View style={styles.grid}>
           <HubTile
             title={t('more.history')}
-            icon="time"
-            tint={theme.colors.accent}
-            bg={theme.colors.accentSoft}
+            icon={Clock}
+            tint={theme.colors.inkSoft}
+            bg={theme.colors.subtleSurface}
             primary={loaded ? `${counts.total}` : null}
             secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t, i18n.language) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
           />
           <HubTile
             title={t('more.qualifications')}
-            icon="ribbon"
-            tint={theme.colors.certTint}
-            bg={theme.colors.certSoft}
+            icon={Award}
+            tint={theme.colors.inkSoft}
+            bg={theme.colors.subtleSurface}
             primary={loaded ? `${certs.length}` : null}
             secondary={loaded ? (expiring > 0 ? t('more.expiringCount', { count: expiring }) : certs.length === 0 ? t('more.uploadPrompt') : t('more.allActive')) : null}
             badge={loaded && expiring > 0 ? t('more.expiringCount', { count: expiring }) : undefined}
@@ -163,18 +164,18 @@ export default function MoreScreen() {
           />
           <HubTile
             title={t('more.templates')}
-            icon="documents"
-            tint={theme.colors.harnessTint}
-            bg={theme.colors.harnessSoft}
+            icon={FileText}
+            tint={theme.colors.inkSoft}
+            bg={theme.colors.subtleSurface}
             primary={loaded ? `${templates.length}` : null}
             secondary={loaded ? (systemTpl === templates.length ? t('more.system') : `${systemTpl} ${t('more.system')}`) : null}
             onPress={() => router.push('/templates')}
           />
           <HubTile
             title={t('more.regulations')}
-            icon="book"
-            tint={theme.colors.regsTint}
-            bg={theme.colors.regsSoft}
+            icon={BookOpen}
+            tint={theme.colors.inkSoft}
+            bg={theme.colors.subtleSurface}
             primary={String(REGULATIONS.length)}
             secondary={t('more.document')}
             onPress={() => router.push('/(tabs)/regulations')}
@@ -186,7 +187,7 @@ export default function MoreScreen() {
           <Text style={styles.settingsHeader}>{t('more.settings')}</Text>
 
           <View style={styles.settingsRow}>
-            <Ionicons name="moon-outline" size={18} color={theme.colors.inkSoft} />
+            <Moon size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>{t('more.darkMode')}</Text>
             <Switch
               value={isDark}
@@ -198,10 +199,10 @@ export default function MoreScreen() {
           <View style={styles.divider} />
 
           <Pressable onPress={() => setLangPickerOpen(true)} style={styles.settingsRow} {...a11y(t('more.language'), undefined, 'button')}>
-            <Ionicons name="language-outline" size={18} color={theme.colors.inkSoft} />
+            <Languages size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>{t('more.language')}</Text>
             <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{i18n.language === 'ka' ? 'ქართული' : 'English'}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <CustomDropdown
             label="ენა / LANGUAGE"
@@ -217,15 +218,15 @@ export default function MoreScreen() {
           <View style={styles.divider} />
 
           <Pressable onPress={() => router.push('/terms?mode=view')} style={styles.settingsRow} {...a11y(t('more.terms'), undefined, 'button')}>
-            <Ionicons name="document-text-outline" size={18} color={theme.colors.inkSoft} />
+            <FileText size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>{t('more.terms')}</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <View style={styles.divider} />
           <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y('ხარაჩო 3D გიდი', undefined, 'button')}>
-            <Ionicons name="cube-outline" size={18} color={theme.colors.inkSoft} />
+            <Box size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>ხარაჩო 3D გიდი</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <View style={styles.divider} />
           <Pressable
@@ -233,13 +234,13 @@ export default function MoreScreen() {
             style={styles.settingsRow}
             {...a11y('3D Safety Guide / 3D უსაფრთხოების გიდი', undefined, 'button')}
           >
-            <Ionicons name="cube-outline" size={18} color={theme.colors.inkSoft} />
+            <Box size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>3D Safety Guide / 3D უსაფრთხოების გიდი</Text>
-            <Ionicons name="open-outline" size={16} color={theme.colors.inkFaint} />
+            <ExternalLink size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <View style={styles.divider} />
           <Pressable onPress={handleLogout} disabled={signingOut} style={[styles.settingsRow, signingOut && { opacity: 0.5 }]} {...a11y(t('more.signOut'), undefined, 'button')}>
-            <Ionicons name="log-out-outline" size={18} color={signingOut ? theme.colors.inkFaint : theme.colors.danger} />
+            <LogOut size={18} color={signingOut ? theme.colors.inkFaint : theme.colors.danger} strokeWidth={1.5} />
             <Text style={{ flex: 1, fontSize: 15, fontWeight: '500', color: signingOut ? theme.colors.inkFaint : theme.colors.danger }}>{t('more.signOut')}</Text>
           </Pressable>
         </Card>
@@ -266,7 +267,7 @@ const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
 function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
   const { theme } = useTheme();
   const s = useMemo(() => getStyles(theme), [theme]);
-  // No records (the common case — payments happen on the web platform):
+  // No records (the common case - payments happen on the web platform):
   // render nothing rather than an empty "payment history" card.
   if (records.length === 0) return null;
   return (
@@ -279,7 +280,7 @@ function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '500', color: theme.colors.ink }}>
-                  {rec.amount != null ? `${rec.amount} ${rec.currency ?? ''}` : '—'}
+                  {rec.amount != null ? `${rec.amount} ${rec.currency ?? ''}` : '-'}
                 </Text>
                 <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
                   {formatShortDate(rec.created_at)}
@@ -351,7 +352,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
 
   return (
     <View style={{ marginHorizontal: 16, gap: 0 }}>
-      {/* Section label — "გეგმა" (plan), not "გამოწერა" (subscription): accurate
+      {/* Section label - "გეგმა" (plan), not "გამოწერა" (subscription): accurate
           for free users and keeps the More tab free of purchase vocabulary
           (Apple guideline 3.1.1). */}
       <Text style={[s.sectionHeader, { marginBottom: 8 }]}>გეგმა</Text>
@@ -369,7 +370,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
           {/* Expiry */}
           {expiresAt && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="calendar-outline" size={15} color={theme.colors.inkSoft} />
+              <CalendarDays size={15} color={theme.colors.inkSoft} strokeWidth={1.5} />
               <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>
                 {`მოქმედია: ${formatShortDate(expiresAt)}-მდე`}
               </Text>
@@ -378,7 +379,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
 
           {/* Perk line */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="infinite-outline" size={15} color={theme.colors.inkSoft} />
+            <Infinity size={15} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>შეუზღუდავი PDF გენერაცია</Text>
           </View>
 
@@ -398,7 +399,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
         <Card style={{ gap: 12 }}>
           {/* Expired amber banner */}
           <View style={[s.expiredBanner]}>
-            <Ionicons name="warning-outline" size={16} color={theme.colors.warn} />
+            <TriangleAlert size={16} color={theme.colors.warn} strokeWidth={1.5} />
             <Text style={[s.expiredBannerText]}>გამოწერა ამოიწურა</Text>
           </View>
 
@@ -459,7 +460,7 @@ function HubTile({
   onPress,
 }: {
   title: string;
-  icon: any;
+  icon: LucideIcon;
   tint: string;
   bg: string;
   primary: string | null;
@@ -474,7 +475,7 @@ function HubTile({
       <Card style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={[styles.tileIcon, { backgroundColor: bg }]}>
-            <Ionicons name={icon} size={20} color={tint} />
+            {(() => { const IconComp = icon; return <IconComp size={20} color={tint} strokeWidth={1.5} />; })()}
           </View>
           {badge ? (
             <Badge variant="warning" size="sm">{badge}</Badge>
@@ -494,7 +495,7 @@ function HubTile({
               <Text style={{ fontSize: 11, color: theme.colors.inkSoft }} numberOfLines={1}>{secondary}</Text>
             )}
           </View>
-          <Ionicons name="chevron-forward" size={14} color={theme.colors.inkFaint} />
+          <ChevronRight size={14} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </View>
       </Card>
     </Pressable>
@@ -512,7 +513,7 @@ function getStyles(theme: Theme) {
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: 24,
+      paddingHorizontal: 16,
       gap: 12,
     },
     hubTileWrap: {

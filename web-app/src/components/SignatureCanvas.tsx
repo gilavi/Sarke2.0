@@ -1,5 +1,5 @@
 /**
- * SignatureCanvas — finger/mouse draw pad for inspector signatures.
+ * SignatureCanvas - finger/mouse draw pad for inspector signatures.
  *
  * Props:
  *   onSave(dataUrl)  Called with a PNG data-URL when the user clicks "შენახვა".

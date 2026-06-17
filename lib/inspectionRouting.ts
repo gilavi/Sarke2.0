@@ -36,10 +36,10 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 /**
  * Returns the human-readable Georgian label for an inspection category/source.
- * Falls back to the raw identifier for unknown types, or '—' when null/undefined.
+ * Falls back to the raw identifier for unknown types, or '-' when null/undefined.
  */
 export function labelForSource(source: InspectionSource): string {
-  return CATEGORY_LABEL[source ?? ''] ?? source ?? '—';
+  return CATEGORY_LABEL[source ?? ''] ?? source ?? '-';
 }
 
 /**
@@ -47,7 +47,7 @@ export function labelForSource(source: InspectionSource): string {
  *
  * @param source    template.category OR UnifiedInspection.source
  * @param id        inspection record id
- * @param isCompleted  true for completed inspections (generic only — equipment
+ * @param isCompleted  true for completed inspections (generic only - equipment
  *                     types always use their own detail screen)
  */
 export function routeForInspection(

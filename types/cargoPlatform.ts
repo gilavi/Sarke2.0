@@ -45,13 +45,13 @@ export interface CargoPlatformInspection {
   templateId: string | null;
   userId: string;
   status: 'draft' | 'completed';
-  // Section 1 — ზოგადი ინფორმაცია
+  // Section 1 - ზოგადი ინფორმაცია
   company: string;
   address: string;
   inspectorName: string;
   floorZone: string;
   inspectionDate: string; // ISO date e.g. "2025-05-13"
-  // Section 2 — პლატფორმის იდენტიფიკაცია
+  // Section 2 - პლატფორმის იდენტიფიკაცია
   platformTypeModel: string;
   platformLength: number | null;
   platformWidth: number | null;
@@ -59,16 +59,16 @@ export interface CargoPlatformInspection {
   sideGuardrail: 'none' | 'complete' | null;
   frontGuardrail: 'none' | 'complete' | null;
   guardrailHeight: 'non_standard' | 'standard' | null;
-  // Section 3 — ტვირთის იდენტიფიკაცია
+  // Section 3 - ტვირთის იდენტიფიკაცია
   cargo: CPCargoRow[];
-  // Section 4 — პლატფორმის შემოწმება
+  // Section 4 - პლატფორმის შემოწმება
   items: CPItemState[];
-  // Section 5 — დასკვნა
+  // Section 5 - დასკვნა
   verdict: CPVerdict | null;
   verdictComment: string;
-  // Section 6 — ფოტო / ვიდეო მასალა
+  // Section 6 - ფოტო / ვიდეო მასალა
   summaryPhotos: string[];
-  // Section 7 — ხელმოწერები
+  // Section 7 - ხელმოწერები
   signatures: CPSignatory[];
   completedAt: string | null;
   createdAt: string;
@@ -86,28 +86,28 @@ export interface CPChecklistEntry {
 
 // 9 items: Section A (1-4), Section B (5-9)
 export const CP_ITEMS: CPChecklistEntry[] = [
-  // Section A — სტრუქტურული მთლიანობა
+  // Section A - სტრუქტურული მთლიანობა
   {
     id: 1, section: 'A',
     label: 'ძირის ფილები',
-    description: 'პლატფორმის ძირის (ფილების) მდგომარეობა — ბზარები, დეფორმაცია, კოროზია თუ არის — ცუდია',
+    description: 'პლატფორმის ძირის (ფილების) მდგომარეობა - ბზარები, დეფორმაცია, კოროზია თუ არის - ცუდია',
   },
   {
     id: 2, section: 'A',
     label: 'მზიდი ჩარჩო',
-    description: 'მზიდი ჩარჩოს (ლითონის) მდგომარეობა — ბზარი, გახსნილი, დეფორმირებული — ცუდია',
+    description: 'მზიდი ჩარჩოს (ლითონის) მდგომარეობა - ბზარი, გახსნილი, დეფორმირებული - ცუდია',
   },
   {
     id: 3, section: 'A',
     label: 'სვეტები',
-    description: 'სვეტების (ვერტიკალური დგარების) მდგომარეობა — დეფორმირებული, გამოძრავდა, მოშვებული — ცუდია',
+    description: 'სვეტების (ვერტიკალური დგარების) მდგომარეობა - დეფორმირებული, გამოძრავდა, მოშვებული - ცუდია',
   },
   {
     id: 4, section: 'A',
     label: 'ანკერული გამაგრება',
-    description: 'ანკერული გამაგრებების მდგომარეობა — სიმჭიდროვე დარღვეულია, კოროზიულია — ცუდია',
+    description: 'ანკერული გამაგრებების მდგომარეობა - სიმჭიდროვე დარღვეულია, კოროზიულია - ცუდია',
   },
-  // Section B — მოაჯირები
+  // Section B - მოაჯირები
   {
     id: 5, section: 'B',
     label: 'გვ. მოაჯირის სიმ.',
@@ -116,34 +116,34 @@ export const CP_ITEMS: CPChecklistEntry[] = [
   {
     id: 6, section: 'B',
     label: 'მოაჯირის სიმტკ.',
-    description: 'მოაჯირების სტრუქტურული სიმტკიცე — აკლია, ბზარი — ცუდია',
+    description: 'მოაჯირების სტრუქტურული სიმტკიცე - აკლია, ბზარი - ცუდია',
   },
   {
     id: 7, section: 'B',
     label: 'წინა მოაჯირი',
-    description: 'წინა მოძრავი (დასაკეცი) მოაჯირების ფუნქციონირება — გახსნა/დაკეტვა — თუ არ ფუნქციონირებს ცუდია',
+    description: 'წინა მოძრავი (დასაკეცი) მოაჯირების ფუნქციონირება - გახსნა/დაკეტვა - თუ არ ფუნქციონირებს ცუდია',
   },
   {
     id: 8, section: 'B',
     label: 'ჩამკეტი მოწყ.',
-    description: 'მოძრავი მოაჯირის ჩამკეტი მოწყობილობა — არ გააჩნია, არ იკეტება — ცუდია',
+    description: 'მოძრავი მოაჯირის ჩამკეტი მოწყობილობა - არ გააჩნია, არ იკეტება - ცუდია',
   },
   {
     id: 9, section: 'B',
     label: 'კავშირები',
-    description: 'მოაჯირის ყველა კავშირი (სახსრები) — ბზარი, დაზიანებული — ცუდია',
+    description: 'მოაჯირის ყველა კავშირი (სახსრები) - ბზარი, დაზიანებული - ცუდია',
   },
 ];
 
 export const CP_SECTION_LABELS: Record<CPSection, string> = {
-  A: 'A — სტრუქტურული მთლიანობა',
-  B: 'B — მოაჯირები',
+  A: 'A - სტრუქტურული მთლიანობა',
+  B: 'B - მოაჯირები',
 };
 
 export const CP_VERDICT_LABEL: Record<CPVerdict, string> = {
   approved:    'პლატფორმა შეესაბამება მოთხოვნებს და დაშვებულია ექსპლუატაციაში',
-  conditional: 'პლატფორმა პირობით დაშვებულია — საჭიროა ქვემოთ მითითებული ღონისძიებების შესრულება',
-  rejected:    'პლატფორმა არ შეესაბამება მოთხოვნებს — ექსპლუატაცია შეჩერებულია',
+  conditional: 'პლატფორმა პირობით დაშვებულია - საჭიროა ქვემოთ მითითებული ღონისძიებების შესრულება',
+  rejected:    'პლატფორმა არ შეესაბამება მოთხოვნებს - ექსპლუატაცია შეჩერებულია',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

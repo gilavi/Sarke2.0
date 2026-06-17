@@ -1,7 +1,7 @@
 /**
  * ONE descriptor-driven print route for every structured act. Resolves the act
  * by category, fetches the row, signs its photo paths into a PhotoMap, and feeds
- * the shared `buildInspectionPdf` engine — replacing the per-type *Print.tsx
+ * the shared `buildInspectionPdf` engine - replacing the per-type *Print.tsx
  * pages. Renders the resulting HTML in an iframe and auto-prints.
  *
  * Regulatory: the captured signature is read from in-memory router state
@@ -49,7 +49,7 @@ export default function StructuredInspectionPrint({ actKey }: { actKey: string }
   useEffect(() => {
     if (!act || !inspection) return;
     // Promise.all([]) resolves on a microtask, so an empty path list still
-    // settles via the async .then — no synchronous setState in the effect body.
+    // settles via the async .then - no synchronous setState in the effect body.
     const paths = act.schema.collectPhotoPaths(inspection);
     let cancelled = false;
     Promise.all(

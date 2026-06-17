@@ -2,13 +2,13 @@ import { memo } from 'react';
 import { ChecklistItemRow, type ChecklistRowOption } from '../inspection-parts/ChecklistItemRow';
 import type { HarnessItem } from './_shared';
 
-// Belt components are a simple intact/damaged check — the 2-option case of the
+// Belt components are a simple intact/damaged check - the 2-option case of the
 // shared ChecklistItemRow. No per-row note/photo; problems are flagged ✗ and
 // any photos go on the conclusion step.
 function optionsFor(label: string): ChecklistRowOption[] {
   return [
-    { value: 'ok', icon: 'checkmark', a11yLabel: `${label} — გამართული` },
-    { value: 'bad', icon: 'close', a11yLabel: `${label} — დაზიანებული` },
+    { value: 'ok', icon: 'checkmark', a11yLabel: `${label} - გამართული` },
+    { value: 'bad', icon: 'close', a11yLabel: `${label} - დაზიანებული` },
   ];
 }
 

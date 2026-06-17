@@ -1,4 +1,4 @@
-// features/signatures — public API.
+// features/signatures - public API.
 //
 // Single-screen signatures management for an inspection. One creator
 // signature (captured digitally, never persisted) + N empty hand-sign

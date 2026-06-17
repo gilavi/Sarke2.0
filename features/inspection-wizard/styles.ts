@@ -1,4 +1,4 @@
-// styles.ts — shared StyleSheets for the inspection wizard.
+// styles.ts - shared StyleSheets for the inspection wizard.
 
 import { StyleSheet } from 'react-native';
 

@@ -28,7 +28,7 @@ describe('SubscriptionCard', () => {
   it('shows a skeleton while usage is loading', () => {
     vi.mocked(usePdfUsage).mockReturnValue({ data: undefined, isLoading: true } as never);
     const { container } = renderWithRouter(<SubscriptionCard />);
-    // Mantine Skeleton renders a div — container has children.
+    // Mantine Skeleton renders a div - container has children.
     expect(container.firstChild).toBeTruthy();
   });
 

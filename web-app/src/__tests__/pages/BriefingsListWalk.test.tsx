@@ -1,5 +1,5 @@
 /**
- * Briefings list page (56% covered) — rows + delete confirm flow.
+ * Briefings list page (56% covered) - rows + delete confirm flow.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@/test-utils';

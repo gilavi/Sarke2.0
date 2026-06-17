@@ -3,7 +3,7 @@ import type { SafetyTip } from '@/types/safety';
 // TODO(localisation): titles + shortDescription have been translated to Georgian
 // since they appear in the always-visible safety panel list. The detailed
 // fullDescription / checklist / regulations fields still reference US
-// (OSHA/ANSI/ASME/ACI) standards in English — a SH&E specialist should pass
+// (OSHA/ANSI/ASME/ACI) standards in English - a SH&E specialist should pass
 // over them, either translating to Georgian or replacing with Georgian
 // equivalents from matsne.gov.ge (mirrored in web-app/src/lib/data/regulations.ts).
 export const safetyTips: Record<string, SafetyTip> = {

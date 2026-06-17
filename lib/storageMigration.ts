@@ -3,7 +3,7 @@
 // Google Calendar OAuth tokens (SecureStore) through the rename so they don't
 // have to re-link Google or lose pending reminders.
 //
-// The React Query cache key is intentionally NOT migrated — it's disposable
+// The React Query cache key is intentionally NOT migrated - it's disposable
 // (queries simply refetch), so it's just renamed in queryClient.ts.
 //
 // Idempotent: safe to call on every cold start; a no-op once migrated.
@@ -30,7 +30,7 @@ export async function migrateLegacyStorage(): Promise<void> {
       }
       await AsyncStorage.removeItem(oldKey);
     } catch {
-      /* ignore — best-effort migration */
+      /* ignore - best-effort migration */
     }
   }
   for (const [oldKey, newKey] of SECURE_PAIRS) {
@@ -41,7 +41,7 @@ export async function migrateLegacyStorage(): Promise<void> {
       }
       await SecureStore.deleteItemAsync(oldKey);
     } catch {
-      /* ignore — best-effort migration */
+      /* ignore - best-effort migration */
     }
   }
 }

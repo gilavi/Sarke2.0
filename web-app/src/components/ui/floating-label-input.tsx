@@ -3,7 +3,7 @@ import { Input, type InputProps } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 // FloatingLabelInput now wraps the native Input.
-// The "floating" name is historical — the label sits above the input.
+// The "floating" name is historical - the label sits above the input.
 export interface FloatingLabelInputProps extends InputProps {
   /** @deprecated use className */
   containerClassName?: string;

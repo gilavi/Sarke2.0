@@ -35,7 +35,7 @@ import {
 
 /**
  * Raw `safety_net_inspections` row (migration 0044). The web data layer never
- * reads or writes the `signatures` column — captured inspection signatures are
+ * reads or writes the `signatures` column - captured inspection signatures are
  * never persisted (regulatory); they live in result-screen state only and are
  * rasterized into the PDF via the in-memory signature session.
  */
@@ -100,7 +100,7 @@ function toModel(r: DbRow): SafetyNetInspection {
     postTestItems: r.post_test_items ?? [],
     verdict: r.verdict,
     verdictComment: r.verdict_comment ?? '',
-    // Never persisted — see DbRow comment.
+    // Never persisted - see DbRow comment.
     signatures: [],
     qualDocPath: r.qual_doc_path,
     summaryPhotos: r.summary_photos ?? [],

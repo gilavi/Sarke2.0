@@ -111,7 +111,7 @@ function ProtectedShellLayout() {
   );
 }
 
-/** Protected layout WITHOUT the AppShell — for print views. */
+/** Protected layout WITHOUT the AppShell - for print views. */
 function ProtectedBareLayout() {
   return (
     <ProtectedRoute>
@@ -131,7 +131,7 @@ function PublicLazyLayout() {
   );
 }
 
-/** Eagerly-loaded shell pages — Home, Projects, ProjectDetail render
+/** Eagerly-loaded shell pages - Home, Projects, ProjectDetail render
  *  immediately without their own Suspense boundary. */
 function PrefetchProjects() {
   const qc = useQueryClient();
@@ -161,7 +161,7 @@ export function AppRouter() {
         <CommandPalette />
         <WelcomeModal />
         <Routes>
-          {/* Public marketing — shared MarketingLayout (navbar/footer/overlays).
+          {/* Public marketing - shared MarketingLayout (navbar/footer/overlays).
               Landing is eager; About/Contact/Pricing/Legislation lazy-load via
               the layout's own Suspense boundary. */}
           <Route element={<MarketingLayout />}>
@@ -172,14 +172,14 @@ export function AppRouter() {
             <Route path={routePattern.legislation} element={<Legislation />} />
           </Route>
 
-          {/* Public — eager (auth shells are small) */}
+          {/* Public - eager (auth shells are small) */}
           <Route path={routePattern.login} element={<Login />} />
           <Route path={routePattern.register} element={<Register />} />
           <Route path={routePattern.forgot} element={<Forgot />} />
           <Route path={routePattern.reset} element={<Reset />} />
           <Route path={routePattern.verifyEmail} element={<VerifyEmail />} />
 
-          {/* Public — lazy. Terms + Privacy must stay reachable logged-OUT
+          {/* Public - lazy. Terms + Privacy must stay reachable logged-OUT
               (App Store Connect links the privacy policy URL directly) and
               logged-IN (Account links /terms), so they live here rather than
               under MarketingLayout (which bounces sessions to /home) or the
@@ -193,7 +193,7 @@ export function AppRouter() {
             <Route path={routePattern.privacy} element={<Privacy />} />
           </Route>
 
-          {/* Protected — full app shell */}
+          {/* Protected - full app shell */}
           <Route element={<ProtectedShellLayout />}>
             <Route path={routePattern.home} element={<Home />} />
             <Route path={routePattern.account} element={<Account />} />
@@ -270,7 +270,7 @@ export function AppRouter() {
             <Route path={routePattern.reportDetail} element={<ReportDetail />} />
           </Route>
 
-          {/* Protected — bare (print views, no shell chrome) */}
+          {/* Protected - bare (print views, no shell chrome) */}
           <Route element={<ProtectedBareLayout />}>
             <Route path={routePattern.incidentPrint} element={<IncidentPrint />} />
             <Route path={routePattern.briefingPrint} element={<BriefingPrint />} />

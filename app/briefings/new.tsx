@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { DateTimeField } from '../../components/DateTimeField';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
@@ -118,7 +119,7 @@ export default function NewBriefingScreen() {
     else router.back();
   }, [step, router]);
 
-  // Launched from Home without a project — pick one as the first full-screen step.
+  // Launched from Home without a project - pick one as the first full-screen step.
   if (!projectId) {
     return (
       <FlowProjectPicker
@@ -171,41 +172,41 @@ export default function NewBriefingScreen() {
                 onChangeCustomTopic={setCustomTopic}
               />
             </View>
-
-            <View style={{ flex: 1 }} />
-            <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
-              <Button
-                title="შემდეგი"
-                size="lg"
-                rightIcon="chevron-forward"
-                onPress={() => setStep(2)}
-                disabled={!hasTopics}
-                style={{ width: '100%' }}
-              />
-            </View>
           </>
         ) : (
-          <>
-            {/* ── Participants ── */}
-            <View style={styles.card}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionLabel}>მონაწილეები</Text>
-                {participants.length > 0 && (
-                  <View style={styles.countBadge}>
-                    <Text style={styles.countBadgeText}>{participants.length}</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={styles.sectionHint}>მინიმუმ 1 მონაწილე საჭიროა</Text>
-              <ParticipantsStep
-                participants={participants}
-                onAdd={addParticipant}
-                onRemove={removeParticipant}
-              />
+          /* ── Participants ── */
+          <View style={styles.card}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>მონაწილეები</Text>
+              {participants.length > 0 && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{participants.length}</Text>
+                </View>
+              )}
             </View>
+            <Text style={styles.sectionHint}>მინიმუმ 1 მონაწილე საჭიროა</Text>
+            <ParticipantsStep
+              participants={participants}
+              onAdd={addParticipant}
+              onRemove={removeParticipant}
+            />
+          </View>
+        )}
+      </KeyboardSafeArea>
 
-            <View style={{ flex: 1 }} />
-            <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
+          {step === 1 ? (
+            <Button
+              title="შემდეგი"
+              size="lg"
+              rightIcon="chevron-forward"
+              onPress={() => setStep(2)}
+              disabled={!hasTopics}
+              style={{ width: '100%' }}
+            />
+          ) : (
+            <>
               {!canStart && (
                 <Text style={styles.footerHint}>დაამატეთ მინიმუმ 1 მონაწილე</Text>
               )}
@@ -217,10 +218,10 @@ export default function NewBriefingScreen() {
                 loading={busy}
                 style={{ width: '100%' }}
               />
-            </View>
-          </>
-        )}
-      </KeyboardSafeArea>
+            </>
+          )}
+        </View>
+      </KeyboardStickyView>
     </View>
   );
 }

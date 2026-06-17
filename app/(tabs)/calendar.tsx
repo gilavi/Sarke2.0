@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -224,7 +224,7 @@ export default function CalendarScreen() {
 
   const sections = useMemo(() => buildSections(filteredEvents), [filteredEvents]);
 
-  // Pre-compute dot sets for each day in the strip — called on every scroll
+  // Pre-compute dot sets for each day in the strip - called on every scroll
   // event otherwise, and filteredEvents + weekDays are already memoized.
   const weekDots = useMemo(
     () => weekDays.map(d => dotStatusesForDay(filteredEvents, d)),
@@ -245,7 +245,7 @@ export default function CalendarScreen() {
         scrollRef.current?.scrollTo({ y: off, animated: false });
         setTimeout(() => { suppressScrollSync.current = false; }, 300);
       } else {
-        // Layout not yet measured — retry shortly
+        // Layout not yet measured - retry shortly
         setTimeout(tryScroll, 80);
       }
     };
@@ -315,7 +315,7 @@ export default function CalendarScreen() {
               hitSlop={8}
               style={styles.navArrow}
             >
-              <Ionicons name="chevron-back" size={20} color={theme.colors.inkSoft} />
+              <ChevronLeft size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
             <Text style={styles.weekLabel}>{weekLabel}</Text>
             <Pressable
@@ -323,7 +323,7 @@ export default function CalendarScreen() {
               hitSlop={8}
               style={styles.navArrow}
             >
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.inkSoft} />
+              <ChevronRight size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
           </View>
           <View style={styles.weekRow}>
@@ -392,7 +392,7 @@ export default function CalendarScreen() {
         </View>
       ) : sections.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Ionicons name="calendar-outline" size={30} color={theme.colors.inkFaint} />
+          <CalendarDays size={30} color={theme.colors.inkFaint} strokeWidth={1.5} />
           <Text style={styles.emptyText}>მოვლენები არ არის</Text>
         </View>
       ) : (
@@ -518,7 +518,7 @@ function EventRow({
         <Text style={rowStyles.meta} numberOfLines={1}>{event.projectName}</Text>
       </View>
       <Text style={rowStyles.time}>{timeLabel}</Text>
-      <Ionicons name="chevron-forward" size={14} color={theme.colors.border} />
+      <ChevronRight size={14} color={theme.colors.border} strokeWidth={1.5} />
     </Pressable>
   );
 }

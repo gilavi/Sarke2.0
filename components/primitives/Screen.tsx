@@ -14,7 +14,7 @@ interface ScreenProps {
   contentContainerStyle?: any;
   /** Opt in to a 20px horizontal gutter. By default Screen is edge-to-edge so consumers control their own padding. */
   withGutter?: boolean;
-  /** Backwards-compatible alias for the old default — has no effect; kept so existing call sites compile. */
+  /** Backwards-compatible alias for the old default - has no effect; kept so existing call sites compile. */
   edgeToEdge?: boolean;
   /** Safe-area edges to inset. Defaults to ['top','bottom']. */
   edges?: readonly Edge[];

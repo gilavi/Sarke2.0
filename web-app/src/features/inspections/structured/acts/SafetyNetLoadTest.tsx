@@ -1,5 +1,5 @@
 /**
- * Safety-net load-test weight table — the act-specific custom step. Lets the
+ * Safety-net load-test weight table - the act-specific custom step. Lets the
  * inspector list the weights dropped into the net (name · unit kg · quantity),
  * auto-computes each row's total and the grand total, and persists the rows.
  * Mirrors the mobile load-test section (№477: 180kg from 1m).
@@ -44,7 +44,7 @@ export function SafetyNetLoadTest({ model, disabled, save }: Props) {
     <div className="space-y-4">
       <div className="space-y-1">
         <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">დატვირთვის ტესტი</h3>
-        <p className="text-sm text-neutral-500">180კგ-ის სიმძიმე 1მ სიმაღლიდან — №477 დადგენილება</p>
+        <p className="text-sm text-neutral-500">180კგ-ის სიმძიმე 1მ სიმაღლიდან - №477 დადგენილება</p>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700">
@@ -85,7 +85,7 @@ export function SafetyNetLoadTest({ model, disabled, save }: Props) {
                     onChange={(v) => patchRow(r.id, { quantity: v === '' ? null : Number(v) })}
                   />
                 </td>
-                <td className="px-3 py-2 text-right font-medium tabular-nums">{r.totalWeightKg ?? '—'}</td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums">{r.totalWeightKg ?? '-'}</td>
                 <td className="px-2 py-2 text-center">
                   {!disabled && (
                     <button

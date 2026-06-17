@@ -3,14 +3,14 @@
  * file (`app/briefings/[id]/sign.tsx`) to rendering only.
  *
  * The flow has three phases driven by where `currentIdx` points:
- *   - `worker`       — currentIdx < participants.length (a worker is signing).
- *   - `interstitial` — past the last worker, skipped workers remain unreviewed.
- *   - `inspector`    — past the last worker, ready for the inspector signature.
+ *   - `worker`       - currentIdx < participants.length (a worker is signing).
+ *   - `interstitial` - past the last worker, skipped workers remain unreviewed.
+ *   - `inspector`    - past the last worker, ready for the inspector signature.
  * Pointing `currentIdx` back at a worker (via the chip strip) re-enters the
  * worker phase so any signer can be re-done.
  *
  * Side effects: loads the briefing + its project from Supabase, persists each
- * signature via `briefingsApi.update` (briefing signatures ARE persisted — the
+ * signature via `briefingsApi.update` (briefing signatures ARE persisted - the
  * no-persist rule is inspection-only), records a schedule entry + invalidates
  * calendar queries on completion, and routes to `/briefings/[id]/done`.
  */
@@ -173,7 +173,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
           void queryClient.invalidateQueries({ queryKey: qk.calendar.allBriefings });
           router.replace(`/briefings/${id}/done` as any);
         } else {
-          // Worker signed — save signature, clear any prior skip, advance to next pending.
+          // Worker signed - save signature, clear any prior skip, advance to next pending.
           const next = briefing.participants.map((p, i) =>
             i === currentIdx ? { ...p, signature: b64, skipped: false } : p,
           );
@@ -250,7 +250,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
     (idx: number) => {
       if (!briefing) return;
       if (idx >= briefing.participants.length) {
-        // Inspector chip — only reachable once every worker is signed or skipped.
+        // Inspector chip - only reachable once every worker is signed or skipped.
         if (allWorkersHandled) {
           setSkipReviewed(true);
           setCurrentIdx(briefing.participants.length);

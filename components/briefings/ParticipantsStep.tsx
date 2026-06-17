@@ -3,9 +3,9 @@
  * name-and-add row plus a monochrome list of added participants. Owns its own
  * text-input state; the parent only holds the participant array.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleX } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -23,6 +23,11 @@ export function ParticipantsStep({ participants, onAdd, onRemove }: Participants
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [nameInput, setNameInput] = useState('');
   const nameInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => nameInputRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   const add = () => {
     const name = nameInput.trim();
@@ -68,7 +73,7 @@ export function ParticipantsStep({ participants, onAdd, onRemove }: Participants
                 hitSlop={12}
                 {...a11y('წაშლა', `${p.name} წაშლა`, 'button')}
               >
-                <Ionicons name="close-circle" size={18} color={theme.colors.inkFaint} />
+                <CircleX size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>
             </View>
           ))}

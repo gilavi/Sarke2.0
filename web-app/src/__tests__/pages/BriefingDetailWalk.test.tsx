@@ -49,7 +49,7 @@ describe('BriefingDetail (draft)', () => {
       '/briefings/b1',
     );
     expect(await screen.findByDisplayValue('ი. ი.')).toBeInTheDocument();
-    expect(screen.getByText(/ინსტრუქტაჟი —/)).toBeInTheDocument();
+    expect(screen.getByText(/ინსტრუქტაჟი -/)).toBeInTheDocument();
   });
 
   it('editing inspector via blur calls updateBriefing', async () => {

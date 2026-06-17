@@ -36,7 +36,7 @@ const sizeMap: Record<string, MantineButtonProps['size']> = {
   icon: 'sm',
 };
 
-// An icon-only button must be SQUARE — `size="icon"` previously fell through to the
+// An icon-only button must be SQUARE - `size="icon"` previously fell through to the
 // 'md' height with default horizontal padding, so it rendered as a wide pill. Force
 // equal width/height and remove the padding so the glyph sits centered.
 const ICON_SQUARE: CSSProperties = { width: 36, height: 36, padding: 0 };

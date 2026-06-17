@@ -1,5 +1,5 @@
 /**
- * SignatureCapture — lets the inspector add their signature + extra blank
+ * SignatureCapture - lets the inspector add their signature + extra blank
  * signer rows to a completed act, then generate the PDF with them embedded.
  *
  * Regulatory: the captured signature lives ONLY in this component's state and
@@ -27,7 +27,7 @@ export default function SignatureCapture({ creatorName, onGenerate }: Props) {
   function handleGenerate() {
     const creatorSignature = signatureDataUrl
       ? {
-          // Strip the "data:image/png;base64," prefix — the template wants bare base64.
+          // Strip the "data:image/png;base64," prefix - the template wants bare base64.
           pngBase64: signatureDataUrl.split(',')[1] ?? '',
           capturedAtIso: new Date().toISOString(),
           creatorName,

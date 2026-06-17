@@ -1,7 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera, CircleMinus, CirclePlus, Plus } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -82,11 +82,11 @@ export const HarnessRowStep = memo(function HarnessRowStep({
           <Text style={{ fontWeight: '600' }}>რამდენი ქამარი სულ?</Text>
           <View style={staticStyles.rowCenterGap12}>
             <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} {...a11y('ქამრების რაოდენობის შემცირება', 'შეეხეთ რაოდენობის შესამცირებლად', 'button')}>
-              <Ionicons name="remove-circle" size={28} color={theme.colors.accent} />
+              <CircleMinus size={28} color={theme.colors.accent} strokeWidth={1.5} />
             </Pressable>
             <Text style={{ fontSize: 18, fontWeight: '700' }}>{harnessRowCount}</Text>
             <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))} {...a11y('ქამრების რაოდენობის გაზრდა', 'შეეხეთ რაოდენობის გასაზრდელად', 'button')}>
-              <Ionicons name="add-circle" size={28} color={theme.colors.accent} />
+              <CirclePlus size={28} color={theme.colors.accent} strokeWidth={1.5} />
             </Pressable>
           </View>
         </View>
@@ -147,13 +147,13 @@ export const HarnessRowStep = memo(function HarnessRowStep({
             </Pressable>
           ))}
           <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
-            <Ionicons name="add" size={32} color={theme.colors.inkSoft} />
+            <Plus size={32} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </Pressable>
         </ScrollView>
       ) : (
         <View style={styles.chipRow}>
           <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
-            <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
+            <Camera size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.assistChipText}>ფოტო</Text>
           </Pressable>
         </View>

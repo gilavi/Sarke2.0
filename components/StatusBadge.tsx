@@ -1,15 +1,25 @@
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check, Hourglass, CircleAlert, Clock } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
-import { STATUS_BADGE_BG, STATUS_BADGE_ICON } from '../lib/statusColors';
+import { STATUS_BADGE_BG } from '../lib/statusColors';
 import type { CalendarStatus } from '../lib/statusColors';
 
 export type { CalendarStatus as InspectionStatus };
 
+const STATUS_BADGE_LUCIDE_ICON: Record<CalendarStatus, LucideIcon> = {
+  completed: Check,
+  draft:     Hourglass,
+  overdue:   CircleAlert,
+  due_today: Clock,
+  due_soon:  Clock,
+  upcoming:  Clock,
+};
+
 export function StatusBadge({ status }: { status: CalendarStatus }) {
   const { theme } = useTheme();
   const bg = STATUS_BADGE_BG[status] ?? STATUS_BADGE_BG.draft;
-  const icon = STATUS_BADGE_ICON[status] ?? STATUS_BADGE_ICON.draft;
+  const IconComp = STATUS_BADGE_LUCIDE_ICON[status] ?? STATUS_BADGE_LUCIDE_ICON.draft;
 
   return (
     <View
@@ -18,7 +28,7 @@ export function StatusBadge({ status }: { status: CalendarStatus }) {
         { backgroundColor: bg, borderColor: theme.colors.surface },
       ]}
     >
-      <Ionicons name={icon as any} size={9} color={theme.colors.white} />
+      <IconComp size={9} color={theme.colors.white} strokeWidth={2} />
     </View>
   );
 }

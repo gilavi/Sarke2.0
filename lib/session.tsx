@@ -52,7 +52,7 @@ WebBrowser.maybeCompleteAuthSession();
 // Supabase rejects getSession() with this when AsyncStorage holds a
 // refresh token the auth server no longer accepts (re-installed app,
 // rotated key, expired session). It is an expected transient state on
-// boot, not a programmer error — surface it as signed-out, not as a
+// boot, not a programmer error - surface it as signed-out, not as a
 // red LogBox banner.
 function isStaleRefreshToken(err: unknown): boolean {
   const msg =
@@ -77,7 +77,7 @@ interface SessionCtx {
   state: SessionState;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  /** Native Sign in with Apple (iOS only — Apple guideline 4.8). Resolves
+  /** Native Sign in with Apple (iOS only - Apple guideline 4.8). Resolves
    *  silently when the user dismisses the sheet. On first authorization Apple
    *  returns the full name once; it is persisted to the users row + auth
    *  metadata immediately or it is lost forever. */
@@ -177,7 +177,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }).catch((e) => {
       if (cancelled) return;
       // Stale/invalid refresh token from a previous install or expired
-      // session — clear it so the next boot starts clean, and treat as
+      // session - clear it so the next boot starts clean, and treat as
       // a normal signed-out boot. Don't log: this isn't an error worth
       // surfacing to the dev LogBox or the on-device error ring.
       if (isStaleRefreshToken(e)) {
@@ -200,7 +200,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       if (event === 'SIGNED_OUT' || (lastUserId && nextUserId && nextUserId !== lastUserId)) {
         void purgeUserScopedStorage().catch((e) => logError(e, 'session.purgeUserScopedStorage'));
-        // Drop every cached query — without this, a second account signing in
+        // Drop every cached query - without this, a second account signing in
         // on the same device briefly sees the previous user's projects/
         // inspections from React Query's in-memory cache before the warming
         // prefetch lands.
@@ -245,7 +245,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             throw new Error('WrongPassword');
           } catch (e) {
             // If the RPC itself fails (network / not deployed yet), fall back
-            // to the original error message — better generic-but-correct than
+            // to the original error message - better generic-but-correct than
             // wrongly claiming "wrong password" when we can't actually tell.
             if (e instanceof Error && (e.message === 'AccountNotFound' || e.message === 'WrongPassword')) {
               throw e;
@@ -289,7 +289,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             nonce: hashedNonce,
           });
         } catch (e) {
-          // User dismissed the native sheet — not an error.
+          // User dismissed the native sheet - not an error.
           if ((e as { code?: string })?.code === 'ERR_REQUEST_CANCELED') return;
           throw e;
         }
@@ -304,7 +304,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // Apple returns fullName ONLY on the very first authorization. The
         // handle_new_user trigger has already inserted the users row with
         // empty names (no metadata at insert time), so patch both the row
-        // and the auth metadata now — best-effort, never block sign-in.
+        // and the auth metadata now - best-effort, never block sign-in.
         const firstName = credential.fullName?.givenName?.trim() ?? '';
         const lastName = credential.fullName?.familyName?.trim() ?? '';
         if ((firstName || lastName) && data.user) {
@@ -318,7 +318,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             .eq('id', data.user.id);
           if (nameError) logError(nameError, 'session.signInWithApple.persistName');
           // The SIGNED_IN listener may have fetched the row before the patch
-          // landed — re-read so the UI shows the name immediately.
+          // landed - re-read so the UI shows the name immediately.
           if (data.session) await loadUser(data.session).catch(() => {});
         }
       },
@@ -385,7 +385,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (state.status !== 'signedIn') throw new Error('Not signed in');
         const authUser = state.session.user;
         const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
-        // If the row exists, just patch the TC columns — do NOT overwrite
+        // If the row exists, just patch the TC columns - do NOT overwrite
         // first_name / last_name with blanks. Upsert would happily clobber
         // existing NOT NULL names when we only know empty fallbacks.
         if (state.user) {

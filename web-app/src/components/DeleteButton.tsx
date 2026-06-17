@@ -1,5 +1,5 @@
 /**
- * DeleteButton — a Trash icon button that opens an AlertDialog before calling onDelete.
+ * DeleteButton - a Trash icon button that opens an AlertDialog before calling onDelete.
  * Replaces the inline "დარწმუნებული ხართ?" toggle pattern across detail pages.
  */
 import { Trash2 } from 'lucide-react';

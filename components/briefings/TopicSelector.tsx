@@ -7,7 +7,8 @@
 import { useMemo } from 'react';
 import { Keyboard, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
+import { Wrench, CircleArrowUp, Shield, DoorOpen, Flame, Pencil, SquareCheck, Square } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -17,13 +18,13 @@ export const TOPIC_KEYS = [
   'scaffold_safety', 'height_work', 'ppe', 'evacuation', 'fire_safety', 'other',
 ] as const;
 
-export const TOPIC_ICONS: Record<typeof TOPIC_KEYS[number], keyof typeof Ionicons.glyphMap> = {
-  scaffold_safety: 'construct-outline',
-  height_work: 'arrow-up-circle-outline',
-  ppe: 'shield-outline',
-  evacuation: 'exit-outline',
-  fire_safety: 'flame-outline',
-  other: 'pencil-outline',
+export const TOPIC_ICONS: Record<typeof TOPIC_KEYS[number], LucideIcon> = {
+  scaffold_safety: Wrench,
+  height_work: CircleArrowUp,
+  ppe: Shield,
+  evacuation: DoorOpen,
+  fire_safety: Flame,
+  other: Pencil,
 };
 
 export interface TopicSelectorProps {
@@ -49,6 +50,7 @@ export function TopicSelector({
         {TOPIC_KEYS.map(key => {
           const label = t(`briefings.topics.${key}`);
           const selected = selectedTopics.has(key);
+          const TopicIcon = TOPIC_ICONS[key];
           return (
             <Pressable
               key={key}
@@ -57,20 +59,20 @@ export function TopicSelector({
               {...a11y(label, selected ? 'მონიშნულია' : 'არ არის მონიშნული', 'checkbox')}
             >
               <View style={[styles.iconBox, selected && styles.iconBoxSelected]}>
-                <Ionicons
-                  name={TOPIC_ICONS[key]}
+                <TopicIcon
                   size={16}
                   color={selected ? theme.colors.ink : theme.colors.inkSoft}
+                  strokeWidth={1.5}
                 />
               </View>
               <Text style={[styles.label, selected && styles.labelSelected]}>
                 {label}
               </Text>
-              <Ionicons
-                name={selected ? 'checkbox' : 'square-outline'}
-                size={20}
-                color={selected ? theme.colors.ink : theme.colors.borderStrong}
-              />
+              {selected ? (
+                <SquareCheck size={20} color={theme.colors.ink} strokeWidth={1.5} />
+              ) : (
+                <Square size={20} color={theme.colors.borderStrong} strokeWidth={1.5} />
+              )}
             </Pressable>
           );
         })}

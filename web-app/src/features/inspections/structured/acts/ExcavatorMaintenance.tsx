@@ -1,6 +1,6 @@
 /**
- * Excavator maintenance custom step — yes/no + optional date per maintenance
- * item. Mirrors the mobile excavator "VI — ტექნიკური მომსახურება" section.
+ * Excavator maintenance custom step - yes/no + optional date per maintenance
+ * item. Mirrors the mobile excavator "VI - ტექნიკური მომსახურება" section.
  */
 import { SegmentedControl } from '@/components/wizard';
 import { VERDICT_GOOD, VERDICT_BAD } from '@/lib/verdictColors';

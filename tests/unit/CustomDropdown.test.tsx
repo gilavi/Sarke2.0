@@ -106,7 +106,7 @@ function pressCancelInSheet() {
 /**
  * Fire the showSheet completion callback (simulates animation finishing).
  * The component then defers the consumer onChange via setTimeout(_, 0) to
- * escape the Reanimated animation-finish tick — run pending timers so the
+ * escape the Reanimated animation-finish tick - run pending timers so the
  * assertion can observe the call synchronously.
  */
 function fireSheetDismissCallback() {
@@ -127,7 +127,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('CustomDropdown — trigger', () => {
+describe('CustomDropdown - trigger', () => {
   it('renders the trigger button and label in self-contained mode', () => {
     const { getByText } = renderDropdown();
     expect(getByText('Test Label')).toBeTruthy();
@@ -166,7 +166,7 @@ describe('CustomDropdown — trigger', () => {
   });
 });
 
-describe('CustomDropdown — sheet content', () => {
+describe('CustomDropdown - sheet content', () => {
   it('renders all option labels inside the sheet', () => {
     const { getByRole } = renderDropdown();
     fireEvent.click(getByRole('combobox'));
@@ -197,7 +197,7 @@ describe('CustomDropdown — sheet content', () => {
   });
 });
 
-describe('CustomDropdown — synchronous onChange', () => {
+describe('CustomDropdown - synchronous onChange', () => {
   // Important invariant: onChange must fire inside the React event handler
   // (onPress) so navigation calls like router.push run in a normal event
   // tick. Firing onChange from inside the BottomSheet animation-finish
@@ -230,7 +230,7 @@ describe('CustomDropdown — synchronous onChange', () => {
   });
 });
 
-describe('CustomDropdown — controlled mode', () => {
+describe('CustomDropdown - controlled mode', () => {
   it('calls onOpenChange(true) when trigger is pressed in self-contained mode with open prop', () => {
     // When open=false is passed, it becomes controlled mode (no trigger rendered)
     // so test with uncontrolled trigger opening scenario handled by internal state.

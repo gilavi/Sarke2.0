@@ -2,7 +2,7 @@
  * Canonical CSS for equipment-inspection PDFs.
  *
  * This is the shared base every inspection type used to copy verbatim into its
- * own lib/<type>Pdf.ts (bobcat/excavator/forklift/… — ~180 identical lines each,
+ * own lib/<type>Pdf.ts (bobcat/excavator/forklift/… - ~180 identical lines each,
  * which is exactly how the design drifted, e.g. ink #1A1A1A vs #111827 across
  * files). Type-specific classes (result columns, weight tables, component
  * diagrams) live in each schema's `extraCss`, appended after this base.
@@ -95,7 +95,7 @@ export const BASE_PDF_CSS = `
   .dot-def  { background: var(--amber); }
   .dot-bad  { background: var(--red); }
 
-  /* Checklist table (base — result columns are type-specific, see extraCss) */
+  /* Checklist table (base - result columns are type-specific, see extraCss) */
   .cl-table { width: 100%; border-collapse: collapse; }
   .cl-table th, .cl-table td {
     border: 0.5px solid var(--hairline); padding: 5px 7px; font-size: 11px; vertical-align: top;

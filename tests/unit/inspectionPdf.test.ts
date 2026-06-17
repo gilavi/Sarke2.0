@@ -61,7 +61,7 @@ const PHOTOS = {
   'excavator/x/summary/1.jpg': 'data:image/jpeg;base64,SUMMARYPHOTO',
 };
 
-describe('buildInspectionPdf — excavator', () => {
+describe('buildInspectionPdf - excavator', () => {
   const html = buildInspectionPdf(excavatorSchema, { inspection: mockExcavator(), projectName: 'კომპანია' }, PHOTOS);
 
   it('produces a complete HTML document', () => {
@@ -73,13 +73,13 @@ describe('buildInspectionPdf — excavator', () => {
   it('renders header, all section titles, and footer', () => {
     expect(html).toContain('ექსკავატორის ტექნიკური<br>შემოწმების აქტი');
     expect(html).toContain('Excavator Technical Inspection Report');
-    expect(html).toContain('I — მანქანის ტექნიკური მახასიათებლები');
-    expect(html).toContain('II — დოკუმენტის ინფორმაცია');
-    expect(html).toContain('III — შემოწმების ჩეკლისტი');
-    expect(html).toContain('VI — ტექნიკური მომსახურება');
-    expect(html).toContain('IV — დასკვნა');
-    expect(html).toContain('V — შემომწმებელი');
-    expect(html).toContain('Hubble — ექსკავატორის ტექნიკური შემოწმების აქტი');
+    expect(html).toContain('I - მანქანის ტექნიკური მახასიათებლები');
+    expect(html).toContain('II - დოკუმენტის ინფორმაცია');
+    expect(html).toContain('III - შემოწმების ჩეკლისტი');
+    expect(html).toContain('VI - ტექნიკური მომსახურება');
+    expect(html).toContain('IV - დასკვნა');
+    expect(html).toContain('V - შემომწმებელი');
+    expect(html).toContain('Hubble - ექსკავატორის ტექნიკური შემოწმების აქტი');
   });
 
   it('renders machine specs and identification values', () => {
@@ -124,7 +124,7 @@ describe('buildInspectionPdf — excavator', () => {
   });
 });
 
-describe('buildInspectionPdf — lifting accessories result pills (regression)', () => {
+describe('buildInspectionPdf - lifting accessories result pills (regression)', () => {
   function mockLA() {
     const insp = buildDefaultLAInspection(
       'la000011-2222-3333-4444-555566667777',
@@ -143,7 +143,7 @@ describe('buildInspectionPdf — lifting accessories result pills (regression)',
   const html = buildInspectionPdf(liftingAccessoriesSchema, { inspection: mockLA(), projectName: 'კომპანია' }, {});
 
   // Before the fix, checklistPill received the display string instead of the enum,
-  // so every result cell rendered the null "—" pill. These assert the real pills.
+  // so every result cell rendered the null "-" pill. These assert the real pills.
   it('renders the green ✓ pill for an "ok" result', () => {
     expect(html).toContain('class="pill pill-ok">✓ გამართულია');
   });

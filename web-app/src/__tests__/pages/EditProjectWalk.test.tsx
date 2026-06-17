@@ -1,5 +1,5 @@
 /**
- * EditProject (52% covered) — covers the form fill + submit path, and the
+ * EditProject (52% covered) - covers the form fill + submit path, and the
  * not-found state.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';

@@ -48,7 +48,7 @@ export default function NewReportTitleScreen() {
     }
   };
 
-  // Launched from Home without a project — pick one as the first full-screen step.
+  // Launched from Home without a project - pick one as the first full-screen step.
   if (!projectId) {
     return (
       <FlowProjectPicker

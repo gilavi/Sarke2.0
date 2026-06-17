@@ -13,7 +13,7 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 const STATIC_COMMANDS = [
-  // Quick actions — create a new entity (the "new report / new inspection / …" the
+  // Quick actions - create a new entity (the "new report / new inspection / …" the
   // palette was meant to surface).
   { id: 'new-report', title: 'ახალი რეპორტი', icon: 'Plus', path: '/reports/new' },
   { id: 'new-inspection', title: 'ახალი შემოწმება', icon: 'Plus', path: '/inspections' },
@@ -21,7 +21,7 @@ const STATIC_COMMANDS = [
   { id: 'new-briefing', title: 'ახალი ინსტრუქტაჟი', icon: 'Plus', path: '/briefings/new' },
   { id: 'new-order', title: 'ახალი ბრძანება', icon: 'Plus', path: '/orders/new' },
   { id: 'new-project', title: 'ახალი პროექტი', icon: 'Plus', path: '/projects/new' },
-  // Navigation — jump to a section.
+  // Navigation - jump to a section.
   { id: 'nav-home', title: 'მთავარი', icon: 'Home', path: '/home' },
   { id: 'nav-projects', title: 'პროექტები', icon: 'FolderOpen', path: '/projects' },
   { id: 'nav-inspections', title: 'შემოწმებები', icon: 'ClipboardCheck', path: '/inspections' },

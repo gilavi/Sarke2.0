@@ -1,5 +1,5 @@
 /**
- * NewBriefing 3-step walkthrough — fills step 0, advances to topics, picks a
+ * NewBriefing 3-step walkthrough - fills step 0, advances to topics, picks a
  * topic, advances to participants, adds one, then triggers the createBriefing
  * mutation via the WizardShell finish button.
  */
@@ -19,7 +19,7 @@ beforeEach(() => {
   vi.mocked(listProjects).mockResolvedValue([]);
 });
 
-describe('NewBriefing — step walkthrough', () => {
+describe('NewBriefing - step walkthrough', () => {
   it('renders step 0 with the project + inspector inputs', () => {
     renderPage(<NewBriefing />, '/briefings/new?project=p1');
     expect(screen.getByText('ახალი ინსტრუქტაჟი')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe('NewBriefing — step walkthrough', () => {
     fireEvent.click(screen.getByText('სიმაღლეზე მუშაობა'));
     fireEvent.click(screen.getByRole('button', { name: /შემდეგი/ }));
 
-    // Step 2: participants — the "name, surname" placeholder appears.
+    // Step 2: participants - the "name, surname" placeholder appears.
     expect(screen.getByPlaceholderText('სახელი, გვარი')).toBeInTheDocument();
   });
 

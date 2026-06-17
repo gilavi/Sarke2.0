@@ -50,7 +50,7 @@ export interface InspectionServiceConfig<T, P extends object> {
   toDb: (patch: P) => Record<string, unknown>;
   /**
    * Type-specific columns inserted on create (item arrays, spec snapshots, and
-   * inspector_name where the table has it — fall-protection, e.g., does not).
+   * inspector_name where the table has it - fall-protection, e.g., does not).
    */
   createColumns: (args: CreateArgs) => Record<string, unknown>;
   /** Whether create stamps inspection_date = today (default true). */

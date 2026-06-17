@@ -17,7 +17,7 @@ export const qualificationsApi = {
   },
   upsert: async (q: Omit<Qualification, 'created_at'> & { created_at?: string }): Promise<Qualification> => {
     // Always stamp with the current auth uid. Callers can pass stale or
-    // placeholder user_ids — RLS would reject anyway, but overriding here
+    // placeholder user_ids - RLS would reject anyway, but overriding here
     // turns a silent 403 into a predictable insert. created_at is handled
     // by the table default when omitted.
     const user = (await supabase.auth.getSession()).data.session?.user ?? null;
@@ -37,7 +37,7 @@ export const qualificationsApi = {
 };
 
 // Certificates = generated PDFs derived from inspections (1 inspection : N
-// certificates). Generation is explicit — callers pass a pre-rendered PDF
+// certificates). Generation is explicit - callers pass a pre-rendered PDF
 // path (already uploaded to Storage) plus a snapshot of the inspection
 // payload, so the rendering concern stays in `lib/pdf.ts` + the screen that
 // orchestrates signature capture. This keeps the API testable without a
@@ -77,7 +77,7 @@ export const certificatesApi = {
    */
   countsByInspection: async (inspectionIds: string[]): Promise<Record<string, number>> => {
     if (inspectionIds.length === 0) return {};
-    // Hard cap — list screens never need more than a few thousand cert
+    // Hard cap - list screens never need more than a few thousand cert
     // fingerprints and an uncapped query on a big DB would blow up memory.
     const { data, error } = await supabase
       .from('certificates')
@@ -126,7 +126,7 @@ export const certificatesApi = {
   },
   remove: async (id: string) => {
     // Read the pdf path first so we can delete the blob in the `pdfs`
-    // bucket too — otherwise the file stays forever.
+    // bucket too - otherwise the file stays forever.
     const { data: existing } = await supabase
       .from('certificates')
       .select('pdf_url')

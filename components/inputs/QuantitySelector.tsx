@@ -1,11 +1,11 @@
-// QuantitySelector — pick a count in one tap, or type an unusual one.
+// QuantitySelector - pick a count in one tap, or type an unusual one.
 //
 // A form-selector alternative to a +/- stepper: a wrap-grid of preset
 // chips (one-tap selection) plus a custom numeric field for values that
 // aren't in the presets. The value is always clamped to [min, max], so a
 // caller can expose a typed entry without risking an out-of-range count.
 //
-// Reusable across any "how many?" prompt — the caller supplies the
+// Reusable across any "how many?" prompt - the caller supplies the
 // presets and bounds; this component owns the chip/typing UX only.
 import { memo, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -43,7 +43,7 @@ export const QuantitySelector = memo(function QuantitySelector({
   const [customText, setCustomText] = useState(isCustom(value) ? String(value) : '');
 
   // Adjust the custom field when `value` changes from outside (chip tap,
-  // parent reset) — the React "derived state on prop change" pattern.
+  // parent reset) - the React "derived state on prop change" pattern.
   const prevValue = useRef(value);
   if (prevValue.current !== value) {
     prevValue.current = value;
@@ -97,7 +97,7 @@ export const QuantitySelector = memo(function QuantitySelector({
           placeholder="სხვა"
           placeholderTextColor={theme.colors.inkFaint}
           style={[styles.customInput, customActive && styles.chipTextActive]}
-          accessibilityLabel={`${accessibilityLabelPrefix} — სხვა`}
+          accessibilityLabel={`${accessibilityLabelPrefix} - სხვა`}
           returnKeyType="done"
         />
       </View>

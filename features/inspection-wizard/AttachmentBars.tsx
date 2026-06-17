@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera, Pencil, Plus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -11,7 +11,7 @@ import { DebouncedNotes } from './DebouncedNotes';
 /**
  * Shared photo + note attachments for inspection steps. Two quiet dashed bars:
  * the photo bar stays put and shows thumbnails as they're added; the note bar
- * morphs into the notes textarea on tap. Monochrome — no semantic colors.
+ * morphs into the notes textarea on tap. Monochrome - no semantic colors.
  *
  * Reuses the canonical PhotoThumb (display) and DebouncedNotes (debounced save).
  * Photo picking/deleting is the caller's responsibility via the callbacks.
@@ -47,10 +47,10 @@ export function AttachmentBars({
         {...a11y('ფოტოს დამატება', 'შეეხეთ ფოტოს ასატვირთად', 'button')}
       >
         <View style={styles.barLabel}>
-          <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+          <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>ფოტო</Text>
         </View>
-        <Ionicons name="add" size={20} color={theme.colors.inkFaint} />
+        <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
       </Pressable>
 
       {hasPhotos ? (
@@ -70,7 +70,7 @@ export function AttachmentBars({
                 hitSlop={6}
                 {...a11y('ფოტოს წაშლა', undefined, 'button')}
               >
-                <Ionicons name="close" size={12} color={theme.colors.white} />
+                <X size={12} color={theme.colors.white} strokeWidth={1.5} />
               </Pressable>
             </View>
           ))}
@@ -87,10 +87,10 @@ export function AttachmentBars({
             {...a11y('შენიშვნის დამატება', 'შეეხეთ შენიშვნის დასაწერად', 'button')}
           >
             <View style={styles.barLabel}>
-              <Ionicons name="create-outline" size={20} color={theme.colors.inkSoft} />
+              <Pencil size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
               <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>შენიშვნა</Text>
             </View>
-            <Ionicons name="add" size={20} color={theme.colors.inkFaint} />
+            <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
         )
       ) : null}

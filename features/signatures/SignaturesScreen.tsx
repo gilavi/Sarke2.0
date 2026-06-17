@@ -8,12 +8,12 @@
 // Presented as a full-screen Modal from the inspection result screen. The
 // creator's name is passed in from the user profile.
 //
-// HEADER CHROME — SELF-CONTAINED. The Modal sets `statusBarTranslucent` and
+// HEADER CHROME - SELF-CONTAINED. The Modal sets `statusBarTranslucent` and
 // the body uses `useSafeAreaInsets()` directly so the top inset always
 // resolves, regardless of where the parent tree mounts this component.
 // Earlier versions used `<SafeAreaView edges={['top', 'bottom']}>` which
 // silently reported 0 top inset when the modal's nearest safe-area provider
-// had already been consumed by an outer screen — the `უკან` + X buttons
+// had already been consumed by an outer screen - the `უკან` + X buttons
 // would then render flush under the status bar and look missing on the
 // equipment-type result screens. The SafeAreaProvider wrapper + manual
 // padding kills that bug class.
@@ -23,7 +23,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, Plus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -94,7 +94,7 @@ function SignaturesScreenBody({
           style={({ pressed }) => [styles.headerPill, pressed && styles.pressed]}
           {...a11y('უკან', undefined, 'button')}
         >
-          <Ionicons name="chevron-back" size={18} color={theme.colors.accent} />
+          <ChevronLeft size={18} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={styles.headerPillText}>უკან</Text>
         </Pressable>
         <Text style={styles.headerTitle}>ხელმოწერები</Text>
@@ -104,7 +104,7 @@ function SignaturesScreenBody({
           style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
           {...a11y('დახურვა', undefined, 'button')}
         >
-          <Ionicons name="close" size={22} color={theme.colors.ink} />
+          <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
         </Pressable>
       </View>
 
@@ -147,7 +147,7 @@ function SignaturesScreenBody({
           style={({ pressed }) => [styles.addRowBtn, pressed && styles.pressed]}
           {...a11y('ხაზის დამატება', 'PDF-ში ცარიელი ხელმოწერის ხაზის დამატება', 'button')}
         >
-          <Ionicons name="add" size={18} color={theme.colors.accent} />
+          <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={styles.addRowText}>ხაზის დამატება</Text>
         </Pressable>
       </View>

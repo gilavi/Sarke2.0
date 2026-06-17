@@ -120,14 +120,14 @@ const EXTRA_CSS = `
 function checklistPill(result: string | null): string {
   if (result === 'ok')   return '<span class="pill pill-ok">✓ გამართულია</span>';
   if (result === 'fail') return '<span class="pill pill-fail">✗ გაუმართავია</span>';
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function markingPill(status: string | null): string {
   if (status === 'სრული')        return `<span class="pill pill-marking-full">${escapeHtml(status)}</span>`;
   if (status === 'ნაწილობრივი')   return `<span class="pill pill-marking-partial">${escapeHtml(status)}</span>`;
   if (status === 'არ გააჩნია')   return `<span class="pill pill-marking-none">${escapeHtml(status)}</span>`;
-  return '—';
+  return '-';
 }
 
 function romanLabel(i: number): string {
@@ -135,25 +135,25 @@ function romanLabel(i: number): string {
   return romans[i] ?? `${i + 1}`;
 }
 
-// ── Section I — ზოგადი ინფორმაცია ──────────────────────────────────────────────
+// ── Section I - ზოგადი ინფორმაცია ──────────────────────────────────────────────
 
 function renderSectionI(insp: LiftingAccessoriesInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
       </tr>
     </table>
   `;
 }
 
-// ── Section II — მოწყობილობის იდენტიფიკაცია ────────────────────────────────────
+// ── Section II - მოწყობილობის იდენტიფიკაცია ────────────────────────────────────
 
 function renderSectionII(insp: LiftingAccessoriesInspection): string {
   const eqChips = insp.equipmentTypes.length > 0
@@ -163,19 +163,19 @@ function renderSectionII(insp: LiftingAccessoriesInspection): string {
           : escapeHtml(t);
         return `<span class="eq-chip">${display}</span>`;
       }).join('')}</div>`
-    : '—';
+    : '-';
 
-  const nextDateVal = insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '—';
+  const nextDateVal = insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '-';
 
   return `
-    <div class="section-title">II — მოწყობილობის იდენტიფიკაცია</div>
+    <div class="section-title">II - მოწყობილობის იდენტიფიკაცია</div>
     <table class="param-table">
       <tr><td>ტიპი / სახეობა</td><td>${eqChips}</td></tr>
-      <tr><td>სერ. NN / ID</td><td>${escapeHtml(insp.serialNumber) || '—'}</td></tr>
-      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '—'}</td></tr>
-      <tr><td>წ. წარმოება</td><td>${escapeHtml(insp.yearOfManufacture) || '—'}</td></tr>
-      <tr><td>WLL (კგ)</td><td>${escapeHtml(insp.wllKg) || '—'}</td></tr>
-      <tr><td>ერთ. რ-ბა</td><td>${escapeHtml(insp.unitCount) || '—'}</td></tr>
+      <tr><td>სერ. NN / ID</td><td>${escapeHtml(insp.serialNumber) || '-'}</td></tr>
+      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
+      <tr><td>წ. წარმოება</td><td>${escapeHtml(insp.yearOfManufacture) || '-'}</td></tr>
+      <tr><td>WLL (კგ)</td><td>${escapeHtml(insp.wllKg) || '-'}</td></tr>
+      <tr><td>ერთ. რ-ბა</td><td>${escapeHtml(insp.unitCount) || '-'}</td></tr>
       <tr><td>მარკირება</td><td>${markingPill(insp.markingStatus)}</td></tr>
       <tr><td>მომდ. შემოწ.</td><td>${nextDateVal}</td></tr>
     </table>
@@ -218,11 +218,11 @@ function buildChecklistRows(
   }).join('');
 }
 
-// ── Section III — ვიზუალური შემოწმება (A) ──────────────────────────────────────
+// ── Section III - ვიზუალური შემოწმება (A) ──────────────────────────────────────
 
 function renderSectionIII(insp: LiftingAccessoriesInspection, photos: PhotoMap): string {
   return `
-    <div class="section-title">III — ვიზუალური შემოწმება</div>
+    <div class="section-title">III - ვიზუალური შემოწმება</div>
     <table class="cl-table">
       <thead>
         <tr><th class="col-num">№</th><th>პუნქტი</th><th class="col-result">შედეგი</th></tr>
@@ -232,11 +232,11 @@ function renderSectionIII(insp: LiftingAccessoriesInspection, photos: PhotoMap):
   `;
 }
 
-// ── Section IV — ფუნქციური შემოწმება (B) ──────────────────────────────────────
+// ── Section IV - ფუნქციური შემოწმება (B) ──────────────────────────────────────
 
 function renderSectionIV(insp: LiftingAccessoriesInspection, photos: PhotoMap): string {
   return `
-    <div class="section-title">IV — ფუნქციური შემოწმება</div>
+    <div class="section-title">IV - ფუნქციური შემოწმება</div>
     <table class="cl-table">
       <thead>
         <tr><th class="col-num">№</th><th>პუნქტი</th><th class="col-result">შედეგი</th></tr>
@@ -246,21 +246,21 @@ function renderSectionIV(insp: LiftingAccessoriesInspection, photos: PhotoMap): 
   `;
 }
 
-// ── Section V — ამოღებული მოწყობილობები ────────────────────────────────────────
+// ── Section V - ამოღებული მოწყობილობები ────────────────────────────────────────
 
 function renderSectionV(insp: LiftingAccessoriesInspection): string {
   const removedRowsHtml = insp.removedRows.length > 0
     ? insp.removedRows.map((r, i) => `
         <tr>
           <td class="col-num">${i + 1}</td>
-          <td>${escapeHtml(r.serialNumber) || '—'}</td>
-          <td>${escapeHtml(r.typeDescription) || '—'}</td>
-          <td>${escapeHtml(r.reason) || '—'}</td>
+          <td>${escapeHtml(r.serialNumber) || '-'}</td>
+          <td>${escapeHtml(r.typeDescription) || '-'}</td>
+          <td>${escapeHtml(r.reason) || '-'}</td>
         </tr>`).join('')
     : `<tr><td colspan="4" style="text-align:center;color:var(--inkFaint);padding:10px">ამოღებული მოწყობილობა არ არის</td></tr>`;
 
   return `
-    <div class="section-title">V — ამოღებული მოწყობილობები სამ-ბ-ი.</div>
+    <div class="section-title">V - ამოღებული მოწყობილობები სამ-ბ-ი.</div>
     <table class="removed-table">
       <thead>
         <tr>
@@ -275,7 +275,7 @@ function renderSectionV(insp: LiftingAccessoriesInspection): string {
   `;
 }
 
-// ── Section VI — დასკვნა ────────────────────────────────────────────────────────
+// ── Section VI - დასკვნა ────────────────────────────────────────────────────────
 
 function renderSectionVI(insp: LiftingAccessoriesInspection): string {
   const verdictOptions = (['pass', 'repair', 'fail'] as const).map(v => {
@@ -290,7 +290,7 @@ function renderSectionVI(insp: LiftingAccessoriesInspection): string {
   }).join('');
 
   return `
-    <div class="section-title">VI — დასკვნა</div>
+    <div class="section-title">VI - დასკვნა</div>
     <div class="verdict-block">${verdictOptions}</div>
     <div class="comment-block">
       <div class="comment-label">კომენტარი</div>
@@ -299,7 +299,7 @@ function renderSectionVI(insp: LiftingAccessoriesInspection): string {
   `;
 }
 
-// ── Section VII — ფოტო მასალა ───────────────────────────────────────────────────
+// ── Section VII - ფოტო მასალა ───────────────────────────────────────────────────
 
 function renderSectionVII(insp: LiftingAccessoriesInspection, photos: PhotoMap): string {
   const summaryEmbeds = insp.summaryPhotos
@@ -308,12 +308,12 @@ function renderSectionVII(insp: LiftingAccessoriesInspection, photos: PhotoMap):
   if (summaryEmbeds.length === 0) return '';
   const imgs = summaryEmbeds.map(e => `<img src="${escapeHtml(e)}" />`).join('');
   return `
-      <div class="section-title">VII — ფოტო მასალა</div>
+      <div class="section-title">VII - ფოტო მასალა</div>
       <div class="photo-grid">${imgs}</div>
     `;
 }
 
-// ── Section VIII — ხელმოწერები ──────────────────────────────────────────────────
+// ── Section VIII - ხელმოწერები ──────────────────────────────────────────────────
 
 function sigBlock(sig: LiftingAccessoriesInspection['signatures'][number], role: string): string {
   const sigImgHtml = sig?.signature
@@ -326,7 +326,7 @@ function sigBlock(sig: LiftingAccessoriesInspection['signatures'][number], role:
       <div class="sig-block">
         <div class="sig-cell">
           <div class="sig-lbl">${escapeHtml(role)}</div>
-          <div class="sig-name">${escapeHtml(sig?.name) || '—'}</div>
+          <div class="sig-name">${escapeHtml(sig?.name) || '-'}</div>
           <div class="sig-role">${escapeHtml(sig?.position) || ''}</div>
           ${sig?.organization ? `<div class="sig-role">${escapeHtml(sig.organization)}</div>` : ''}
           ${qualHtml}
@@ -344,11 +344,11 @@ function sigBlock(sig: LiftingAccessoriesInspection['signatures'][number], role:
 
 function renderSectionVIII(insp: LiftingAccessoriesInspection): string {
   const sigBlocks = insp.signatures.map((sig, i) =>
-    sigBlock(sig, `${romanLabel(i)} — ${i === 0 ? 'შემომწმებელი პირი' : 'პასუხისმგებელი პირი'}`)
+    sigBlock(sig, `${romanLabel(i)} - ${i === 0 ? 'შემომწმებელი პირი' : 'პასუხისმგებელი პირი'}`)
   ).join('');
 
   return `
-    <div class="section-title">VIII — ხელმოწერები</div>
+    <div class="section-title">VIII - ხელმოწერები</div>
     <div class="sig-two-col">
       ${sigBlocks}
     </div>
@@ -377,7 +377,7 @@ export const liftingAccessoriesSchema: InspectionSchema<LiftingAccessoriesInspec
 
   docTitle: 'ტვირთის გადასატანი თასმების /<br>ჩამჭიდების შემოწმების აქტი',
   docSubtitle: 'Lifting Accessories Inspection Record',
-  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble - შრომის უსაფრთხოება',
   pdfNameLabel: 'LiftingAccessoriesInspection',
   extraCss: EXTRA_CSS,
 

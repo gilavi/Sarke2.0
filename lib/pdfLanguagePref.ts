@@ -18,6 +18,6 @@ export async function savePdfLanguage(lang: PdfLanguage): Promise<void> {
   try {
     await AsyncStorage.setItem(KEY, lang);
   } catch {
-    // ignore — preference is best-effort
+    // ignore - preference is best-effort
   }
 }

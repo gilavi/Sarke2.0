@@ -9,7 +9,7 @@ vi.mock('../../lib/supabase', () => ({
 
 vi.mock('../../lib/logError', () => ({ logError: vi.fn(), toErrorMessage: (e: unknown) => String(e) }));
 vi.mock('../../lib/guards', () => ({ isInspection: () => true }));
-// inspections.ts pulls in storage.ts (uses expo-file-system) — stub it out so
+// inspections.ts pulls in storage.ts (uses expo-file-system) - stub it out so
 // loading the module under test in a Node env doesn't drag in native globals.
 vi.mock('../../lib/services/real/storage', () => ({ storageApi: { uploadFromUri: vi.fn() } }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => '00000000-0000-0000-0000-000000000000' }));

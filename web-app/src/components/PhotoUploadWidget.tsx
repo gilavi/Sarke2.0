@@ -1,5 +1,5 @@
 /**
- * PhotoUploadWidget — upload, view, and delete photos for a single item.
+ * PhotoUploadWidget - upload, view, and delete photos for a single item.
  *
  * Renders a compact thumbnail row with an "add photo" button. Each thumbnail
  * is clickable (opens a lightbox). The ✕ on each thumbnail removes the photo
@@ -121,7 +121,7 @@ export default function PhotoUploadWidget({
     try {
       await doDelete(path);
     } catch {
-      // best-effort — row is removed regardless
+      // best-effort - row is removed regardless
     }
     onRemove(path);
   }

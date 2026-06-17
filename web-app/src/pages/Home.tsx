@@ -82,7 +82,7 @@ function QuickActionTile({ to, icon: Icon, label, color, darkColor }: {
 export default function Home() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
-  // Only fall back to the email prefix once `profile` has actually loaded —
+  // Only fall back to the email prefix once `profile` has actually loaded -
   // otherwise the greeting flashes "gilavi2000" before correcting to "Giorgi"
   // on the first render after auth restores.
   const firstName = profile ? (profile.first_name?.trim() || user?.email?.split('@')[0] || '') : '';
@@ -142,7 +142,7 @@ export default function Home() {
             მოგესალმებით{firstName ? `, ${firstName}` : ''}
           </h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Hubble — თქვენი შრომის უსაფრთხოების ცენტრი.
+            Hubble - თქვენი შრომის უსაფრთხოების ცენტრი.
           </p>
         </div>
         <DropdownMenu>
@@ -157,7 +157,7 @@ export default function Home() {
             {/* Generic (inspections-table) acts via the legacy questionnaire wizard */}
             <DropdownMenuItem onSelect={() => { setNewInspectionCategory('xaracho'); setNewInspectionOpen(true); }}>ფასადის ხარაჩოს შემოწმება</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>დამცავი ქამრების შემოწმება</DropdownMenuItem>
-            {/* Structured acts — data-driven from the registry (same source as the
+            {/* Structured acts - data-driven from the registry (same source as the
                 Inspections page picker, so the two menus never drift apart) */}
             {STRUCTURED_ACT_LIST.map((act) => (
               <DropdownMenuItem key={act.key} onSelect={() => navigate(act.newRoute)}>{act.menuLabel}</DropdownMenuItem>

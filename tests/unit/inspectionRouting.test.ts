@@ -15,12 +15,12 @@ describe('routeForInspection', () => {
     ['fall_protection_inspection',     `/inspections/fall-protection/${ID}`],
     ['lifting_accessories_inspection', `/inspections/lifting-accessories/${ID}`],
     ['forklift_inspection',            `/inspections/forklift/${ID}`],
-  ] as const)('%s — same route regardless of isCompleted', (source, expected) => {
+  ] as const)('%s - same route regardless of isCompleted', (source, expected) => {
     expect(routeForInspection(source, ID, false)).toBe(expected);
     expect(routeForInspection(source, ID, true)).toBe(expected);
   });
 
-  describe('harness — isCompleted changes the route', () => {
+  describe('harness - isCompleted changes the route', () => {
     it('draft → /inspections/harness/:id', () => {
       expect(routeForInspection('harness', ID, false)).toBe(`/inspections/harness/${ID}`);
     });

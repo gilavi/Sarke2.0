@@ -1,5 +1,5 @@
 /**
- * Structured-act registry — the single dispatch table tying each act's
+ * Structured-act registry - the single dispatch table tying each act's
  * interactive descriptor (this folder) to its PDF schema
  * (`@/lib/inspection/registry`) and its routes (`@/app/routes`).
  *
@@ -42,7 +42,7 @@ export interface StructuredAct {
   newRoute: string;
   /**
    * When true, the act is NOT queried as its own row source on the inspections
-   * list (its rows are surfaced by a sibling act that shares the table — e.g.
+   * list (its rows are surfaced by a sibling act that shares the table - e.g.
    * large-loader rows are rendered by the bobcat query, split by templateId).
    */
   excludeFromList?: boolean;

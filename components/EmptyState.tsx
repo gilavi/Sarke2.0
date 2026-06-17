@@ -1,4 +1,4 @@
-// EmptyState.tsx — Award-worthy empty states with personality
+// EmptyState.tsx - Award-worthy empty states with personality
 //
 // Reusable empty-state component with SVG illustrations, Reanimated entry
 // animations, subtle float loop, scaffolding background pattern, and spring-
@@ -15,7 +15,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Line, Rect, Circle, Path, Polygon, Ellipse, Polyline, G } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { haptic } from '../lib/haptics';
 import { a11y, useAccessibilitySettings } from '../lib/accessibility';
 import { useTheme, type Theme } from '../lib/theme';
@@ -34,7 +34,7 @@ export interface EmptyStateProps {
   subtitle?: string;
   action?: {
     label: string;
-    icon?: React.ComponentProps<typeof Ionicons>['name'];
+    icon?: LucideIcon;
     onPress: () => void;
   };
   backgroundPattern?: boolean;
@@ -43,7 +43,7 @@ export interface EmptyStateProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   SVG Illustrations — construction-themed, hand-crafted for each type
+   SVG Illustrations - construction-themed, hand-crafted for each type
    ═══════════════════════════════════════════════════════════════════════ */
 
 function IllustrationProjects() {
@@ -77,9 +77,9 @@ function IllustrationProjects() {
       <Circle cx={118} cy={118} r={14} fill={theme.colors.accentSoft} />
       <Path d="M111 118l5 5 9-10" stroke={theme.colors.accent} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
       {/* Small gear */}
-      <Circle cx={42} cy={118} r={10} fill={theme.colors.warnSoft} />
-      <Circle cx={42} cy={118} r={4} fill={theme.colors.warn} />
-      <Path d="M42 104v4M42 128v4M30 118h4M50 118h4" stroke={theme.colors.warn} strokeWidth={1.5} strokeLinecap="round" />
+      <Circle cx={42} cy={118} r={10} fill={theme.colors.subtleSurface} />
+      <Circle cx={42} cy={118} r={4} fill={theme.colors.ink} />
+      <Path d="M42 104v4M42 128v4M30 118h4M50 118h4" stroke={theme.colors.ink} strokeWidth={1.5} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -90,22 +90,22 @@ function IllustrationCertificates() {
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
-        <Rect x={25} y={25} width={110} height={110} rx={14} fill={theme.colors.certTint} />
+        <Rect x={25} y={25} width={110} height={110} rx={14} fill={theme.colors.accent} />
       </G>
       {/* Document */}
-      <Rect x={45} y={38} width={70} height={90} rx={8} fill={theme.colors.surface} stroke={theme.colors.certTint} strokeWidth={2} />
+      <Rect x={45} y={38} width={70} height={90} rx={8} fill={theme.colors.surface} stroke={theme.colors.accent} strokeWidth={2} />
       {/* Folded corner */}
-      <Path d="M95 38h20v20l-20-20z" fill={theme.colors.certSoft} />
-      <Path d="M95 38l20 20" stroke={theme.colors.certTint} strokeWidth={1.5} />
+      <Path d="M95 38h20v20l-20-20z" fill={theme.colors.accentSoft} />
+      <Path d="M95 38l20 20" stroke={theme.colors.accent} strokeWidth={1.5} />
       {/* Lines */}
       <Rect x={55} y={68} width={50} height={3} rx={1.5} fill={theme.colors.hairline} />
       <Rect x={55} y={78} width={40} height={3} rx={1.5} fill={theme.colors.hairline} />
       <Rect x={55} y={88} width={45} height={3} rx={1.5} fill={theme.colors.hairline} />
       <Rect x={55} y={98} width={30} height={3} rx={1.5} fill={theme.colors.hairline} />
       {/* Seal / stamp */}
-      <Circle cx={80} cy={118} r={14} fill={theme.colors.certSoft} />
-      <Circle cx={80} cy={118} r={10} fill="none" stroke={theme.colors.certTint} strokeWidth={1.5} strokeDasharray="3 2" />
-      <Path d="M76 118l3 3 6-6" stroke={theme.colors.certTint} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Circle cx={80} cy={118} r={14} fill={theme.colors.accentSoft} />
+      <Circle cx={80} cy={118} r={10} fill="none" stroke={theme.colors.accent} strokeWidth={1.5} strokeDasharray="3 2" />
+      <Path d="M76 118l3 3 6-6" stroke={theme.colors.accent} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
       {/* Flying document ghost */}
       <G opacity={0.4}>
         <Rect x={32} y={52} width={24} height={30} rx={4} fill="#fff" stroke={theme.colors.hairline} strokeWidth={1} />
@@ -155,11 +155,11 @@ function IllustrationHistory() {
       <Path
         d="M128 56a48 48 0 0 1 0 48"
         fill="none"
-        stroke={theme.colors.warn}
+        stroke={theme.colors.ink}
         strokeWidth={2.5}
         strokeLinecap="round"
       />
-      <Polygon points="132,56 124,52 124,60" fill={theme.colors.warn} />
+      <Polygon points="132,56 124,52 124,60" fill={theme.colors.ink} />
       {/* Calendar page */}
       <G opacity={0.35}>
         <Rect x={28} y={48} width={28} height={32} rx={4} fill="#fff" stroke={theme.colors.inkFaint} strokeWidth={1} />
@@ -177,24 +177,24 @@ function IllustrationQualifications() {
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
-        <Rect x={20} y={20} width={120} height={120} rx={14} fill={theme.colors.certTint} />
+        <Rect x={20} y={20} width={120} height={120} rx={14} fill={theme.colors.accent} />
       </G>
       {/* Certificate frame */}
-      <Rect x={45} y={35} width={70} height={90} rx={6} fill={theme.colors.surface} stroke={theme.colors.certTint} strokeWidth={2.5} />
+      <Rect x={45} y={35} width={70} height={90} rx={6} fill={theme.colors.surface} stroke={theme.colors.accent} strokeWidth={2.5} />
       {/* Inner decorative border */}
-      <Rect x={51} y={41} width={58} height={78} rx={4} fill="none" stroke={theme.colors.certSoft} strokeWidth={1} strokeDasharray="4 3" />
+      <Rect x={51} y={41} width={58} height={78} rx={4} fill="none" stroke={theme.colors.accentSoft} strokeWidth={1} strokeDasharray="4 3" />
       {/* Question mark */}
       <Path
         d="M80 62c-6 0-10 4-10 9h6c0-2 2-4 4-4s4 2 4 4c0 3-3 5-5 7-2 2-3 4-3 6v2h6v-1c0-2 1-3 3-5 3-3 5-5 5-9 0-5-4-9-10-9z"
-        fill={theme.colors.certTint}
+        fill={theme.colors.accent}
       />
-      <Circle cx={80} cy={96} r={3} fill={theme.colors.certTint} />
+      <Circle cx={80} cy={96} r={3} fill={theme.colors.accent} />
       {/* Ribbon */}
-      <Path d="M62 108h36v6H62z" fill={theme.colors.certSoft} />
-      <Path d="M68 114l-6 10-2-8 8-2z" fill={theme.colors.certTint} />
-      <Path d="M92 114l6 10 2-8-8-2z" fill={theme.colors.certTint} />
+      <Path d="M62 108h36v6H62z" fill={theme.colors.accentSoft} />
+      <Path d="M68 114l-6 10-2-8 8-2z" fill={theme.colors.accent} />
+      <Path d="M92 114l6 10 2-8-8-2z" fill={theme.colors.accent} />
       {/* Star accent */}
-      <Polygon points="130,50 132,56 138,56 133,60 135,66 130,62 125,66 127,60 122,56 128,56" fill={theme.colors.warn} opacity={0.8} />
+      <Polygon points="130,50 132,56 138,56 133,60 135,66 130,62 125,66 127,60 122,56 128,56" fill={theme.colors.highlight} stroke={theme.colors.ink} strokeWidth={0.6} />
       {/* Small doc */}
       <G opacity={0.3}>
         <Rect x={30} y={100} width={20} height={26} rx={3} fill="#fff" stroke={theme.colors.hairline} strokeWidth={1} />
@@ -211,28 +211,28 @@ function IllustrationTemplates() {
   return (
     <Svg width={160} height={160} viewBox="0 0 160 160">
       <G opacity={0.1}>
-        <Rect x={20} y={20} width={120} height={120} rx={14} fill={theme.colors.templatesTint} />
+        <Rect x={20} y={20} width={120} height={120} rx={14} fill={theme.colors.ink} />
       </G>
       {/* Blueprint */}
-      <Rect x={38} y={38} width={84} height={84} rx={6} fill={theme.colors.surface} stroke={theme.colors.templatesTint} strokeWidth={2} />
+      <Rect x={38} y={38} width={84} height={84} rx={6} fill={theme.colors.surface} stroke={theme.colors.ink} strokeWidth={2} />
       {/* Grid lines */}
-      <Line x1={38} y1={60} x2={122} y2={60} stroke={theme.colors.templatesSoft} strokeWidth={1} />
-      <Line x1={38} y1={82} x2={122} y2={82} stroke={theme.colors.templatesSoft} strokeWidth={1} />
-      <Line x1={38} y1={104} x2={122} y2={104} stroke={theme.colors.templatesSoft} strokeWidth={1} />
-      <Line x1={60} y1={38} x2={60} y2={122} stroke={theme.colors.templatesSoft} strokeWidth={1} />
-      <Line x1={82} y1={38} x2={82} y2={122} stroke={theme.colors.templatesSoft} strokeWidth={1} />
-      <Line x1={104} y1={38} x2={104} y2={122} stroke={theme.colors.templatesSoft} strokeWidth={1} />
+      <Line x1={38} y1={60} x2={122} y2={60} stroke={theme.colors.hairline} strokeWidth={1} />
+      <Line x1={38} y1={82} x2={122} y2={82} stroke={theme.colors.hairline} strokeWidth={1} />
+      <Line x1={38} y1={104} x2={122} y2={104} stroke={theme.colors.hairline} strokeWidth={1} />
+      <Line x1={60} y1={38} x2={60} y2={122} stroke={theme.colors.hairline} strokeWidth={1} />
+      <Line x1={82} y1={38} x2={82} y2={122} stroke={theme.colors.hairline} strokeWidth={1} />
+      <Line x1={104} y1={38} x2={104} y2={122} stroke={theme.colors.hairline} strokeWidth={1} />
       {/* Missing content indicator */}
-      <Rect x={50} y={50} width={20} height={20} rx={3} fill={theme.colors.templatesSoft} opacity={0.5} />
+      <Rect x={50} y={50} width={20} height={20} rx={3} fill={theme.colors.hairline} opacity={0.5} />
       <Rect x={82} y={50} width={30} height={6} rx={3} fill={theme.colors.hairline} />
       <Rect x={82} y={62} width={20} height={6} rx={3} fill={theme.colors.hairline} />
       <Rect x={50} y={88} width={60} height={6} rx={3} fill={theme.colors.hairline} />
       <Rect x={50} y={100} width={40} height={6} rx={3} fill={theme.colors.hairline} />
       {/* Pencil */}
       <G transform="rotate(-30, 130, 50)">
-        <Rect x={124} y={30} width={10} height={40} rx={2} fill={theme.colors.warnSoft} />
-        <Polygon points="129,30 124,22 134,22" fill={theme.colors.warn} />
-        <Rect x={124} y={68} width={10} height={6} rx={1} fill={theme.colors.warn} opacity={0.4} />
+        <Rect x={124} y={30} width={10} height={40} rx={2} fill={theme.colors.subtleSurface} />
+        <Polygon points="129,30 124,22 134,22" fill={theme.colors.ink} />
+        <Rect x={124} y={68} width={10} height={6} rx={1} fill={theme.colors.ink} opacity={0.4} />
       </G>
       {/* Ruler */}
       <G transform="rotate(15, 30, 120)">
@@ -366,14 +366,7 @@ export default function EmptyState({
               style={styles.btn}
               {...a11y(action.label, undefined, 'button')}
             >
-              {action.icon ? (
-                <Ionicons
-                  name={action.icon}
-                  size={18}
-                  color={theme.colors.white}
-                  style={{ marginRight: 8 }}
-                />
-              ) : null}
+              {action.icon ? (() => { const IconComp = action.icon!; return <IconComp size={18} color={theme.colors.white} strokeWidth={1.5} style={{ marginRight: 8 }} />; })() : null}
               <Text style={styles.btnText}>{action.label}</Text>
             </Pressable>
           </Animated.View>
@@ -388,7 +381,7 @@ export default function EmptyState({
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════════
-   Section Empty States — compact, SVG-illustrated, for project screen cards
+   Section Empty States - compact, SVG-illustrated, for project screen cards
    ═══════════════════════════════════════════════════════════════════════ */
 
 type SectionType = 'incidents' | 'briefings' | 'reports' | 'documents';

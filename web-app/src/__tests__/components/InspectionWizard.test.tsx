@@ -1,5 +1,5 @@
 /**
- * InspectionWizard mount tests — the largest untested component (940 LOC).
+ * InspectionWizard mount tests - the largest untested component (940 LOC).
  * We mount with `open=true` in create mode (no preset/no existing inspection),
  * mocking all heavy children + data layer so the wizard renders its initial step.
  */

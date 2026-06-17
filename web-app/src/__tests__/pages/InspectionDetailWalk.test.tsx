@@ -102,7 +102,7 @@ describe('InspectionDetail (deep interactions)', () => {
       '/inspections/i1',
     );
     await screen.findByText('სექცია 1');
-    // QuestionRow for q1 (yesno) renders "კი / არა / არ ეხება" — pick the
+    // QuestionRow for q1 (yesno) renders "კი / არა / არ ეხება" - pick the
     // "არ ეხება" button (unique to the QuestionRow yes/no, NOT the safety pill).
     fireEvent.click(screen.getByRole('button', { name: 'არ ეხება' }));
     await waitFor(() => expect(upsertAnswer).toHaveBeenCalled());
@@ -156,7 +156,7 @@ describe('InspectionDetail (deep interactions)', () => {
     );
     await screen.findByText('გამოყენებისთვის უსაფრთხო?');
     // The safety-pill row has კი/არა/არ მოწმდება (not "არ ეხება" which is the
-    // QuestionRow yes/no). Find "არ მოწმდება" — uniquely in the safety pill.
+    // QuestionRow yes/no). Find "არ მოწმდება" - uniquely in the safety pill.
     fireEvent.click(screen.getByRole('button', { name: 'არ მოწმდება' }));
     // Now click "დასკვნის შენახვა".
     fireEvent.click(screen.getByRole('button', { name: 'დასკვნის შენახვა' }));

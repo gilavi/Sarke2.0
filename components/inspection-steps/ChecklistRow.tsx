@@ -14,7 +14,7 @@ export type ChecklistResult = 'good' | 'deficient' | 'unusable' | null;
 export interface ChecklistItem {
   id: string;
   description: string;
-  /** Optional section label — used to render section headers in ChecklistStep */
+  /** Optional section label - used to render section headers in ChecklistStep */
   section?: string;
 }
 
@@ -41,7 +41,7 @@ export const CHECKLIST_LEGEND: ChecklistLegendItem[] = [
 export interface ChecklistRowProps {
   item: ChecklistItem;
   state: ChecklistItemState;
-  /** Called with only the changed fields — the caller supplies the id. */
+  /** Called with only the changed fields - the caller supplies the id. */
   onStateChange: (patch: Partial<ChecklistItemState>) => void;
   // ── Legacy props (per-row notes/photos removed app-wide). Accepted so existing
   //    callers keep compiling; ignored. ──
@@ -53,7 +53,7 @@ export interface ChecklistRowProps {
 
 export function ChecklistRow({ item, state, onStateChange }: ChecklistRowProps) {
   const options = useMemo(
-    () => OPTIONS.map(o => ({ ...o, a11yLabel: `${item.description} — ${o.a11yLabel}` })),
+    () => OPTIONS.map(o => ({ ...o, a11yLabel: `${item.description} - ${o.a11yLabel}` })),
     [item.description],
   );
   return (

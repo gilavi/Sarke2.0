@@ -236,7 +236,7 @@ export default function Account() {
 
       {/* Profile + subscription combined card */}
       <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-        {/* User identity + plan — merged row */}
+        {/* User identity + plan - merged row */}
         <div className={cn(
           'flex items-center gap-3 px-5 py-4 border-b border-neutral-100 dark:border-neutral-800',
           usage?.status === 'active' && 'bg-amber-50/60 dark:bg-amber-950/10',
@@ -345,7 +345,7 @@ export default function Account() {
             <ChevronRight size={14} className="shrink-0 text-neutral-300 dark:text-neutral-600" />
           </button>
         ))}
-        {/* Appearance toggle — inline, no modal */}
+        {/* Appearance toggle - inline, no modal */}
         <div className="flex items-center gap-3 border-t border-neutral-100 px-5 py-3.5 dark:border-neutral-800">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
             {isDark ? <Moon size={15} /> : <Sun size={15} />}
@@ -437,7 +437,7 @@ export default function Account() {
                 <li key={row.id} className="flex items-center justify-between py-3">
                   <div>
                     <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                      {row.amount != null ? `${row.currency === 'GEL' ? '₾' : (row.currency ?? '')}${row.amount.toFixed(2)}` : '—'}
+                      {row.amount != null ? `${row.currency === 'GEL' ? '₾' : (row.currency ?? '')}${row.amount.toFixed(2)}` : '-'}
                     </div>
                     <div className="text-xs text-neutral-500 dark:text-neutral-400">
                       {formatDateTime(row.created_at)} · #{row.bog_order_id.slice(0, 8)}

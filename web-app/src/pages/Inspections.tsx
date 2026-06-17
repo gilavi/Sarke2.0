@@ -103,7 +103,7 @@ export default function Inspections() {
   });
   const { data: projectList } = useQuery({ queryKey: projectKeys.lists(), queryFn: listProjects });
 
-  // One query per row-sourcing structured act — data-driven from the registry so
+  // One query per row-sourcing structured act - data-driven from the registry so
   // adding an act lights it up here automatically. Acts flagged excludeFromList
   // (e.g. large_loader, which shares the bobcat table) are not queried separately.
   const listActs = STRUCTURED_ACT_LIST.filter((a) => !a.excludeFromList);
@@ -216,7 +216,7 @@ export default function Inspections() {
             <DropdownMenuItem onSelect={() => setHarnessOpen(true)}>
               დამცავი ქამრების შემოწმების აქტი
             </DropdownMenuItem>
-            {/* Structured acts — data-driven from the registry (incl. large-loader) */}
+            {/* Structured acts - data-driven from the registry (incl. large-loader) */}
             {STRUCTURED_ACT_LIST.map((act) => (
               <DropdownMenuItem key={act.key} onSelect={() => navigate(`${act.newRoute}${newQuery}`)}>
                 {act.menuLabel}
@@ -277,10 +277,10 @@ export default function Inspections() {
                 <div className="min-w-0">
                   <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
                   <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                    {projects[row.projectId]?.name ?? '—'}
+                    {projects[row.projectId]?.name ?? '-'}
                     {' · '}
                     <span className="font-mono text-xs tabular-nums text-neutral-400 dark:text-neutral-500">
-                      {row.date ? new Date(row.date).toLocaleDateString('ka-GE') : '—'}
+                      {row.date ? new Date(row.date).toLocaleDateString('ka-GE') : '-'}
                     </span>
                   </p>
                 </div>

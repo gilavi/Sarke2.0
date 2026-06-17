@@ -1,15 +1,19 @@
-// lib/theme.ts — AWARD-LEVEL DESIGN SYSTEM
+// lib/theme.ts - AWARD-LEVEL DESIGN SYSTEM
 //
 // Comprehensive design tokens with full backward compatibility.
 // New code should use the nested primary/neutral/semantic scales and
 // the typography / space / radius / shadows / motion / zIndex APIs.
 // Old code continues to work via the compatibility mappings below.
 
-import { useWindowDimensions } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
+
+// Helvetica Neue ships on every iOS/iPadOS device; Android falls back to the
+// system font (Roboto) by leaving fontFamily unset — fontWeight still works.
+const GEO_FONT = Platform.OS === 'ios' ? 'HelveticaNeue' : undefined;
 
 // ── Color Primitives ───────────────────────────────────────────────────────
 
-// Hubble brand board — BRAND ORANGE (#FF6D2E) primary scale.
+// Hubble brand board - BRAND ORANGE (#FF6D2E) primary scale.
 const primary = {
   50: '#FFF3EE',
   100: '#FFE3D6',
@@ -23,7 +27,7 @@ const primary = {
   900: '#7B2913',
 } as const;
 
-// Hubble brand board — warm neutrals anchored on OFF-WHITE (#F2F1EC),
+// Hubble brand board - warm neutrals anchored on OFF-WHITE (#F2F1EC),
 // CONCRETE (#D6D6D1, used for borders) and GRAPHITE (#1A1A1A, ink).
 const neutral = {
   50: '#F2F1EC',
@@ -38,7 +42,7 @@ const neutral = {
   900: '#1A1A1A',
 } as const;
 
-// HI-VIS YELLOW (#E6FF4D) — high-energy spotlight accent (use sparingly).
+// HI-VIS YELLOW (#E6FF4D) - high-energy spotlight accent (use sparingly).
 const highlight = '#E6FF4D';
 
 const semantic = {
@@ -86,7 +90,7 @@ export const lightTheme = {
     },
 
     // ── Backward compatibility (old keys mapped to new values) ──
-    // Old accentSoft was '#DDF0E7'; new primary[50] is '#E8F5F0' — visually close
+    // Old accentSoft was '#DDF0E7'; new primary[50] is '#E8F5F0' - visually close
     warn: semantic.warning,
     warnSoft: semantic.warningSoft,
     danger: semantic.danger,
@@ -107,7 +111,7 @@ export const lightTheme = {
     regsSoft: '#E5DFF9',
 
     // Quick-action button surfaces (BOG-style row). Each entry maps to an
-    // existing palette family — no new color values introduced.
+    // existing palette family - no new color values introduced.
     actionColors: {
       inspection:  { bg: primary[50],            icon: primary[700] },
       incident:    { bg: semantic.warningSoft,   icon: semantic.warning },
@@ -120,13 +124,13 @@ export const lightTheme = {
 
   typography: {
     fontFamily: {
-      display: 'SpaceGrotesk-Bold',
-      heading: 'SpaceGrotesk-SemiBold',
-      headingMedium: 'SpaceGrotesk-Medium',
-      body: 'Inter-Regular',
-      bodyMedium: 'Inter-Medium',
-      bodySemiBold: 'Inter-SemiBold',
-      bodyBold: 'Inter-Bold',
+      display: GEO_FONT,
+      heading: GEO_FONT,
+      headingMedium: GEO_FONT,
+      body: GEO_FONT,
+      bodyMedium: GEO_FONT,
+      bodySemiBold: GEO_FONT,
+      bodyBold: GEO_FONT,
       mono: 'JetBrainsMono-Regular',
     },
     sizes: {
@@ -261,7 +265,7 @@ export const lightTheme = {
     display: (size: number, weight: '400' | '500' | '600' | '700' | '800' | '900' = '700') => ({
       fontSize: size,
       fontWeight: weight,
-      fontFamily: 'System',
+      fontFamily: GEO_FONT,
     }),
   },
 } as const;
@@ -284,8 +288,8 @@ export const darkTheme = {
     border: '#2A2A2A',
     borderStrong: '#3A3A3A',
     accent: primary[400],
-    accentSoft: 'rgba(255,90,31,0.15)',
-    accentGhost: 'rgba(255,90,31,0.08)',
+    accentSoft: 'rgba(255,109,46,0.15)',
+    accentGhost: 'rgba(255,109,46,0.08)',
     highlight,
     highlightSoft: 'rgba(230,255,77,0.16)',
     overlay: 'rgba(0,0,0,0.65)',
@@ -328,7 +332,7 @@ export const darkTheme = {
     regsSoft: '#221A40',
 
     actionColors: {
-      inspection:  { bg: 'rgba(255,90,31,0.15)', icon: primary[400] },
+      inspection:  { bg: 'rgba(255,109,46,0.15)', icon: primary[400] },
       incident:    { bg: '#3F2E0F',              icon: semantic.warning },
       briefing:    { bg: '#1A2E3A',              icon: semantic.info },
       report:      { bg: '#3A1F1F',              icon: semantic.danger },
@@ -342,7 +346,7 @@ export const darkTheme = {
 
 export type Theme = typeof lightTheme;
 
-/** Default theme export — backward compatible with all existing code. */
+/** Default theme export - backward compatible with all existing code. */
 export const theme = lightTheme;
 
 // ── Helpers ────────────────────────────────────────────────────────────────

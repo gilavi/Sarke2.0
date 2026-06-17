@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { ImageIcon, RefreshCw, Trash2, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Skeleton } from '../../components/Skeleton';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -77,10 +77,10 @@ export function PhotoPreviewModal({
           </View>
         ) : error ? (
           <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
-            <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.5)" />
+            <ImageIcon size={48} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
             <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>ფოტო ვერ ჩაიტვირთა</Text>
             <Pressable onPress={loadUri} style={{ padding: 8 }} {...a11y('თავიდან ცდა', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
-              <Ionicons name="refresh" size={28} color="rgba(255,255,255,0.7)" />
+              <RefreshCw size={28} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
             </Pressable>
           </View>
         ) : (
@@ -99,11 +99,11 @@ export function PhotoPreviewModal({
           }}
           {...a11y('წაშლა', 'შეეხეთ წასაშლელად', 'button')}
         >
-          <Ionicons name="trash-outline" size={22} color="#fff" />
+          <Trash2 size={22} color="#fff" strokeWidth={1.5} />
           <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>წაშლა</Text>
         </Pressable>
         <Pressable style={styles.previewCloseBtn} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}>
-          <Ionicons name="close" size={28} color="#fff" />
+          <X size={28} color="#fff" strokeWidth={1.5} />
         </Pressable>
       </View>
     </Modal>

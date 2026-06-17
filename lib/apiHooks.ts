@@ -244,7 +244,7 @@ export function useInspectionsByProject(projectId: string | undefined) {
 }
 
 // Unified per-project inspection list. Backed by the
-// get_project_inspections_unified() RPC — one row per inspection across
+// get_project_inspections_unified() RPC - one row per inspection across
 // generic + all 9 equipment-type tables. The project-detail screen uses this
 // instead of firing 10 parallel `useXxxInspectionsByProject` queries.
 export type UnifiedInspectionPreview = {
@@ -530,7 +530,7 @@ export function useCalendarEvents(): CalendarEvent[] {
   );
 }
 
-/** Overdue + due-today count — drives the tab bar badge. */
+/** Overdue + due-today count - drives the tab bar badge. */
 export function useOverdueCount(): number {
   const events = useCalendarEvents();
   return useMemo(() => getOverdueCount(events), [events]);

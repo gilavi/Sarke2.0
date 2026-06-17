@@ -4,15 +4,16 @@
 // secondary action cards" screen reached after a document is saved
 // (inspection acts, incidents, orders). Every per-domain success screen
 // passes its title/subtitle, an optional summary card as `children`, a
-// primary action, and a list of secondary actions — it never re-rolls the
+// primary action, and a list of secondary actions - it never re-rolls the
 // Screen / CelebrationBurst / AnimatedSuccessIcon / ActionCard / styles.
 //
 // This replaced ~6 byte-identical copies of the same scaffold (one per
 // done.tsx + incident + order), each with its own ActionCard and StyleSheet.
-import { useEffect, useMemo, type ReactNode } from 'react';
+import React, { useEffect, useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button, Screen } from '../ui';
 import { AnimatedSuccessIcon, CelebrationBurst } from '../animations';
@@ -21,7 +22,7 @@ import { haptic } from '../../lib/haptics';
 
 /** A tappable secondary action rendered as a full-width card with an icon. */
 export type SuccessAction = {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   title: string;
   subtitle?: string;
   onPress: () => void;
@@ -30,7 +31,7 @@ export type SuccessAction = {
 /** The single primary CTA rendered as a large filled button. */
 export type SuccessPrimaryAction = {
   title: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: LucideIcon;
   onPress: () => void;
   loading?: boolean;
 };
@@ -110,13 +111,13 @@ export function SuccessActionCard({ icon, title, subtitle, onPress }: SuccessAct
       ]}
     >
       <View style={styles.actionIcon}>
-        <Ionicons name={icon} size={22} color={theme.colors.accent} />
+        {React.createElement(icon, { size: 22, color: theme.colors.accent, strokeWidth: 1.5 })}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.actionTitle}>{title}</Text>
         {subtitle ? <Text style={styles.actionSubtitle}>{subtitle}</Text> : null}
       </View>
-      <Ionicons name="chevron-forward" size={20} color={theme.colors.inkSoft} />
+      <ChevronRight size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
     </Pressable>
   );
 }

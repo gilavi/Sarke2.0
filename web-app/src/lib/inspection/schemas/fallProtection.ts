@@ -1,5 +1,5 @@
 /**
- * Fall-protection inspection schema — web mirror (flattened single-device) of the
+ * Fall-protection inspection schema - web mirror (flattened single-device) of the
  * Expo app's `lib/inspection/schemas/fallProtection.ts` (the `@root` import is
  * eslint-banned). General info + a single device checklist (4-state) + verdict,
  * as custom blocks. The persisted signature section is omitted (regulatory).
@@ -40,7 +40,7 @@ function chipClass(result: FPResult | null): string {
   return 'chip-na';
 }
 function chipDisplay(result: FPResult | null): string {
-  return result ? FP_RESULT_TO_CHIP[result] : '—';
+  return result ? FP_RESULT_TO_CHIP[result] : '-';
 }
 function verdictClass(v: string | null): string {
   if (v === 'safe') return 'verdict-safe';
@@ -51,14 +51,14 @@ function verdictClass(v: string | null): string {
 
 function renderGeneral(insp: FallProtectionInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <div class="info-grid">
-      <div class="info-row"><span class="info-label">ობიექტის დასახელება</span><span class="info-value">${escapeHtml(insp.company) || '—'}</span></div>
-      <div class="info-row"><span class="info-label">მისამართი</span><span class="info-value">${escapeHtml(insp.address) || '—'}</span></div>
-      <div class="info-row"><span class="info-label">უსაფრთხ. ხელმძღვ.</span><span class="info-value">${escapeHtml(insp.safetyLeaderName) || '—'}</span></div>
-      <div class="info-row"><span class="info-label">ტელეფონი</span><span class="info-value">${escapeHtml(insp.safetyLeaderPhone) || '—'}</span></div>
-      <div class="info-row"><span class="info-label">მოწყობილობის ტიპი</span><span class="info-value">${escapeHtml(insp.deviceType) || '—'}</span></div>
-      <div class="info-row"><span class="info-label">განთავსების ადგილი</span><span class="info-value">${escapeHtml(insp.deviceLocation) || '—'}</span></div>
+      <div class="info-row"><span class="info-label">ობიექტის დასახელება</span><span class="info-value">${escapeHtml(insp.company) || '-'}</span></div>
+      <div class="info-row"><span class="info-label">მისამართი</span><span class="info-value">${escapeHtml(insp.address) || '-'}</span></div>
+      <div class="info-row"><span class="info-label">უსაფრთხ. ხელმძღვ.</span><span class="info-value">${escapeHtml(insp.safetyLeaderName) || '-'}</span></div>
+      <div class="info-row"><span class="info-label">ტელეფონი</span><span class="info-value">${escapeHtml(insp.safetyLeaderPhone) || '-'}</span></div>
+      <div class="info-row"><span class="info-label">მოწყობილობის ტიპი</span><span class="info-value">${escapeHtml(insp.deviceType) || '-'}</span></div>
+      <div class="info-row"><span class="info-label">განთავსების ადგილი</span><span class="info-value">${escapeHtml(insp.deviceLocation) || '-'}</span></div>
       <div class="info-row"><span class="info-label">შემოწმების თარიღი</span><span class="info-value">${fmtDate(insp.inspectionDate)}</span></div>
     </div>
   `;
@@ -80,7 +80,7 @@ function renderChecklist(insp: FallProtectionInspection, photos: PhotoMap): stri
       </tr>`;
   }).join('');
   return `
-    <div class="section-title">II — შემოწმების ჩეკლისტი</div>
+    <div class="section-title">II - შემოწმების ჩეკლისტი</div>
     <table class="cl-table">
       <thead><tr><th class="col-num">#</th><th>პარამეტრი</th><th class="col-result">შეფ.</th><th>კომენტარი</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -89,9 +89,9 @@ function renderChecklist(insp: FallProtectionInspection, photos: PhotoMap): stri
 }
 
 function renderVerdict(insp: FallProtectionInspection): string {
-  const label = insp.verdict ? FP_VERDICT_LABELS[insp.verdict] : '—';
+  const label = insp.verdict ? FP_VERDICT_LABELS[insp.verdict] : '-';
   return `
-    <div class="section-title">III — დასკვნა</div>
+    <div class="section-title">III - დასკვნა</div>
     <div class="verdict-band">
       <div class="${verdictClass(insp.verdict)}">${escapeHtml(label)}</div>
       ${insp.verdictComment ? `<div class="item-comment" style="margin-top:6px;">${escapeHtml(insp.verdictComment)}</div>` : ''}

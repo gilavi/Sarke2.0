@@ -3,12 +3,12 @@
  *
  * Web-app mirror of the Expo app's `lib/inspection/schemas/bobcat.ts` (the
  * `@root` import is banned by eslint). Covers both template variants that share
- * the `bobcat_inspections` table — "ციცხვიანი დამტვირთველი" (bobcat / skid-steer)
- * and "დიდი ციცხვიანი დამტვირთველი" (large loader) — distinguished at render
+ * the `bobcat_inspections` table - "ციცხვიანი დამტვირთველი" (bobcat / skid-steer)
+ * and "დიდი ციცხვიანი დამტვირთველი" (large loader) - distinguished at render
  * time by `inspection.templateId`. Body sections are `custom` blocks for
  * byte-identical output; drives the descriptor-driven PDF in `lib/inspection/pdf.ts`.
  *
- * Regulatory divergence from mobile: the persisted "V — პასუხისმგებელი პირი"
+ * Regulatory divergence from mobile: the persisted "V - პასუხისმგებელი პირი"
  * signature section is NOT rendered here. Captured inspection signatures are
  * never persisted on web; they are appended by `buildInspectionPdf` from the
  * in-memory `SignaturesSectionData`.
@@ -70,16 +70,16 @@ function catalogFor(insp: BobcatInspection): BobcatChecklistEntry[] {
 }
 
 function resultPill(result: string | null, entry?: BobcatChecklistEntry): string {
-  if (result === 'good') return '<span class="pill pill-good">1 — კარგია</span>';
-  if (result === 'deficient') return '<span class="pill pill-def">2 — ნაკლი</span>';
+  if (result === 'good') return '<span class="pill pill-good">1 - კარგია</span>';
+  if (result === 'deficient') return '<span class="pill pill-def">2 - ნაკლი</span>';
   if (result === 'unusable') {
     if (entry?.unusableIsNeutral) {
       const label = entry.unusableLabel ?? 'არ გააჩნია';
-      return `<span class="pill pill-neutral">— ${escapeHtml(label)}</span>`;
+      return `<span class="pill pill-neutral">- ${escapeHtml(label)}</span>`;
     }
-    return '<span class="pill pill-bad">3 — გამოუსადეგ.</span>';
+    return '<span class="pill pill-bad">3 - გამოუსადეგ.</span>';
   }
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function renderSectionI(insp: BobcatInspection): string {
@@ -87,26 +87,26 @@ function renderSectionI(insp: BobcatInspection): string {
     insp.inspectionType === key ? '<span style="color:var(--accent);font-weight:700;">☑</span>' : '☐';
 
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
         <td>
           <span class="lbl">ობიექტი / კომპანია</span>
-          <span class="val">${escapeHtml(insp.company) || '—'}</span>
+          <span class="val">${escapeHtml(insp.company) || '-'}</span>
         </td>
         <td>
           <span class="lbl">დამტვირთველის მარკა / მოდელი</span>
-          <span class="val">${escapeHtml(insp.equipmentModel) || '—'}</span>
+          <span class="val">${escapeHtml(insp.equipmentModel) || '-'}</span>
         </td>
       </tr>
       <tr>
         <td>
           <span class="lbl">მისამართი</span>
-          <span class="val">${escapeHtml(insp.address) || '—'}</span>
+          <span class="val">${escapeHtml(insp.address) || '-'}</span>
         </td>
         <td>
           <span class="lbl">სახელმწიფო / ს.ნ ნომერი</span>
-          <span class="val">${escapeHtml(insp.registrationNumber) || '—'}</span>
+          <span class="val">${escapeHtml(insp.registrationNumber) || '-'}</span>
         </td>
       </tr>
       <tr>
@@ -126,7 +126,7 @@ function renderSectionI(insp: BobcatInspection): string {
       <tr>
         <td>
           <span class="lbl">ინსპექტორი</span>
-          <span class="val">${escapeHtml(insp.inspectorName) || '—'}</span>
+          <span class="val">${escapeHtml(insp.inspectorName) || '-'}</span>
         </td>
         <td></td>
       </tr>
@@ -178,11 +178,11 @@ function renderSectionIII(insp: BobcatInspection, photos: PhotoMap): string {
   }
 
   return `
-    <div class="section-title">III — შემოწმების ჩეკლისტი</div>
+    <div class="section-title">III - შემოწმების ჩეკლისტი</div>
     <div class="legend">
-      <span class="legend-item"><span class="dot dot-good"></span><strong>1</strong> — კარგია (ნორმაშია)</span>
-      <span class="legend-item"><span class="dot dot-def"></span><strong>2</strong> — ნაკლი (საჭიროებს მომსახურებას)</span>
-      <span class="legend-item"><span class="dot dot-bad"></span><strong>3</strong> — გამოუსადეგარია</span>
+      <span class="legend-item"><span class="dot dot-good"></span><strong>1</strong> - კარგია (ნორმაშია)</span>
+      <span class="legend-item"><span class="dot dot-def"></span><strong>2</strong> - ნაკლი (საჭიროებს მომსახურებას)</span>
+      <span class="legend-item"><span class="dot dot-bad"></span><strong>3</strong> - გამოუსადეგარია</span>
     </div>
     <table class="cl-table">
       <thead>
@@ -217,14 +217,14 @@ function renderSectionIV(insp: BobcatInspection, photos: PhotoMap): string {
   const vchecked = (v: string) => (insp.verdict === v ? 'checked' : '');
 
   return `
-    <div class="section-title">IV — შეჯამება</div>
+    <div class="section-title">IV - შეჯამება</div>
     <table class="sum-table">
       <thead>
         <tr>
           <th>კატეგორია</th>
-          <th>1 — კარგია</th>
-          <th>2 — ნაკლი</th>
-          <th>3 — გამოუსად.</th>
+          <th>1 - კარგია</th>
+          <th>2 - ნაკლი</th>
+          <th>3 - გამოუსად.</th>
         </tr>
       </thead>
       <tbody>${sumRows}</tbody>
@@ -278,7 +278,7 @@ export const bobcatSchema: InspectionSchema<BobcatInspection> = {
   docSubtitle: (d) =>
     d.templateId === LARGE_LOADER_TEMPLATE_ID ? 'Large Loader Inspection' : 'Bobcat / Skid-Steer Loader Inspection',
   pdfFooterLabel: (d) =>
-    `Hubble — ${d.templateId === LARGE_LOADER_TEMPLATE_ID ? 'დიდი ციცხვიანი დამტვირთველის შემოწმების აქტი' : 'ციცხვიანი დამტვირთველის შემოწმების აქტი'}`,
+    `Hubble - ${d.templateId === LARGE_LOADER_TEMPLATE_ID ? 'დიდი ციცხვიანი დამტვირთველის შემოწმების აქტი' : 'ციცხვიანი დამტვირთველის შემოწმების აქტი'}`,
   pdfNameLabel: 'BobcatInspection',
   extraCss: EXTRA_CSS,
 

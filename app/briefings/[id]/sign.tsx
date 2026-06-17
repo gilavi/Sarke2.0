@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleAlert, RefreshCw } from 'lucide-react-native';
 import { Button } from '../../../components/ui';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { ChipNavStrip } from '../../../components/inspection-parts/ChipNavStrip';
@@ -66,7 +66,7 @@ export default function BriefingSignScreen() {
         {header}
         {chipStrip}
         <View style={styles.interstitial}>
-          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.ink} />
+          <CircleAlert size={48} color={theme.colors.ink} strokeWidth={1.5} />
           <Text style={styles.interstitialTitle}>
             {s.skippedCount} მუშაკი გამოტოვებული
           </Text>
@@ -114,7 +114,7 @@ export default function BriefingSignScreen() {
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
           {s.hasStroke && (
             <Pressable onPress={s.handleClear} style={styles.skipBtn} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
-              <Ionicons name="refresh" size={16} color={theme.colors.inkSoft} />
+              <RefreshCw size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
               <Text style={styles.skipBtnText}>გასუფთავება</Text>
             </Pressable>
           )}
@@ -139,7 +139,7 @@ export default function BriefingSignScreen() {
       <SignatureStage
         eyebrow="ხელს აწერს"
         name={s.workerName}
-        caption={`${s.currentIdx + 1} / ${s.totalWorkers}${s.alreadySigned ? ' · უკვე მოწერილია — გადაწერა' : ''}`}
+        caption={`${s.currentIdx + 1} / ${s.totalWorkers}${s.alreadySigned ? ' · უკვე მოწერილია - გადაწერა' : ''}`}
         canvasKey={s.currentIdx}
         canvasRef={s.canvasRef}
         hasStroke={s.hasStroke}
@@ -154,7 +154,7 @@ export default function BriefingSignScreen() {
           style={[styles.iconBtn, !s.hasStroke && { opacity: 0.3 }]}
           {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}
         >
-          <Ionicons name="refresh" size={16} color={theme.colors.inkSoft} />
+          <RefreshCw size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
         </Pressable>
         <Pressable
           onPress={s.handleSkip}

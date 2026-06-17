@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@/test-utils';
 import StatusBadge from '@/components/StatusBadge';
 
-describe('StatusBadge — known statuses', () => {
+describe('StatusBadge - known statuses', () => {
   it('completed → "დასრულდა" with brand styling', () => {
     const { container } = render(<StatusBadge status="completed" />);
     expect(screen.getByText('დასრულდა')).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe('StatusBadge — known statuses', () => {
   });
 });
 
-describe('StatusBadge — unknown status', () => {
+describe('StatusBadge - unknown status', () => {
   it('renders the raw status string as label', () => {
     render(<StatusBadge status="something_weird" />);
     expect(screen.getByText('something_weird')).toBeInTheDocument();
@@ -53,7 +53,7 @@ describe('StatusBadge — unknown status', () => {
   });
 });
 
-describe('StatusBadge — showIcon prop', () => {
+describe('StatusBadge - showIcon prop', () => {
   it('renders an icon by default for known statuses', () => {
     const { container } = render(<StatusBadge status="completed" />);
     // lucide icon renders as an svg
@@ -66,7 +66,7 @@ describe('StatusBadge — showIcon prop', () => {
   });
 });
 
-describe('StatusBadge — className prop', () => {
+describe('StatusBadge - className prop', () => {
   it('forwards extra className to the badge root', () => {
     const { container } = render(<StatusBadge status="draft" className="my-custom-class" />);
     expect(container.querySelector('.mantine-Badge-root')).toHaveClass('my-custom-class');

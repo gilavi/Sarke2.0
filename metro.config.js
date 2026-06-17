@@ -1,6 +1,6 @@
 // Metro bundler config.
 //
-// We extend Expo's default config to enable the `web` platform — without
+// We extend Expo's default config to enable the `web` platform - without
 // this, bundling for web fails to resolve `react-native-web/dist/index`
 // and `react-dom/client` because Metro's default platforms list is
 // `['ios', 'android']` only.
@@ -15,7 +15,7 @@ config.resolver.platforms = Array.from(
 
 // Skip these directories entirely during native (iOS/Android) Metro
 // resolution. They are sibling projects (web-app/ Vite app, website/ Docusaurus,
-// supabase/ migrations, docs/) that Metro should never crawl for source — every
+// supabase/ migrations, docs/) that Metro should never crawl for source - every
 // hot reload would otherwise stat thousands of files for nothing.
 // Metro accepts a single RegExp or a RegExp[]; using one combined regex with
 // platform-agnostic separators (matches both / and \) so this works on Windows
@@ -54,7 +54,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   }
   // Override react-native-worklets PlatformChecker on web. The library's
   // index.ts reads `globalThis.__RUNTIME_KIND` at module-init time, but on web
-  // that flag is unset when PlatformChecker first evaluates — so
+  // that flag is unset when PlatformChecker first evaluates - so
   // `SHOULD_BE_USE_WEB` stays false and the native-mode `createSerializable`
   // crashes at boot. The shim hard-codes the web-mode flags via Platform.OS,
   // sidestepping the timing dependency. Match imports like `../PlatformChecker`

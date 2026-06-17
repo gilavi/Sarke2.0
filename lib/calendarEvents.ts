@@ -39,7 +39,7 @@ export function isSameDay(a: Date, b: Date): boolean {
 
 /**
  * Builds a flat, date-sorted list of CalendarEvent from DB data + the
- * schedule store. Pure function — no side effects.
+ * schedule store. Pure function - no side effects.
  *
  * PAST events: one per completed inspection/briefing (shows history).
  * FUTURE events: one per (project, template) group for inspections,
@@ -178,7 +178,7 @@ export function eventsForDay(events: CalendarEvent[], day: Date): CalendarEvent[
 }
 
 /**
- * Statuses present on a given day — drives the dot row under each day cell.
+ * Statuses present on a given day - drives the dot row under each day cell.
  * At most one of each status type.
  */
 export function dotStatusesForDay(
@@ -192,7 +192,7 @@ export function dotStatusesForDay(
   return statuses;
 }
 
-/** Overdue + due_today future events — used for the tab badge count. */
+/** Overdue + due_today future events - used for the tab badge count. */
 export function getOverdueCount(events: CalendarEvent[]): number {
   return events.filter(e => !e.isPast && (e.status === 'overdue' || e.status === 'due_today')).length;
 }

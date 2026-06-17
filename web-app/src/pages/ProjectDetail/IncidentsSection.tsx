@@ -56,7 +56,7 @@ export function IncidentsSection({ projectId }: Props) {
                       {i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : i.description)}
                     </span>
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {new Date(i.date_time).toLocaleDateString('ka-GE')} · {i.location || '—'}
+                      {new Date(i.date_time).toLocaleDateString('ka-GE')} · {i.location || '-'}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

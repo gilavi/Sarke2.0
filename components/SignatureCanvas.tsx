@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState , useMemo} from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { RefreshCw, X } from 'lucide-react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button } from './ui';
 import { useTheme } from '../lib/theme';
@@ -57,7 +57,7 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
     [onConfirm],
   );
 
-  // The WebView's onBegin fires on the first touch — we use it as our
+  // The WebView's onBegin fires on the first touch - we use it as our
   // "user has drawn" signal so Confirm can enable/disable correctly.
   // The fixed/100% sizing is required: without it the inner <canvas>
   // keeps its initial width/height and the bottom half stops registering
@@ -83,15 +83,15 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
           </View>
           {hasStroke && (
             <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
-              <Ionicons name="refresh" size={18} color={theme.colors.inkSoft} />
+              <RefreshCw size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
           )}
           <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y('დახურვა', undefined, 'button')}>
-            <Ionicons name="close" size={22} color={theme.colors.ink} />
+            <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
           </Pressable>
         </View>
 
-        {/* Canvas — fixed height so buttons always sit close below */}
+        {/* Canvas - fixed height so buttons always sit close below */}
         <View style={styles.canvasWrap}>
           <SignatureScreen
             ref={ref}
@@ -111,7 +111,7 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
           />
           {/* Dashed sign-here line */}
           <View pointerEvents="none" style={styles.baseline} />
-          {/* Hint — only shown before first stroke */}
+          {/* Hint - only shown before first stroke */}
           {!hasStroke && (
             <View pointerEvents="none" style={styles.hintWrap}>
               <Text style={styles.hintText}>ამ სივრცეში ხელი მოაწერეთ</Text>

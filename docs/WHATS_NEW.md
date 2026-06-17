@@ -4,6 +4,44 @@
 
 ---
 
+## 2026-06-17 — Home screen: even vertical rhythm + project-card address line
+
+The home feed's individual sections looked fine but didn't sit well together — the gaps between them jumped around (`~10px` cert→projects, `44px` projects→quick-actions, `40px` before recent, `42px` before the tip), and the recent-activity block sat at a `24px` gutter while everything else used `20px`.
+
+- **Uniform section rhythm:** every major section in [`home.tsx`](../app/(tabs)/home.tsx) (cert banner, projects, quick actions, recent activity, tip) now owns its **top** gap (~28px) with bottoms zeroed, so the spacing stays even no matter which optional blocks render. Removed the redundant double `marginTop` on the section header.
+- **One gutter:** recent-activity rows, the section header, and the date separators moved from `24px` → `20px` horizontal padding to match the rest of the screen (projects, quick actions, banner, draft card, tip).
+- **Project cards** ([`ProjectCard`](../components/home/ProjectCard.tsx)) now show the project **address** as a soft second line under the name, replacing the experimental per-project "დრაფტი / X აქტი" badges (and the `projectStats` bookkeeping that fed them).
+
+---
+
+## 2026-06-17 — Illustrations: monochrome brand palette (no more old-branding green)
+
+Every hand-drawn illustration in the app carried leftover **green/teal from the pre-rebrand identity** (`#1D9E75`, `#0F6E56`, `#E8F5F0`, …) plus a stale orange (`#FF5A1F`, before the `#FF6D2E` switch). They now follow one cohesive **monochrome** system: shades of primary orange + secondary electric-yellow + black/neutral grays.
+
+- **New primitive** [`lib/illustrationPalette.ts`](../lib/illustrationPalette.ts) (`useIllustrationPalette()`) — the single source of truth for illustration colors. Documented in [docs/primitives.md](primitives.md#illustration-palette-monochrome-svg-art). Components must source colors from here rather than hardcoding hex, so the art can't drift back off-brand.
+- **Recolored:** [`QuestionAvatar`](../components/QuestionAvatar.tsx) (16 scaffold avatars — greens → orange/yellow/black), [`ErrorScreen`](../components/ErrorScreen.tsx) (green hard hat → safety orange), [`SkeletonMap`](../components/SkeletonMap.tsx) (green blueprint → graphite + orange pulse), [`OrbitField`](../components/OrbitField.tsx) & [`ProjectAvatar`](../components/ProjectAvatar.tsx) (`#FF5A1F` → `#FF6D2E`).
+- **Flattened to monochrome:** [`EmptyState`](../components/EmptyState.tsx) (blue/amber category illustrations → orange + black, one yellow star pop) and [`InspectionTypeAvatar`](../components/InspectionTypeAvatar.tsx) (rainbow pastel tiles → one brand wash; emoji carries the recognition).
+- **Other green cleanup:** [`PlateInput`](../components/inputs/PlateInput.tsx) and the Kamari counter controls (`BRAND_GREEN` → orange `BRAND_ACCENT`); [`statusColors`](../lib/statusColors.ts) "completed" now uses the canonical `semantic.success` green instead of the retired brand-green hex.
+- Semantic verdict/status colors (safe = green, danger = red) are unchanged — they're meaning, not branding.
+
+**Not touched:** PDF templates (`lib/reportPdf.ts`, `lib/briefingPdf.ts`, `lib/pdf/inspection/template.css.ts`, `lib/inspection/pdfStyles.ts`, …) still carry green `--accent`/old-orange. Those are generated legal documents, deliberately left for a separate, explicit pass.
+
+---
+
+## 2026-06-17 — General equipment checklist: editable rows + dead PDF icon removed
+
+The ტექ.აღჭ. (general equipment) inspection checklist step was showing "—" for every row because `EquipmentItem.name` starts blank and there was no UI to enter it. Each checklist row is now an inline `TextInput` (placeholder "დასახელება...") that writes back to `EquipmentItem.name` via `updateEquipmentName`. The row reuses the existing `ChecklistItemRow` component (now accepts an optional `editableLabel` prop) so it looks and behaves identically to the ქამრები/equipment flows.
+
+The orange document icon that appeared next to the ✕ button in equipment inspection headers did nothing — `showPdfIcon`, `generatingPdf`, `saving`, and `onPdf` were passed by all 9 inspection routes but `InspectionShell` never read them. All dead props removed from `InspectionShellProps` and every caller (bobcat, excavator, cargo-platform, forklift, fall-protection, lifting-accessories, mobile-ladder, safety-net, general-equipment). The dead `savingHint` style and the unused `progressPill`/`progressPillText` styles in general-equipment were also removed.
+
+---
+
+## 2026-06-17 — Auto-focus keyboard on single-input wizard steps
+
+Landing on a step that contains exactly one text input (measure or freetext question types in the inspection wizard; the participants name field in the briefing wizard) now opens the keyboard immediately without requiring a tap. `autoFocus` added to [`MeasureInput`](../features/inspection-wizard/MeasureInput.tsx), [`DebouncedFreetext`](../features/inspection-wizard/DebouncedFreetext.tsx), and [`ParticipantsStep`](../components/briefings/ParticipantsStep.tsx). Steps with multiple inputs or non-text primary interactions are unaffected.
+
+---
+
 ## 2026-06-17 — One verdict picker on every შემოწმება conclusion step
 
 The conclusion (`დასკვნა`) step looked different depending on which flow you entered: the scaffold (ხარაჩო) wizard used a tall, icon-based decision selector (`გადაწყვეტილება` — shield / eye / warning buttons), while the equipment routes and the harness (დამცავი ქამრები) flow showed flat pill chips (`უსაფრთხოა` / `არ არის უსაფრთხო`). Same decision, two looks.

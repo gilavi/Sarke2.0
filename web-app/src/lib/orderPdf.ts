@@ -119,7 +119,7 @@ ol.duties li::before { content: counter(duty-counter, lower-georgian) ") "; }
 <ol class="decree">
   <li>
     <strong>${escHtml(f.appointedName)}</strong>, ტელ.: ${escHtml(f.appointedPhone)},
-    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე —
+    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე -
     <strong>„${escHtml(f.objectName)}"</strong>${f.objectAddress ? `, ${escHtml(f.objectAddress)}` : ''}.
   </li>
   <li>
@@ -132,7 +132,7 @@ ol.duties li::before { content: counter(duty-counter, lower-georgian) ") "; }
       <li>სახანძრო სიგნალიზაციისა და ხანძარის ჩაქრობის ავტომატური სისტემების მუშაობის კონტროლი;</li>
       <li>სახანძრო-ევაკუაციური გამოსასვლელებისა და გზების გაწმენდა ყოველგვარი დამაბრკოლებლისაგან;</li>
       <li>სახანძრო სავარჯიშოს (ევაკუაცია) ჩატარება წელიწადში მინიმუმ ერთხელ, ჩანიშვნა ჟურნალში;</li>
-      <li>ხანძრის შემთხვევაში — 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
+      <li>ხანძრის შემთხვევაში - 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
     </ol>
   </li>
   <li>ობიექტზე უზრუნველყოფილ იქნეს სახანძრო-ევაკუაციური ნიშნების, განათებული გამოსასვლელების, პირველადი ხანძარსაწინააღმდეგო საშუალებებისა და სიგნალიზაციის ყოველდღიური მზადყოფნა.</li>
@@ -168,7 +168,7 @@ ol.duties li::before { content: counter(duty-counter, lower-georgian) ") "; }
 
 <div class="footer">
   <span>გვერდი 1 / 1</span>
-  <span>ბრძანება №${escHtml(f.orderNumber)} — სახანძრო უსაფრთხოება</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - სახანძრო უსაფრთხოება</span>
 </div>
 
 </body>
@@ -234,9 +234,9 @@ ol.duties li::before { content: counter(duty-counter, lower-georgian) ") "; }
 <ol class="decree">
   <li>
     <strong>${escHtml(f.appointedName)}</strong>
-    (თანამდებობა — ${escHtml(f.appointedPosition)}, პირადი №${escHtml(f.appointedIdNumber)}),
+    (თანამდებობა - ${escHtml(f.appointedPosition)}, პირადი №${escHtml(f.appointedIdNumber)}),
     ტელ.: ${escHtml(f.appointedPhone)},
-    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე —
+    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე -
     <strong>„${escHtml(f.objectName)}"</strong>${f.objectAddress ? `, ${escHtml(f.objectAddress)}` : ''}.
   </li>
   <li>
@@ -249,7 +249,7 @@ ol.duties li::before { content: counter(duty-counter, lower-georgian) ") "; }
       <li>სახანძრო უსაფრთხოების ინსტრუქტაჟის ჩატარება, ჟურნალის წარმოება და ხელმოწერების უზრუნველყოფა;</li>
       <li>სახანძრო-ევაკუაციური სავარჯიშოს ჩატარება წელიწადში მინიმუმ ერთხელ, ჩანიშვნა ჟურნალში;</li>
       <li>შეკუმშული გაზების (ჟანგბადი, პროპანი) შენახვისა და გამოყენების სახანძრო უსაფრთხოების წესების კონტროლი;</li>
-      <li>ხანძრის შემთხვევაში — 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
+      <li>ხანძრის შემთხვევაში - 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
     </ol>
   </li>
   <li>ობიექტზე უზრუნველყოფილ იქნეს სახანძრო-ევაკუაციური ნიშნების, განათებული გამოსასვლელების, საევაკუაციო გეგმის, პირველადი ხანძარსაწინააღმდეგო საშუალებებისა და სიგნალიზაციის ყოველდღიური მზადყოფნა.</li>
@@ -286,7 +286,7 @@ ol.duties li::before { content: counter(duty-counter, lower-georgian) ") "; }
 
 <div class="footer">
   <span>გვერდი 1 / 1</span>
-  <span>ბრძანება №${escHtml(f.orderNumber)} — სახანძრო უსაფრთხოება (საწარმო)</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - სახანძრო უსაფრთხოება (საწარმო)</span>
 </div>
 
 </body>
@@ -320,7 +320,7 @@ export function buildLaborSafetyOrderHtml(f: LaborSafetyOrderFormData): string {
 </ul>
 <p class="decree-title">ვ ბ რ ძ ა ნ ე ბ:</p>
 <ol class="decree">
-  <li>ობიექტზე — <strong>„${escHtml(f.facilityName)}"</strong> — შრომის უსაფრთხოების სპეციალისტად დაინიშნოს
+  <li>ობიექტზე - <strong>„${escHtml(f.facilityName)}"</strong> - შრომის უსაფრთხოების სპეციალისტად დაინიშნოს
     <strong>${escHtml(f.specialistName)}</strong> (პ/ნ ${escHtml(f.specialistPersonalId)}),
     სერტიფიკატი №${escHtml(f.certificateNumber)}, გაცემული ${fmtDate(f.certificateDate)}.</li>
   <li>შრომის უსაფრთხოების სპეციალისტი ვალდებულია:
@@ -380,13 +380,13 @@ export function buildAlcoholControlOrderHtml(f: AlcoholControlOrderFormData): st
 </ul>
 <p class="decree-title">ვ ბ რ ძ ა ნ ე ბ:</p>
 <ol class="decree">
-  <li>ობიექტზე — <strong>„${escHtml(f.facilityName)}"</strong> — ალკოჰოლური, ნარკოტიკული და ფსიქოტროპული საშუალებებით თრობის კონტროლზე პასუხისმგებელ პირად დაინიშნოს
+  <li>ობიექტზე - <strong>„${escHtml(f.facilityName)}"</strong> - ალკოჰოლური, ნარკოტიკული და ფსიქოტროპული საშუალებებით თრობის კონტროლზე პასუხისმგებელ პირად დაინიშნოს
     <strong>${escHtml(f.responsiblePersonName)}</strong>
-    (თანამდებობა — ${escHtml(f.responsiblePersonPosition)}, პირადი №${escHtml(f.responsiblePersonPersonalId)}).</li>
+    (თანამდებობა - ${escHtml(f.responsiblePersonPosition)}, პირადი №${escHtml(f.responsiblePersonPersonalId)}).</li>
   <li>პასუხისმგებელ პირს დაევალოს:
     <ol class="duties">
       <li>ყოველდღიური სამორიგეო შემოწმება ცვლის დაწყებამდე;</li>
-      <li>თრობის ნიშნების გამოვლენისას — სამუშაოდან ჩამოშორება და ფაქტის ფიქსირება;</li>
+      <li>თრობის ნიშნების გამოვლენისას - სამუშაოდან ჩამოშორება და ფაქტის ფიქსირება;</li>
       <li>შემოწმების ჟურნალის წარმოება;</li>
       <li>ინფორმირება ნულოვანი ტოლერანტობის პოლიტიკის შესახებ;</li>
       <li>ხელმძღვანელობის ინფორმირება იმავე დღეს;</li>

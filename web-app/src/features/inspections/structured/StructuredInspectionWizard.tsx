@@ -6,10 +6,10 @@
  *
  * Create pattern (project standard): on a `/<type>/new` route the wizard shows
  * only the specs step; "next" creates the row and navigates to its detail route,
- * where the remaining steps unlock — so there is no `/<type>/draft` dead-end.
+ * where the remaining steps unlock - so there is no `/<type>/draft` dead-end.
  *
  * On completion it marks the row completed and navigates to the result screen
- * (StructuredActPage routes completed rows there) carrying the success payload —
+ * (StructuredActPage routes completed rows there) carrying the success payload -
  * signature capture + PDF live on that result screen, like harness. This wizard
  * never shows a signature step.
  */

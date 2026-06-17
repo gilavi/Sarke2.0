@@ -1,5 +1,5 @@
 /**
- * Excavator inspection schema — drives the shared PDF renderer.
+ * Excavator inspection schema - drives the shared PDF renderer.
  *
  * Behavior-faithful replacement for lib/excavatorPdf.ts: the item catalogs,
  * verdict labels, and machine specs continue to live in types/excavator.ts
@@ -68,7 +68,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
 
   docTitle: 'ექსკავატორის ტექნიკური<br>შემოწმების აქტი',
   docSubtitle: 'Excavator Technical Inspection Report',
-  pdfFooterLabel: 'Hubble — ექსკავატორის ტექნიკური შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble - ექსკავატორის ტექნიკური შემოწმების აქტი',
   pdfNameLabel: 'ExcavatorInspection',
   extraCss: EXTRA_CSS,
 
@@ -85,7 +85,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
   blocks: [
     {
       kind: 'machineSpecs',
-      title: 'I — მანქანის ტექნიკური მახასიათებლები',
+      title: 'I - მანქანის ტექნიკური მახასიათებლები',
       specs: (d) => {
         const sp = d.machineSpecs ?? EXCAVATOR_MACHINE_SPECS;
         return [
@@ -100,7 +100,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'infoFields',
-      title: 'II — დოკუმენტის ინფორმაცია',
+      title: 'II - დოკუმენტის ინფორმაცია',
       fields: (d) => [
         { label: 'სახელმწიფო / ს.ნ ნომერი', value: d.registrationNumber ?? '' },
         { label: 'სერიული ნომერი', value: d.serialNumber ?? '' },
@@ -116,7 +116,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'checklist',
-      title: 'III — შემოწმების ჩეკლისტი',
+      title: 'III - შემოწმების ჩეკლისტი',
       layout: 'checks',
       resultOptions: [
         { value: 'good', label: 'კარგია', short: 'კარგია', mark: '✓', tone: 'good' },
@@ -124,8 +124,8 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
         { value: 'unusable', label: 'გამოუსადეგარია', short: 'გამოუსადეგარია', mark: '✗', tone: 'bad' },
       ],
       legend: [
-        { tone: 'good', text: '✓ კარგი — ნორმაში' },
-        { tone: 'warn', text: '? ნაკლი — საჭიროებს მომსახურებას' },
+        { tone: 'good', text: '✓ კარგი - ნორმაში' },
+        { tone: 'warn', text: '? ნაკლი - საჭიროებს მომსახურებას' },
         { tone: 'bad', text: '✗ გამოუსადეგარი' },
       ],
       sections: (d) => [
@@ -137,7 +137,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'maintenance',
-      title: 'VI — ტექნიკური მომსახურება',
+      title: 'VI - ტექნიკური მომსახურება',
       yesLabel: 'კი',
       noLabel: 'არა',
       dateLabel: 'თარიღი',
@@ -149,7 +149,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'verdict',
-      title: 'IV — დასკვნა',
+      title: 'IV - დასკვნა',
       options: (Object.entries(EXCAVATOR_VERDICT_LABEL) as [ExcavatorVerdict, string][]).map(
         ([value, label]) => ({ value, label }),
       ),
@@ -167,16 +167,16 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
           ? `<img class="sig-img" src="${escapeHtml(sigDataUrl)}" alt="ხელმოწერა" />`
           : '<div style="height:48px;border-bottom:1px dashed var(--hairline);"></div>';
         return `
-          <div class="section-title">V — შემომწმებელი</div>
+          <div class="section-title">V - შემომწმებელი</div>
           <div class="sig-block">
             <div class="sig-cell">
               <div class="sig-lbl">სახელი / გვარი</div>
-              <div class="sig-name">${escapeHtml(d.inspectorName) || '—'}</div>
+              <div class="sig-name">${escapeHtml(d.inspectorName) || '-'}</div>
               <div class="sig-role">შემომწმებელი</div>
             </div>
             <div class="sig-cell">
               <div class="sig-lbl">თანამდებობა</div>
-              <div class="sig-name" style="font-weight:400;">${escapeHtml(d.inspectorPosition) || '—'}</div>
+              <div class="sig-name" style="font-weight:400;">${escapeHtml(d.inspectorPosition) || '-'}</div>
             </div>
             <div class="sig-cell">
               <div class="sig-lbl">ხელმოწერა</div>

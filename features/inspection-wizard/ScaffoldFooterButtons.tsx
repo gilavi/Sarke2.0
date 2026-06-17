@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, EllipsisVertical } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
@@ -52,7 +52,7 @@ export function ScaffoldFooterButtons({
 
   const renderStatusButton = (col: string) => {
     const isSelected = selectedStatus === col;
-    const { icon } = scaffoldColStyle(col, theme);
+    const { icon: IconComp } = scaffoldColStyle(col, theme);
     const isNone = col === noneCol;
     return (
       <Pressable
@@ -68,11 +68,11 @@ export function ScaffoldFooterButtons({
         ]}
         {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
       >
-        <Ionicons
-          name={isSelected ? (icon as any) : 'ellipse-outline'}
-          size={22}
-          color={isSelected ? theme.colors.ink : theme.colors.inkFaint}
-        />
+        {isSelected ? (
+          <IconComp size={22} color={theme.colors.ink} strokeWidth={1.5} />
+        ) : (
+          <EllipsisVertical size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
+        )}
         <Text
           style={[
             staticStyles.statusOptionText,
@@ -92,7 +92,7 @@ export function ScaffoldFooterButtons({
         <Button
           title="შემდეგი"
           style={{ paddingVertical: 14 }}
-          iconRight={<Ionicons name="chevron-forward" size={18} color={theme.colors.white} />}
+          rightIcon={ChevronRight}
           onPress={() => {
             haptic.light();
             onAdvance();

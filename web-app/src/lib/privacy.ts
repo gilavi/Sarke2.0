@@ -1,4 +1,4 @@
-// Privacy policy content (ka + en). Same self-contained pattern as ./terms.ts —
+// Privacy policy content (ka + en). Same self-contained pattern as ./terms.ts -
 // do NOT import from the Expo project. This page is the public privacy policy
 // URL submitted to App Store Connect; keep it in sync with the App Privacy
 // labels in docs/APP_STORE_REVIEW.md whenever data collection changes.
@@ -19,7 +19,7 @@ export const privacyKa: PrivacyBody = {
     {
       title: '1. ვინ ვართ',
       body:
-        'Hubble არის შრომის უსაფრთხოების აპლიკაცია სამშენებლო სექტორისთვის — ' +
+        'Hubble არის შრომის უსაფრთხოების აპლიკაცია სამშენებლო სექტორისთვის - ' +
         'მობილური აპი (iOS/Android) და ვებ-პლატფორმა hubble.ge. ეს პოლიტიკა ' +
         'აღწერს, რა მონაცემებს ვაგროვებთ და როგორ ვიყენებთ მათ. საკონტაქტო: ' +
         'support@hubble.ge.',
@@ -51,7 +51,7 @@ export const privacyKa: PrivacyBody = {
     {
       title: '5. ხელმოწერები',
       body:
-        'შემოწმების აქტზე აღებული ხელმოწერა სერვერზე არ ინახება — ის მხოლოდ ' +
+        'შემოწმების აქტზე აღებული ხელმოწერა სერვერზე არ ინახება - ის მხოლოდ ' +
         'გენერირებულ PDF დოკუმენტში აისახება. დოკუმენტების ხელმოწერის ნაკადებში ' +
         '(შეკვეთები, SMS-ით დისტანციური ხელმოწერა, ინსტრუქტაჟი) ხელმოწერის ' +
         'გამოსახულება ინახება დახურულ საცავში.',
@@ -102,7 +102,7 @@ export const privacyEn: PrivacyBody = {
     {
       title: '1. Who we are',
       body:
-        'Hubble is an occupational-safety app for the construction sector — a ' +
+        'Hubble is an occupational-safety app for the construction sector - a ' +
         'mobile app (iOS/Android) and the hubble.ge web platform. This policy ' +
         'describes what data we collect and how we use it. Contact: ' +
         'support@hubble.ge.',
@@ -134,7 +134,7 @@ export const privacyEn: PrivacyBody = {
       title: '5. Signatures',
       body:
         'A signature captured on an inspection act is never stored on our ' +
-        'servers — it is only rendered into the generated PDF. In document-signing ' +
+        'servers - it is only rendered into the generated PDF. In document-signing ' +
         'flows (orders, remote SMS signing, briefings) the signature image is ' +
         'kept in private storage.',
     },

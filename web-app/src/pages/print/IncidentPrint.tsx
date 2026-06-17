@@ -68,7 +68,7 @@ export default function IncidentPrint() {
   const inspectorName =
     [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() ||
     user?.email ||
-    '—';
+    '-';
 
   return (
     <>
@@ -87,13 +87,13 @@ export default function IncidentPrint() {
 
         <h2>1. პროექტი</h2>
         <div className="field">
-          <span className="field-label">დასახელება:</span> {project?.name || '—'}
+          <span className="field-label">დასახელება:</span> {project?.name || '-'}
         </div>
         <div className="field">
-          <span className="field-label">კომპანია:</span> {project?.company_name || '—'}
+          <span className="field-label">კომპანია:</span> {project?.company_name || '-'}
         </div>
         <div className="field">
-          <span className="field-label">მისამართი:</span> {project?.address || '—'}
+          <span className="field-label">მისამართი:</span> {project?.address || '-'}
         </div>
 
         <h2>2. დროება და ადგილი</h2>
@@ -101,29 +101,29 @@ export default function IncidentPrint() {
           <span className="field-label">თარიღი:</span> {new Date(item.date_time).toLocaleString('ka-GE')}
         </div>
         <div className="field">
-          <span className="field-label">ადგილი:</span> {item.location || '—'}
+          <span className="field-label">ადგილი:</span> {item.location || '-'}
         </div>
 
         {item.type !== 'nearmiss' && (
           <>
             <h2>3. დაშავებული</h2>
             <div className="field">
-              <span className="field-label">სახელი:</span> {item.injured_name || '—'}
+              <span className="field-label">სახელი:</span> {item.injured_name || '-'}
             </div>
             <div className="field">
-              <span className="field-label">თანამდებობა:</span> {item.injured_role || '—'}
+              <span className="field-label">თანამდებობა:</span> {item.injured_role || '-'}
             </div>
           </>
         )}
 
         <h2>4. ინციდენტის აღწერა</h2>
-        <div className="field">{item.description || '—'}</div>
+        <div className="field">{item.description || '-'}</div>
 
         <h2>5. მიზეზი</h2>
-        <div className="field">{item.cause || '—'}</div>
+        <div className="field">{item.cause || '-'}</div>
 
         <h2>6. გატარებული ღონისძიებები</h2>
-        <div className="field">{item.actions_taken || '—'}</div>
+        <div className="field">{item.actions_taken || '-'}</div>
 
         {item.witnesses.length > 0 && (
           <>

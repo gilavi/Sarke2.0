@@ -26,7 +26,7 @@ import {
 
 /**
  * Raw `lifting_accessories_inspections` row. The `signatures` column is never
- * read or written by the web layer (regulatory — captured signatures are not
+ * read or written by the web layer (regulatory - captured signatures are not
  * persisted; they are rasterized into the PDF from in-memory state only).
  */
 interface DbRow {

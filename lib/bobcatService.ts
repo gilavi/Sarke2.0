@@ -62,7 +62,7 @@ function toModel(row: DbRow): BobcatInspection {
   };
 }
 
-// inspectorSignature is ephemeral (memory-only) — never persisted via patch.
+// inspectorSignature is ephemeral (memory-only) - never persisted via patch.
 type BobcatPatch = Partial<{
   company: string | null;
   address: string | null;

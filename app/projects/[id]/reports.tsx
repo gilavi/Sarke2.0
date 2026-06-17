@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, Hourglass, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -69,7 +69,7 @@ export default function ProjectReportsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
-      
+
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
         }
@@ -90,7 +90,7 @@ export default function ProjectReportsList() {
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
+            <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
         ) : (
@@ -120,11 +120,19 @@ export default function ProjectReportsList() {
                           },
                         ]}
                       >
-                        <Ionicons
-                          name={isCompleted ? 'document-text' : 'hourglass-outline'}
-                          size={14}
-                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
-                        />
+                        {isCompleted ? (
+                          <FileText
+                            size={14}
+                            color={theme.colors.semantic.success}
+                            strokeWidth={1.5}
+                          />
+                        ) : (
+                          <Hourglass
+                            size={14}
+                            color={theme.colors.certTint}
+                            strokeWidth={1.5}
+                          />
+                        )}
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.listRowTitle} numberOfLines={1}>{r.title}</Text>
@@ -132,7 +140,7 @@ export default function ProjectReportsList() {
                           {r.slides.length} სლაიდი · {formatShortDateTime(r.created_at)}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
                     </Pressable>
                   );
                 })}

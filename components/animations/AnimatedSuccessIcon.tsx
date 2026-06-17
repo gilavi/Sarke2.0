@@ -105,7 +105,7 @@ export function AnimatedSuccessIcon({
         <Svg width={size} height={size} viewBox="0 0 100 100">
           <AnimatedPath
             d={CHECK_PATH}
-            stroke="#FFFFFF"
+            stroke="#000000"
             strokeWidth={9}
             strokeLinecap="round"
             strokeLinejoin="round"

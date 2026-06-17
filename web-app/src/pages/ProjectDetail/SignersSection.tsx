@@ -132,7 +132,7 @@ export function SignersSection({ projectId, onError }: Props) {
                 <div>
                   <div className="font-medium text-neutral-900 dark:text-neutral-100">{s.full_name}</div>
                   <div className="text-xs text-neutral-500">
-                    {s.position || '—'}
+                    {s.position || '-'}
                     {s.phone ? ` · ${s.phone}` : ''}
                   </div>
                 </div>

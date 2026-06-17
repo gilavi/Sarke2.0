@@ -13,7 +13,7 @@ export interface ChecklistLegendItem {
 }
 
 /**
- * Quiet monochrome key for a {@link ChecklistItemRow} list — pairs each answer's
+ * Quiet monochrome key for a {@link ChecklistItemRow} list - pairs each answer's
  * chip glyph (shown filled, as it looks when selected) with its Georgian label.
  * Stateless; severity is read from the icon/label, never color.
  */

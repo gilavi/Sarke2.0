@@ -1,5 +1,5 @@
 /**
- * PhotoGallery — grid render + lightbox open/close + nav.
+ * PhotoGallery - grid render + lightbox open/close + nav.
  */
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@/test-utils';

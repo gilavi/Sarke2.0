@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 
@@ -45,7 +45,7 @@ export function StepBar({ step, stepLabels }: StepBarProps) {
             ]}
           >
             {i < step ? (
-              <Ionicons name="checkmark" size={10} color={theme.colors.white} />
+              <Check size={10} color={theme.colors.white} strokeWidth={1.5} />
             ) : (
               <Text style={[styles.dotNum, i === step && styles.dotNumActive]}>{i + 1}</Text>
             )}

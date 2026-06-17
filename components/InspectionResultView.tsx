@@ -4,7 +4,7 @@
 // outline buttons (Certificates · Signatures) side by side above the
 // full-width green Download button. The caller is responsible for building
 // the preview HTML (each flow has its own PDF builder) and for the actual
-// download action — this component only owns the UI shell, the
+// download action - this component only owns the UI shell, the
 // certificates action sheet, the signatures modal + state, and the limit-notice
 // modal.
 //
@@ -27,7 +27,7 @@ import {
   View,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleAlert, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
@@ -58,7 +58,7 @@ type Props = {
    * Hide the Certificates + Signatures action-sheet buttons. Used by
    * equipment flows whose rows live outside the `inspections` table and so
    * don't satisfy the FK the certificates sheet writes (currently no
-   * equipment flow passes this — it's preserved as an escape hatch).
+   * equipment flow passes this - it's preserved as an escape hatch).
    */
   hideSheets?: boolean;
   downloading?: boolean;
@@ -97,7 +97,7 @@ export function InspectionResultView(props: Props) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const showSheet = useBottomSheet();
 
-  // Signatures state — local to this result view. Lost when it unmounts.
+  // Signatures state - local to this result view. Lost when it unmounts.
   const signatures = useSignaturesState();
   const [signaturesOpen, setSignaturesOpen] = useState(false);
 
@@ -137,7 +137,7 @@ export function InspectionResultView(props: Props) {
           <SkeletonPreview />
         ) : previewError && !previewHtml ? (
           <View style={styles.previewState}>
-            <Ionicons name="alert-circle" size={36} color={theme.colors.danger} />
+            <CircleAlert size={36} color={theme.colors.danger} strokeWidth={1.5} />
             <Text style={{ color: theme.colors.danger, textAlign: 'center', marginTop: 12 }}>
               {previewError}
             </Text>
@@ -170,7 +170,7 @@ export function InspectionResultView(props: Props) {
                 onPress={openCertificatesSheet}
                 style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
               >
-                <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
+                <Paperclip size={18} color={theme.colors.ink} strokeWidth={1.5} />
                 <Text style={styles.bottomBtnText} numberOfLines={1}>
                   სერტიფიკატები {certBadge}
                 </Text>
@@ -179,7 +179,7 @@ export function InspectionResultView(props: Props) {
                 onPress={() => setSignaturesOpen(true)}
                 style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
               >
-                <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
+                <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
                 <Text style={styles.bottomBtnText} numberOfLines={1}>
                   ხელმოწერები
                 </Text>
@@ -201,7 +201,7 @@ export function InspectionResultView(props: Props) {
               <ActivityIndicator color={theme.colors.white} />
             ) : (
               <>
-                <Ionicons name={pdfLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color={theme.colors.white} />
+                {pdfLocked ? <Lock size={18} color={theme.colors.white} strokeWidth={1.5} /> : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />}
                 <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
                   {pdfLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
                 </Text>

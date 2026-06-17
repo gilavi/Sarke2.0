@@ -12,7 +12,7 @@ const dummyCmd = (id = 'cmd-1') => ({
   action: () => {},
 });
 
-describe('commandStore — initial state', () => {
+describe('commandStore - initial state', () => {
   it('starts closed with empty commands and query', () => {
     const { isOpen, query, commands } = useCommandStore.getState();
     expect(isOpen).toBe(false);
@@ -21,7 +21,7 @@ describe('commandStore — initial state', () => {
   });
 });
 
-describe('commandStore — open / close / toggle', () => {
+describe('commandStore - open / close / toggle', () => {
   it('open() sets isOpen to true', () => {
     useCommandStore.getState().open();
     expect(useCommandStore.getState().isOpen).toBe(true);
@@ -49,14 +49,14 @@ describe('commandStore — open / close / toggle', () => {
   });
 });
 
-describe('commandStore — setQuery', () => {
+describe('commandStore - setQuery', () => {
   it('updates query', () => {
     useCommandStore.getState().setQuery('projects');
     expect(useCommandStore.getState().query).toBe('projects');
   });
 });
 
-describe('commandStore — register / unregister', () => {
+describe('commandStore - register / unregister', () => {
   it('register adds a command', () => {
     useCommandStore.getState().register(dummyCmd());
     expect(useCommandStore.getState().commands).toHaveLength(1);

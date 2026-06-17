@@ -8,7 +8,7 @@ export function friendlyError(err: unknown, fallback = 'უცნობი შ�
   // email_exists(). Caught here so friendlyError() callers that don't
   // need to discriminate still get a localized fallback.
   if (lower === 'accountnotfound')
-    return 'ანგარიში ვერ მოიძებნა — შეამოწმეთ ელ-ფოსტა';
+    return 'ანგარიში ვერ მოიძებნა - შეამოწმეთ ელ-ფოსტა';
   if (lower === 'wrongpassword')
     return 'პაროლი არასწორია';
 

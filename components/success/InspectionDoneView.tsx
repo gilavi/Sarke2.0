@@ -3,7 +3,7 @@
 // The shared body of every inspection done.tsx route (generic harness/
 // scaffold + bobcat, excavator, cargo-platform, general-equipment). Each
 // route stays a thin data-loader that fetches its own row, maps it to the
-// props below, and renders this view — the wording, layout, primary CTA and
+// props below, and renders this view - the wording, layout, primary CTA and
 // the home action all live here so they can never drift between types.
 //
 // Terminology: the document is a "შემოწმების აქტი" (inspection act), never

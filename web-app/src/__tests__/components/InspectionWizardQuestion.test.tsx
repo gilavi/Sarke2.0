@@ -1,5 +1,5 @@
 /**
- * InspectionWizard — exercises the question-step renderer (QuestionStepRenderer)
+ * InspectionWizard - exercises the question-step renderer (QuestionStepRenderer)
  * + conclusion-step renderer (ConclusionStepRenderer) by mounting the wizard in
  * edit mode with various question types.
  */
@@ -72,7 +72,7 @@ beforeEach(() => {
   });
 });
 
-describe('InspectionWizard — question step types', () => {
+describe('InspectionWizard - question step types', () => {
   it('renders the yesno step with kი/არა buttons', () => {
     const questions: Question[] = [
       { id: 'q1', template_id: 't1', section: 1, order: 1, type: 'yesno', title: 'Q1',
@@ -87,7 +87,7 @@ describe('InspectionWizard — question step types', () => {
         initialAnswers={[]}
       />,
     );
-    // Wizard frame should render the yesno question — find the "კი" + "არა" buttons.
+    // Wizard frame should render the yesno question - find the "კი" + "არა" buttons.
     expect(screen.getAllByRole('button', { name: 'კი' }).length).toBeGreaterThan(0);
   });
 
@@ -150,7 +150,7 @@ describe('InspectionWizard — question step types', () => {
   });
 });
 
-describe('InspectionWizard — conclusion step', () => {
+describe('InspectionWizard - conclusion step', () => {
   it('clicking the safety pill updates conclusion + lets us click დასრულება', async () => {
     renderWizard(
       <InspectionWizard

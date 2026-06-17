@@ -109,7 +109,7 @@ export default function BriefingDetail() {
             </span>
           </nav>
           <h1 className="mt-2 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
-            ინსტრუქტაჟი — {fmtDateKa(b.dateTime)}
+            ინსტრუქტაჟი - {fmtDateKa(b.dateTime)}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">სტატუსი: {b.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}</p>
         </div>
@@ -259,7 +259,7 @@ export default function BriefingDetail() {
                     </>
                   ) : (
                     <div className="text-sm">
-                      <div className="font-medium text-neutral-900 dark:text-neutral-100">{p.fullName || '—'}</div>
+                      <div className="font-medium text-neutral-900 dark:text-neutral-100">{p.fullName || '-'}</div>
                       {p.position && <div className="text-xs text-neutral-500">{p.position}</div>}
                     </div>
                   )}

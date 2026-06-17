@@ -39,7 +39,7 @@ function AccountAvatar({ url, size = 30 }: { url?: string | null; size?: number 
 }
 
 /* ── Shared footer (Go Pro card + account block + menu) ─
-   Single permanent state — always full + labeled (no icon-only variant). */
+   Single permanent state - always full + labeled (no icon-only variant). */
 export function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
   const { user, profile, signOut } = useAuth();
   const { isDark, toggleMode } = useTheme();
@@ -60,7 +60,7 @@ export function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="space-y-2.5 px-2 pb-3 pt-1">
-      {/* Go Pro card — the single upgrade entry point (free users) */}
+      {/* Go Pro card - the single upgrade entry point (free users) */}
       {!isPro && (
         <button
           type="button"
@@ -111,7 +111,7 @@ export function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent>
-          {/* Header — non-interactive */}
+          {/* Header - non-interactive */}
           <DropdownMenuLabel>
             <div className="flex items-center gap-2.5 py-0.5">
               <AccountAvatar url={avatarUrl} size={36} />

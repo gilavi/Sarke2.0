@@ -25,7 +25,7 @@ export default defineConfig({
           if (id.includes('@radix-ui')) return 'radix-ui';
           if (id.includes('@supabase')) return 'supabase';
           if (id.includes('lucide-react')) return 'icons';
-          // react-dom is NOT split from vendor — keeping them together avoids the
+          // react-dom is NOT split from vendor - keeping them together avoids the
           // circular chunk dependency (vendor↔react-dom) that caused a blank page on GH Pages.
           if (id.includes('node_modules')) return 'vendor';
         },

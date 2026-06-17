@@ -4,7 +4,7 @@
 // jumps to it. Originated as the fall-protection device tab strip, extracted so
 // other flows can reuse the same look + behaviour.
 import { ScrollView, Pressable, View, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
@@ -42,7 +42,7 @@ function stateBg(state: ChipNavState, theme: Theme): string {
 
 /**
  * Monochrome marker used by `dotMode` 'mono'/'check'. Severity is conveyed by
- * fill/shape, never hue — matching the StatusChip answer language.
+ * fill/shape, never hue - matching the StatusChip answer language.
  *   done/active → solid ink dot   pending → hollow ring
  *   skipped     → muted hollow ring (inkFaint)
  */
@@ -62,12 +62,12 @@ export interface ChipNavStripProps {
   onSelect: (index: number) => void;
   /** 'status' (default) colors the active chip by state (accent / green / red).
    *  'neutral' keeps the active chip ink-gray and conveys state only via the
-   *  small status dot — used where a colored selection competes with the UI. */
+   *  small status dot - used where a colored selection competes with the UI. */
   tone?: 'status' | 'neutral';
   /** How the per-chip status marker is drawn.
-   *  'color' (default) — colored `stateColor` dot (the original behaviour).
-   *  'mono'  — ink/hollow dot, no hue (severity via fill/shape).
-   *  'check' — Ionicons checkmark for `done`, otherwise the mono dot.
+   *  'color' (default) - colored `stateColor` dot (the original behaviour).
+   *  'mono'  - ink/hollow dot, no hue (severity via fill/shape).
+   *  'check' - checkmark for `done`, otherwise the mono dot.
    *  Use 'mono'/'check' in monochrome flows that must not show green. */
   dotMode?: 'color' | 'mono' | 'check';
 }
@@ -111,7 +111,7 @@ export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status', do
             {...a11y(item.label, item.a11yHint ?? item.label, 'tab')}
           >
             {showCheck ? (
-              <Ionicons name="checkmark" size={13} color={theme.colors.ink} style={styles.check} />
+              <Check size={13} color={theme.colors.ink} strokeWidth={1.5} style={styles.check} />
             ) : (
               <View
                 style={[

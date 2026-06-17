@@ -235,7 +235,7 @@ export const projectFilesApi = {
     );
   },
   remove: async (file: ProjectFile): Promise<void> => {
-    // Delete the DB record first — if this throws, we leave storage untouched
+    // Delete the DB record first - if this throws, we leave storage untouched
     // so nothing is orphaned. Storage cleanup is best-effort after commit.
     const { error } = await supabase
       .from('project_files')

@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Hubble',
-  tagline: 'ხარაჩოს უსაფრთხოების შემოწმების აპი — full project documentation',
+  tagline: 'ხარაჩოს უსაფრთხოების შემოწმების აპი - full project documentation',
   favicon: 'img/favicon.ico',
 
   future: {

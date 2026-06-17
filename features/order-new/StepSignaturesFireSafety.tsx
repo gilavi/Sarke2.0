@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck, Pencil } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import type { CombinedForm } from './orderFormSchema';
@@ -35,7 +35,7 @@ export function StepSignaturesFireSafety({
             padding: 12,
             gap: 8,
           }}>
-            <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+            <CircleCheck size={28} color={theme.colors.semantic.success} strokeWidth={1.5} />
             <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
             <Pressable onPress={() => setForm(f => ({ ...f, directorSignature: null, directorSignedAt: null }))}>
               <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
@@ -46,7 +46,7 @@ export function StepSignaturesFireSafety({
             onPress={() => setDirectorCanvasOpen(true)}
             style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
           >
-            <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+            <Pencil size={22} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
           </Pressable>
         )}
@@ -75,7 +75,7 @@ export function StepSignaturesFireSafety({
             padding: 12,
             gap: 8,
           }}>
-            <Ionicons name="checkmark-circle" size={28} color={theme.colors.semantic.success} />
+            <CircleCheck size={28} color={theme.colors.semantic.success} strokeWidth={1.5} />
             <Text style={{ fontSize: 13, color: theme.colors.semantic.success, fontWeight: '600' }}>ხელმოწერა დადებულია</Text>
             <Pressable onPress={() => setForm(f => ({ ...f, appointedSignature: null, appointedSignedAt: null }))}>
               <Text style={{ fontSize: 12, color: theme.colors.inkSoft, textDecorationLine: 'underline' }}>ხელახლა ხელმოწერა</Text>
@@ -86,7 +86,7 @@ export function StepSignaturesFireSafety({
             onPress={() => setAppointedCanvasOpen(true)}
             style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
           >
-            <Ionicons name="pencil-outline" size={22} color={theme.colors.accent} />
+            <Pencil size={22} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
           </Pressable>
         )}

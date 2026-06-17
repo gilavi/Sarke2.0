@@ -70,7 +70,7 @@ const alcohol = (over: Partial<AlcoholControlOrderFormData> = {}): AlcoholContro
   ...over,
 });
 
-describe('orderPdf — escHtml (via builders)', () => {
+describe('orderPdf - escHtml (via builders)', () => {
   it('escapes HTML-significant chars in user input so injected markup is inert', () => {
     const html = buildFireSafetyOrderHtml(fireSafety({ companyName: '<script>alert("x")</script>' }));
     expect(html).toContain('&lt;script&gt;');
@@ -95,7 +95,7 @@ describe('orderPdf — escHtml (via builders)', () => {
   });
 });
 
-describe('orderPdf — fmtDate (via builders)', () => {
+describe('orderPdf - fmtDate (via builders)', () => {
   it('renders a blank placeholder when the order date is null', () => {
     const html = buildFireSafetyOrderHtml(fireSafety({ orderDate: null as unknown as string }));
     expect(html).toContain('___________');
@@ -108,7 +108,7 @@ describe('orderPdf — fmtDate (via builders)', () => {
   });
 });
 
-describe('orderPdf — signature rendering', () => {
+describe('orderPdf - signature rendering', () => {
   it('renders an <img> for a present base64 signature', () => {
     const html = buildFireSafetyOrderHtml(fireSafety({ directorSignature: 'AAAABBBBCCCC' }));
     expect(html).toContain('data:image/png;base64,AAAABBBBCCCC');

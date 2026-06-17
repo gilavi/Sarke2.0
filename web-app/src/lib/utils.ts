@@ -25,7 +25,7 @@ export function fmtDateTimeKa(date: Date | string): string {
   return `${fmtDateKa(d)}, ${hh}:${mm}`;
 }
 
-/** "04 მაისი" (no year — for calendar cards) */
+/** "04 მაისი" (no year - for calendar cards) */
 export function fmtDayMonthKa(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return `${String(d.getDate()).padStart(2, '0')} ${KA_MONTHS_LONG[d.getMonth()]}`;

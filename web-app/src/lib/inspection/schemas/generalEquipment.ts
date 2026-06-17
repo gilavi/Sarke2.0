@@ -1,5 +1,5 @@
 /**
- * General-equipment inspection schema — web mirror of the Expo app's
+ * General-equipment inspection schema - web mirror of the Expo app's
  * `lib/inspection/schemas/generalEquipment.ts` (the `@root` import is
  * eslint-banned). Flexible/custom template: a free-form equipment table (one row
  * per unit, problem rows highlighted), a conclusion block, and a 4-column
@@ -65,25 +65,25 @@ function conditionSymbol(c: GECondition | null): string {
   if (c === 'good') return '✓';
   if (c === 'needs_service') return '⚠';
   if (c === 'unusable') return '✗';
-  return '—';
+  return '-';
 }
 
 function renderInfo(insp: GeneralEquipmentInspection): string {
-  const inspTypeLabel = insp.inspectionType ? INSPECTION_TYPE_LABEL[insp.inspectionType] : '—';
+  const inspTypeLabel = insp.inspectionType ? INSPECTION_TYPE_LABEL[insp.inspectionType] : '-';
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია / General Information</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია / General Information</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">ობიექტის დასახელება / Object</span><span class="val">${escapeHtml(insp.objectName) || '—'}</span></td>
-        <td><span class="lbl">მისამართი / Address</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
+        <td><span class="lbl">ობიექტის დასახელება / Object</span><span class="val">${escapeHtml(insp.objectName) || '-'}</span></td>
+        <td><span class="lbl">მისამართი / Address</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">საქმიანობის სახე / Activity Type</span><span class="val">${escapeHtml(insp.activityType) || '—'}</span></td>
+        <td><span class="lbl">საქმიანობის სახე / Activity Type</span><span class="val">${escapeHtml(insp.activityType) || '-'}</span></td>
         <td><span class="lbl">შემოწმების სახე / Inspection Type</span><span class="val">${escapeHtml(inspTypeLabel)}</span></td>
       </tr>
       <tr>
         <td><span class="lbl">შემოწმების თარიღი / Inspection Date</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
-        <td><span class="lbl">შემომწმებელი / Inspector</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">შემომწმებელი / Inspector</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
       </tr>
     </table>
   `;
@@ -110,8 +110,8 @@ function renderEquipment(insp: GeneralEquipmentInspection, photos: PhotoMap): st
       <tr class="${rowClass}">
         <td class="col-num">${idx + 1}</td>
         <td>${escapeHtml(row.name)}</td>
-        <td>${escapeHtml(row.model) || '—'}</td>
-        <td>${escapeHtml(row.serialNumber) || '—'}</td>
+        <td>${escapeHtml(row.model) || '-'}</td>
+        <td>${escapeHtml(row.serialNumber) || '-'}</td>
         <td class="col-check"><span class="${conditionClass(row.condition)}">${conditionSymbol(row.condition)}</span></td>
         <td class="col-note">${noteHtml}${photosHtml}</td>
       </tr>
@@ -120,7 +120,7 @@ function renderEquipment(insp: GeneralEquipmentInspection, photos: PhotoMap): st
     .join('');
 
   return `
-    <div class="section-title">II — აღჭურვილობის სია / Equipment List</div>
+    <div class="section-title">II - აღჭურვილობის სია / Equipment List</div>
     ${legendHtml}
     <table class="eq-table">
       <thead>
@@ -134,7 +134,7 @@ function renderEquipment(insp: GeneralEquipmentInspection, photos: PhotoMap): st
         </tr>
       </thead>
       <tbody>
-        ${equipmentRows || '<tr><td colspan="6" style="text-align:center;color:var(--inkFaint)">—</td></tr>'}
+        ${equipmentRows || '<tr><td colspan="6" style="text-align:center;color:var(--inkFaint)">-</td></tr>'}
       </tbody>
     </table>
   `;
@@ -146,8 +146,8 @@ function renderSummary(insp: GeneralEquipmentInspection, photos: PhotoMap): stri
     ? `<div class="summary-photos">${safeSummaryPhotos.map((p) => (photos[p] ? `<img src="${photos[p]}" alt="ფოტო" />` : '')).join('')}</div>`
     : '';
   return `
-    <div class="section-title">III — შეჯამება / Summary</div>
-    <div class="conclusion-block">${escapeHtml(insp.conclusion) || '—'}</div>
+    <div class="section-title">III - შეჯამება / Summary</div>
+    <div class="conclusion-block">${escapeHtml(insp.conclusion) || '-'}</div>
     ${summaryPhotosHtml}
   `;
 }
@@ -161,7 +161,7 @@ export const generalEquipmentSchema: InspectionSchema<GeneralEquipmentInspection
   docTitle: 'ტექნიკური აღჭურვილობის<br>შემოწმების აქტი',
   docSubtitle: 'Technical Equipment Inspection Report',
   internalBadge: 'INTERNAL',
-  pdfFooterLabel: 'Hubble — ტექნიკური ინსპ.',
+  pdfFooterLabel: 'Hubble - ტექნიკური ინსპ.',
   pdfNameLabel: 'EquipmentInspection',
   extraCss: EXTRA_CSS,
 

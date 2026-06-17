@@ -20,7 +20,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
 
   useEffect(() => {
     if (!visible) {
-      // Parent closed us — dismiss any open sheet
+      // Parent closed us - dismiss any open sheet
       sheetRef.current?.dismiss();
       sheetRef.current = null;
       return;

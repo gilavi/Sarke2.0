@@ -31,7 +31,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // Per Supabase RN docs: the auto-refresh interval keeps running while the app
 // is backgrounded, then fires a burst of network calls on resume. Bind it to
-// AppState so it pauses on background and resumes on active — cleaner foreground
+// AppState so it pauses on background and resumes on active - cleaner foreground
 // handover, no "mushy" stall right after the app comes back.
 let appStateSub: ReturnType<typeof AppState.addEventListener> | null = null;
 if (!appStateSub) {

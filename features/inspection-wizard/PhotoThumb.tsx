@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { RefreshCw } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Skeleton } from '../../components/Skeleton';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -80,7 +80,7 @@ export const PhotoThumb = memo(function PhotoThumb({
   if (error || !uri) {
     return (
       <Pressable onPress={load} style={containerStyle} {...a11y('განახლება', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
-        <Ionicons name="refresh" size={22} color={theme.colors.inkFaint} />
+        <RefreshCw size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
         <Text style={{ fontSize: 10, color: theme.colors.inkFaint, marginTop: 4 }}>განახლება</Text>
       </Pressable>
     );

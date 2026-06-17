@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
-/** Mirror of the edge function's caps — fail fast client-side. */
+/** Mirror of the edge function's caps - fail fast client-side. */
 export const MAX_INPUT_CHARS = 1000;
 
 /**

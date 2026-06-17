@@ -63,7 +63,7 @@ function toModel(row: DbRow): GeneralEquipmentInspection {
   };
 }
 
-// signer fields / inspectorSignature are ephemeral (memory-only) — never
+// signer fields / inspectorSignature are ephemeral (memory-only) - never
 // persisted via patch.
 type GeneralEquipmentPatch = Partial<{
   objectName: string | null;

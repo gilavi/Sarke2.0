@@ -19,8 +19,8 @@ beforeEach(() => {
 describe('pdfShared', () => {
   describe('fmtDate', () => {
     it('returns em-dash for null/undefined', () => {
-      expect(fmtDate(null)).toBe('—');
-      expect(fmtDate(undefined)).toBe('—');
+      expect(fmtDate(null)).toBe('-');
+      expect(fmtDate(undefined)).toBe('-');
     });
 
     it('returns the original string for invalid dates', () => {

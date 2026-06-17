@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck, CircleAlert, Info } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { theme } from './theme';
 
 type ToastKind = 'success' | 'error' | 'info';
@@ -102,7 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           style={[styles.wrap, { opacity }]}
         >
           <View style={[styles.toast, stylesFor(toast.kind).container]}>
-            <Ionicons name={iconFor(toast.kind)} size={18} color={stylesFor(toast.kind).iconColor} />
+            {(() => { const Icon = iconFor(toast.kind); return <Icon size={18} color={stylesFor(toast.kind).iconColor} strokeWidth={1.5} />; })()}
             <Text style={[styles.text, { color: stylesFor(toast.kind).text }]} numberOfLines={3}>
               {toast.message}
             </Text>
@@ -130,8 +131,8 @@ export function useToast() {
   return ctx;
 }
 
-function iconFor(kind: ToastKind): any {
-  return kind === 'success' ? 'checkmark-circle' : kind === 'error' ? 'alert-circle' : 'information-circle';
+function iconFor(kind: ToastKind): LucideIcon {
+  return kind === 'success' ? CircleCheck : kind === 'error' ? CircleAlert : Info;
 }
 
 function stylesFor(kind: ToastKind) {

@@ -21,7 +21,7 @@ describe('Supabase local integration', () => {
   beforeAll(async () => {
     reachable = await isSupabaseReachable(supabaseUrl);
     if (!reachable) {
-      console.warn(`⚠️  Local Supabase not reachable at ${supabaseUrl} — skipping integration tests`);
+      console.warn(`⚠️  Local Supabase not reachable at ${supabaseUrl} - skipping integration tests`);
     }
   });
 

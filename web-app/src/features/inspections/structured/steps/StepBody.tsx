@@ -5,7 +5,7 @@
  *
  * Note: the wizard only ever runs for drafts (StructuredActPage routes completed
  * rows to the result screen), so there is no signature capture or read-only mode
- * here — signature lives on `StructuredInspectionResult`, matching harness.
+ * here - signature lives on `StructuredInspectionResult`, matching harness.
  */
 import DeleteButton from '@/components/DeleteButton';
 import { SpecStep } from './SpecStep';

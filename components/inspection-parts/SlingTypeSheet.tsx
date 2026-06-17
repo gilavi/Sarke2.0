@@ -8,11 +8,11 @@
 // Abbreviations in the option labels (`ტექ. სლინგი`, `მრგვ. სლინგი`,
 // `ბეწვ. სლინგი`, `ჯაჭვ. სლინგი`, `ჩამჭიდი`, `კაუჭი`, `სხვა`) are
 // preserved verbatim from the lifting-accessories type catalog by user
-// override — see the AGENTS.md for that route.
+// override - see the AGENTS.md for that route.
 
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { Button } from '../ui';
@@ -68,7 +68,7 @@ export function SlingTypeSheet({
       <View style={styles.header}>
         <Text style={styles.title}>ტ-პი / სახ.</Text>
         <Pressable onPress={onClose} hitSlop={12} {...a11y('დახურვა', undefined, 'button')}>
-          <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+          <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
         </Pressable>
       </View>
 
@@ -90,11 +90,11 @@ export function SlingTypeSheet({
               {...a11y(opt, active ? 'არჩეულია' : 'არ არის არჩეული', 'checkbox')}
             >
               <Text style={styles.rowLabel}>{opt}</Text>
-              <Ionicons
-                name={active ? 'checkmark-circle' : 'ellipse-outline'}
-                size={22}
-                color={active ? theme.colors.accent : theme.colors.borderStrong}
-              />
+              {active ? (
+                <CircleCheck size={22} color={theme.colors.accent} strokeWidth={1.5} />
+              ) : (
+                <View style={styles.emptyCircle} />
+              )}
             </Pressable>
           );
         })}
@@ -102,7 +102,7 @@ export function SlingTypeSheet({
         {otherActive && otherOptionValue ? (
           <View style={styles.otherWrap}>
             <FloatingLabelInput
-              label={`${otherOptionValue} — კონკრეტული სახელი`}
+              label={`${otherOptionValue} - კონკრეტული სახელი`}
               value={otherText}
               onChangeText={setOtherText}
             />
@@ -153,6 +153,13 @@ function getStyles(theme: Theme) {
       fontSize: 16,
       fontWeight: '500',
       color: theme.colors.ink,
+    },
+    emptyCircle: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 1.5,
+      borderColor: theme.colors.borderStrong,
     },
     otherWrap: {
       paddingHorizontal: 20,

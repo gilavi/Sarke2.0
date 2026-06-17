@@ -1,11 +1,13 @@
-// wizardSchema.ts — pure (UI-free) helpers for the inspection wizard.
+// wizardSchema.ts - pure (UI-free) helpers for the inspection wizard.
 // Owns: step model, answer-shape validation, measure parsing,
 // scaffold column styling, AsyncStorage key helpers, and a bounded
 // in-memory photo-URL cache shared across PhotoThumb + PhotoPreviewModal.
 
+import type { LucideIcon } from 'lucide-react-native';
+import { CircleCheck, CircleMinus, CircleX } from 'lucide-react-native';
 import type { Answer, AnswerPhoto, Question, Template } from '../../types/models';
 
-// AsyncStorage key helpers — mid-flow user state is persisted per inspection
+// AsyncStorage key helpers - mid-flow user state is persisted per inspection
 // id so backing out and returning resumes where the user left off.
 export const stepKey = (qid: string) => `wizard:${qid}:step`;
 export const harnessCountKey = (qid: string) => `wizard:${qid}:harnessCount`;
@@ -13,7 +15,7 @@ export const conclusionKey = (qid: string) => `wizard:${qid}:conclusion`;
 export const safetyKey = (qid: string) => `wizard:${qid}:safety`;
 export const harnessNameKey = (qid: string) => `wizard:${qid}:harnessName`;
 
-// Empty/null is always allowed — the user may not have answered yet.
+// Empty/null is always allowed - the user may not have answered yet.
 export function isAnswerShapeValidForType(type: Question['type'], a: Answer): boolean {
   switch (type) {
     case 'yesno':
@@ -78,7 +80,7 @@ export function buildSteps(
 }
 
 // In-memory cache for photo display URLs to avoid redundant fetches.
-// Bounded — Map preserves insertion order, so the oldest entry is evicted
+// Bounded - Map preserves insertion order, so the oldest entry is evicted
 // once the cap is hit. Without a bound this Map grew for the lifetime of
 // the JS context and leaked memory across multiple inspection sessions.
 const PHOTO_URL_CACHE_MAX = 100;
@@ -92,7 +94,7 @@ export function setPhotoUrlCache(key: string, url: string) {
   }
 }
 
-// Whether the current step has any user input — flips the bottom button between
+// Whether the current step has any user input - flips the bottom button between
 // "გამოტოვება" (skip) and "შემდეგი" (next). Conclusion has its own validation.
 export function hasAnswer(
   step: FlatStep,
@@ -107,7 +109,7 @@ export function hasAnswer(
     const harnessOk = template?.category !== 'harness' || harnessName.trim().length > 0;
     return safetyVerdict !== null && conclusion.trim().length > 0 && harnessOk;
   }
-  // harnessFlow manages its own completion internally — always considered answered.
+  // harnessFlow manages its own completion internally - always considered answered.
   if (step.kind === 'harnessFlow') return true;
   if (step.kind === 'empty') return false;
   const a = answers[step.question.id];
@@ -147,8 +149,8 @@ export function measureError(q: Question, value: number | null): string | null {
 export function scaffoldColStyle(
   col: string,
   theme: any,
-): { tint: string; bg: string; icon: string } {
-  if (col.includes('დაზიანება')) return { tint: theme.colors.danger, bg: theme.colors.dangerSoft, icon: 'close-circle' };
-  if (col.includes('გამართულია')) return { tint: theme.colors.accent, bg: theme.colors.accentSoft, icon: 'checkmark-circle' };
-  return { tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface, icon: 'remove-circle' };
+): { tint: string; bg: string; icon: LucideIcon } {
+  if (col.includes('დაზიანება')) return { tint: theme.colors.danger, bg: theme.colors.dangerSoft, icon: CircleX };
+  if (col.includes('გამართულია')) return { tint: theme.colors.accent, bg: theme.colors.accentSoft, icon: CircleCheck };
+  return { tint: theme.colors.inkSoft, bg: theme.colors.subtleSurface, icon: CircleMinus };
 }

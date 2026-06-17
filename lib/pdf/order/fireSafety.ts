@@ -222,7 +222,7 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
 <ol class="decree">
   <li>
     <strong>${escHtml(f.appointedName)}</strong>, ტელ.: ${escHtml(f.appointedPhone)},
-    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე —
+    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე -
     <strong>„${escHtml(f.objectName)}"</strong>${f.objectAddress ? `, ${escHtml(f.objectAddress)}` : ''}.
   </li>
   <li>
@@ -235,7 +235,7 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
       <li>სახანძრო სიგნალიზაციისა და ხანძარის ჩაქრობის ავტომატური სისტემების მუშაობის კონტროლი;</li>
       <li>სახანძრო-ევაკუაციური გამოსასვლელებისა და გზების გაწმენდა ყოველგვარი დამაბრკოლებლისაგან;</li>
       <li>სახანძრო სავარჯიშოს (ევაკუაცია) ჩატარება წელიწადში მინიმუმ ერთხელ, ჩანიშვნა ჟურნალში;</li>
-      <li>ხანძრის შემთხვევაში — 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
+      <li>ხანძრის შემთხვევაში - 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
     </ol>
   </li>
   <li>ობიექტზე უზრუნველყოფილ იქნეს სახანძრო-ევაკუაციური ნიშნების, განათებული გამოსასვლელების, პირველადი ხანძარსაწინააღმდეგო საშუალებებისა და სიგნალიზაციის ყოველდღიური მზადყოფნა.</li>
@@ -273,7 +273,7 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
 <!-- Footer -->
 <div class="footer">
   <span>გვერდი 1 / 1</span>
-  <span>ბრძანება №${escHtml(f.orderNumber)} — სახანძრო უსაფრთხოება</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - სახანძრო უსაფრთხოება</span>
 </div>
 
 </body>

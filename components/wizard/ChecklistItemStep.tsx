@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera, Check, CircleMinus, CircleX, FileText, CircleQuestionMark, Pencil, TriangleAlert } from 'lucide-react-native';
 import { KeyboardAwareScrollView, KeyboardController } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
@@ -100,7 +100,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
       {/* Centered icon */}
       <View style={styles.avatarWrap}>
         <View style={[styles.avatarCircle, { backgroundColor: theme.colors.accentSoft }]}>
-          <Ionicons name="document-text-outline" size={32} color={theme.colors.accent} />
+          <FileText size={32} color={theme.colors.accent} strokeWidth={1.5} />
         </View>
       </View>
 
@@ -112,22 +112,22 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
         ) : null}
       </View>
 
-      {/* Assist chips — photo + note */}
+      {/* Assist chips - photo + note */}
       <View style={styles.chipRow}>
         <Pressable style={styles.assistChip} onPress={onAddPhoto}>
-          <Ionicons name="camera-outline" size={18} color={theme.colors.inkSoft} />
+          <Camera size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.assistChipText}>ფოტო</Text>
         </Pressable>
         <Pressable
           style={styles.assistChip}
           onPress={() => setNoteOpen(v => !v)}
         >
-          <Ionicons name="create-outline" size={18} color={theme.colors.inkSoft} />
+          <Pencil size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.assistChipText}>შენიშვნა</Text>
         </Pressable>
         {onHelp ? (
           <Pressable style={styles.assistChip} onPress={onHelp}>
-            <Ionicons name="help-circle-outline" size={18} color={theme.colors.inkSoft} />
+            <CircleQuestionMark size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.assistChipText}>დახმარება</Text>
           </Pressable>
         ) : null}
@@ -153,23 +153,23 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
             onPress={onAddPhoto}
             {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
           >
-            <Ionicons name="camera-outline" size={22} color={theme.colors.inkSoft} />
+            <Camera size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
           </Pressable>
         </ScrollView>
       )}
 
-      {/* Choice buttons — Good & Deficient side by side */}
+      {/* Choice buttons - Good & Deficient side by side */}
       <View style={styles.choiceRow}>
         <Pressable
           style={[styles.choice, styles.choiceGood, goodActive && styles.choiceGoodActive]}
           onPress={() => setResult('good')}
-          {...a11y('გამართულია', '✓ გამართულია — შემდეგ პუნქტზე გადასვლა', 'button')}
+          {...a11y('გამართულია', '✓ გამართულია - შემდეგ პუნქტზე გადასვლა', 'button')}
         >
-          <Ionicons
-            name="checkmark"
+          <Check
             size={24}
             color={goodActive ? theme.colors.white : theme.colors.semantic.success}
+            strokeWidth={1.5}
           />
           <Text style={[styles.choiceText, goodActive && styles.choiceTextActive]}>
             გამართულია
@@ -179,12 +179,12 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
         <Pressable
           style={[styles.choice, styles.choiceDef, defActive && styles.choiceDefActive]}
           onPress={() => setResult('deficient')}
-          {...a11y('ხარვეზია', '⚠ ხარვეზია — კომენტარის და ფოტოს დამატება', 'button')}
+          {...a11y('ხარვეზია', '⚠ ხარვეზია - კომენტარის და ფოტოს დამატება', 'button')}
         >
-          <Ionicons
-            name="warning"
+          <TriangleAlert
             size={24}
             color={defActive ? theme.colors.white : theme.colors.warn}
+            strokeWidth={1.5}
           />
           <Text style={[styles.choiceText, defActive && styles.choiceTextActive]}>
             ხარვეზია
@@ -203,17 +203,27 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
           onPress={() => setResult('unusable')}
           {...a11y(unusableLabel, `✕ ${unusableLabel}`, 'button')}
         >
-          <Ionicons
-            name={unusableIsNeutral ? 'remove-circle-outline' : 'close-circle-outline'}
-            size={18}
-            color={
-              unusableActive
-                ? theme.colors.white
-                : unusableIsNeutral
-                ? theme.colors.inkSoft
-                : theme.colors.danger
-            }
-          />
+          {unusableIsNeutral ? (
+            <CircleMinus
+              size={18}
+              color={
+                unusableActive
+                  ? theme.colors.white
+                  : theme.colors.inkSoft
+              }
+              strokeWidth={1.5}
+            />
+          ) : (
+            <CircleX
+              size={18}
+              color={
+                unusableActive
+                  ? theme.colors.white
+                  : theme.colors.danger
+              }
+              strokeWidth={1.5}
+            />
+          )}
           <Text
             style={[
               styles.unusableText,
@@ -264,7 +274,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   );
 });
 
-// �"?�"? Bounded photo URL cache (mirrors generic wizard pattern) �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// 🔒 Bounded photo URL cache (mirrors generic wizard pattern) ───────────────
 
 const PHOTO_URL_CACHE_MAX = 100;
 const photoUrlCache = new Map<string, string>();
@@ -278,7 +288,7 @@ function setPhotoUrlCache(key: string, url: string) {
   }
 }
 
-// �"?�"? Photo thumbnail �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// 🖼 Photo thumbnail ────────────────────────────────────────────────────────
 
 const PhotoThumb = memo(function PhotoThumb({
   path,
@@ -318,13 +328,13 @@ const PhotoThumb = memo(function PhotoThumb({
         hitSlop={8}
         {...a11y('ფოტოს წაშლა', undefined, 'button')}
       >
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={1.5} />
       </Pressable>
     </View>
   );
 });
 
-// �"?�"? Styles �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// 🎨 Styles ────────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({

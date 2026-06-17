@@ -1,5 +1,5 @@
 /**
- * Excavator inspection schema — web mirror of the Expo app's
+ * Excavator inspection schema - web mirror of the Expo app's
  * `lib/inspection/schemas/excavator.ts` (the `@root` import is eslint-banned, so
  * it is kept in sync by hand). machine-specs grid + document-info grid + four
  * "checks" checklist sections + yes/no/date maintenance table + verdict.
@@ -65,7 +65,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
 
   docTitle: 'ექსკავატორის ტექნიკური<br>შემოწმების აქტი',
   docSubtitle: 'Excavator Technical Inspection Report',
-  pdfFooterLabel: 'Hubble — ექსკავატორის ტექნიკური შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble - ექსკავატორის ტექნიკური შემოწმების აქტი',
   pdfNameLabel: 'ExcavatorInspection',
   extraCss: EXTRA_CSS,
 
@@ -82,7 +82,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
   blocks: [
     {
       kind: 'machineSpecs',
-      title: 'I — მანქანის ტექნიკური მახასიათებლები',
+      title: 'I - მანქანის ტექნიკური მახასიათებლები',
       specs: (d) => {
         const sp = d.machineSpecs ?? EXCAVATOR_MACHINE_SPECS;
         return [
@@ -97,7 +97,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'infoFields',
-      title: 'II — დოკუმენტის ინფორმაცია',
+      title: 'II - დოკუმენტის ინფორმაცია',
       fields: (d) => [
         { label: 'სახელმწიფო / ს.ნ ნომერი', value: d.registrationNumber ?? '' },
         { label: 'სერიული ნომერი', value: d.serialNumber ?? '' },
@@ -113,7 +113,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'checklist',
-      title: 'III — შემოწმების ჩეკლისტი',
+      title: 'III - შემოწმების ჩეკლისტი',
       layout: 'checks',
       resultOptions: [
         { value: 'good', label: 'კარგია', short: 'კარგია', mark: '✓', tone: 'good' },
@@ -121,8 +121,8 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
         { value: 'unusable', label: 'გამოუსადეგარია', short: 'გამოუსადეგარია', mark: '✗', tone: 'bad' },
       ],
       legend: [
-        { tone: 'good', text: '✓ კარგი — ნორმაში' },
-        { tone: 'warn', text: '? ნაკლი — საჭიროებს მომსახურებას' },
+        { tone: 'good', text: '✓ კარგი - ნორმაში' },
+        { tone: 'warn', text: '? ნაკლი - საჭიროებს მომსახურებას' },
         { tone: 'bad', text: '✗ გამოუსადეგარი' },
       ],
       sections: (d) => [
@@ -134,7 +134,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'maintenance',
-      title: 'VI — ტექნიკური მომსახურება',
+      title: 'VI - ტექნიკური მომსახურება',
       yesLabel: 'კი',
       noLabel: 'არა',
       dateLabel: 'თარიღი',
@@ -146,7 +146,7 @@ export const excavatorSchema: InspectionSchema<ExcavatorInspection> = {
     },
     {
       kind: 'verdict',
-      title: 'IV — დასკვნა',
+      title: 'IV - დასკვნა',
       options: (Object.entries(EXCAVATOR_VERDICT_LABEL) as [ExcavatorVerdict, string][]).map(
         ([value, label]) => ({
           value,

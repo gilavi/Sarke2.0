@@ -1,12 +1,12 @@
 /**
- * Form kernel — react-hook-form + zod, finally wired up.
+ * Form kernel - react-hook-form + zod, finally wired up.
  *
  * Both libraries were already in package.json but imported in zero files;
  * every form was raw useState with hand-rolled `canAdvance`/`canFinish` gates
  * duplicated ~15 times. This module gives domains:
- *   - `useEntityForm(schema, defaults)` — typed RHF form with zod validation,
- *   - `<Form>` — a submit wrapper,
- *   - `<FormTextInput> / <FormTextarea> / <FormSelect>` — native inputs bound
+ *   - `useEntityForm(schema, defaults)` - typed RHF form with zod validation,
+ *   - `<Form>` - a submit wrapper,
+ *   - `<FormTextInput> / <FormTextarea> / <FormSelect>` - native inputs bound
  *     to RHF Controller, so validation lives in the zod schema (a single
  *     source that can mirror the data-layer types) instead of per-field code.
  */

@@ -17,7 +17,7 @@ const queryClient = new QueryClient({
       retry: 1,
     },
     // Mutations (slide add/remove/update, project/report/incident create, …) had no
-    // retry at all — a single Wi-Fi blip on a construction site lost the write. Retry
+    // retry at all - a single Wi-Fi blip on a construction site lost the write. Retry
     // ONLY transient network failures (never RLS/duplicate/validation, which would be
     // pointless and could double-apply a non-idempotent create), up to twice with a
     // short exponential backoff.

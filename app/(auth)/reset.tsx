@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Keyboard } from 'react-native';
 import { supabase } from '../../lib/supabase';
@@ -70,7 +70,7 @@ export default function ResetPasswordScreen() {
           <Card padding={22} style={{ marginTop: 22 }}>
             {done ? (
               <View style={{ gap: 12, alignItems: 'center' }}>
-                <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
+                <CircleCheck size={48} color={theme.colors.accent} strokeWidth={2} />
                 <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
                   პაროლი შეცვლილია
                 </Text>

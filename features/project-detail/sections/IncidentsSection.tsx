@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { TriangleAlert } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
@@ -36,7 +36,7 @@ export function IncidentsSection({
     <>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="warning-outline" size={16} color={theme.colors.inkSoft} />
+          <TriangleAlert size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>ინციდენტები</Text>
           <Text style={styles.sectionCount}>{incidents.length}</Text>
         </View>

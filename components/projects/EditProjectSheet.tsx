@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import { ProjectAvatar } from '../ProjectAvatar';
@@ -112,7 +112,7 @@ export function EditProjectSheet({
           onPress={() => (mapVisible ? setMapVisible(false) : onClose())}
           {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
         />
-        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        {/* Card - marginBottom rides the iOS keyboard 1:1 */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
             <SheetLayout
@@ -198,7 +198,7 @@ export function EditProjectSheet({
                   hitSlop={10}
                   {...a11y(t('common.close'), 'რუკის დახურვა', 'button')}
                 >
-                  <Ionicons name="close" size={24} color={theme.colors.ink} />
+                  <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
                 </Pressable>
               </View>
               <MapPickerInline

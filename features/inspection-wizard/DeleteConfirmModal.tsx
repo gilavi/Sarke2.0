@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Modal, Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Trash2, TriangleAlert } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
@@ -28,7 +28,7 @@ export function DeleteConfirmModal({
         <View style={styles.confirmCard}>
           <View style={{ alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="warning-outline" size={28} color={theme.colors.danger} />
+              <TriangleAlert size={28} color={theme.colors.danger} strokeWidth={1.5} />
             </View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>წაშლა?</Text>
             <Text style={{ fontSize: 14, color: theme.colors.inkSoft, textAlign: 'center', lineHeight: 20 }}>
@@ -43,7 +43,7 @@ export function DeleteConfirmModal({
               loading={deleting}
               disabled={deleting}
               onPress={onConfirm}
-              iconLeft={<Ionicons name="trash" size={18} color={theme.colors.danger} />}
+              iconLeft={<Trash2 size={18} color={theme.colors.danger} strokeWidth={1.5} />}
             />
           </View>
         </View>

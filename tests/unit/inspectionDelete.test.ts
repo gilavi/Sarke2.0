@@ -36,7 +36,7 @@ describe('deleteInspectionBySource', () => {
   // After the 2026-05-27 identity unification, every inspection (generic +
   // 9 equipment types) has a parent row in public.inspections, and the
   // equipment-table FK has ON DELETE CASCADE pointing back. So a single
-  // delete on the parent table covers every source — no per-type table
+  // delete on the parent table covers every source - no per-type table
   // mapping, no chance of orphaning the parent row.
   const cases = [
     ['undefined source (legacy/null)', undefined],

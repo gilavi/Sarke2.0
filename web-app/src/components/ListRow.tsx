@@ -46,7 +46,7 @@ export function ListRow({ to, icon, title, subtitle, trailing, badge, className 
   );
 }
 
-/** Icon slot for list rows — circle with a Lucide icon inside */
+/** Icon slot for list rows - circle with a Lucide icon inside */
 export function ListRowIcon({
   icon: Icon,
   color = 'bg-neutral-100',

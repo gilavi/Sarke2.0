@@ -1,4 +1,4 @@
-// Certificates tab — list of generated PDF certificates.
+// Certificates tab - list of generated PDF certificates.
 //
 // Each row has a thumbnail (styled mini-document) + metadata badges.
 // Tap → cert preview/detail screen. Swipe delete removes the cert row
@@ -13,7 +13,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, Trash2, User, Award, ChevronRight } from 'lucide-react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
@@ -52,11 +52,11 @@ function CertThumbnail({ cert }: { cert: Certificate }) {
   const barColor = isSafe === false ? theme.colors.danger : theme.colors.accent;
   return (
     <View style={thumbStyles.wrapper}>
-      {/* Colored left bar — safety indicator */}
+      {/* Colored left bar - safety indicator */}
       <View style={[thumbStyles.bar, { backgroundColor: barColor }]} />
       {/* Document body */}
       <View style={thumbStyles.body}>
-        <Ionicons name="document-text" size={14} color={theme.colors.inkFaint} />
+        <FileText size={14} color={theme.colors.inkFaint} strokeWidth={2} />
         <View style={{ gap: 4, marginTop: 6 }}>
           <View style={[thumbStyles.line, { width: '90%' }]} />
           <View style={[thumbStyles.line, { width: '70%' }]} />
@@ -137,7 +137,7 @@ const MemoizedCertItem = memo(function CertItem({
     <Swipeable
       renderRightActions={() => (
         <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y(t('common.delete'), 'PDF რეპორტის წაშლა', 'button')}>
-          <Ionicons name="trash" size={18} color={theme.colors.white} />
+          <Trash2 size={18} color={theme.colors.white} strokeWidth={2} />
           <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
             {t('common.delete')}
           </Text>
@@ -157,7 +157,7 @@ const MemoizedCertItem = memo(function CertItem({
                 {inspectionDisplayName(tpl?.name)}
               </Text>
               <Text style={styles.rowMeta} numberOfLines={1}>
-                {proj?.name ?? '—'}
+                {proj?.name ?? '-'}
               </Text>
               <Text style={styles.rowDate}>
                 {new Date(item.generated_at).toLocaleString(t('common.localeTag'))}
@@ -168,13 +168,13 @@ const MemoizedCertItem = memo(function CertItem({
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
                   {expertName ? (
                     <View style={styles.badge}>
-                      <Ionicons name="person-outline" size={10} color={theme.colors.inkSoft} />
+                      <User size={10} color={theme.colors.inkSoft} strokeWidth={1.5} />
                       <Text style={styles.badgeText}>{expertName}</Text>
                     </View>
                   ) : null}
                   {qualTypes.map(q => (
                     <View key={q.type} style={styles.badge}>
-                      <Ionicons name="ribbon-outline" size={10} color={theme.colors.inkSoft} />
+                      <Award size={10} color={theme.colors.inkSoft} strokeWidth={1.5} />
                       <Text style={styles.badgeText}>{q.number ? `№${q.number}` : q.type}</Text>
                     </View>
                   ))}
@@ -183,7 +183,7 @@ const MemoizedCertItem = memo(function CertItem({
             </View>
 
             {/* Preview indicator */}
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </View>
         </Card>
       </Pressable>
@@ -310,7 +310,7 @@ function getstyles(theme: any) {
     paddingVertical: 10,
   },
   title: { fontSize: 22, fontWeight: '700', color: theme.colors.ink },
-  // empty styles removed — now handled by <EmptyState />
+  // empty styles removed - now handled by <EmptyState />
   rowTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
   rowMeta: { fontSize: 12, color: theme.colors.inkSoft },
   rowDate: { fontSize: 11, color: theme.colors.inkFaint },

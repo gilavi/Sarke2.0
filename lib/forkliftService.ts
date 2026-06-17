@@ -62,7 +62,7 @@ function toModel(row: DbRow): ForkliftInspection {
   };
 }
 
-// Signatures are ephemeral (memory-only) — signer* fields are intentionally NOT
+// Signatures are ephemeral (memory-only) - signer* fields are intentionally NOT
 // persisted via patch, matching prior behavior.
 type ForkliftPatch = Partial<{
   company: string | null;

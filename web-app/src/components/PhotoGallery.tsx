@@ -3,7 +3,7 @@ import { Modal, ActionIcon } from '@mantine/core';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PhotoGalleryProps {
-  /** signed URLs — empty strings are rendered as placeholder tiles */
+  /** signed URLs - empty strings are rendered as placeholder tiles */
   urls: string[];
   /** label shown in the lightbox caption, e.g. "სლაიდი 2" */
   captions?: string[];

@@ -3,7 +3,7 @@
 // and `session.user_metadata`) and the public.users row that all the app's
 // list/detail screens read from.
 //
-// Keep this file small — the only profile mutation is name editing today. If
+// Keep this file small - the only profile mutation is name editing today. If
 // more fields land (avatar, bio, …) add them here, not in a parallel helper.
 
 import { supabase } from './supabase';

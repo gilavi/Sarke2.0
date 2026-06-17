@@ -26,7 +26,7 @@ function cellLabel(status: 'pass' | 'fail' | 'neutral', raw: string): string {
   // neutral
   return raw && /კი|ok|pass|yes|good|ok\.|ნორმ|გამართულია|არა|fail|bad|no|broken|damaged|defect/i.test(raw)
     ? raw
-    : '—';
+    : '-';
 }
 
 export function renderQuestion(
@@ -59,7 +59,7 @@ export function renderQuestion(
           ? `<span class="answer-pill pill-yes">✓ ${t('pdf.yes')}</span>`
           : v === false
             ? `<span class="answer-pill pill-no">✗ ${t('pdf.no')}</span>`
-            : '<span class="pill-empty">—</span>';
+            : '<span class="pill-empty">-</span>';
       return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
         <div class="question-answer">${label}</div>
@@ -70,14 +70,14 @@ export function renderQuestion(
       const v = answer?.value_num;
       return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
-        <div class="question-answer">${v ?? '—'} ${escapeHtml(q.unit ?? '')}</div>
+        <div class="question-answer">${v ?? '-'} ${escapeHtml(q.unit ?? '')}</div>
         ${comment}${notes}${photosHtml}
       </div>`;
     }
     case 'freetext':
       return `<div class="${cardClass}">
         <div class="question-title">${escapeHtml(q.title)}</div>
-        <div class="question-answer">${escapeHtml(answer?.value_text ?? '—')}</div>
+        <div class="question-answer">${escapeHtml(answer?.value_text ?? '-')}</div>
         ${comment}${notes}${photosHtml}
       </div>`;
     case 'photo_upload':

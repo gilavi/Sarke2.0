@@ -14,7 +14,7 @@ interface AnswerButtonsProps {
 }
 
 /**
- * Binary yes/no answer for the inspection wizard. Monochrome via StatusChip —
+ * Binary yes/no answer for the inspection wizard. Monochrome via StatusChip -
  * the ✓/✗ icons carry the meaning, not color. Haptics fire here; the chip owns
  * the press animation. The row morphs between stacked pills and a compact row
  * via a layout transition when `compact` flips.

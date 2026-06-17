@@ -1,5 +1,5 @@
 /**
- * Account — cancel subscription flow. The PRO active card has a "გაუქმება"
+ * Account - cancel subscription flow. The PRO active card has a "გაუქმება"
  * button that calls cancelSubscription(user.id).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -50,7 +50,7 @@ beforeEach(() => {
   vi.mocked(listQualifications).mockResolvedValue([]);
 });
 
-describe('Account — cancel subscription', () => {
+describe('Account - cancel subscription', () => {
   it('clicking the active-state "გაუქმება" with confirm=true fires cancelSubscription', async () => {
     vi.mocked(usePdfUsage).mockReturnValue({
       data: { status: 'active', count: 100, limit: 30, isLocked: false,
@@ -60,7 +60,7 @@ describe('Account — cancel subscription', () => {
     vi.mocked(cancelSubscription).mockResolvedValue({ active_until: '2026-12-01' } as never);
 
     renderPage(<Account />);
-    // Click the trigger — AlertDialog opens.
+    // Click the trigger - AlertDialog opens.
     fireEvent.click(screen.getByRole('button', { name: 'გაუქმება' }));
     // Wait for the dialog action button, then click it.
     const confirmBtn = await screen.findByRole('button', { name: 'გამოწერის გაუქმება' });

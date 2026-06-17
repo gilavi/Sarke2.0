@@ -1,5 +1,5 @@
 // Combined camera + library picker. Live camera viewfinder at the top, a
-// horizontal strip of recent photos at the bottom — capture or pick, one
+// horizontal strip of recent photos at the bottom - capture or pick, one
 // screen, one tap. Returns the chosen URIs via lib/photoPickerBus.
 //
 // Two modes (driven by the `?multi=1` query param the hook sets):
@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { X, Images, Check, Camera } from 'lucide-react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as ImagePicker from 'expo-image-picker';
@@ -53,7 +53,7 @@ const SELECTION_LIMIT = 10;
 const zoomLabel = (z: number) => `${(1 + z * 4).toFixed(1)}×`;
 
 /**
- * iCloud-backed / ph:// URIs aren't readable by FileSystem — copy them to a
+ * iCloud-backed / ph:// URIs aren't readable by FileSystem - copy them to a
  * local cache file we can hand to fetch/upload. Pass-through for local URIs.
  */
 async function toLocalUri(uri: string, id: string): Promise<string> {
@@ -157,7 +157,7 @@ export default function PhotoPickerScreen() {
 
   // Request camera + library permissions on mount, at most once per mount.
   // If the user dismisses the OS sheet (swipe-down) the permission stays
-  // {granted:false, canAskAgain:true} — without this guard the effect would
+  // {granted:false, canAskAgain:true} - without this guard the effect would
   // re-fire and re-prompt indefinitely.
   useEffect(() => {
     if (askedCamRef.current) return;
@@ -188,14 +188,14 @@ export default function PhotoPickerScreen() {
         });
         setAssets(page.assets);
       } catch {
-        // Library read failure is non-fatal — user can still use camera.
+        // Library read failure is non-fatal - user can still use camera.
       }
     })();
   }, [libPerm?.granted]);
 
   // Use router.dismiss() (modal-aware close) instead of router.back(). back()
   // emits a GO_BACK action that the AuthGate listener intercepts and redirects
-  // to /home — sending the user to the dashboard after every capture.
+  // to /home - sending the user to the dashboard after every capture.
   // Guard with canDismiss() first: dismiss() throws a "POP was not handled"
   // error when the modal stack has nothing to pop (e.g. opened via deep link).
   const close = useCallback(() => {
@@ -230,7 +230,7 @@ export default function PhotoPickerScreen() {
       if (photo?.uri) {
         finish([photo.uri], true);
         // A live capture is annotated (and the annotator replaces this screen) UNLESS
-        // the caller skips annotation — in which case the hook adds it directly and we
+        // the caller skips annotation - in which case the hook adds it directly and we
         // must dismiss ourselves.
         if (skipAnnotate) close();
       }
@@ -319,7 +319,7 @@ export default function PhotoPickerScreen() {
       }
       finish(uris, false);
       // The hook adds these directly (no annotator) when it's a multi-mode batch OR an
-      // annotation-skipping caller — in both cases it won't replace this screen, so we
+      // annotation-skipping caller - in both cases it won't replace this screen, so we
       // dismiss it. A single-mode annotated pick is replaced by the annotator instead.
       if (multiMode || skipAnnotate) close();
     } catch {
@@ -350,7 +350,7 @@ export default function PhotoPickerScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      {/* Camera viewfinder — pinch-to-zoom wraps ONLY this area so it never fights
+      {/* Camera viewfinder - pinch-to-zoom wraps ONLY this area so it never fights
           the horizontal recent-photos strip below. */}
       <GestureDetector gesture={pinch}>
         <View style={styles.cameraWrap}>
@@ -363,7 +363,7 @@ export default function PhotoPickerScreen() {
             />
           ) : camDeniedFinal ? (
             <View style={styles.permPlaceholder}>
-              <Ionicons name="camera-outline" size={36} color="#fff" />
+              <Camera size={36} color="#fff" strokeWidth={1.5} />
               <Text style={styles.permText}>კამერაზე წვდომა აკრძალულია</Text>
               <Pressable onPress={() => void Linking.openSettings()} style={styles.permButton}>
                 <Text style={styles.permButtonText}>პარამეტრების გახსნა</Text>
@@ -375,7 +375,7 @@ export default function PhotoPickerScreen() {
             </View>
           )}
 
-          {/* Zoom indicator pill — fades out when idle. */}
+          {/* Zoom indicator pill - fades out when idle. */}
           {camReady ? (
             <Animated.View style={[styles.zoomPill, pillStyle]} pointerEvents="none">
               <Text style={styles.zoomPillText}>{zoomLabel(zoomDisplay)}</Text>
@@ -385,10 +385,10 @@ export default function PhotoPickerScreen() {
           {/* Top bar: cancel + system-library shortcut */}
           <View style={styles.topBar} pointerEvents="box-none">
             <Pressable onPress={cancel} hitSlop={12} style={styles.iconBtn}>
-              <Ionicons name="close" size={22} color="#fff" />
+              <X size={22} color="#fff" strokeWidth={1.5} />
             </Pressable>
             <Pressable onPress={openSystemLibrary} hitSlop={12} style={styles.libraryShortcut}>
-              <Ionicons name="images-outline" size={18} color="#fff" />
+              <Images size={18} color="#fff" strokeWidth={1.5} />
               <Text style={styles.libraryShortcutText}>ბიბლიოთეკა</Text>
             </Pressable>
           </View>
@@ -420,7 +420,7 @@ export default function PhotoPickerScreen() {
                 selecting && { opacity: 0.6 },
               ]}
             >
-              <Ionicons name="checkmark" size={18} color="#fff" />
+              <Check size={18} color="#fff" strokeWidth={1.5} />
               <Text style={styles.doneBarText}>დასრულება ({selectedIds.length})</Text>
             </Pressable>
           ) : null}

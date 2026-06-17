@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Mail } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Keyboard } from 'react-native';
 import * as Linking from 'expo-linking';
@@ -75,7 +75,7 @@ export default function ForgotPasswordScreen() {
             {sent ? (
               <View style={{ gap: 12 }}>
                 <View style={{ alignItems: 'center', gap: 10 }}>
-                  <Ionicons name="mail-outline" size={42} color={theme.colors.accent} />
+                  <Mail size={42} color={theme.colors.accent} strokeWidth={1.5} />
                   <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, textAlign: 'center' }}>
                     {t('auth.linkSent')}
                   </Text>

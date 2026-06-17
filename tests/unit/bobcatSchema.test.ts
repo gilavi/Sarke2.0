@@ -48,7 +48,7 @@ const PHOTOS = {
   'bobcat/x/summary/1.jpg': 'data:image/jpeg;base64,SUMMARYPHOTO',
 };
 
-describe('buildInspectionPdf — bobcat (small loader)', () => {
+describe('buildInspectionPdf - bobcat (small loader)', () => {
   const html = buildInspectionPdf(
     bobcatSchema,
     { inspection: buildInspection(), projectName: 'Project X' },
@@ -61,8 +61,8 @@ describe('buildInspectionPdf — bobcat (small loader)', () => {
   });
 
   it('renders section headers and bobcat-specific titles', () => {
-    expect(html).toContain('I — ზოგადი ინფორმაცია');
-    expect(html).toContain('III —');
+    expect(html).toContain('I - ზოგადი ინფორმაცია');
+    expect(html).toContain('III -');
   });
 
   it('renders the small-loader title (not large-loader)', () => {
@@ -100,7 +100,7 @@ describe('buildInspectionPdf — bobcat (small loader)', () => {
   });
 });
 
-describe('buildInspectionPdf — bobcat (large loader variant)', () => {
+describe('buildInspectionPdf - bobcat (large loader variant)', () => {
   const html = buildInspectionPdf(
     bobcatSchema,
     {
@@ -130,7 +130,7 @@ describe('buildInspectionPdf — bobcat (large loader variant)', () => {
   });
 });
 
-describe('buildInspectionPdf — bobcat empty/null state', () => {
+describe('buildInspectionPdf - bobcat empty/null state', () => {
   const html = buildInspectionPdf(
     bobcatSchema,
     {
@@ -154,7 +154,7 @@ describe('buildInspectionPdf — bobcat empty/null state', () => {
 
   it('still renders structure even with mostly null fields', () => {
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
-    expect(html).toContain('I — ზოგადი ინფორმაცია');
+    expect(html).toContain('I - ზოგადი ინფორმაცია');
   });
 
   it('renders null pills for unfilled items', () => {
@@ -162,7 +162,7 @@ describe('buildInspectionPdf — bobcat empty/null state', () => {
   });
 });
 
-describe('buildInspectionPdf — bobcat specific fixes', () => {
+describe('buildInspectionPdf - bobcat specific fixes', () => {
   describe('numbered result pills', () => {
     const html = buildInspectionPdf(
       bobcatSchema,
@@ -170,16 +170,16 @@ describe('buildInspectionPdf — bobcat specific fixes', () => {
       {},
     );
 
-    it('pill-good renders "1 — კარგია"', () => {
-      expect(html).toContain('1 — კარგია');
+    it('pill-good renders "1 - კარგია"', () => {
+      expect(html).toContain('1 - კარგია');
     });
 
-    it('pill-def renders "2 — ნაკლი"', () => {
-      expect(html).toContain('2 — ნაკლი');
+    it('pill-def renders "2 - ნაკლი"', () => {
+      expect(html).toContain('2 - ნაკლი');
     });
 
-    it('pill-bad renders "3 — გამოუსადეგ."', () => {
-      expect(html).toContain('3 — გამოუსადეგ.');
+    it('pill-bad renders "3 - გამოუსადეგ."', () => {
+      expect(html).toContain('3 - გამოუსადეგ.');
     });
 
     it('result pill spans do not contain legacy icon characters ✓, ⚠, or ✗', () => {

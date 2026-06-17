@@ -6,7 +6,7 @@
 //   - გადმოწერა:    renders the same HTML through expo-print and shares
 //
 // Signatures are captured on this screen via features/signatures/SignaturesScreen
-// and flow into the PDF builder as a local snapshot — no global state hop.
+// and flow into the PDF builder as a local snapshot - no global state hop.
 //
 // The preview is regenerated whenever the certificates sheet saves a change.
 
@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleAlert, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -105,7 +105,7 @@ export default function InspectionResultScreen() {
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const mountedRef = useRef(true);
 
-  // Signatures state — local to this result screen. Dies when the screen
+  // Signatures state - local to this result screen. Dies when the screen
   // unmounts. See features/signatures/AGENTS.md for the no-persistence rule.
   const signatures = useSignaturesState();
   const [signaturesOpen, setSignaturesOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function InspectionResultScreen() {
           `${insp.id}/wizard`;
         if (isOscillating('detail', target)) {
           if (mountedRef.current) setRedirectBlocked(true);
-          /* oscillation detected — blocking redirect */
+          /* oscillation detected - blocking redirect */
         } else {
           recordRedirect('detail', target);
           router.replace(`/inspections/${target}` as any);
@@ -200,7 +200,7 @@ export default function InspectionResultScreen() {
     }
   }, [id, router]);
 
-  // Load on mount only — useFocusEffect was re-hammering Supabase on every
+  // Load on mount only - useFocusEffect was re-hammering Supabase on every
   // back-navigation. Cached data from the hooks above renders instantly;
   // loadAll() fills in nested photo / attachment data on first paint.
   useEffect(() => {
@@ -348,7 +348,7 @@ export default function InspectionResultScreen() {
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setDownloading(true);
     try {
-      // Re-embed everything fresh — signatures or attachments may have been
+      // Re-embed everything fresh - signatures or attachments may have been
       // edited since the preview was last built.
       const photosEmbedded: Record<string, AnswerPhoto[]> = {};
       await Promise.all(
@@ -427,12 +427,12 @@ export default function InspectionResultScreen() {
         subject: 'შრომის უსაფრთხოების შემოწმება',
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება — სცადე თავიდან')), 30_000),
+        setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება - სცადე თავიდან')), 30_000),
       );
       await Promise.race([pdfPromise, timeoutPromise]);
       // Captured signatures persist while the user remains on this screen
       // (so re-sharing keeps the same signature); they die when the screen
-      // unmounts. No persistence path — see features/signatures/AGENTS.md.
+      // unmounts. No persistence path - see features/signatures/AGENTS.md.
       haptic.success();
       invalidatePdfUsage();
     } catch (e) {
@@ -498,7 +498,7 @@ export default function InspectionResultScreen() {
           <SkeletonPreview />
         ) : previewError && !previewHtml ? (
           <View style={styles.previewState}>
-            <Ionicons name="alert-circle" size={36} color={theme.colors.danger} />
+            <CircleAlert size={36} color={theme.colors.danger} strokeWidth={2} />
             <Text style={{ color: theme.colors.danger, textAlign: 'center', marginTop: 12 }}>
               {previewError}
             </Text>
@@ -530,7 +530,7 @@ export default function InspectionResultScreen() {
               onPress={openCertificatesSheet}
               style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="document-attach-outline" size={18} color={theme.colors.ink} />
+              <Paperclip size={18} color={theme.colors.ink} strokeWidth={1.5} />
               <Text style={styles.bottomBtnText} numberOfLines={1}>
                 სერტიფიკატები {certBadge}
               </Text>
@@ -539,7 +539,7 @@ export default function InspectionResultScreen() {
               onPress={() => setSignaturesOpen(true)}
               style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
             >
-              <Ionicons name="create-outline" size={18} color={theme.colors.ink} />
+              <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
               <Text style={styles.bottomBtnText} numberOfLines={1}>
                 ხელმოწერები
               </Text>
@@ -560,7 +560,10 @@ export default function InspectionResultScreen() {
               <ActivityIndicator color={theme.colors.white} />
             ) : (
               <>
-                <Ionicons name={pdfUsage?.isLocked ? 'lock-closed-outline' : 'share-outline'} size={18} color={theme.colors.white} />
+                {pdfUsage?.isLocked
+                  ? <Lock size={18} color={theme.colors.white} strokeWidth={1.5} />
+                  : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />
+                }
                 <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
                   {pdfUsage?.isLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
                 </Text>

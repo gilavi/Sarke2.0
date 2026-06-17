@@ -24,9 +24,9 @@ import { humanizeError } from '@/lib/errors';
 
 
 function projectInitials(name: string | null | undefined): string {
-  if (!name) return '—';
+  if (!name) return '-';
   const trimmed = name.trim();
-  if (!trimmed) return '—';
+  if (!trimmed) return '-';
   return Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE');
 }
 
@@ -96,7 +96,7 @@ function ProjectCard({ p, onDelete, onEdit }: { p: Project; onDelete: (id: strin
         </div>
       </Link>
 
-      {/* Action buttons — appear on hover */}
+      {/* Action buttons - appear on hover */}
       <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -235,7 +235,7 @@ export default function Projects() {
 
       {items && view === 'list' && items.length === 0 && (
         <p className="text-sm text-neutral-500">
-          პროექტები ჯერ არ არის. დააჭირეთ „ახალი" — ახალი პროექტის შესაქმნელად.
+          პროექტები ჯერ არ არის. დააჭირეთ „ახალი" - ახალი პროექტის შესაქმნელად.
         </p>
       )}
 

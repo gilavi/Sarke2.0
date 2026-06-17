@@ -1,5 +1,5 @@
 /**
- * NewReport (55% covered) — covers the finish/submit path.
+ * NewReport (55% covered) - covers the finish/submit path.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@/test-utils';

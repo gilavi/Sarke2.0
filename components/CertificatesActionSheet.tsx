@@ -1,4 +1,4 @@
-// CertificatesActionSheet — manage equipment certificates for an inspection.
+// CertificatesActionSheet - manage equipment certificates for an inspection.
 //
 // Two internal views (state-driven, no react-navigation):
 //   - 'list':  rows of attachments with photo-status pill + "+ დამატება" CTA
@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck, CircleX, ChevronRight, ChevronLeft, Trash2, Camera } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
 import { SheetLayout } from './SheetLayout';
@@ -147,11 +147,9 @@ function CertRow({
           {item.cert_number ? ` №${item.cert_number}` : ''}
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Ionicons
-            name={hasPhoto ? 'checkmark-circle' : 'close-circle-outline'}
-            size={14}
-            color={hasPhoto ? theme.colors.accent : theme.colors.inkFaint}
-          />
+          {hasPhoto
+            ? <CircleCheck size={14} color={theme.colors.accent} strokeWidth={1.5} />
+            : <CircleX size={14} color={theme.colors.inkFaint} strokeWidth={1.5} />}
           <Text
             style={[
               styles.rowMeta,
@@ -162,7 +160,7 @@ function CertRow({
           </Text>
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+      <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
     </Pressable>
   );
 }
@@ -203,7 +201,7 @@ function CertEditView({
     let cancelled = false;
     setResolvedPhotoUrl(null);
     if (photoUri) {
-      // local pick — render directly
+      // local pick - render directly
       setResolvedPhotoUrl(photoUri);
       return;
     }
@@ -223,7 +221,7 @@ function CertEditView({
 
   const pickPhoto = useCallback(async () => {
     // Must use pickPhoto (ImagePicker directly) instead of pickPhotoWithAnnotation
-    // here — this component runs inside a Modal and router.push navigates behind
+    // here - this component runs inside a Modal and router.push navigates behind
     // the modal, making the photo-picker screen unreachable. The promise would
     // hang forever, freezing the upload button.
     const result = await pickPhotoFromLibrary();
@@ -241,7 +239,7 @@ function CertEditView({
     try {
       let uploadedPath: string | null | undefined = undefined;
       if (photoUri) {
-        // Local pick — upload to storage.
+        // Local pick - upload to storage.
         uploadedPath = await inspectionAttachmentsApi.uploadPhoto({
           inspectionId,
           fileUri: photoUri,
@@ -296,12 +294,12 @@ function CertEditView({
   const header = (
     <View style={styles.editHeader}>
       <Pressable onPress={onBack} hitSlop={12} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Ionicons name="chevron-back" size={20} color={theme.colors.accent} />
+        <ChevronLeft size={20} color={theme.colors.accent} strokeWidth={1.5} />
         <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 15 }}>სერტიფიკატები</Text>
       </Pressable>
       {existing ? (
         <Pressable onPress={remove} hitSlop={12}>
-          <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+          <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
         </Pressable>
       ) : null}
     </View>
@@ -365,7 +363,7 @@ function CertEditView({
           <Image source={{ uri: resolvedPhotoUrl }} style={styles.photoPreview} contentFit="cover" />
         ) : (
           <View style={styles.photoPlaceholder}>
-            <Ionicons name="camera-outline" size={28} color={theme.colors.inkFaint} />
+            <Camera size={28} color={theme.colors.inkFaint} strokeWidth={1.5} />
             <Text style={{ color: theme.colors.inkSoft, fontSize: 13, marginTop: 6 }}>
               ფოტოს ატვირთვა
             </Text>

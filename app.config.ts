@@ -9,11 +9,11 @@ import type { ExpoConfig } from 'expo/config';
  *
  * NOTE: this file must be self-contained. Expo's config loader transpiles
  * app.config.ts itself but resolves nested `require()`s through Node, which
- * cannot load a sibling `.ts` module — so the env table is inlined here rather
+ * cannot load a sibling `.ts` module - so the env table is inlined here rather
  * than imported from `config/env.ts`.
  *
  * Everything not parameterized by `env` below is byte-identical to the
- * pre-refactor app.json — verified with `npx expo config --type public --json`.
+ * pre-refactor app.json - verified with `npx expo config --type public --json`.
  *
  * The resolved values flow into `extra` and are read at runtime via
  * `Constants.expoConfig.extra` (see `lib/supabase.ts`, `lib/crashReporting.ts`).
@@ -61,7 +61,7 @@ const PRODUCTION: EnvConfig = {
 // --- Staging (separate installable app, internal distribution) --------------
 // The staging Supabase project does not exist yet (plan Phase 0.B). Its URL +
 // anon key are read from env vars so they can be supplied the moment the
-// project is created — no code change needed. The guard below fails the build
+// project is created - no code change needed. The guard below fails the build
 // if a staging/dev build is attempted before these are set.
 const STAGING: EnvConfig = {
   appEnv: 'staging',

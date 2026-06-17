@@ -400,7 +400,7 @@ describe('mock schedulesApi', () => {
     const s = await schedulesApi.upsertForItem(item.id, 7);
     expect(s.interval_days).toBe(7);
 
-    // Idempotent — second call returns the existing row
+    // Idempotent - second call returns the existing row
     const s2 = await schedulesApi.upsertForItem(item.id, 99);
     expect(s2.id).toBe(s.id);
     expect(s2.interval_days).toBe(7);

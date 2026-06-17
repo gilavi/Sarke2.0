@@ -38,7 +38,7 @@ const STORE_KEY = '@mock:db:v1';
 const SEED_VERSION = 2;
 export const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 
-// Transparent 1×1 PNG — safe to use as an <Image> source in mock mode.
+// Transparent 1×1 PNG - safe to use as an <Image> source in mock mode.
 export const MOCK_IMAGE_URI =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 
@@ -85,7 +85,7 @@ export async function save(): Promise<void> {
   await AsyncStorage.setItem(STORE_KEY, JSON.stringify(cache));
 }
 
-// Seed data — kept deliberately small. Two system templates matching the
+// Seed data - kept deliberately small. Two system templates matching the
 // real seeded ones, two projects, a handful of inspections with answers +
 // certs + quals.
 function seed(): MockDB {
@@ -229,7 +229,7 @@ function seed(): MockDB {
   };
 }
 
-/** Nuke local state — useful for testing. Not wired to UI. */
+/** Nuke local state - useful for testing. Not wired to UI. */
 export async function resetMockDb(): Promise<void> {
   cache = null;
   initPromise = null;

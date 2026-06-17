@@ -101,7 +101,7 @@ describe('InspectionDetail (loaded)', () => {
       '/inspections/i2',
     );
 
-    // The page mounts for a draft (we don't assert on specific edit affordances —
+    // The page mounts for a draft (we don't assert on specific edit affordances -
     // the heavy children are stubbed). At minimum the template title appears.
     expect((await screen.findAllByText('ფასადის ხარაჩო')).length).toBeGreaterThan(0);
   });

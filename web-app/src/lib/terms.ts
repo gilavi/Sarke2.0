@@ -1,4 +1,4 @@
-// Web-app's own copy of the terms content. Do NOT import from ../../../lib/terms —
+// Web-app's own copy of the terms content. Do NOT import from ../../../lib/terms -
 // per CLAUDE.md the web-app must not share code with the Expo project, and reaching
 // into the parent makes Vite resolve the root tsconfig (which extends expo/...) at
 // build time and breaks CI. Keep this file in sync with lib/terms.ts when copy changes.

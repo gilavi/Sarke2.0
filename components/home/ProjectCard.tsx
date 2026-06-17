@@ -7,7 +7,7 @@ import { useTheme, withOpacity } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import type { Project } from '../../types/models';
 
-const PROJECT_CARD_HEIGHT = 120;
+const PROJECT_CARD_HEIGHT = 155;
 
 interface ProjectCardProps {
   project: Project;
@@ -33,7 +33,7 @@ export const ProjectCard = memo(function ProjectCard({
       )}
     >
       <View style={[styles.projectCard, { width }]}>
-        {project.latitude != null && project.longitude != null ? (
+        {project.latitude != null && project.longitude != null && (
           <>
             <MapView
               style={StyleSheet.absoluteFill}
@@ -48,50 +48,71 @@ export const ProjectCard = memo(function ProjectCard({
               zoomEnabled={false}
               pitchEnabled={false}
               rotateEnabled={false}
+              showsCompass={false}
+              showsScale={false}
+              showsTraffic={false}
+              showsPointsOfInterest={false}
+              showsBuildings={false}
+              showsIndoors={false}
+              mapPadding={{ top: 0, right: 0, bottom: -30, left: 0 }}
               liteMode
               pointerEvents="none"
             />
-            <View style={styles.projectCardMapOverlay} />
+            <View style={styles.mapOverlay} />
           </>
-        ) : (
-          <View
-            style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.surface }]}
-            pointerEvents="none"
-          />
         )}
-        <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden' }}>
-          <ProjectAvatar project={project} size={44} />
+
+        <View style={{ width: 60, height: 60, borderRadius: 30, overflow: 'hidden' }}>
+          <ProjectAvatar project={project} size={60} />
         </View>
-        <Text style={styles.projectName} numberOfLines={2}>
-          {project.company_name || project.name}
-        </Text>
+        <View>
+          <Text style={styles.projectName} numberOfLines={2}>
+            {project.company_name || project.name}
+          </Text>
+          {project.address ? (
+            <Text style={styles.projectAddress} numberOfLines={1}>
+              {project.address}
+            </Text>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
-}, (prev, next) => prev.project.id === next.project.id && prev.width === next.width);
+}, (prev, next) =>
+  prev.project.id === next.project.id &&
+  prev.project.address === next.project.address &&
+  prev.width === next.width
+);
 
 function getStyles(theme: any) {
   return StyleSheet.create({
     projectCard: {
-      backgroundColor: theme.colors.card,
+      backgroundColor: 'transparent',
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.colors.hairline,
+      borderColor: withOpacity('#000000', 0.1),
       padding: 12,
-      gap: 6,
+      justifyContent: 'space-between',
       height: PROJECT_CARD_HEIGHT,
       overflow: 'hidden',
       position: 'relative',
     },
-    projectCardMapOverlay: {
+    mapOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: withOpacity(theme.colors.card, 0.88),
+      backgroundColor: withOpacity('#FFFFFF', 0.82),
     },
     projectName: {
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 18,
+      fontWeight: '500',
       color: theme.colors.ink,
-      lineHeight: 19,
+      lineHeight: 22,
+      letterSpacing: -0.1,
+    },
+    projectAddress: {
+      fontSize: 11,
+      color: theme.colors.inkSoft,
+      marginTop: 2,
+      letterSpacing: 0,
     },
   });
 }

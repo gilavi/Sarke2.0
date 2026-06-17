@@ -20,7 +20,7 @@ const SLOTS = [
   { kind: 'letter' as const },
 ];
 
-const BRAND_GREEN = '#1D9E75';
+const PLATE_ACCENT = '#FF6D2E';
 
 function parseValue(raw: string): string[] {
   const cleaned = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
@@ -150,10 +150,10 @@ export const PlateInput = React.forwardRef<PlateInputHandle, PlateInputProps>(
           onPress={() => focusSlot(i)}
           style={[
             styles.cell,
-            { backgroundColor: isActive ? BRAND_GREEN + '12' : theme.colors.subtleSurface },
+            { backgroundColor: isActive ? PLATE_ACCENT + '12' : theme.colors.subtleSurface },
           ]}
         >
-          <Text style={[styles.cellText, { color: isActive && !ch ? BRAND_GREEN + 'AA' : theme.colors.ink }]}>
+          <Text style={[styles.cellText, { color: isActive && !ch ? PLATE_ACCENT + 'AA' : theme.colors.ink }]}>
             {ch || (isActive ? '·' : '')}
           </Text>
           {/* Active indicator bar at bottom */}
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     right: 6,
     height: 2.5,
     borderRadius: 2,
-    backgroundColor: BRAND_GREEN,
+    backgroundColor: PLATE_ACCENT,
   },
   cellText: {
     fontSize: 22,

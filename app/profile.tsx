@@ -26,7 +26,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../components/layout/KeyboardSafeArea';
 import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Key, ChevronRight, Trash2 } from 'lucide-react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
 import { Button } from '../components/ui';
 import { FloatingLabelInput } from '../components/inputs/FloatingLabelInput';
@@ -133,7 +133,7 @@ export default function ProfileScreen() {
               textContentType="familyName"
               required
             />
-            <Text style={styles.helperText}>ელ-ფოსტა: {user?.email ?? '—'}</Text>
+            <Text style={styles.helperText}>ელ-ფოსტა: {user?.email ?? '-'}</Text>
           </View>
 
           {/* Save button */}
@@ -152,9 +152,9 @@ export default function ProfileScreen() {
             disabled={busy || deleting}
             {...a11y('პაროლის შეცვლა', undefined, 'button')}
           >
-            <Ionicons name="key-outline" size={18} color={theme.colors.inkSoft} />
+            <Key size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.rowLabel}>პაროლის შეცვლა</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
 
           <View style={{ flex: 1, minHeight: 24 }} />
@@ -169,7 +169,7 @@ export default function ProfileScreen() {
             {deleting ? (
               <ActivityIndicator color={theme.colors.danger} />
             ) : (
-              <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+              <Trash2 size={18} color={theme.colors.danger} strokeWidth={1.5} />
             )}
             <Text style={styles.deleteLabel}>ანგარიშის წაშლა</Text>
           </Pressable>

@@ -1,5 +1,5 @@
 /**
- * PhotoUploadZone — drag-and-drop upload area with a thumbnail strip.
+ * PhotoUploadZone - drag-and-drop upload area with a thumbnail strip.
  *
  * Drop-in replacement for PhotoUploadWidget within the inspection wizard:
  * same prop shape (paths / prefix / inspectionId / itemId / onAdd / onRemove),
@@ -84,7 +84,7 @@ export default function PhotoUploadZone({
     try {
       await deleteInspectionPhoto(path);
     } catch {
-      // best-effort — thumbnail is removed regardless
+      // best-effort - thumbnail is removed regardless
     }
     onRemove(path);
   }
@@ -93,7 +93,7 @@ export default function PhotoUploadZone({
 
   return (
     <div>
-      {/* Empty state — dashed drop zone (hidden once photos exist) */}
+      {/* Empty state - dashed drop zone (hidden once photos exist) */}
       {!disabled && !hasPhotos && (
         <div
           role="button"
@@ -130,7 +130,7 @@ export default function PhotoUploadZone({
         </div>
       )}
 
-      {/* Filled state — uploader tile first, then thumbnails (same size) */}
+      {/* Filled state - uploader tile first, then thumbnails (same size) */}
       {hasPhotos && (
         <div className="flex flex-wrap gap-2">
           {!disabled && (

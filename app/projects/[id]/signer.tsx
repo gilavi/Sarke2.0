@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Trash2, Check, Pencil, X } from 'lucide-react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
@@ -26,7 +26,7 @@ import { SIGNER_ROLE_LABEL } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
 
-// Roster roles only — "expert" is always the logged-in user per inspection, not rostered.
+// Roster roles only - "expert" is always the logged-in user per inspection, not rostered.
 const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 
 export default function SignerForm() {
@@ -85,7 +85,7 @@ export default function SignerForm() {
       let sigPath = existing?.signature_png_url ?? null;
 
       if (sigDirty && pendingSigData) {
-        // Upload via the canonical helper — the old fetch(dataURL).blob() +
+        // Upload via the canonical helper - the old fetch(dataURL).blob() +
         // storageApi.upload path produced 0-byte objects on Hermes/SDK 54.
         const path = `project/${id}/signer-${existing?.id ?? Date.now()}-${Date.now()}.png`;
         const { pending } = await uploadSignature(path, pendingSigData);
@@ -142,7 +142,7 @@ export default function SignerForm() {
           headerRight: () =>
             editing ? (
               <Pressable onPress={remove} hitSlop={12}>
-                <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
+                <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.5} />
               </Pressable>
             ) : null,
         }}
@@ -168,7 +168,7 @@ export default function SignerForm() {
                 >
                   <View style={[styles.radio, role === r && styles.radioOn]}>
                     {role === r ? (
-                      <Ionicons name="checkmark" size={14} color={theme.colors.white} />
+                      <Check size={14} color={theme.colors.white} strokeWidth={1.5} />
                     ) : null}
                   </View>
                   <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
@@ -202,7 +202,7 @@ export default function SignerForm() {
                 <Image source={{ uri: sigPreview }} style={styles.sigImage} contentFit="contain" />
               ) : (
                 <View style={styles.sigEmpty}>
-                  <Ionicons name="create-outline" size={22} color={theme.colors.inkFaint} />
+                  <Pencil size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
                   <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
                     {t('projectSigner.noSignature')}
                   </Text>
@@ -288,7 +288,7 @@ function SignatureCaptureModal({
               {title}
             </Text>
             <Pressable onPress={onCancel} hitSlop={12}>
-              <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+              <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
           </View>
           <View style={styles.canvasBox}>

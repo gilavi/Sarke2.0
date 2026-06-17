@@ -55,7 +55,7 @@ const PHOTOS = {
   'fp/x/d1/sum.jpg': 'data:image/jpeg;base64,SUM',
 };
 
-describe('buildInspectionPdf — fallProtection', () => {
+describe('buildInspectionPdf - fallProtection', () => {
   const html = buildInspectionPdf(
     fallProtectionSchema,
     { inspection: mockInsp(), projectName: 'პროექტი' },
@@ -79,7 +79,7 @@ describe('buildInspectionPdf — fallProtection', () => {
   });
 });
 
-describe('buildInspectionPdf — fallProtection default state', () => {
+describe('buildInspectionPdf - fallProtection default state', () => {
   const insp = buildDefaultFallProtectionInspection(
     'fp-id',
     'p1',

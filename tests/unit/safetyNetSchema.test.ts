@@ -48,7 +48,7 @@ const PHOTOS = {
   'sn/x/sum.jpg': 'data:image/jpeg;base64,SUM',
 };
 
-describe('buildInspectionPdf — safetyNet', () => {
+describe('buildInspectionPdf - safetyNet', () => {
   const html = buildInspectionPdf(
     safetyNetSchema,
     { inspection: mockInsp(), projectName: 'პროექტი' },
@@ -81,7 +81,7 @@ describe('buildInspectionPdf — safetyNet', () => {
   });
 });
 
-describe('buildInspectionPdf — safetyNet fail verdict', () => {
+describe('buildInspectionPdf - safetyNet fail verdict', () => {
   const insp = buildDefaultSNInspection('sn-id', 'p1', 'u1', SAFETY_NET_TEMPLATE_ID, '2026-05-20T10:00:00Z');
   insp.verdict = 'fail';
   const html = buildInspectionPdf(safetyNetSchema, { inspection: insp, projectName: 'P' }, {});
@@ -91,7 +91,7 @@ describe('buildInspectionPdf — safetyNet fail verdict', () => {
   });
 });
 
-describe('buildInspectionPdf — safetyNet default state', () => {
+describe('buildInspectionPdf - safetyNet default state', () => {
   const insp = buildDefaultSNInspection('sn-id', 'p1', 'u1', SAFETY_NET_TEMPLATE_ID, '2026-05-20T10:00:00Z');
   const html = buildInspectionPdf(safetyNetSchema, { inspection: insp, projectName: 'P' }, {});
 

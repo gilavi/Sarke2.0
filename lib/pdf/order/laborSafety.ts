@@ -187,7 +187,7 @@ export function buildLaborSafetyOrderHtml({ formData: f }: OrderPdfArgs): string
 <div class="section-title">სამართლებრივი საფუძველი</div>
 <ul class="legal-basis">
   <li>საქართველოს ორგანული კანონის „შრომის უსაფრთხოების შესახებ" მე-5 მუხლის პირველი პუნქტი (დამსაქმებლის ვალდებულებები);</li>
-  <li>საქართველოს ორგანული კანონის „შრომის უსაფრთხოების შესახებ" მე-5 მუხლის მე-9 პუნქტი (დამსაქმებლის ვალდებულება — ჰყავდეს შრომის უსაფრთხოების სპეციალისტი);</li>
+  <li>საქართველოს ორგანული კანონის „შრომის უსაფრთხოების შესახებ" მე-5 მუხლის მე-9 პუნქტი (დამსაქმებლის ვალდებულება - ჰყავდეს შრომის უსაფრთხოების სპეციალისტი);</li>
   <li>საქართველოს მთავრობის 2018 წლის 27 ივლისის №381 დადგენილება;</li>
   <li>კომპანიის წესდება და შიდა დებულებები.</li>
 </ul>
@@ -196,7 +196,7 @@ export function buildLaborSafetyOrderHtml({ formData: f }: OrderPdfArgs): string
 <p class="decree-title">ვ ბ რ ძ ა ნ ე ბ:</p>
 <ol class="decree">
   <li>
-    ობიექტზე — <strong>„${escHtml(f.facilityName)}"</strong> — შრომის უსაფრთხოების სპეციალისტად დაინიშნოს
+    ობიექტზე - <strong>„${escHtml(f.facilityName)}"</strong> - შრომის უსაფრთხოების სპეციალისტად დაინიშნოს
     <strong>${escHtml(f.specialistName)}</strong>
     (პ/ნ ${escHtml(f.specialistPersonalId)}),
     რომელმაც გაიარა აკრედიტებული პროგრამა და ფლობს სერტიფიკატს №${escHtml(f.certificateNumber)},

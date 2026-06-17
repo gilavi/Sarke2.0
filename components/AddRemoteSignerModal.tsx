@@ -4,7 +4,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check } from 'lucide-react-native';
 import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
@@ -123,7 +123,7 @@ export function AddRemoteSignerSheet({
               >
                 <View style={[styles.radio, role === r && styles.radioOn]}>
                   {role === r ? (
-                    <Ionicons name="checkmark" size={14} color={theme.colors.white} />
+                    <Check size={14} color={theme.colors.white} strokeWidth={1.5} />
                   ) : null}
                 </View>
                 <A11yText size="base" weight="medium" color={theme.colors.ink}>

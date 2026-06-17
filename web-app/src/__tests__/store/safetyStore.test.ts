@@ -11,7 +11,7 @@ const reset = () =>
 
 beforeEach(reset);
 
-describe('safetyStore — initial state', () => {
+describe('safetyStore - initial state', () => {
   it('starts with no selected/hovered part, panel open, no cameraTarget', () => {
     const s = useSafetyStore.getState();
     expect(s.selectedPartId).toBeNull();
@@ -21,7 +21,7 @@ describe('safetyStore — initial state', () => {
   });
 });
 
-describe('safetyStore — setSelectedPart', () => {
+describe('safetyStore - setSelectedPart', () => {
   it('sets selectedPartId', () => {
     useSafetyStore.getState().setSelectedPart('crane-boom');
     expect(useSafetyStore.getState().selectedPartId).toBe('crane-boom');
@@ -40,7 +40,7 @@ describe('safetyStore — setSelectedPart', () => {
   });
 });
 
-describe('safetyStore — setHoveredPart', () => {
+describe('safetyStore - setHoveredPart', () => {
   it('sets hoveredPartId', () => {
     useSafetyStore.getState().setHoveredPart('arm');
     expect(useSafetyStore.getState().hoveredPartId).toBe('arm');
@@ -53,7 +53,7 @@ describe('safetyStore — setHoveredPart', () => {
   });
 });
 
-describe('safetyStore — togglePanel', () => {
+describe('safetyStore - togglePanel', () => {
   it('flips isPanelOpen from true to false', () => {
     useSafetyStore.getState().togglePanel();
     expect(useSafetyStore.getState().isPanelOpen).toBe(false);
@@ -66,7 +66,7 @@ describe('safetyStore — togglePanel', () => {
   });
 });
 
-describe('safetyStore — setPanelOpen', () => {
+describe('safetyStore - setPanelOpen', () => {
   it('sets isPanelOpen to false', () => {
     useSafetyStore.getState().setPanelOpen(false);
     expect(useSafetyStore.getState().isPanelOpen).toBe(false);
@@ -79,7 +79,7 @@ describe('safetyStore — setPanelOpen', () => {
   });
 });
 
-describe('safetyStore — setCameraTarget', () => {
+describe('safetyStore - setCameraTarget', () => {
   it('stores the camera target tuple', () => {
     useSafetyStore.getState().setCameraTarget([1, 2, 3]);
     expect(useSafetyStore.getState().cameraTarget).toEqual([1, 2, 3]);

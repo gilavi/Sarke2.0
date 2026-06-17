@@ -1,6 +1,6 @@
 // Shared utilities for the inspection PDF renderers.
 //
-// PDF output is locked to Georgian — `tPdf(...)` resolves keys against
+// PDF output is locked to Georgian - `tPdf(...)` resolves keys against
 // `locales/ka.json` regardless of the user's current i18n locale.
 
 import ka from '../../../locales/ka.json';

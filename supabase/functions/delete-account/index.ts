@@ -4,7 +4,7 @@
 // rows configured with ON DELETE CASCADE).
 //
 // Server-side because `supabase.auth.admin.deleteUser()` requires the service
-// role key — calling it from the client would mean shipping the service key
+// role key - calling it from the client would mean shipping the service key
 // in the bundle, which would let any user delete any other user. The Edge
 // Function reads the caller's JWT (passed automatically by
 // `supabase.functions.invoke` from a signed-in client) and only deletes the

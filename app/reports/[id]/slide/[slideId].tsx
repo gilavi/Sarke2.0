@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
 import { A11yText as Text } from '../../../../components/primitives/A11yText';
@@ -234,7 +234,7 @@ export default function ReportSlideEditor() {
             <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Ionicons name="camera" size={32} color={theme.colors.inkFaint} />
+              <Camera size={32} color={theme.colors.inkFaint} strokeWidth={1.5} />
               <Text style={styles.imagePlaceholderText}>+ ფოტოს დამატება</Text>
             </View>
           )}

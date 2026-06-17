@@ -1,7 +1,7 @@
 // features/signatures/AdditionalRowCard.tsx
 //
 // One additional signing slot in the SignaturesScreen. The row holds NO
-// user-entered data — the visual placeholders for `ხელმოწერა`, `სახელი`,
+// user-entered data - the visual placeholders for `ხელმოწერა`, `სახელი`,
 // and `თარიღი` exist to communicate the row maps to an empty block on the
 // printed page where a second/third signer can sign by hand. The PDF
 // renderer emits matching labeled empty slots in the printed output.
@@ -10,7 +10,7 @@
 
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -35,7 +35,7 @@ export function AdditionalRowCard({ index, onRemove }: Props) {
           style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
           {...a11y('წაშლა', `ხაზი ${index}-ის წაშლა`, 'button')}
         >
-          <Ionicons name="close" size={16} color={theme.colors.inkSoft} />
+          <X size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
         </Pressable>
       </View>
 

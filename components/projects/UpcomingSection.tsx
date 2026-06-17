@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Calendar, ShieldCheck, Users } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useCalendarEvents } from '../../lib/apiHooks';
 import { useTheme } from '../../lib/theme';
@@ -45,7 +45,7 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
     <View style={[styles.sectionCard, { marginHorizontal: 16, marginTop: 12 }]}>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="calendar-outline" size={16} color={theme.colors.inkSoft} />
+          <Calendar size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>{t('calendar.upcomingSection')}</Text>
           <Text style={styles.sectionCount}>{upcoming.length}</Text>
         </View>
@@ -58,8 +58,8 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
       </View>
       <View style={{ gap: 8, marginTop: 10 }}>
         {upcoming.map(event => {
-          const color    = STATUS_DOT_COLOR[event.status as keyof typeof STATUS_DOT_COLOR] ?? theme.colors.inkSoft;
-          const iconName = event.type === 'inspection' ? 'shield-checkmark-outline' : 'people-outline';
+          const color = STATUS_DOT_COLOR[event.status as keyof typeof STATUS_DOT_COLOR] ?? theme.colors.inkSoft;
+          const EventIcon = event.type === 'inspection' ? ShieldCheck : Users;
           return (
             <Pressable
               key={event.id}
@@ -67,7 +67,7 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
               style={styles.listRow}
             >
               <View style={[styles.statusIcon, { backgroundColor: color + '20', width: 30, height: 30, borderRadius: 8 }]}>
-                <Ionicons name={iconName as any} size={16} color={color} />
+                <EventIcon size={16} color={color} strokeWidth={1.5} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.listRowTitle} numberOfLines={1}>{event.title}</Text>

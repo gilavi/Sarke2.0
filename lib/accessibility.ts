@@ -10,7 +10,7 @@ export function useAccessibilitySettings() {
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled?.().then(setReduceMotion).catch(() => {});
     AccessibilityInfo.isScreenReaderEnabled?.().then(setScreenReaderEnabled).catch(() => {});
-    // isBoldTextEnabled is iOS-only — guard so web/Android don't crash.
+    // isBoldTextEnabled is iOS-only - guard so web/Android don't crash.
     AccessibilityInfo.isBoldTextEnabled?.().then(setBoldText).catch(() => {});
 
     const subs: any[] = [];

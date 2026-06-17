@@ -1,11 +1,11 @@
-// renderSignaturesSection.ts — renders the unified signatures section into
+// renderSignaturesSection.ts - renders the unified signatures section into
 // inspection PDFs.
 //
 // One section per PDF, with two parts:
 //   1. The inspection creator's captured signature (digital, rasterized
 //      into the printed page), shown over a horizontal rule with their
 //      name and the capture date.
-//   2. Zero or more empty hand-sign slots — labeled blanks for additional
+//   2. Zero or more empty hand-sign slots - labeled blanks for additional
 //      signers to fill in on the printed copy. The slots intentionally
 //      carry no user data; they exist to give the printed page a
 //      consistent place for co-signers.
@@ -75,7 +75,7 @@ function renderCreatorBlock(
       </div>
       <div class="signatures-creator-rule"></div>
       <div class="signatures-creator-meta">
-        <span class="signatures-creator-name">${escapeHtml(creator.creatorName || '—')}</span>
+        <span class="signatures-creator-name">${escapeHtml(creator.creatorName || '-')}</span>
         ${dateStr ? `<span class="signatures-creator-date">${escapeHtml(dateStr)}</span>` : ''}
       </div>
     </div>

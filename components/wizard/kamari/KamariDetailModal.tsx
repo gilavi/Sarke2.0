@@ -3,7 +3,7 @@ import { Alert, Modal, Pressable, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, Camera, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { Button } from '../../ui';
 import { useTheme } from '../../../lib/theme';
@@ -177,7 +177,7 @@ export function KamariDetailModal({
             style={styles.headerBtn}
             hitSlop={12}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.ink} />
+            <ArrowLeft size={24} color={theme.colors.ink} strokeWidth={1.5} />
           </Pressable>
           <Text size="lg" weight="bold">ქამარი #{index}</Text>
           <View style={styles.headerBtn} />
@@ -220,11 +220,10 @@ export function KamariDetailModal({
                   <Text size="base" weight="semibold" style={{ flex: 1 }}>
                     {col}
                   </Text>
-                  <Ionicons
-                    name={isOpen ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color={theme.colors.inkSoft}
-                  />
+                  {isOpen
+                    ? <ChevronUp size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
+                    : <ChevronDown size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
+                  }
                 </Pressable>
                 {isOpen && (
                   <Animated.View
@@ -251,7 +250,7 @@ export function KamariDetailModal({
                         onPress={() => onPickPhoto(col)}
                         style={styles.addPhotoBtn}
                       >
-                        <Ionicons name="camera-outline" size={22} color={theme.colors.inkSoft} />
+                        <Camera size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
                         <Text size="xs" color={theme.colors.inkSoft} style={{ marginTop: 2 }}>
                           ფოტო
                         </Text>

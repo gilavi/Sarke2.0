@@ -50,15 +50,15 @@ export default function BriefingPrint() {
         </p>
 
         <h2>1. პროექტი</h2>
-        <div className="field"><span className="field-label">დასახელება:</span> {p?.name || '—'}</div>
-        <div className="field"><span className="field-label">კომპანია:</span> {p?.company_name || '—'}</div>
+        <div className="field"><span className="field-label">დასახელება:</span> {p?.name || '-'}</div>
+        <div className="field"><span className="field-label">კომპანია:</span> {p?.company_name || '-'}</div>
 
         <h2>2. ინსპექტორი</h2>
-        <div className="field">{b.inspectorName || '—'}</div>
+        <div className="field">{b.inspectorName || '-'}</div>
 
         <h2>3. თემები</h2>
         {b.topics.length === 0 ? (
-          <div className="field">—</div>
+          <div className="field">-</div>
         ) : (
           <ul style={{ marginTop: 0, paddingLeft: 20 }}>
             {b.topics.map((t) => (
@@ -79,13 +79,13 @@ export default function BriefingPrint() {
           </thead>
           <tbody>
             {b.participants.length === 0 ? (
-              <tr><td colSpan={4}>—</td></tr>
+              <tr><td colSpan={4}>-</td></tr>
             ) : (
               b.participants.map((p, i) => (
                 <tr key={i}>
                   <td>{i + 1}</td>
                   <td>{p.fullName}</td>
-                  <td>{p.position || '—'}</td>
+                  <td>{p.position || '-'}</td>
                   <td>
                     {p.signature ? (
                       <img
@@ -109,7 +109,7 @@ export default function BriefingPrint() {
 
         <div className="signature-block">
           <div>
-            ინსპექტორი: {b.inspectorName || '—'}
+            ინსპექტორი: {b.inspectorName || '-'}
             <br />
             ხელმოწერა / თარიღი:
           </div>

@@ -1,4 +1,4 @@
-// Local push reminders — schedules a notification 24h before each due date.
+// Local push reminders - schedules a notification 24h before each due date.
 // Notification ids are device-local, stored in AsyncStorage keyed by schedule id.
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -60,7 +60,7 @@ export async function scheduleReminder(s: ScheduleWithItem): Promise<void> {
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'ვადა გასდის ხვალ',
-      body: `${projectName} — ${itemName}`,
+      body: `${projectName} - ${itemName}`,
       data: { scheduleId: s.id, projectItemId: s.project_item_id },
     },
     trigger: triggerAt(fireAt),
@@ -97,7 +97,7 @@ export async function rescheduleAllFromDb(schedules: ScheduleWithItem[]): Promis
     ),
   );
   await writeMap({});
-  // Rebuild — never let one bad schedule abort the rest of the rebuild.
+  // Rebuild - never let one bad schedule abort the rest of the rebuild.
   for (const s of schedules) {
     try {
       await scheduleReminder(s);

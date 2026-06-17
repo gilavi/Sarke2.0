@@ -11,7 +11,7 @@ const MIN_DATA_URL_PAYLOAD = 32;
  * Convert a Blob to a `data:` URL.
  *
  * In React Native / Hermes, `FileReader.readAsDataURL` on a Blob produced by
- * `supabase.storage.download()` is unreliable — it sometimes resolves to an
+ * `supabase.storage.download()` is unreliable - it sometimes resolves to an
  * empty string or a result missing the `data:<mime>;base64,` prefix, which
  * breaks PDF image embedding. We try the binary `arrayBuffer()` path first
  * (deterministic) and fall back to FileReader (works on web / older RN).
@@ -55,7 +55,7 @@ export async function blobToDataUrl(blob: Blob): Promise<string> {
 
 /**
  * Decode a `data:<mime>;base64,<payload>` URL into an ArrayBuffer.
- * Use this instead of `fetch(dataUrl).blob()` when uploading to storage —
+ * Use this instead of `fetch(dataUrl).blob()` when uploading to storage -
  * the fetch path silently produces 0-byte blobs in Hermes.
  */
 export function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
@@ -68,7 +68,7 @@ export function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
 /**
  * Write a `data:<mime>;base64,<payload>` URL into a temp cache file and
  * return the resulting `file://` URI. Use this so a base64 payload can be
- * fed to `storageApi.uploadFromUri()` — supabase-js's Blob/ArrayBuffer
+ * fed to `storageApi.uploadFromUri()` - supabase-js's Blob/ArrayBuffer
  * upload paths silently produce 0-byte storage objects on Hermes/SDK 54;
  * native streaming via `FileSystem.uploadAsync` is the only reliable path.
  */

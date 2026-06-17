@@ -28,7 +28,7 @@ function formatDateTime(iso: string): string {
 }
 
 function sigImg(b64: string | null): string {
-  if (!b64) return '<span style="color:#999">—</span>';
+  if (!b64) return '<span style="color:#999">-</span>';
   return `<img src="data:image/png;base64,${b64}" style="max-width:160px;max-height:56px;display:block;" alt="ხელმოწერა" />`;
 }
 
@@ -49,7 +49,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
     .map(t => `<li style="margin-bottom:4px;">${topicLabel(t)}</li>`)
     .join('');
 
-  const projectLine = [project.name, project.address].filter(Boolean).join(' — ');
+  const projectLine = [project.name, project.address].filter(Boolean).join(' - ');
   const dateStr = formatDateTime(briefing.dateTime);
   const completedDateStr = briefing.createdAt ? formatDateTime(briefing.createdAt) : '';
 
@@ -196,7 +196,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
   <div class="meta-section">
     <div class="meta-row">
       <span class="meta-label">პროექტი:</span>
-      <span class="meta-value">${projectLine || '—'}</span>
+      <span class="meta-value">${projectLine || '-'}</span>
     </div>
     <div class="meta-row">
       <span class="meta-label">თარიღი და დრო:</span>
@@ -210,7 +210,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
 
   <p class="section-title">ინსტრუქტაჟის თემები</p>
   <ul class="topics-list" style="margin-bottom:24px;">
-    ${topicsList || '<li>—</li>'}
+    ${topicsList || '<li>-</li>'}
   </ul>
 
   <p class="section-title">მონაწილეთა სია</p>
@@ -231,7 +231,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
     <div class="inspector-title">ინსპექტორის დასტური</div>
     <div class="inspector-row">
       <span class="inspector-label">სახელი:</span>
-      <span>${briefing.inspectorName || '—'}</span>
+      <span>${briefing.inspectorName || '-'}</span>
     </div>
     <div class="inspector-row">
       <span class="inspector-label">პოზიცია:</span>

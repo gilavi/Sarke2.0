@@ -15,7 +15,7 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
   const { theme } = useTheme();
   const projectsQ = useProjects();
   const projects = projectsQ.data ?? [];
-  // Canonical three-state guard (see CLAUDE.md) — skeleton rows, never a
+  // Canonical three-state guard (see CLAUDE.md) - skeleton rows, never a
   // flashed empty state over a stale [].
   const loading = (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
 

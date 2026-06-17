@@ -9,7 +9,7 @@ import { StickyMobileBar, ExitIntentPopup, CookieBanner } from '@/pages/landing/
  * /legislation, /contact). Renders the navbar + footer + overlays once and
  * hosts the per-page sections via <Outlet />.
  *
- * Logged-in visitors are bounced to /home — marketing chrome (login/register
+ * Logged-in visitors are bounced to /home - marketing chrome (login/register
  * CTAs) is irrelevant once authenticated, matching the prior Landing behavior.
  */
 export function MarketingLayout() {

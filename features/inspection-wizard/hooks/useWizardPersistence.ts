@@ -8,7 +8,7 @@
 // Gated on `!loading` so the initial `load()` doesn't overwrite cached
 // values before it has finished reading them.
 //
-// Owns NO state — this is a side-effect hook called from
+// Owns NO state - this is a side-effect hook called from
 // `useWizardState`. Splitting load/answers similarly is intentionally
 // not done; see `AGENTS.md` for why.
 

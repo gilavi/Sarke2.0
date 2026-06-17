@@ -1,11 +1,11 @@
 ﻿import { memo, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleMinus, CirclePlus } from 'lucide-react-native';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useAccessibilitySettings } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
-import { BRAND_GREEN } from './_shared';
+import { BRAND_ACCENT } from './_shared';
 import { getstyles } from './styles';
 
 // ─────────────────────────── Step 1: Count ──────────────────────────────────
@@ -45,7 +45,7 @@ export const KamariCount = memo(function KamariCount({
           hitSlop={12}
           style={({ pressed }) => [pressed && { opacity: 0.6 }, count <= 1 && { opacity: 0.35 }]}
         >
-          <Ionicons name="remove-circle" size={52} color={BRAND_GREEN} />
+          <CircleMinus size={52} color={BRAND_ACCENT} strokeWidth={1.5} />
         </Pressable>
         <View style={styles.countNumberWrap}>
           <Text style={styles.countNumber}>{count}</Text>
@@ -56,7 +56,7 @@ export const KamariCount = memo(function KamariCount({
           hitSlop={12}
           style={({ pressed }) => [pressed && { opacity: 0.6 }, count >= max && { opacity: 0.35 }]}
         >
-          <Ionicons name="add-circle" size={52} color={BRAND_GREEN} />
+          <CirclePlus size={52} color={BRAND_ACCENT} strokeWidth={1.5} />
         </Pressable>
       </View>
     </View>

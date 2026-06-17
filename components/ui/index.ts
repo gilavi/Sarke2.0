@@ -1,4 +1,4 @@
-// components/ui — barrel for legacy + new primitives.
+// components/ui - barrel for legacy + new primitives.
 //
 // Existing call sites `from '../components/ui'` are preserved by this barrel.
 // New code should prefer importing from `../components/primitives` directly,

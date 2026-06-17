@@ -1,11 +1,11 @@
 /**
  * Small presentational components used by the project detail screen.
- * All self-contained — they call useTheme() internally so callers need no style props.
+ * All self-contained - they call useTheme() internally so callers need no style props.
  */
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, File, FileText, TriangleAlert, User } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { InspectionTypeAvatar } from '../InspectionTypeAvatar';
 import { INCIDENT_COLORS } from '../../lib/statusColors';
@@ -23,7 +23,7 @@ export function EmptyState({ text }: { text: string }) {
   const { theme } = useTheme();
   return (
     <View style={styles.emptyState}>
-      <Ionicons name="document-text-outline" size={28} color={theme.colors.borderStrong} />
+      <FileText size={28} color={theme.colors.borderStrong} strokeWidth={1.5} />
       <Text style={styles.emptyStateText}>{text}</Text>
     </View>
   );
@@ -34,7 +34,7 @@ export function EmptyState({ text }: { text: string }) {
 export function SafeSigImage({ uri }: { uri: string }) {
   const { theme } = useTheme();
   const [err, setErr] = useState(false);
-  if (err) return <Ionicons name="person" size={20} color={theme.colors.inkFaint} />;
+  if (err) return <User size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />;
   return (
     <Image
       source={{ uri }}
@@ -80,13 +80,11 @@ export const FileThumbnail = memo(function FileThumbnail({ file }: { file: Proje
     );
   }
 
-  const iconName = file.mime_type?.includes('pdf')
-    ? 'document-text-outline'
-    : isImage ? 'image-outline' : 'document-outline';
+  const TileIcon = file.mime_type?.includes('pdf') ? FileText : File;
 
   return (
     <View style={tile}>
-      <Ionicons name={iconName} size={20} color={theme.colors.inkSoft} />
+      <TileIcon size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
     </View>
   );
 });
@@ -96,7 +94,7 @@ export const FileThumbnail = memo(function FileThumbnail({ file }: { file: Proje
 export function ViewMoreRow({
   items, total, onPress,
 }: {
-  items: { category?: string | null; ionicon?: string }[];
+  items: { category?: string | null }[];
   total: number;
   onPress: () => void;
 }) {
@@ -127,11 +125,7 @@ export function ViewMoreRow({
                 shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
               }}
             >
-              <Ionicons
-                name={(item.ionicon ?? 'document-outline') as any}
-                size={14}
-                color={theme.colors.inkSoft}
-              />
+              <File size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </View>
           ),
         )}
@@ -139,7 +133,7 @@ export function ViewMoreRow({
       <View style={{ flex: 1 }}>
         <Text style={rowStyles.listRowTitle}>+ {total} მეტი</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
     </Pressable>
   );
 }
@@ -159,7 +153,7 @@ export function IncidentRow({
   return (
     <Pressable onPress={onPress} style={rowStyles.listRow}>
       <View style={[rowStyles.statusIcon, { backgroundColor: badge.bg, borderWidth: 1, borderColor: badge.border }]}>
-        <Ionicons name="warning-outline" size={13} color={badge.text} />
+        <TriangleAlert size={13} color={badge.text} strokeWidth={1.5} />
       </View>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -175,11 +169,11 @@ export function IncidentRow({
           )}
         </View>
         <Text style={[rowStyles.listRowTitle, { marginTop: 3 }]} numberOfLines={1}>
-          {incident.location || incident.description || '—'}
+          {incident.location || incident.description || '-'}
         </Text>
         <Text style={rowStyles.listRowSubtitle}>{formatShortDateTime(incident.date_time)}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
     </Pressable>
   );
 }

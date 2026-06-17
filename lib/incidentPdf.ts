@@ -64,7 +64,7 @@ export function buildIncidentPdfHtml(args: IncidentPdfArgs): string {
       ? incident.witnesses
           .map((w, i) => `<div class="field-value">${i + 1}. ${w}</div>`)
           .join('')
-      : '<div class="field-value empty">—</div>';
+      : '<div class="field-value empty">-</div>';
 
   const typeCheckboxes = [
     { key: 'minor', label: 'მსუბუქი უბედური შემთხვევა' },
@@ -298,7 +298,7 @@ ${
   </tr>
   <tr>
     <td>მისამართი:</td>
-    <td>${project.address ?? '—'}</td>
+    <td>${project.address ?? '-'}</td>
   </tr>
   <tr>
     <td>ოქმის შედგენის თარიღი:</td>
@@ -323,14 +323,14 @@ ${
   <div class="section-title">2. დაზარალებული</div>
   ${
     isNearMiss
-      ? '<div class="field-value" style="color:#6b7280;font-style:italic">საშიში შემთხვევა — დაზიანება არ მომხდარა</div>'
+      ? '<div class="field-value" style="color:#6b7280;font-style:italic">საშიში შემთხვევა - დაზიანება არ მომხდარა</div>'
       : `<div class="field-row">
           <span class="field-label">სახელი, გვარი:</span>
-          <span class="field-value">${incident.injured_name || '—'}</span>
+          <span class="field-value">${incident.injured_name || '-'}</span>
         </div>
         <div class="field-row">
           <span class="field-label">თანამდებობა:</span>
-          <span class="field-value">${incident.injured_role || '—'}</span>
+          <span class="field-value">${incident.injured_role || '-'}</span>
         </div>`
   }
   <div class="field-row">
@@ -343,26 +343,26 @@ ${
   </div>
   <div class="field-row">
     <span class="field-label">ზუსტი ადგილი:</span>
-    <span class="field-value">${incident.location || '—'}</span>
+    <span class="field-value">${incident.location || '-'}</span>
   </div>
 </div>
 
 <!-- 3. Description -->
 <div class="section">
   <div class="section-title">3. შემთხვევის გარემოება</div>
-  <div class="textarea-value">${incident.description || '—'}</div>
+  <div class="textarea-value">${incident.description || '-'}</div>
 </div>
 
 <!-- 4. Cause -->
 <div class="section">
   <div class="section-title">4. სავარაუდო მიზეზი</div>
-  <div class="textarea-value">${incident.cause || '—'}</div>
+  <div class="textarea-value">${incident.cause || '-'}</div>
 </div>
 
 <!-- 5. Actions -->
 <div class="section">
   <div class="section-title">5. მიღებული ზომები</div>
-  <div class="textarea-value">${incident.actions_taken || '—'}</div>
+  <div class="textarea-value">${incident.actions_taken || '-'}</div>
 </div>
 
 <!-- 6. Witnesses -->

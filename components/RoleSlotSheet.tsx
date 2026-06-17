@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { Button } from './ui';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { BottomSheetScrollView } from './BottomSheet';
@@ -24,9 +24,9 @@ interface Props {
   /** For `other`: the previously-stored custom role label, if editing. */
   initialRoleLabel?: string;
   /**
-   * `create` (default) leads into the SignatureCanvas after submit — button
+   * `create` (default) leads into the SignatureCanvas after submit - button
    * reads "ხელმოწერა →". `editDetails` saves the new name/role on an
-   * existing member without re-signing — button reads "შენახვა" and
+   * existing member without re-signing - button reads "შენახვა" and
    * `onResign` (if provided) is exposed as a secondary link for the user
    * to opt into a fresh signature.
    */
@@ -42,7 +42,7 @@ interface Props {
  * Bottom-sheet content for the **details** step of adding/editing a role-slot
  * person. Collects name (and a custom role label for the `other` slot), then
  * hands off to the parent which dismisses the sheet and launches the
- * full-screen `SignatureCanvas` modal — rendering the signature WebView
+ * full-screen `SignatureCanvas` modal - rendering the signature WebView
  * inside the animated bottom-sheet Modal crashed on iOS.
  */
 export function RoleSlotSheet({
@@ -89,7 +89,7 @@ export function RoleSlotSheet({
             <Text style={styles.title} numberOfLines={2}>{roleLabel}</Text>
           </View>
           <Pressable onPress={onCancel} hitSlop={10} style={styles.iconBtn} {...a11y('დახურვა', 'ფორმის დახურვა', 'button')}>
-            <Ionicons name="close" size={20} color={theme.colors.inkSoft} />
+            <X size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </Pressable>
         </View>
       }

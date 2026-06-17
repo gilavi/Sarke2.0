@@ -79,9 +79,9 @@ vi.mock('../../lib/theme', () => ({
 // ── Fixtures ───────────────────────────────────────────────────────────────────
 
 const ITEMS: ChecklistItem[] = [
-  { id: 'i1', description: 'საბურავის მდგომარეობა', section: 'A — თვლები' },
-  { id: 'i2', description: 'სამუხრუჭე პედალი',      section: 'A — თვლები' },
-  { id: 'i3', description: 'ჰიდრავლიკური ცილინდრები', section: 'B — ჰიდრავლიკა' },
+  { id: 'i1', description: 'საბურავის მდგომარეობა', section: 'A - თვლები' },
+  { id: 'i2', description: 'სამუხრუჭე პედალი',      section: 'A - თვლები' },
+  { id: 'i3', description: 'ჰიდრავლიკური ცილინდრები', section: 'B - ჰიდრავლიკა' },
 ];
 
 function makeStates(overrides: Partial<ChecklistItemState>[] = []): ChecklistItemState[] {
@@ -98,7 +98,7 @@ afterEach(cleanup);
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
-describe('ChecklistStep — item rendering', () => {
+describe('ChecklistStep - item rendering', () => {
   it('renders all item descriptions', () => {
     const { getByText } = render(
       <ChecklistStep items={ITEMS} states={makeStates()} onStateChange={vi.fn()} />,
@@ -127,7 +127,7 @@ describe('ChecklistStep — item rendering', () => {
   });
 });
 
-describe('ChecklistStep — result interactions', () => {
+describe('ChecklistStep - result interactions', () => {
   function clickResult(container: HTMLElement, rowIdx: number, result: string) {
     fireEvent.click(container.querySelectorAll(`button[data-result="${result}"]`)[rowIdx]);
   }
@@ -164,7 +164,7 @@ describe('ChecklistStep — result interactions', () => {
   });
 });
 
-describe('ChecklistStep — no per-row notes/photos', () => {
+describe('ChecklistStep - no per-row notes/photos', () => {
   it('renders no comment or photo controls (detail moved to the conclusion step)', () => {
     const { queryAllByLabelText } = render(
       <ChecklistStep items={ITEMS} states={makeStates()} onStateChange={vi.fn()} onPhotoPress={vi.fn()} />,
@@ -174,32 +174,32 @@ describe('ChecklistStep — no per-row notes/photos', () => {
   });
 });
 
-describe('ChecklistStep — section headers', () => {
+describe('ChecklistStep - section headers', () => {
   it('does not render section headers by default', () => {
     const { queryByText } = render(
       <ChecklistStep items={ITEMS} states={makeStates()} onStateChange={vi.fn()} />,
     );
-    expect(queryByText('A — თვლები')).toBeNull();
-    expect(queryByText('B — ჰიდრავლიკა')).toBeNull();
+    expect(queryByText('A - თვლები')).toBeNull();
+    expect(queryByText('B - ჰიდრავლიკა')).toBeNull();
   });
 
   it('renders section headers when showSectionHeaders=true', () => {
     const { getByText } = render(
       <ChecklistStep items={ITEMS} states={makeStates()} onStateChange={vi.fn()} showSectionHeaders />,
     );
-    expect(getByText('A — თვლები')).toBeTruthy();
-    expect(getByText('B — ჰიდრავლიკა')).toBeTruthy();
+    expect(getByText('A - თვლები')).toBeTruthy();
+    expect(getByText('B - ჰიდრავლიკა')).toBeTruthy();
   });
 
   it('renders each unique section header exactly once', () => {
     const { getAllByText } = render(
       <ChecklistStep items={ITEMS} states={makeStates()} onStateChange={vi.fn()} showSectionHeaders />,
     );
-    expect(getAllByText('A — თვლები').length).toBe(1);
+    expect(getAllByText('A - თვლები').length).toBe(1);
   });
 });
 
-describe('ChecklistStep — footer slot', () => {
+describe('ChecklistStep - footer slot', () => {
   it('renders the footer below the items', () => {
     const { getByText } = render(
       <ChecklistStep

@@ -1,4 +1,4 @@
-// renderSignaturesSection.ts — renders the unified signatures section into
+// renderSignaturesSection.ts - renders the unified signatures section into
 // inspection PDFs. Web-app mirror of the Expo app's
 // `lib/pdf/inspection/renderSignaturesSection.ts` (the `@root` import is banned
 // by eslint), kept byte-faithful so the printed signature block matches mobile.
@@ -6,7 +6,7 @@
 // One section per PDF, with two parts:
 //   1. The inspection creator's captured signature (digital, rasterized into the
 //      printed page), shown over a horizontal rule with their name + capture date.
-//   2. Zero or more empty hand-sign slots — labeled blanks for additional signers
+//   2. Zero or more empty hand-sign slots - labeled blanks for additional signers
 //      to fill in on the printed copy.
 //
 // Regulatory: the captured signature is supplied in-memory by the result screen
@@ -73,7 +73,7 @@ function renderCreatorBlock(
       </div>
       <div class="signatures-creator-rule"></div>
       <div class="signatures-creator-meta">
-        <span class="signatures-creator-name">${escapeHtml(creator.creatorName || '—')}</span>
+        <span class="signatures-creator-name">${escapeHtml(creator.creatorName || '-')}</span>
         ${dateStr ? `<span class="signatures-creator-date">${escapeHtml(dateStr)}</span>` : ''}
       </div>
     </div>

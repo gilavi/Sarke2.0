@@ -28,7 +28,7 @@ beforeEach(() => {
   vi.mocked(createIncident).mockResolvedValue({ id: 'inc-1' } as never);
 });
 
-describe('NewIncident — step walk', () => {
+describe('NewIncident - step walk', () => {
   it('starts on step 0 with type buttons and date pre-filled', () => {
     renderPage(<NewIncident />, '/incidents/new?project=p1');
     expect(screen.getByText('ახალი ინციდენტი')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe('NewIncident — step walk', () => {
     // Step 0 has projectId pre-filled + dateTime pre-filled → can advance.
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // Step 1 (last step) — wait for it to render, then fill required textareas.
+    // Step 1 (last step) - wait for it to render, then fill required textareas.
     await screen.findByText('აღწერა *');
     const textareas = document.body.querySelectorAll<HTMLTextAreaElement>('textarea');
     expect(textareas.length).toBeGreaterThanOrEqual(3);

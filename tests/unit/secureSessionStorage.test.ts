@@ -184,7 +184,7 @@ describe('secureSessionStorage key sanitization', () => {
     // SecureStore allows alphanumeric + . _ - only. Other chars get mapped to _
     const dirtyKey = 'sb:weird/key with spaces';
     await secureSessionStorage.setItem(dirtyKey, SHORT);
-    // The sanitized key — not the original — is what landed in the store
+    // The sanitized key - not the original - is what landed in the store
     expect(secureStore['sb_weird_key_with_spaces']).toBe(SHORT);
     expect(secureStore[dirtyKey]).toBeUndefined();
     expect(await secureSessionStorage.getItem(dirtyKey)).toBe(SHORT);

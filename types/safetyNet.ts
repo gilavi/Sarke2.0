@@ -40,12 +40,12 @@ export interface SafetyNetInspection {
   templateId: string | null;
   userId: string;
   status: 'draft' | 'completed';
-  // Section 1 — ზოგადი ინფორმაცია
+  // Section 1 - ზოგადი ინფორმაცია
   company: string;
   address: string;
   inspectorName: string;
   inspectionDate: string;
-  // Section 2 — ბადის იდენტიფიკაცია
+  // Section 2 - ბადის იდენტიფიკაცია
   manufacturer: string;
   netSize: string;
   postSize: string;
@@ -60,7 +60,7 @@ export interface SafetyNetInspection {
   items: SNItemState[];
   loadTestRows: SNLoadTestRow[];
   postTestItems: SNPostTestState[];
-  // Section 6 — დასკვნა
+  // Section 6 - დასკვნა
   verdict: SNVerdict | null;
   verdictComment: string;
   // Sections 7–9
@@ -87,7 +87,7 @@ export interface SNPostTestEntry {
 
 export const SN_VISUAL_ITEMS: SNChecklistEntry[] = [
   { id: 1,  label: 'ბადის ქსოვილის მდგომარეობა',    description: 'ჭრა, გახეთქვა, წყვეტა' },
-  { id: 2,  label: 'ბადის უჯრედი — მაქს. 15სმ',     description: '' },
+  { id: 2,  label: 'ბადის უჯრედი - მაქს. 15სმ',     description: '' },
   { id: 3,  label: 'ბადის კვანძების მდგრადობა',      description: 'გახსნა, კოროზია, დაზიანება' },
   { id: 4,  label: 'ბადი სამაგრი კიდეები',           description: 'კონსტრუქციისგან დაშორება' },
   { id: 5,  label: 'სამაგრი ბაგირების მდგომარეობა',  description: 'გახსნა, კოროზია, გაჭრა' },
