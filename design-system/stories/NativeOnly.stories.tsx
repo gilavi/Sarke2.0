@@ -11,11 +11,6 @@ type Story = StoryObj;
 
 const NATIVE = [
   {
-    name: 'DateTimeField',
-    path: 'components/DateTimeField.tsx',
-    why: 'Wraps @react-native-community/datetimepicker (the OS date/time picker). No web equivalent — on web you would use a different date input.',
-  },
-  {
     name: 'SignatureCanvas',
     path: 'components/SignatureCanvas.tsx',
     why: 'Wraps react-native-signature-canvas (a WebView-backed signature pad). Native only; the tokenized web signing page (web/) has its own canvas.',

@@ -3,7 +3,9 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { View } from 'react-native';
 import { VerdictSelector } from '@root/components/inspection-steps/VerdictSelector';
 import { VerdictSuggestionBanner } from '@root/components/inspection-steps/VerdictSuggestionBanner';
-import { ChecklistRow, type ChecklistItemState } from '@root/components/inspection-steps/ChecklistRow';
+import { ChecklistRow, CHECKLIST_LEGEND, type ChecklistItemState } from '@root/components/inspection-steps/ChecklistRow';
+import { ChecklistLegend } from '@root/components/inspection-parts/ChecklistLegend';
+import { ChipNavStrip } from '@root/components/inspection-parts/ChipNavStrip';
 
 const meta: Meta = { title: 'Components/Inspection' };
 export default meta;
@@ -48,13 +50,32 @@ export const Checklist: Story = {
       photo_paths: [],
     });
     return (
-      <View style={{ width: 380 }}>
+      <View style={{ width: 380, gap: 16 }}>
         <ChecklistRow
           item={{ id: '1', description: 'Webbing free of cuts, frays and abrasion' }}
           state={state}
           onStateChange={(patch) => setState((s) => ({ ...s, ...patch }))}
         />
+        <ChecklistLegend items={CHECKLIST_LEGEND} />
       </View>
     );
   },
+};
+
+export const Nav: Story = {
+  name: 'Chip Nav Strip',
+  render: () => (
+    <View style={{ width: 420 }}>
+      <ChipNavStrip
+        activeIndex={1}
+        onSelect={() => {}}
+        items={[
+          { key: 'a', label: 'Webbing', state: 'done' },
+          { key: 'b', label: 'Stitching', state: 'active' },
+          { key: 'c', label: 'Buckles', state: 'problem' },
+          { key: 'd', label: 'D-rings', state: 'pending' },
+        ]}
+      />
+    </View>
+  ),
 };
