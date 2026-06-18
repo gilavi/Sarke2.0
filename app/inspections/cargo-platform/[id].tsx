@@ -349,7 +349,7 @@ export default function CargoPlatformInspectionScreen() {
             : step === CONCLUSION_STEP ? 'conclusion'
             : 'form'
         }
-        fields={5}
+        fields={6}
         onClose={() => router.back()}
       />
     );

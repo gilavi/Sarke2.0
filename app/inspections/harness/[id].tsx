@@ -490,6 +490,8 @@ export default function HarnessInspectionScreen() {
             : 'form'
         }
         fields={1}
+        verdicts={2}
+        photos={false}
         onClose={() => router.back()}
       />
     );

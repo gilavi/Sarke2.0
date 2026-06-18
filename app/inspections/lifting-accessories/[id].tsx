@@ -322,11 +322,11 @@ export default function LiftingAccessoriesInspectionScreen() {
         totalSteps={TOTAL_STEPS}
         variant={
           step === CHECKLIST_STEP ? 'checklist'
-            : step === REMOVED_STEP ? 'table'
+            : step === REMOVED_STEP ? 'tablePhotos'
             : step === CONCLUSION_STEP ? 'conclusion'
-            : 'form'
+            : 'identForm'
         }
-        fields={3}
+        photos={false}
         onClose={() => router.back()}
       />
     );

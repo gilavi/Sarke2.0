@@ -37,6 +37,7 @@ import { storageApi, projectsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
+import { useScrollToError } from '../../hooks/useScrollToError';
 
 import type {
   AlcoholControlOrderFormData,
@@ -58,6 +59,7 @@ import {
   isCraneOperatorVariant,
   isCraneVariant,
   isFireSafetyVariant,
+  missingFieldsForStep,
   type CombinedForm,
   type Step,
 } from './orderFormSchema';
@@ -113,6 +115,8 @@ export default function NewOrderScreen() {
   const [step, setStep] = useState<Step>(1);
   // Enabled forward/submit button + on-press field errors (see useSubmitGuard).
   const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
+  // Scroll the first empty required field into view on a blocked press.
+  const { scrollRef, registerField, scrollToFirstError } = useScrollToError();
   const [docType, setDocType] = useState<OrderDocumentType | null>(null);
   const [form, setForm] = useState<CombinedForm>(INITIAL_FORM);
   const [project, setProject] = useState<Project | null>(null);
@@ -313,38 +317,38 @@ export default function NewOrderScreen() {
         confirmExit={step === 1 && isFormDirty}
       />
 
-      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }} scrollRef={scrollRef}>
         {step === 1 && (
           <Step1DocType docType={docType} setDocType={setDocType} theme={theme} s={s} attempted={attempted} />
         )}
         {step === 2 && !isCraneOperatorVariant(docType) && (
-          <Step2Company form={form} setForm={setForm} s={s} attempted={attempted} />
+          <Step2Company form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 2 && isCraneOperatorVariant(docType) && (
-          <Step2CraneCompany form={form} setForm={setForm} s={s} attempted={attempted} />
+          <Step2CraneCompany form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 3 && docType === 'labor_safety_specialist' && (
-          <Step3LaborSafety form={form} setForm={setForm} s={s} attempted={attempted} />
+          <Step3LaborSafety form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 3 && docType === 'alcohol_control' && (
-          <Step3AlcoholControl form={form} setForm={setForm} s={s} attempted={attempted} />
+          <Step3AlcoholControl form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 3 && docType === 'fire_safety_order' && (
-          <Step3FireSafety form={form} setForm={setForm} s={s} attempted={attempted} />
+          <Step3FireSafety form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 3 && docType === 'fire_safety_order_enterprise' && (
-          <Step3FireSafetyEnterprise form={form} setForm={setForm} s={s} attempted={attempted} />
+          <Step3FireSafetyEnterprise form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 3 && docType === 'crane_operator_order' && (
           <Step3CraneOperator
-            form={form} setForm={setForm} s={s} attempted={attempted}
+            form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField}
             onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
             onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
           />
         )}
         {step === 3 && docType === 'crane_technical_order' && (
           <Step3CraneOperator
-            form={form} setForm={setForm} s={s} attempted={attempted}
+            form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField}
             onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
             onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
             positionLabel="კვალიფიკაცია / სპეციალობა"
@@ -369,10 +373,10 @@ export default function NewOrderScreen() {
         )}
         {/* Combined signature step: step 5 fire safety, step 6 crane */}
         {step === 5 && isFireSafetyVariant(docType) && (
-          <StepSignaturesFireSafety form={form} setForm={setForm} theme={theme} s={s} attempted={attempted} />
+          <StepSignaturesFireSafety form={form} setForm={setForm} theme={theme} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 6 && isCraneOperatorVariant(docType) && (
-          <StepSignaturesCrane form={form} setForm={setForm} theme={theme} s={s} docType={docType} attempted={attempted} />
+          <StepSignaturesCrane form={form} setForm={setForm} theme={theme} s={s} docType={docType} attempted={attempted} registerField={registerField} />
         )}
       </KeyboardSafeArea>
 
@@ -381,7 +385,7 @@ export default function NewOrderScreen() {
           <Button
             title="შემდეგი"
             rightIcon={ArrowRight}
-            onPress={() => guard(canAdvance, goNext)}
+            onPress={() => guard(canAdvance, goNext, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
             style={{ width: '100%' }}
           />
         ) : (
@@ -390,7 +394,7 @@ export default function NewOrderScreen() {
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
               leftIcon={FileText}
               loading={saving}
-              onPress={() => guard(canAdvance, saveAndGeneratePdf)}
+              onPress={() => guard(canAdvance, saveAndGeneratePdf, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
               style={{ width: '100%' }}
             />
             <Button

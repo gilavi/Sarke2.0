@@ -19,7 +19,10 @@ Backs the `app/orders/new.tsx` route.
   `INITIAL_FORM`, `DOC_TYPES`, `getTotalSteps`, `isFireSafetyVariant`,
   `isCraneVariant`, `isCraneOperatorVariant` (deprecated alias),
   `buildFormData` (per-docType payload shaping), `docSlug` (PDF name
-  slug), `canAdvanceStep` (next-button validation predicate).
+  slug), `missingFieldsForStep` (ordered keys of the empty/invalid
+  required fields for a step × docType — single source of truth),
+  `canAdvanceStep` (next-button validation predicate, now just
+  `missingFieldsForStep(...).length === 0`).
 - `styles.ts` — `makeStyles(theme)` factory, `OrderStyles` type.
 - `Step1DocType.tsx` — radio-card list of the six document types.
 - `Step2Company.tsx` / `Step2CraneCompany.tsx` — company info, two
@@ -51,6 +54,15 @@ Backs the `app/orders/new.tsx` route.
   user advances past step 1 before the fetch resolves, the prefilled
   fields still merge in via `setForm(f => ({ ...f, ... }))` so user
   edits aren't clobbered.
+- Blocked "Next"/"Generate" presses scroll the first empty required
+  field into view via `useScrollToError` (`hooks/useScrollToError.ts`):
+  `NewOrderScreen` passes `scrollRef` to `KeyboardSafeArea` and
+  `registerField` to every multi-field step. Each required field is
+  wrapped in `<View onLayout={registerField('<key>')}>`, and the keys
+  MUST match exactly what `missingFieldsForStep` returns (signature
+  steps use `directorSignature` + `appointedSignature`/`operatorSignature`).
+  Keep the three in sync: schema condition, red-field `error`, and the
+  `registerField` wrapper.
 - The crane auto-generated order number (`KR-<year>/<seq>`) only fires
   when `docType` is a crane variant AND `form.orderNumber === ''` —
   re-selecting the docType after the user typed a number won't

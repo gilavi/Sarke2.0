@@ -387,8 +387,7 @@ export default function FallProtectionInspectionScreen() {
         projectName={projectName ?? ''}
         step={step}
         totalSteps={TOTAL_STEPS}
-        variant={step === DEVICES_STEP ? 'checklist' : 'form'}
-        fields={4}
+        variant={step === DEVICES_STEP ? 'checklist' : 'table'}
         onClose={() => router.back()}
       />
     );

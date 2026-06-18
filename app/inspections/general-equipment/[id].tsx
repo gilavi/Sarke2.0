@@ -294,9 +294,9 @@ export default function GeneralEquipmentScreen() {
         variant={
           step === CHECKLIST_STEP ? 'checklist'
             : step === CONCLUSION_STEP ? 'conclusion'
-            : 'form'
+            : 'radioList'
         }
-        fields={2}
+        verdicts={0}
         onClose={() => router.back()}
       />
     );

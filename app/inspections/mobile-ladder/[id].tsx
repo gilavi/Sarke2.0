@@ -248,6 +248,7 @@ export default function MobileLadderInspectionScreen() {
             : 'form'
         }
         fields={4}
+        photos={false}
         onClose={() => router.back()}
       />
     );

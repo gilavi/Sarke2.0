@@ -26,16 +26,45 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   `projectName`, 0-based `step`, `totalSteps` and `stepLabels` it gives
   `InspectionShell` (so the progress bar lands without a jump), plus
   `variant` (see `StepBodySkeleton`) mapped from the current step, and
-  `onClose={() => router.back()}`. Omit `totalSteps` to hide the progress
+  `onClose={() => router.back()}`. Forwards `fields`/`verdicts`/`photos`
+  through to `StepBodySkeleton` for the `form`/`conclusion` variants. Omit
+  `totalSteps` to hide the progress
   bar (the generic wizard does this — its step count isn't known at load).
   Do NOT fall back to a native `<Stack.Screen headerShown>` + centered
   "იტვირთება…" text, and do NOT show one generic body for every step.
 - `StepBodySkeleton` (from `StepSkeletons.tsx`) — the body-only step
-  skeletons, one per `StepSkeletonVariant`: `form` (input bars; `fields`
-  count), `keypad`, `checklist`, `conclusion`, `table`, `question`. All
-  built from the shared `Skeleton` atom so shimmer colour + animation stay
-  identical everywhere. Add a new variant here (not a per-route skeleton)
-  when a step shape isn't covered; reuse the closest variant otherwise.
+  skeletons, one per `StepSkeletonVariant`, each shaped like the real step
+  so the loading body never looks like the generic dashboard skeleton:
+  - `form` — stacked **label-stub + input-bar** field groups (`fields`
+    count); identification / single-field steps.
+  - `keypad` — plate field + bottom key grid.
+  - `checklist` — legend strip + result rows (description + 3 chips).
+  - `conclusion` — illustration + verdict buttons + notes + photo strip.
+    Params: `verdicts` (button count, default 3; pass `0` for verdict-less
+    flows like general-equipment) and `photos` (default `true`; pass
+    `false` when the conclusion step has no photo strip).
+  - `table` — DynamicTable-style **numbered row-cards** (badge + stacked
+    input cells) + add button (NOT a thin spreadsheet).
+  - `tablePhotos` — `table` + a trailing photo strip (e.g. the
+    lifting-accessories "removed devices" step).
+  - `radioList` — caption + stacked single-select radio rows
+    (e.g. general-equipment "inspection type").
+  - `identForm` — sectioned identification form: section labels + a
+    selector row + grouped fields + a marking chip row + a date field
+    (the slings/lifting-accessories identification step).
+  - `docsPhotos` — a large photo-capture card + a horizontal photo-tile
+    strip (QualDoc + PhotoSection documents step).
+  - `question` — illustration + centered title + two answer buttons +
+    photo grid + notes (generic wizard).
+
+  All built from the shared `Skeleton` atom so shimmer colour + animation
+  stay identical everywhere — only the *layout* changes step to step. Each
+  route maps its current (restored) `step` → the matching variant in its
+  `if (loading) return <InspectionShellSkeleton variant={…} />` gate, so a
+  resume lands on the right shape. Add a new variant here (composed from the
+  inline shape helpers — `FieldGroup`, `SectionLabel`, `PhotoStripBlock`, …)
+  — not a per-route skeleton — when a step shape isn't covered; reuse the
+  closest variant (or its `verdicts`/`photos` params) otherwise.
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
 - `ChecklistStep` — generic "list of checks" step. Renders a

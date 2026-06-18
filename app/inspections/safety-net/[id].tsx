@@ -337,10 +337,12 @@ export default function SafetyNetInspectionScreen() {
         variant={
           step === INSPECTION_STEP ? 'checklist'
             : step === CONCLUSION_STEP ? 'conclusion'
-            : step === DOCS_STEP ? 'table'
+            : step === DOCS_STEP ? 'docsPhotos'
             : 'form'
         }
-        fields={5}
+        fields={8}
+        verdicts={2}
+        photos={false}
         onClose={() => router.back()}
       />
     );

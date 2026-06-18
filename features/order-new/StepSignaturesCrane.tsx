@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import { CircleCheck, Pencil } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
@@ -8,7 +8,7 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function StepSignaturesCrane({
-  form, setForm, theme, s, docType, attempted,
+  form, setForm, theme, s, docType, attempted, registerField,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
@@ -16,6 +16,7 @@ export function StepSignaturesCrane({
   s: OrderStyles;
   docType: OrderDocumentType | null;
   attempted: boolean;
+  registerField: (key: string) => (e: LayoutChangeEvent) => void;
 }) {
   const [directorCanvasOpen, setDirectorCanvasOpen] = useState(false);
   const [operatorCanvasOpen, setOperatorCanvasOpen] = useState(false);
@@ -28,7 +29,7 @@ export function StepSignaturesCrane({
       <Text style={s.stepTitle}>ხელმოწერები</Text>
 
       {/* Director */}
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 8 }} onLayout={registerField('directorSignature')}>
         <Text style={s.sectionLabel}>დირექტორი</Text>
         <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.directorName || 'დირექტორი'}</Text>
         {form.directorSignature ? (
@@ -77,7 +78,7 @@ export function StepSignaturesCrane({
       </View>
 
       {/* Operator / Specialist */}
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 8 }} onLayout={registerField('operatorSignature')}>
         <Text style={s.sectionLabel}>{operatorLabel}</Text>
         <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.craneOperatorName || operatorLabel}</Text>
         {form.operatorSignature ? (

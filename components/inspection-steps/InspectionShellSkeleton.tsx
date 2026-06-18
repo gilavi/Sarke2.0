@@ -34,6 +34,10 @@ export interface InspectionShellSkeletonProps {
   variant?: StepSkeletonVariant;
   /** Number of input-box placeholders (only used by the `form` variant). */
   fields?: number;
+  /** `conclusion` variant: number of verdict buttons (default 3; 0 = none). */
+  verdicts?: number;
+  /** `conclusion` variant: show the photo strip (default true). */
+  photos?: boolean;
   onClose?: () => void;
 }
 
@@ -45,6 +49,8 @@ export function InspectionShellSkeleton({
   stepLabels,
   variant = 'form',
   fields,
+  verdicts,
+  photos,
   onClose,
 }: InspectionShellSkeletonProps) {
   const { theme } = useTheme();
@@ -70,7 +76,7 @@ export function InspectionShellSkeleton({
 
       <View style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
-          <StepBodySkeleton variant={variant} fields={fields} />
+          <StepBodySkeleton variant={variant} fields={fields} verdicts={verdicts} photos={photos} />
         </View>
 
         <View style={styles.footer}>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import { CircleCheck, Pencil } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
@@ -7,13 +7,14 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function StepSignaturesFireSafety({
-  form, setForm, theme, s, attempted,
+  form, setForm, theme, s, attempted, registerField,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   theme: any;
   s: OrderStyles;
   attempted: boolean;
+  registerField: (key: string) => (e: LayoutChangeEvent) => void;
 }) {
   const [directorCanvasOpen, setDirectorCanvasOpen] = useState(false);
   const [appointedCanvasOpen, setAppointedCanvasOpen] = useState(false);
@@ -23,7 +24,7 @@ export function StepSignaturesFireSafety({
       <Text style={s.stepTitle}>ხელმოწერები</Text>
 
       {/* Director */}
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 8 }} onLayout={registerField('directorSignature')}>
         <Text style={s.sectionLabel}>დირექტორი</Text>
         <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.directorName || 'დირექტორი'}</Text>
         {form.directorSignature ? (
@@ -72,7 +73,7 @@ export function StepSignaturesFireSafety({
       </View>
 
       {/* Appointed */}
-      <View style={{ gap: 8 }}>
+      <View style={{ gap: 8 }} onLayout={registerField('appointedSignature')}>
         <Text style={s.sectionLabel}>პასუხისმგებელი პირი</Text>
         <Text style={[s.summaryLabel, { width: 'auto' }]}>{form.appointedName || 'დანიშნული პირი'}</Text>
         {form.appointedSignature ? (

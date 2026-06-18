@@ -266,76 +266,105 @@ export function docSlug(docType: OrderDocumentType | null): string {
   return 'brdzaneba_shus_danishvna';
 }
 
-// Validation predicate for the "next" button.
+/**
+ * Ordered (top-to-bottom, matching on-screen field order) list of the REQUIRED
+ * field keys that are currently empty/invalid for `step` + `docType`. Returns
+ * `[]` for steps with no required fields. Mirrors `canAdvanceStep` exactly — the
+ * two share this single source of truth so the red-field, enable, and
+ * scroll-to-error wiring can never drift apart. Keys match the
+ * `registerField('<key>')` wrappers in the corresponding Step components.
+ *
+ * Side effects: none (pure).
+ */
+export function missingFieldsForStep(
+  step: Step,
+  docType: OrderDocumentType | null,
+  form: CombinedForm,
+): string[] {
+  const missing: string[] = [];
+  const reqText = (key: keyof CombinedForm) => {
+    if (!String(form[key] ?? '').trim()) missing.push(key as string);
+  };
+  const reqPersonalId = (key: keyof CombinedForm) => {
+    if (String(form[key] ?? '').trim().length !== 11) missing.push(key as string);
+  };
+  const reqSig = (key: keyof CombinedForm) => {
+    if (!form[key]) missing.push(key as string);
+  };
+
+  if (step === 1) return missing; // doc-type select handled by Step1/summary, no scroll target
+  if (step === 2) {
+    if (isCraneOperatorVariant(docType)) {
+      reqText('orderNumber');
+      reqText('companyName');
+      reqText('directorName');
+      return missing;
+    }
+    reqText('orderNumber');
+    reqText('city');
+    reqText('companyName');
+    reqText('directorName');
+    return missing;
+  }
+  if (step === 3) {
+    if (docType === 'labor_safety_specialist') {
+      reqText('facilityName');
+      reqText('specialistName');
+      reqPersonalId('specialistPersonalId');
+      reqText('certificateNumber');
+      return missing;
+    }
+    if (docType === 'alcohol_control') {
+      reqText('facilityName');
+      reqText('responsiblePersonName');
+      reqText('responsiblePersonPosition');
+      reqPersonalId('responsiblePersonPersonalId');
+      return missing;
+    }
+    if (docType === 'fire_safety_order') {
+      reqText('appointedName');
+      reqText('appointedPhone');
+      reqText('objectName');
+      return missing;
+    }
+    if (docType === 'fire_safety_order_enterprise') {
+      // On-screen order: name, position, id number, phone, object name.
+      reqText('appointedName');
+      reqText('appointedPosition');
+      reqText('appointedIdNumber');
+      reqText('appointedPhone');
+      reqText('objectName');
+      return missing;
+    }
+    if (docType === 'crane_operator_order' || docType === 'crane_technical_order') {
+      reqText('craneOperatorName');
+      reqPersonalId('craneOperatorPersonalId');
+      reqText('craneOperatorCertNumber');
+      return missing;
+    }
+    return missing;
+  }
+  // step 4 crane: crane specs - no required fields
+  // step 5 fire safety / step 6 crane: signature step - check signatures
+  if (step === 5 && isFireSafetyVariant(docType)) {
+    reqSig('directorSignature');
+    reqSig('appointedSignature');
+    return missing;
+  }
+  if (step === 6 && isCraneOperatorVariant(docType)) {
+    reqSig('directorSignature');
+    reqSig('operatorSignature');
+    return missing;
+  }
+  return missing;
+}
+
+// Validation predicate for the "next" button. Shares its required-field logic
+// with `missingFieldsForStep` so the two never drift.
 export function canAdvanceStep(
   step: Step,
   docType: OrderDocumentType | null,
   form: CombinedForm,
 ): boolean {
-  if (step === 1) return docType !== null;
-  if (step === 2) {
-    if (isCraneOperatorVariant(docType)) {
-      return (
-        form.orderNumber.trim().length > 0 &&
-        form.companyName.trim().length > 0 &&
-        form.directorName.trim().length > 0
-      );
-    }
-    return (
-      form.orderNumber.trim().length > 0 &&
-      form.city.trim().length > 0 &&
-      form.companyName.trim().length > 0 &&
-      form.directorName.trim().length > 0
-    );
-  }
-  if (step === 3) {
-    if (docType === 'labor_safety_specialist') {
-      return (
-        form.facilityName.trim().length > 0 &&
-        form.specialistName.trim().length > 0 &&
-        form.specialistPersonalId.trim().length === 11 &&
-        form.certificateNumber.trim().length > 0
-      );
-    }
-    if (docType === 'alcohol_control') {
-      return (
-        form.facilityName.trim().length > 0 &&
-        form.responsiblePersonName.trim().length > 0 &&
-        form.responsiblePersonPosition.trim().length > 0 &&
-        form.responsiblePersonPersonalId.trim().length === 11
-      );
-    }
-    if (docType === 'fire_safety_order') {
-      return (
-        form.appointedName.trim().length > 0 &&
-        form.appointedPhone.trim().length > 0 &&
-        form.objectName.trim().length > 0
-      );
-    }
-    if (docType === 'fire_safety_order_enterprise') {
-      return (
-        form.appointedName.trim().length > 0 &&
-        form.appointedPhone.trim().length > 0 &&
-        form.appointedPosition.trim().length > 0 &&
-        form.appointedIdNumber.trim().length > 0 &&
-        form.objectName.trim().length > 0
-      );
-    }
-    if (docType === 'crane_operator_order' || docType === 'crane_technical_order') {
-      return (
-        form.craneOperatorName.trim().length > 0 &&
-        form.craneOperatorPersonalId.trim().length === 11 &&
-        form.craneOperatorCertNumber.trim().length > 0
-      );
-    }
-  }
-  // step 4 crane: crane specs - no required fields, always can advance
-  // step 5 fire safety / step 6 crane: signature step - check signatures
-  if (step === 5 && isFireSafetyVariant(docType)) {
-    return !!form.directorSignature && !!form.appointedSignature;
-  }
-  if (step === 6 && isCraneOperatorVariant(docType)) {
-    return !!form.directorSignature && !!form.operatorSignature;
-  }
-  return true;
+  return missingFieldsForStep(step, docType, form).length === 0;
 }

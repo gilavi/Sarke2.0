@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-06-18 — Per-step loading skeletons that match each inspection step
+
+While an inspection flow blocked on its initial fetch (or resumed mid-flow from AsyncStorage), most steps fell back to one generic stack of input bars — which read like the dashboard skeleton, not the step you were about to see. The header + progress bar were already kept live (only the body morphs), but the body itself was too generic, and a few steps were mapped to the wrong shape entirely.
+
+- **The body now matches the step.** Every reachable step in every flow maps its current (restored) `step` to a body skeleton shaped like that step's real content. The header (`FlowHeader` + live progress bar) and footer button still **never** wait on loading — only the body morphs.
+- **`form` reads like a form,** not a list: each field is a short label stub + an input bar (not bare full-width bars).
+- **New/upgraded variants** in [`StepSkeletons.tsx`](../components/inspection-steps/StepSkeletons.tsx), all built from the one shared `Skeleton` atom so the shimmer colour + animation stay identical everywhere: `table` redrawn as DynamicTable **row-cards** (was a thin spreadsheet); `conclusion` gained an illustration + `verdicts`/`photos` params (so the verdict-less general-equipment flow and the photo-less conclusions don't show phantom blocks); plus `tablePhotos`, `radioList`, `identForm`, and `docsPhotos` for steps that didn't fit any existing shape.
+- **Remapped gates:** fall-protection registry (`form`→`table`), general-equipment details (`form`→`radioList`) + verdict-less conclusion, safety-net documents (`table`→`docsPhotos`), lifting-accessories identification (`form`→`identForm`) + removed-devices (`table`→`tablePhotos`). bobcat/excavator/forklift/cargo-platform/mobile-ladder/harness improve automatically from the shared variant upgrades.
+- **Generic wizard** keeps a single `question` skeleton — its step list (and thus the step kind) isn't known until the questionnaire loads, and `question` is the dominant case.
+
+See [`components/inspection-steps/AGENTS.md`](../components/inspection-steps/AGENTS.md) for the full variant list + the `verdicts`/`photos` params.
+
+---
+
 ## 2026-06-18 — No more disabled buttons: enabled CTAs + on-press field errors
 
 Every multi-step flow used to **disable** its forward/submit button until the required fields were filled — a dead, dimmed button that never told the user *what* was missing. That's gone. Buttons now stay **enabled**; pressing one while a required field is empty reveals the empty field(s) in red (`სავალდებულო ველი`) and fires an error haptic, so the requirement is obvious.
