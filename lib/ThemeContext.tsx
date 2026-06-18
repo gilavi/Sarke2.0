@@ -23,7 +23,10 @@ interface ThemeContextValue {
 // Default left undefined to avoid a module-init cycle: lib/theme.ts re-exports
 // useTheme from this file, so eagerly reading lightTheme here would TDZ-fail
 // on web. ThemeProvider always wraps consumers, so the default is never read.
-const ThemeContext = createContext<ThemeContextValue>(undefined as unknown as ThemeContextValue);
+// Exported so non-app surfaces (e.g. the design-system Storybook) can provide a
+// controlled theme value directly without going through ThemeProvider's
+// AsyncStorage-backed mode resolution.
+export const ThemeContext = createContext<ThemeContextValue>(undefined as unknown as ThemeContextValue);
 
 const STORAGE_KEY = 'theme_dark';
 

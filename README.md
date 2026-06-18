@@ -39,11 +39,14 @@ Scan the QR with **Expo Go** (defaults to the production backend when `APP_ENV` 
 ### Lint + typecheck
 
 ```sh
-npm run lint        # tsc --noEmit && scripts/check-primitives.mjs
+npm run lint        # tsc --noEmit && check-primitives.mjs && check-tokens-fresh.mjs
 npm run typecheck   # tsc only
+npm run tokens      # regenerate web token artifacts from lib/design-tokens.ts
 ```
 
 `scripts/check-primitives.mjs` blocks grep-detectable misuses (bare `KeyboardAvoidingView` from `react-native`, legacy image helper names, direct `AsyncStorage` access to `pdf_language`). When adding a cross-cutting helper, read [docs/primitives.md](docs/primitives.md) first.
+
+**Design tokens** are defined once in [lib/design-tokens.ts](lib/design-tokens.ts) (pure data — colors, type scale, spacing, radii, shadows, motion, z-index). `lib/theme.ts` shapes them into the React Native theme; `npm run tokens` regenerates the web artifacts under `web-app/src/generated/` (`tokens.css`, `tailwind-tokens.ts`). `check-tokens-fresh.mjs` (run in `npm run lint`) fails if those are stale, so web and mobile can't drift. Edit tokens **only** in `lib/design-tokens.ts` — never the generated files.
 
 ### Unit tests
 
@@ -81,6 +84,7 @@ Top-level folders, one line each.
 | `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://hubble.ge/` (GitHub Pages with CNAME). |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://hubble.ge/app/`. |
 | `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |
+| `design-system/` | Storybook design-system showcase. Renders the **real** `components/primitives/*` on the web via react-native-web (the "universal" component tier — same files as the Expo app, so no drift) plus token galleries from `lib/design-tokens.ts`. Standalone Vite/Storybook project (not a workspace); excluded from the Metro/Expo build. Planned host: `ds.hubble.ge`. See [design-system/AGENTS.md](design-system/AGENTS.md). |
 | `public/` | Static assets for the web bundles. |
 | `tests/` | Vitest unit tests under `tests/unit/` (canonical location; config in [vitest.config.ts](vitest.config.ts)) plus live-Supabase integration tests under `tests/integration/`. |
 | `__tests__/` | Legacy `.mjs` test mirrors that import `node:test` — not loaded by the vitest runner. Do not add new tests here; write them under `tests/unit/`. |

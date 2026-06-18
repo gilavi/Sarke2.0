@@ -1,0 +1,25 @@
+{
+  "name": "hubble-design-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hubble design system — Storybook showcase of universal (react-native-web) + platform-specific components and tokens. Hosted at ds.hubble.ge.",
+  "type": "module",
+  "scripts": {
+    "storybook": "storybook dev -p 6007",
+    "build": "storybook build -o dist",
+    "preview": "vite preview --outDir dist"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/react-native-web-vite": "^8.6.18",
+    "@storybook/react-vite": "^8.6.14",
+    "@vitejs/plugin-react": "^4.3.4",
+    "lucide-react": "^0.468.0",
+    "storybook": "^8.6.14",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,81 @@
+name: Deploy design system
+
+# Builds the design-system/ Storybook (which renders the real RN primitives via
+# react-native-web) and deploys the static export to Cloudflare Pages, served at
+# ds.hubble.ge.
+#
+# Why Cloudflare Pages and not gh-pages: GitHub Pages allows only ONE custom
+# domain per repo, already used by hubble.ge (the web/ signing app). ds.hubble.ge
+# is a separate subdomain, so it lives on a separate host.
+#
+# The deploy step is gated on the CLOUDFLARE_API_TOKEN secret, so until Luka
+# completes the external setup (see docs/DESIGN_SYSTEM_DEPLOY.md) this workflow
+# still runs as a BUILD CHECK on every relevant push, it just skips the upload.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'design-system/**'
+      - 'components/primitives/**'
+      - 'lib/**' # token source + theme + the helpers the primitives import
+      - '.github/workflows/deploy-design-system.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: design-system-deploy
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets can't be referenced directly in step `if:`; surface as env first.
+      HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # The universal primitives import react-native / reanimated / svg from the
+      # ROOT node_modules (the design-system resolves them by walking up), so the
+      # Storybook build needs both installs. This keeps the showcase pinned to the
+      # exact same dependency versions the Expo app ships.
+      - name: Install root dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps --no-audit --no-fund
+          else
+            npm install --legacy-peer-deps --no-audit --no-fund
+          fi
+
+      - name: Install design-system dependencies
+        working-directory: design-system
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps --no-audit --no-fund
+          else
+            npm install --legacy-peer-deps --no-audit --no-fund
+          fi
+
+      - name: Build Storybook (static)
+        working-directory: design-system
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: env.HAS_CF == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy design-system/dist --project-name=hubble-ds --branch=main
+
+      - name: Note (deploy skipped)
+        if: env.HAS_CF != 'true'
+        run: echo "CLOUDFLARE_API_TOKEN not set — built only, skipped deploy. See docs/DESIGN_SYSTEM_DEPLOY.md."

@@ -6,55 +6,41 @@
 // Old code continues to work via the compatibility mappings below.
 
 import { Platform, useWindowDimensions } from 'react-native';
+import {
+  primary,
+  neutral,
+  highlight,
+  semantic,
+  typeScale,
+  radii,
+  shadowSpec,
+  motion as motionTokens,
+  zIndex as zIndexTokens,
+  spaceUnit,
+  semanticLight,
+  semanticDark,
+  type ShadowSpec,
+} from './design-tokens';
 
 // Helvetica Neue ships on every iOS/iPadOS device; Android falls back to the
 // system font (Roboto) by leaving fontFamily unset — fontWeight still works.
 const GEO_FONT = Platform.OS === 'ios' ? 'HelveticaNeue' : undefined;
 
-// ── Color Primitives ───────────────────────────────────────────────────────
+// Color primitives, the type scale, radii, motion, z-index and shadow specs all
+// come from the canonical lib/design-tokens.ts so web + mobile never drift. This
+// file shapes them into the React Native theme object (RN shadow objects,
+// Platform.OS font families) and adds backward-compatible aliases.
 
-// Hubble brand board - BRAND ORANGE (#FF6D2E) primary scale.
-const primary = {
-  50: '#FFF3EE',
-  100: '#FFE3D6',
-  200: '#FFC4AC',
-  300: '#FF9E78',
-  400: '#FF8A57',
-  500: '#FE7A43',
-  600: '#E85510',
-  700: '#BE3F0B',
-  800: '#972F11',
-  900: '#7B2913',
-} as const;
-
-// Hubble brand board - warm neutrals anchored on OFF-WHITE (#F2F1EC),
-// CONCRETE (#D6D6D1, used for borders) and GRAPHITE (#1A1A1A, ink).
-const neutral = {
-  50: '#F2F1EC',
-  100: '#E9E7E0',
-  200: '#D6D6D1',
-  300: '#C2BEB6',
-  400: '#9C988F',
-  500: '#736F67',
-  600: '#4E4A44',
-  700: '#363230',
-  800: '#221F1C',
-  900: '#1A1A1A',
-} as const;
-
-// HI-VIS YELLOW (#E6FF4D) - high-energy spotlight accent (use sparingly).
-const highlight = '#E6FF4D';
-
-const semantic = {
-  success: '#10B981',
-  successSoft: '#D1FAE5',
-  warning: '#F59E0B',
-  warningSoft: '#FEF3C7',
-  danger: '#EF4444',
-  dangerSoft: '#FEE2E2',
-  info: '#3B82F6',
-  infoSoft: '#DBEAFE',
-} as const;
+/** Turn a platform-neutral ShadowSpec into a React Native shadow style object. */
+function rnShadow(s: ShadowSpec) {
+  return {
+    shadowColor: s.color,
+    shadowOffset: { width: s.x, height: s.y },
+    shadowOpacity: s.opacity,
+    shadowRadius: s.blur,
+    elevation: s.elevation,
+  };
+}
 
 // ── Light Theme ────────────────────────────────────────────────────────────
 
@@ -65,23 +51,8 @@ export const lightTheme = {
     neutral,
     semantic,
 
-    // ── New semantic surfaces ──
-    background: '#FFFFFF',
-    surface: '#FFFFFF',
-    surfaceElevated: '#FFFFFF',
-    surfaceSecondary: neutral[100],
-    ink: neutral[900],
-    inkSoft: neutral[600],
-    inkFaint: neutral[400],
-    border: neutral[200],
-    borderStrong: neutral[300],
-    accent: primary[500],
-    accentSoft: primary[50],
-    accentGhost: primary[100],
-    highlight,
-    highlightSoft: '#F6FFC9',
-    overlay: 'rgba(0,0,0,0.45)',
-    scrim: 'rgba(0,0,0,0.25)',
+    // ── New semantic surfaces (canonical, from lib/design-tokens.ts) ──
+    ...semanticLight,
     inverse: {
       background: neutral[900],
       surface: neutral[800],
@@ -133,116 +104,32 @@ export const lightTheme = {
       bodyBold: GEO_FONT,
       mono: 'JetBrainsMono-Regular',
     },
-    sizes: {
-      '2xs': { size: 10, lineHeight: 12, letterSpacing: 0.03 },
-      xs: { size: 11, lineHeight: 14, letterSpacing: 0.02 },
-      sm: { size: 13, lineHeight: 18, letterSpacing: 0.01 },
-      base: { size: 15, lineHeight: 22, letterSpacing: 0 },
-      lg: { size: 17, lineHeight: 24, letterSpacing: -0.01 },
-      xl: { size: 20, lineHeight: 28, letterSpacing: -0.02 },
-      '2xl': { size: 24, lineHeight: 32, letterSpacing: -0.02 },
-      '3xl': { size: 30, lineHeight: 38, letterSpacing: -0.03 },
-      '4xl': { size: 38, lineHeight: 46, letterSpacing: -0.03 },
-      '5xl': { size: 48, lineHeight: 56, letterSpacing: -0.04 },
-    },
+    // Type ramp sourced from the canonical tokens (lib/design-tokens.ts).
+    sizes: typeScale,
   },
 
-  space: (n: number) => n * 4,
+  space: (n: number) => n * spaceUnit,
 
-  radius: {
-    // New scale
-    none: 0,
-    xs: 6,
-    sm: 8,
-    input: 10,
-    md: 12,
-    cardInner: 14,
-    lg: 16,
-    xl: 20,
-    '2xl': 24,
-    full: 9999,
-    // Backward compatibility aliases
-    pill: 999,
-  },
+  // Radii sourced from the canonical tokens (includes the `pill` legacy alias).
+  radius: radii,
 
+  // RN shadow objects derived from the platform-neutral shadow specs.
   shadows: {
-    none: {
-      shadowColor: 'transparent',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      elevation: 0,
-    },
-    xs: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.03,
-      shadowRadius: 2,
-      elevation: 1,
-    },
-    sm: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    md: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
-    },
-    lg: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
-      elevation: 6,
-    },
-    xl: {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 16 },
-      shadowOpacity: 0.16,
-      shadowRadius: 32,
-      elevation: 10,
-    },
-    glow: {
-      shadowColor: primary[500],
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 4,
-    },
+    none: rnShadow(shadowSpec.none),
+    xs: rnShadow(shadowSpec.xs),
+    sm: rnShadow(shadowSpec.sm),
+    md: rnShadow(shadowSpec.md),
+    lg: rnShadow(shadowSpec.lg),
+    xl: rnShadow(shadowSpec.xl),
+    glow: rnShadow(shadowSpec.glow),
   },
 
-  motion: {
-    instant: 0,
-    fast: 150,
-    normal: 250,
-    slow: 350,
-    slower: 500,
-    spring: {
-      gentle: { damping: 20, stiffness: 180, mass: 1 },
-      bouncy: { damping: 12, stiffness: 200, mass: 1 },
-      stiff: { damping: 25, stiffness: 300, mass: 1 },
-      soft: { damping: 30, stiffness: 120, mass: 1 },
-    },
-  },
+  motion: motionTokens,
 
-  zIndex: {
-    base: 0,
-    dropdown: 100,
-    sticky: 200,
-    overlay: 300,
-    modal: 400,
-    toast: 500,
-    tooltip: 600,
-  },
+  zIndex: zIndexTokens,
 
   // ── Backward compatibility APIs ──
-  spacing: (n: number) => n * 4,
+  spacing: (n: number) => n * spaceUnit,
 
   shadow: {
     card: {
@@ -278,22 +165,8 @@ export const darkTheme = {
     ...lightTheme.colors,
     primary,
     neutral,
-    background: '#000000',
-    surface: '#1A1A1A',
-    surfaceElevated: '#242424',
-    surfaceSecondary: '#1F1F1F',
-    ink: '#F5F5F0',
-    inkSoft: '#E0E0E0',
-    inkFaint: '#B0B0B0',
-    border: '#2A2A2A',
-    borderStrong: '#3A3A3A',
-    accent: primary[400],
-    accentSoft: 'rgba(255,109,46,0.15)',
-    accentGhost: 'rgba(255,109,46,0.08)',
-    highlight,
-    highlightSoft: 'rgba(230,255,77,0.16)',
-    overlay: 'rgba(0,0,0,0.65)',
-    scrim: 'rgba(0,0,0,0.50)',
+    // Dark semantic surfaces (canonical, from lib/design-tokens.ts).
+    ...semanticDark,
     inverse: {
       background: neutral[50],
       surface: neutral[100],

@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-18 — Design system foundations: canonical tokens + Storybook on react-native-web
+
+Started a real, single-source design system so web and mobile stop drifting (the brand orange alone was defined four times with three different values — `lib/theme.ts` `#FE7A43` vs `web-app` `#FF5A1F`).
+
+- **Canonical tokens.** New [lib/design-tokens.ts](../lib/design-tokens.ts) holds all tokens as pure, platform-neutral data (color scales, type ramp, spacing unit, radii, a platform-neutral shadow spec, motion, z-index, light/dark semantic surfaces). `lib/theme.ts` now **consumes** it (shapes RN shadow objects + `Platform.OS` fonts) — its public API (`useTheme`, `theme`, `withOpacity`, `useScaledFontSize`) and every value are unchanged (mobile typecheck clean).
+- **Token generator + drift guard.** `npm run tokens` ([scripts/build-tokens.mjs](../scripts/build-tokens.mjs)) emits `web-app/src/generated/{tokens.css,tailwind-tokens.ts}` from the canonical source; `scripts/check-tokens-fresh.mjs` (wired into `npm run lint`) fails if they're stale. (Generated files exist but web-app does not consume them yet — that rewire is the next step.)
+- **Storybook showcase ([design-system/](../design-system/)).** A standalone Vite/Storybook (`@storybook/react-native-web-vite`) that renders the **real** `components/primitives/*` on the web via react-native-web — the same `.tsx` files the Expo app ships, so the universal tier can't drift. Includes token galleries + stories for Button, Badge, Card, Input, A11yText, with a light/dark toolbar. Planned host: `ds.hubble.ge`. The reanimated-v4-on-web wiring (PlatformChecker web shim + `__DEV__=false`) is documented in [design-system/AGENTS.md](../design-system/AGENTS.md). Excluded from the Metro/Expo build.
+
 ## 2026-06-18 — Inspection PDF: rebrand off green + structural redesign
 
 The generic inspection PDF/act template ([lib/pdf/inspection/](../lib/pdf/inspection/)) was never updated for the orange rebrand — it still used an off-brand teal-green (`#1D9E75`) for the avatar, divider, status banner, TOC numbers, and section accents, which is what showed through the WebView preview on the result screen. It's now on the app's design language:

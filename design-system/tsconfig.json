@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "react-native": ["../node_modules/react-native-web"],
+      "@root/*": ["../*"],
+      "@ds/*": ["../components/primitives/*"],
+      "@tokens": ["../lib/design-tokens"]
+    }
+  },
+  "include": [".storybook", "stories", "shims"]
+}

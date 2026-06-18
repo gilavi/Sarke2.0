@@ -21,7 +21,7 @@ config.resolver.platforms = Array.from(
 // platform-agnostic separators (matches both / and \) so this works on Windows
 // dev machines as well as iOS/macOS CI.
 config.resolver.blockList = [
-  /[\\/](web-app|website|supabase|docs)[\\/].*/,
+  /[\\/](web-app|website|design-system|supabase|docs)[\\/].*/,
 ];
 
 // Defer module factory execution until the require call actually fires.
