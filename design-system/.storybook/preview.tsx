@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Preview } from '@storybook/react-native-web-vite';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeContext } from '@root/lib/ThemeContext';
 import { lightTheme, darkTheme, type Theme } from '@root/lib/theme';
 
@@ -17,7 +18,7 @@ const preview: Preview = {
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     layout: 'fullscreen',
     options: {
-      storySort: { order: ['Tokens', 'Universal', '*'] },
+      storySort: { order: ['Tokens', 'Components', '*'] },
     },
   },
   globalTypes: {
@@ -40,11 +41,13 @@ const preview: Preview = {
       const mode = (ctx.globals.theme as 'light' | 'dark') || 'dark';
       const bg = mode === 'dark' ? '#000000' : '#FFFFFF';
       return (
-        <StorybookThemeProvider mode={mode}>
-          <div style={{ padding: 32, background: bg, minHeight: '100vh', boxSizing: 'border-box' }}>
-            <Story />
-          </div>
-        </StorybookThemeProvider>
+        <SafeAreaProvider>
+          <StorybookThemeProvider mode={mode}>
+            <div style={{ padding: 32, background: bg, minHeight: '100vh', boxSizing: 'border-box' }}>
+              <Story />
+            </div>
+          </StorybookThemeProvider>
+        </SafeAreaProvider>
       );
     },
   ],

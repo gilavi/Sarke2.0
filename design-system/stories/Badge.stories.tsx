@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Badge } from '@ds/Badge';
 
 const meta = {
-  title: 'Universal/Badge',
+  title: 'Components/Badge',
   component: Badge,
   argTypes: {
     variant: { control: 'select', options: ['default', 'primary', 'success', 'warning', 'danger', 'info'] },

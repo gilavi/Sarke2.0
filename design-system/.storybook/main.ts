@@ -61,11 +61,12 @@ const config: StorybookConfig = {
         dedupe: ['react', 'react-dom', 'react-native-web'],
         alias: [
           { find: 'expo-haptics', replacement: path.resolve(dirname, '../shims/expo-haptics.web.ts') },
-          // Icons: the universal components take a LucideIcon *component* as a
-          // prop (they don't bundle icons themselves). On web the right source is
-          // lucide-react (DOM SVG) — same icon names/props as lucide-react-native,
-          // and it avoids lucide-react-native's broken ESM barrel + react-native-svg.
-          { find: /^lucide-react-native$/, replacement: 'lucide-react' },
+          // Icons: map lucide-react-native → lucide-react (DOM SVG; same names/
+          // props, avoids lucide-react-native's broken ESM barrel + react-native-svg).
+          // Must be an ABSOLUTE path: components in ../components/ import lucide at
+          // runtime, and a bare 'lucide-react' would resolve relative to that file
+          // (→ root node_modules, where it doesn't exist) and break the prod build.
+          { find: /^lucide-react-native$/, replacement: path.resolve(dirname, '../node_modules/lucide-react') },
           { find: '@root', replacement: repoRoot },
           { find: '@ds', replacement: path.resolve(repoRoot, 'components/primitives') },
           { find: '@tokens', replacement: path.resolve(repoRoot, 'lib/design-tokens') },

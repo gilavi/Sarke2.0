@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { A11yText } from '@ds/A11yText';
 
 const meta = {
-  title: 'Universal/Text (A11yText)',
+  title: 'Components/Text (A11yText)',
   component: A11yText,
   argTypes: {
     size: { control: 'select', options: ['xs', 'sm', 'base', 'lg', 'xl', '2xl'] },

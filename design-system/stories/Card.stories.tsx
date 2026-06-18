@@ -4,7 +4,7 @@ import { Card } from '@ds/Card';
 import { A11yText } from '@ds/A11yText';
 
 const meta = {
-  title: 'Universal/Card',
+  title: 'Components/Card',
   component: Card,
   argTypes: {
     variant: { control: 'select', options: ['default', 'elevated', 'outlined', 'ghost'] },
