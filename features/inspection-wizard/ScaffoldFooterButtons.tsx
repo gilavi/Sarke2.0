@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Pressable } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
-import { KeyboardController } from 'react-native-keyboard-controller';
+import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
@@ -11,7 +10,7 @@ import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
 import type { Answer, GridValues, Question } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { scaffoldColStyle } from './wizardSchema';
-import { useMorphStage } from './useMorphStage';
+import { MORPH_MS, useMorphStage } from './useMorphStage';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -68,7 +67,12 @@ export function ScaffoldFooterButtons({
   // time (icons → shrink → rearrange) via useMorphStage, so the per-element
   // `layout` transition only ever animates a single change at once.
   const morph = useMorphStage(compact, reduceMotion);
-  const layoutAnim = reduceMotion ? undefined : LinearTransition.duration(160);
+  // Matched to MORPH_MS so each staged hold lines up with its animation. Eased
+  // (decelerate into place) so each phase reads as one deliberate move.
+  const ease = Easing.out(Easing.cubic);
+  const layoutAnim = reduceMotion ? undefined : LinearTransition.duration(MORPH_MS.layout).easing(ease);
+  const iconIn = reduceMotion ? undefined : FadeIn.duration(MORPH_MS.icon).easing(ease);
+  const iconOut = reduceMotion ? undefined : FadeOut.duration(MORPH_MS.icon).easing(ease);
 
   const renderDetail = (col: string) => {
     const isSelected = selectedStatus === col;
@@ -82,8 +86,9 @@ export function ScaffoldFooterButtons({
         onPress={() => {
           haptic.light();
           setStatus(col);
+          // Selecting a status must NOT dismiss the keyboard — the user may
+          // still be typing a comment; let them close it themselves.
           if (isNone) onAdvance();
-          else if (compact) KeyboardController.dismiss();
         }}
         style={[
           morph.sized === 'chip' ? styles.statusChip : styles.statusOption,
@@ -95,10 +100,7 @@ export function ScaffoldFooterButtons({
         {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
       >
         {morph.showIcon ? (
-          <Animated.View
-            entering={reduceMotion ? undefined : FadeIn.duration(150)}
-            exiting={reduceMotion ? undefined : FadeOut.duration(120)}
-          >
+          <Animated.View entering={iconIn} exiting={iconOut}>
             <IconComp
               size={22}
               color={isSelected ? theme.colors.inverse.background : theme.colors.inkSoft}
@@ -124,12 +126,7 @@ export function ScaffoldFooterButtons({
       {detailCols.map(renderDetail)}
       {morph.expanded ? (
         showDetails ? (
-          <Animated.View
-            key="next"
-            layout={layoutAnim}
-            entering={reduceMotion ? undefined : FadeIn.duration(150)}
-            exiting={reduceMotion ? undefined : FadeOut.duration(120)}
-          >
+          <Animated.View key="next" layout={layoutAnim} entering={iconIn} exiting={iconOut}>
             <Button
               title="შემდეგი"
               style={{ paddingVertical: 14 }}

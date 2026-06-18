@@ -1,4 +1,4 @@
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated, { Easing, LinearTransition } from 'react-native-reanimated';
 import { CircleCheck, CircleX } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useAccessibilitySettings } from '../../lib/accessibility';
@@ -28,7 +28,7 @@ export function AnswerButtons({ value, onChange, compact, error }: AnswerButtons
   const showError = !!error && value === null;
   return (
     <Animated.View
-      layout={reduceMotion ? undefined : LinearTransition.duration(220)}
+      layout={reduceMotion ? undefined : LinearTransition.duration(240).easing(Easing.out(Easing.cubic))}
       style={{ flexDirection: 'row', gap: 12 }}
     >
       <StatusChip

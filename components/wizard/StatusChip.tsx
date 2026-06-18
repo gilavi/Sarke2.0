@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
+  Easing,
   LinearTransition,
   useSharedValue,
   useAnimatedStyle,
@@ -108,7 +109,7 @@ export function StatusChip({
     <AnimatedPressable
       onPress={handlePress}
       disabled={disabled}
-      layout={reduceMotion ? undefined : LinearTransition.duration(220)}
+      layout={reduceMotion ? undefined : LinearTransition.duration(240).easing(Easing.out(Easing.cubic))}
       style={[
         layout === 'pill' ? styles.pill : styles.chip,
         {

@@ -101,10 +101,8 @@ export const ProjectCard = memo(function ProjectCard({
                   r={Math.hypot(width, PROJECT_CARD_HEIGHT)}
                   gradientUnits="userSpaceOnUse"
                 >
-                  <Stop offset="0" stopColor={theme.colors.surface} stopOpacity={0.3} />
-                  <Stop offset="0.2" stopColor={theme.colors.surface} stopOpacity={0.55} />
-                  <Stop offset="0.45" stopColor={theme.colors.surface} stopOpacity={0.78} />
-                  <Stop offset="0.7" stopColor={theme.colors.surface} stopOpacity={0.92} />
+                  <Stop offset="0" stopColor={theme.colors.surface} stopOpacity={0.2} />
+                  <Stop offset="0.5" stopColor={theme.colors.surface} stopOpacity={0.6} />
                   <Stop offset="1" stopColor={theme.colors.surface} stopOpacity={1} />
                 </RadialGradient>
               </Defs>

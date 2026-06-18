@@ -19,7 +19,7 @@ export const PROJECT_AVATAR_FG = '#000000';
  * the bright fill separates from light surfaces (e.g. the project card) without
  * a harsh outline.
  */
-export const PROJECT_AVATAR_BORDER = '#C8D52E';
+export const PROJECT_AVATAR_BORDER = '#DCE93A';
 /** Editable-overlay action badge: black circle + white +/pencil, white ring. */
 const PROJECT_AVATAR_BADGE = '#000000';
 

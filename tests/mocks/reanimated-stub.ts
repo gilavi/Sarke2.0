@@ -49,6 +49,8 @@ export const Easing = {
   out: () => () => 0,
   in: () => () => 0,
   ease: () => 0,
+  cubic: () => 0,
+  quad: () => 0,
   linear: () => 0,
   bezier: () => () => 0,
 };
