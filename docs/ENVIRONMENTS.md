@@ -178,7 +178,7 @@ Once the `production` GitHub Environment has its `VITE_SUPABASE_*` secrets, swit
 | R2 | Global repo secret repoints all 3 prod web deploys | GitHub Environments (§0.E) — pending; prod workflows untouched until then ✅ |
 | R3 | Colliding version tokens mis-apply on push | local `db reset` first + squash to baseline (§4) — pending Docker/prod |
 | R4 | `db push` replays applied migrations on prod | `migration repair` + `--dry-run` + manual-approval Environment (§4, §6) |
-| R5 | Touching the `production` channel breaks live OTA | never rename `production`; `staging` added alongside legacy `preview` ✅ |
+| R5 | Touching the `production` channel breaks live OTA | never rename `production`; `staging` is its own profile ✅. The unused `preview` profile (channel but no `APP_ENV` → silently resolved to PRODUCTION) was removed 2026-06-18 — it was a loaded gun. |
 | R6 | Repointing prod `SIGN_WEB_URL` kills in-flight SMS links | prod default unchanged; `gilavi.github.io/Sarke2.0` → `hubble.ge` 301 kept ✅ |
 | R7 | Staging build collides with prod Apple identity | distinct bundle id + scheme + channel ✅; prod config verified byte-identical ✅ |
 | R8 | CLI left linked to staging → next push hits wrong project | re-link to prod after every session; CI always `link` explicitly ✅ |

@@ -11,19 +11,6 @@
         "APP_ENV": "development"
       }
     },
-    "preview": {
-      "distribution": "internal",
-      "channel": "preview",
-      "env": {
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      },
-      "android": {
-        "buildType": "apk"
-      },
-      "ios": {
-        "simulator": false
-      }
-    },
     "staging": {
       "distribution": "internal",
       "channel": "staging",
