@@ -1,5 +1,8 @@
 import React from 'react';
 import type { Preview } from '@storybook/react-native-web-vite';
+// Initializes the app's i18next instance (auto-inits on import) so components
+// that call useTranslation() render their real Georgian strings.
+import '@root/lib/i18n';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeContext } from '@root/lib/ThemeContext';

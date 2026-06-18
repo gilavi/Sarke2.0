@@ -68,6 +68,9 @@ const config: StorybookConfig = {
           // pass can't parse; we only need swipe-to-dismiss (non-essential on
           // web), so stub it. Mirrors metro.config.js WEB_SHIMS.
           { find: /^react-native-gesture-handler$/, replacement: path.resolve(dirname, '../shims/react-native-gesture-handler.web.tsx') },
+          // react-native-maps is native-only; reuse the repo's Metro web stub so
+          // components that embed a map (e.g. ProjectCard) render with a blank map area.
+          { find: /^react-native-maps$/, replacement: path.resolve(repoRoot, 'shims/react-native-maps.ts') },
           // Icons: map lucide-react-native → lucide-react (DOM SVG; same names/
           // props, avoids lucide-react-native's broken ESM barrel + react-native-svg).
           // Must be an ABSOLUTE path: components in ../components/ import lucide at
