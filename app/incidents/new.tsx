@@ -14,7 +14,8 @@ import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleCheck, Check, Info, User, CircleX, Plus, Camera, Pencil, TriangleAlert, ArrowRight, FileText } from 'lucide-react-native';
+import { Check, Info, User, CircleX, Plus, Camera, Pencil, TriangleAlert, ArrowRight, FileText } from 'lucide-react-native';
+import { Selector } from '../../components/ui/Selector';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -536,38 +537,20 @@ function Step1({
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>რა სახის შემთხვევა?</Text>
 
-      {types.map(t => {
-        const badge = incidentColors(isDark)[t];
-        const selected = form.type === t;
-        return (
-          <Pressable
-            key={t}
-            onPress={() => setForm(f => ({ ...f, type: t }))}
-            style={[
-              s.typeCard,
-              showError && { borderColor: theme.colors.danger },
-              selected && {
-                borderColor: theme.colors.ink,
-                backgroundColor: theme.colors.subtleSurface,
-              },
-            ]}
-          >
-            {/* Severity stays color-coded via a small dot; selection chrome is monochrome + low-contrast. */}
-            <View style={[s.typeCardDot, { backgroundColor: badge.border }]} />
-            <Text style={[s.typeCardLabel, selected && { color: theme.colors.ink, fontWeight: '700' }]}>
-              {INCIDENT_TYPE_FULL_LABEL[t]}
-            </Text>
-            {selected && (
-              <CircleCheck
-                size={22}
-                color={theme.colors.ink}
-                style={{ marginLeft: 'auto' }}
-                strokeWidth={1.5}
-              />
-            )}
-          </Pressable>
-        );
-      })}
+      {/* Canonical Selector: bordered "type cards" with a leading severity dot and
+          a check on the selected one (severity stays color-coded; chrome is monochrome). */}
+      <Selector
+        presentation="rows"
+        indicator="check"
+        error={showError}
+        value={form.type}
+        onChange={(t) => setForm(f => ({ ...f, type: t as IncidentType }))}
+        options={types.map(t => ({
+          value: t,
+          label: INCIDENT_TYPE_FULL_LABEL[t],
+          leading: <View style={[s.typeCardDot, { backgroundColor: incidentColors(isDark)[t].border }]} />,
+        }))}
+      />
 
       {showError && (
         <Text style={s.requiredError}>აირჩიეთ შემთხვევის ტიპი</Text>
@@ -914,27 +897,11 @@ function makeStyles(theme: any) {
       marginBottom: 4,
     },
 
-    // type cards
-    typeCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      padding: 14,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.colors.border,
-    },
+    // leading severity dot for the type-card Selector
     typeCardDot: {
       width: 10,
       height: 10,
       borderRadius: 5,
-    },
-    typeCardLabel: {
-      flex: 1,
-      fontSize: 14,
-      color: theme.colors.ink,
-      fontWeight: '500',
     },
 
     // warning banner

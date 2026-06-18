@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { CircleCheck } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -40,6 +41,11 @@ interface CommonProps {
   /** 'chips' (default) wraps compact pills; 'rows' is bordered cards; 'list' is
    *  a divided full-bleed list (for sheets / scrollable pickers). */
   presentation?: SelectorPresentation;
+  /** rows/list trailing affordance: 'radio' (default) or 'check' (a check icon
+   *  on the selected option, nothing on the rest — the "type card" look). */
+  indicator?: 'radio' | 'check';
+  /** Paint every option's border danger (e.g. required, submit-attempted). */
+  error?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -59,7 +65,7 @@ interface MultiProps extends CommonProps {
 export type SelectorProps = SingleProps | MultiProps;
 
 export function Selector(props: SelectorProps) {
-  const { options, label, presentation = 'chips', style, testID } = props;
+  const { options, label, presentation = 'chips', indicator = 'radio', error, style, testID } = props;
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
@@ -98,6 +104,7 @@ export function Selector(props: SelectorProps) {
                 style={[
                   isList ? styles.listRow : styles.row,
                   active && (isList ? styles.listRowActive : styles.rowActive),
+                  error && (isList ? styles.listRowError : styles.rowError),
                   opt.disabled && styles.disabled,
                 ]}
                 onPress={() => handlePress(opt)}
@@ -109,9 +116,13 @@ export function Selector(props: SelectorProps) {
                   <Text style={[styles.rowText, active && styles.rowTextActive]}>{opt.label ?? opt.value}</Text>
                   {opt.subtitle ? <Text style={styles.rowSubtitle}>{opt.subtitle}</Text> : null}
                 </View>
-                <View style={[isMulti ? styles.checkbox : styles.radio, active && (isMulti ? styles.checkboxActive : styles.radioActive)]}>
-                  {active && (isMulti ? <View style={styles.checkboxInner} /> : <View style={styles.radioDot} />)}
-                </View>
+                {indicator === 'check' ? (
+                  active ? <CircleCheck size={22} color={theme.colors.ink} strokeWidth={1.5} /> : null
+                ) : (
+                  <View style={[isMulti ? styles.checkbox : styles.radio, active && (isMulti ? styles.checkboxActive : styles.radioActive)]}>
+                    {active && (isMulti ? <View style={styles.checkboxInner} /> : <View style={styles.radioDot} />)}
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -123,7 +134,7 @@ export function Selector(props: SelectorProps) {
             return (
               <Pressable
                 key={opt.value}
-                style={[styles.chip, active && styles.chipActive, opt.disabled && styles.disabled]}
+                style={[styles.chip, active && styles.chipActive, error && styles.chipError, opt.disabled && styles.disabled]}
                 onPress={() => handlePress(opt)}
                 disabled={opt.disabled}
                 {...a11y(opt.label ?? opt.value, undefined, a11yRole)}
@@ -162,6 +173,7 @@ function getStyles(theme: Theme) {
       backgroundColor: theme.colors.card,
     },
     rowActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
+    rowError: { borderColor: theme.colors.semantic.danger },
 
     // list (divided full-bleed rows, for sheets / scrollable pickers)
     listContainer: {},
@@ -176,6 +188,7 @@ function getStyles(theme: Theme) {
       borderBottomColor: theme.colors.hairline,
     },
     listRowActive: { backgroundColor: theme.colors.subtleSurface },
+    listRowError: { borderBottomColor: theme.colors.semantic.danger },
 
     rowTextWrap: { flex: 1, gap: 2 },
     rowText: { fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
@@ -215,6 +228,7 @@ function getStyles(theme: Theme) {
       backgroundColor: theme.colors.card,
     },
     chipActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
+    chipError: { borderColor: theme.colors.semantic.danger },
     chipText: { fontSize: 14, color: theme.colors.inkSoft },
     chipTextActive: { color: theme.colors.ink, fontWeight: '700' },
   });

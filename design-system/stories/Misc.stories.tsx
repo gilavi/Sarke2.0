@@ -8,7 +8,6 @@ import { ButtonGroup } from '@root/components/ButtonGroup';
 import { FabButton } from '@root/components/primitives/FabButton';
 import { Chip } from '@root/components/ui/Chip';
 import { SectionHeader } from '@root/components/SectionHeader';
-import { QuickActionButton } from '@root/components/QuickActionButton';
 import { Label } from '@root/components/ui/Label';
 import { ErrorText } from '@root/components/ui/ErrorText';
 import { primary, semantic } from '@tokens';
@@ -84,18 +83,6 @@ export const SectionHeaders: Story = {
       <SectionHeader title="Recent inspections" />
       <SectionHeader title="Projects" variant="highlight" action={{ label: 'See all', icon: ChevronRight, onPress: () => {} }} />
       <SectionHeader title="Archived" variant="muted" />
-    </View>
-  ),
-};
-
-export const QuickActions: Story = {
-  name: 'Quick Action Button',
-  render: () => (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-      <QuickActionButton label="Inspection" colorKey="inspection" onPress={() => {}} />
-      <QuickActionButton label="Incident" colorKey="incident" onPress={() => {}} />
-      <QuickActionButton label="Briefing" colorKey="briefing" onPress={() => {}} />
-      <QuickActionButton label="Report" colorKey="report" onPress={() => {}} />
     </View>
   ),
 };

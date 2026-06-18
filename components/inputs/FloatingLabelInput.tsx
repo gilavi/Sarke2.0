@@ -46,7 +46,7 @@ export interface FloatingLabelInputProps {
   style?: any;
 }
 
-const FLOAT_TOP = 6;
+const FLOAT_TOP = 9;
 const SINK_TOP = 16;
 const FLOAT_SIZE = 11;
 const SINK_SIZE = 15;
@@ -157,7 +157,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     const inputStyle = [
       styles.input,
       {
-        paddingTop: floated ? 28 : 16,
+        paddingTop: floated ? 24 : 16,
         paddingRight: RightIcon ? 44 : 14,
         color: isDisabled ? theme.colors.inkFaint : theme.colors.ink,
         fontFamily: theme.typography.fontFamily.body,

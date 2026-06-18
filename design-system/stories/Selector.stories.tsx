@@ -79,6 +79,33 @@ const Dot = ({ c }: { c: string }) => (
   <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c }} />
 );
 
+const SmallDot = ({ c }: { c: string }) => (
+  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c }} />
+);
+
+export const TypeCards: Story = {
+  name: 'Type cards (dot + check)',
+  render: () => {
+    const [v, setV] = useState<string | null>('severe');
+    return (
+      <View style={{ width: 420 }}>
+        <Selector
+          presentation="rows"
+          indicator="check"
+          value={v}
+          onChange={setV}
+          options={[
+            { value: 'minor', label: 'მსუბუქი დაშავება', leading: <SmallDot c="#F59E0B" /> },
+            { value: 'severe', label: 'მძიმე უბედური შემთხვევა', leading: <SmallDot c="#FE7A43" /> },
+            { value: 'fatal', label: 'ფატალური შემთხვევა', leading: <SmallDot c="#EF4444" /> },
+            { value: 'nearmiss', label: 'კინაღამ შემთხვევა', leading: <SmallDot c="#3B82F6" /> },
+          ]}
+        />
+      </View>
+    );
+  },
+};
+
 export const ListWithLeading: Story = {
   name: 'List · with leading + subtitle',
   render: () => {
