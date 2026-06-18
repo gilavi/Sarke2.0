@@ -62,6 +62,7 @@ export function RoleSlotSheet({
   const [customRole, setCustomRole] = useState(
     roleKey === 'other' ? initialRoleLabel ?? '' : '',
   );
+  const [attempted, setAttempted] = useState(false);
 
   const isOther = roleKey === 'other';
   const roleLabel = isOther ? customRole.trim() || 'სხვა' : CREW_ROLE_LABEL[roleKey];
@@ -73,7 +74,12 @@ export function RoleSlotSheet({
   }, [name, customRole, isOther]);
 
   const submit = async () => {
-    if (!valid || loading) return;
+    if (loading) return;
+    if (!valid) {
+      setAttempted(true);
+      haptic.validationError();
+      return;
+    }
     haptic.light();
     await onSubmit({ name: name.trim(), role: roleLabel });
   };
@@ -98,11 +104,13 @@ export function RoleSlotSheet({
           <Button
             title={mode === 'editDetails' ? 'შენახვა' : 'ხელმოწერა →'}
             onPress={submit}
-            disabled={!valid || loading}
+            disabled={loading}
             loading={loading}
           />
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
+          {error || (attempted && !valid) ? (
+            <Text style={styles.errorText}>
+              {error ?? 'შეავსეთ სავალდებულო ველები'}
+            </Text>
           ) : null}
           {mode === 'editDetails' && onResign ? (
             <Pressable
@@ -120,15 +128,19 @@ export function RoleSlotSheet({
       {isOther ? (
         <FloatingLabelInput
           label="როლი"
+          required
           value={customRole}
           onChangeText={setCustomRole}
+          error={attempted && !customRole.trim() ? 'სავალდებულო ველი' : undefined}
           autoFocus
         />
       ) : null}
       <FloatingLabelInput
         label="სახელი გვარი"
+        required
         value={name}
         onChangeText={setName}
+        error={attempted && !name.trim() ? 'სავალდებულო ველი' : undefined}
         autoFocus={!isOther}
       />
     </SheetLayout>

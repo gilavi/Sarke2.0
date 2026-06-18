@@ -111,7 +111,7 @@ export function BreathalyzerSection({
           })}
           {breathalyzerLogs.length > 3 ? (
             <ViewMoreRow
-              items={breathalyzerLogs.slice(3).map(() => ({ ionicon: 'journal-outline' }))}
+              items={breathalyzerLogs.slice(3).map(() => ({ category: null }))}
               total={breathalyzerLogs.length - 3}
               onPress={() => router.push(`/projects/${id}/logs/breathalyzer` as any)}
             />

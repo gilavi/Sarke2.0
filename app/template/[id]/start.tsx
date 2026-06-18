@@ -23,6 +23,7 @@ import { routeForInspection } from '../../../lib/inspectionRouting';
 import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
@@ -45,6 +46,8 @@ export default function StartTemplateScreen() {
   const [busy, setBusy] = useState(false);
   const loaded = !templateLoading && !projectsLoading;
   const queryClient = useQueryClient();
+  // Enabled start button + on-press project-selection error.
+  const { attempted, guard } = useSubmitGuard();
 
   useEffect(() => {
     if (projects.length > 0 && !selected) {
@@ -134,7 +137,11 @@ export default function StartTemplateScreen() {
                   <Pressable
                     key={p.id}
                     onPress={() => setSelected(p.id)}
-                    style={[styles.projectRow, isSelected && styles.projectRowSelected]}
+                    style={[
+                      styles.projectRow,
+                      isSelected && styles.projectRowSelected,
+                      attempted && !selected && { borderColor: theme.colors.danger },
+                    ]}
                     {...a11y(p.company_name || p.name, 'პროექტის არჩევა', 'radio')}
                   >
                     <View style={[styles.radio, isSelected && styles.radioOn]}>
@@ -164,14 +171,17 @@ export default function StartTemplateScreen() {
               ჯერ არცერთი პროექტი არ გაქვს.{'\n'}დაიწყე ახლის შექმნით.
             </Text>
           )}
+
+          {attempted && !selected ? (
+            <Text style={styles.selectionError}>აირჩიეთ პროექტი</Text>
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <Button
             title="დაიწყე შემოწმების აქტი"
-            onPress={start}
+            onPress={() => guard(!!selected, start)}
             loading={busy}
-            disabled={!selected}
           />
         </View>
       </SafeAreaView>
@@ -202,6 +212,8 @@ function CreateProjectSheet({
   const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
   const keyboardMargin = useSheetKeyboardMargin();
+  // Enabled save button + on-press company-field error (separate from start).
+  const { attempted, guard } = useSubmitGuard();
 
   const save = async () => {
     if (!company.trim()) return;
@@ -242,9 +254,8 @@ function CreateProjectSheet({
             footer={
               <Button
                 title="შენახვა"
-                onPress={save}
+                onPress={() => guard(!!company.trim(), save)}
                 loading={busy}
-                disabled={!company.trim()}
               />
             }
           >
@@ -254,6 +265,7 @@ function CreateProjectSheet({
               value={company}
               onChangeText={setCompany}
               autoFocus
+              error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
             />
             <FloatingLabelInput
               label="მისამართი"
@@ -330,6 +342,12 @@ function getstyles(theme: any) {
     borderTopWidth: 1,
     borderTopColor: theme.colors.hairline,
     backgroundColor: theme.colors.card,
+  },
+  selectionError: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.danger,
+    marginTop: 8,
   },
   modalBackdrop: {
     flex: 1,

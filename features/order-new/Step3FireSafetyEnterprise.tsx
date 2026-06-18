@@ -5,11 +5,12 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step3FireSafetyEnterprise({
-  form, setForm, s,
+  form, setForm, s, attempted,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   s: OrderStyles;
+  attempted: boolean;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -20,18 +21,21 @@ export function Step3FireSafetyEnterprise({
         required
         value={form.appointedName}
         onChangeText={v => setForm(f => ({ ...f, appointedName: v }))}
+        error={attempted && !form.appointedName.trim() ? 'სავალდებულო ველი' : undefined}
       />
       <FloatingLabelInput
         label="თანამდებობა"
         required
         value={form.appointedPosition}
         onChangeText={v => setForm(f => ({ ...f, appointedPosition: v }))}
+        error={attempted && !form.appointedPosition.trim() ? 'სავალდებულო ველი' : undefined}
       />
       <FloatingLabelInput
         label="პირადი ნომერი"
         required
         value={form.appointedIdNumber}
         onChangeText={v => setForm(f => ({ ...f, appointedIdNumber: v }))}
+        error={attempted && !form.appointedIdNumber.trim() ? 'სავალდებულო ველი' : undefined}
         keyboardType="numeric"
         maxLength={11}
       />
@@ -40,6 +44,7 @@ export function Step3FireSafetyEnterprise({
         required
         value={form.appointedPhone}
         onChangeText={v => setForm(f => ({ ...f, appointedPhone: v }))}
+        error={attempted && !form.appointedPhone.trim() ? 'სავალდებულო ველი' : undefined}
         keyboardType="phone-pad"
       />
 
@@ -50,6 +55,7 @@ export function Step3FireSafetyEnterprise({
         required
         value={form.objectName}
         onChangeText={v => setForm(f => ({ ...f, objectName: v }))}
+        error={attempted && !form.objectName.trim() ? 'სავალდებულო ველი' : undefined}
       />
       <FloatingLabelInput
         label="ობიექტის მისამართი"

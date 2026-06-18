@@ -1,8 +1,7 @@
-﻿import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { DateTimeField } from '../../../components/DateTimeField';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -10,10 +9,9 @@ import { InspectionShell } from '../../../components/inspection-steps/Inspection
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import {
   ChecklistSection,
-  VerdictSelector,
   IdentificationGrid,
-  type VerdictOption,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { mobileLadderApi } from '../../../lib/mobileLadderService';
@@ -24,6 +22,7 @@ import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import {
   ML_CHECKLIST_ITEMS,
@@ -44,6 +43,12 @@ const IDENTIFICATION_STEP = 1;
 const CHECKLIST_STEP      = 2;
 const CONCLUSION_STEP     = 3;
 const TOTAL_STEPS         = 3;
+
+const ML_VERDICT_OPTIONS: VerdictOption<MLVerdict>[] = [
+  { value: 'safe',   label: ML_VERDICT_LABELS.safe,   tone: 'success' },
+  { value: 'minor',  label: ML_VERDICT_LABELS.minor,  tone: 'caution' },
+  { value: 'banned', label: ML_VERDICT_LABELS.banned, tone: 'danger'  },
+];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -120,6 +125,9 @@ export default function MobileLadderInspectionScreen() {
     },
     loadingTitle: 'კიბის შემოწმება',
   });
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // ── Checklist items ─────────────────────────────────────────────────────────
 
@@ -221,6 +229,9 @@ export default function MobileLadderInspectionScreen() {
       setStep(s => s - 1);
     }
   }, [step, exit, setStep]);
+
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
   // ── Loading & completed ─────────────────────────────────────────────────────
 
@@ -340,6 +351,7 @@ export default function MobileLadderInspectionScreen() {
         isLastStep={step === CONCLUSION_STEP}
         completing={completing}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -410,40 +422,23 @@ export default function MobileLadderInspectionScreen() {
 
           {/* ── Step 3: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
-                  <Text style={styles.suggestText}>
-                    შემოთავაზება: {ML_VERDICT_LABELS[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={([
-                  { value: 'safe',   label: ML_VERDICT_LABELS.safe,   type: 'success' },
-                  { value: 'minor',  label: ML_VERDICT_LABELS.minor,  type: 'warning' },
-                  { value: 'banned', label: ML_VERDICT_LABELS.banned, type: 'danger'  },
-                ] as VerdictOption[])}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as MLVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი"
-              />
-            </KeyboardAwareScrollView>
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={ML_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as MLVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთავაზება: ${ML_VERDICT_LABELS[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
+              }
+              notes={inspection.verdictComment}
+              onNotesChange={v => update('verdictComment', v)}
+              completing={completing}
+            />
           )}
 
         </InspectionShell>
@@ -483,11 +478,5 @@ function getstyles(theme: Theme) {
       color: theme.colors.inkSoft, marginBottom: 4,
     },
     nextDateRow: { gap: 4, marginTop: 8 },
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,
-      borderRadius: 10, padding: 10,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

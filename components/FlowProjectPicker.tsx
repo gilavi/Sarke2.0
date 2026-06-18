@@ -10,6 +10,7 @@ import { ProjectPickerStep } from './inspection-steps';
 import { ProjectPickerSheet } from './home/ProjectPickerSheet';
 import { useProjects, useTemplates } from '../lib/apiHooks';
 import { useTheme } from '../lib/theme';
+import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import type { Project } from '../types/models';
 
@@ -50,6 +51,17 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
 
   const [selected, setSelected] = useState<Project | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
+  // Enabled "გაგრძელება" button + on-press error when no project is picked.
+  const [attempted, setAttempted] = useState(false);
+
+  const handleContinue = () => {
+    if (!selected) {
+      setAttempted(true);
+      haptic.validationError();
+      return;
+    }
+    onPicked(selected);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -84,7 +96,10 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
           <ChevronRight size={16} color={theme.colors.accent} strokeWidth={1.5} />
         </Pressable>
 
-        <ProjectPickerStep selectedId={selected?.id ?? null} onSelect={setSelected} />
+        <ProjectPickerStep
+          selectedId={selected?.id ?? null}
+          onSelect={(p) => { setSelected(p); setAttempted(false); }}
+        />
       </View>
 
       <View
@@ -96,10 +111,14 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
           borderTopColor: theme.colors.hairline,
         }}
       >
+        {attempted && !selected ? (
+          <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 8 }}>
+            აირჩიეთ პროექტი
+          </Text>
+        ) : null}
         <Button
           title="გაგრძელება →"
-          disabled={!selected}
-          onPress={() => selected && onPicked(selected)}
+          onPress={handleContinue}
         />
       </View>
 

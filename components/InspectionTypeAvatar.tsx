@@ -43,6 +43,8 @@ interface Props {
   /** Show a status icon badge in the bottom-right corner */
   status?: InspectionStatus | null;
   style?: ViewStyle;
+  circle?: boolean;
+  muted?: boolean;
 }
 
 export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
@@ -50,13 +52,16 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
   size = 44,
   status,
   style,
+  circle = false,
+  muted = false,
 }: Props) {
   const { theme } = useTheme();
   const emoji =
     category && category in CATEGORY_EMOJI
       ? CATEGORY_EMOJI[category as InspectionCategory]
       : '📋';
-  const bg = theme.colors.accentSoft;
+  const bg = muted ? theme.colors.subtleSurface : theme.colors.accentSoft;
+  const radius = circle ? size / 2 : 10;
 
   const fontSize = Math.round(size * 0.48);
 
@@ -68,7 +73,7 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
           {
             width: size,
             height: size,
-            borderRadius: 10,
+            borderRadius: radius,
             backgroundColor: bg,
           },
         ]}

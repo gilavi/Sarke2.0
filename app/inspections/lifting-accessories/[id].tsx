@@ -1,8 +1,7 @@
-﻿import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
@@ -10,11 +9,10 @@ import { InspectionShellSkeleton } from '../../../components/inspection-steps/In
 import {
   ChecklistSection,
   DynamicTable,
-  VerdictSelector,
   PhotoSection,
   SlingsIdentificationStep,
-  type VerdictOption,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { liftingAccessoriesApi } from '../../../lib/liftingAccessoriesService';
@@ -25,6 +23,7 @@ import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import {
   LA_CHECKLIST_ITEMS,
@@ -49,6 +48,12 @@ const REMOVED_STEP        = 3;
 const CONCLUSION_STEP     = 4;
 const TOTAL_STEPS         = 4;
 
+const LA_VERDICT_OPTIONS: VerdictOption<LAVerdict>[] = [
+  { value: 'pass',   label: LA_VERDICT_LABELS.pass,   tone: 'success' },
+  { value: 'repair', label: LA_VERDICT_LABELS.repair, tone: 'caution' },
+  { value: 'fail',   label: LA_VERDICT_LABELS.fail,   tone: 'danger'  },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function LiftingAccessoriesInspectionScreen() {
@@ -58,6 +63,9 @@ export default function LiftingAccessoriesInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so
@@ -282,6 +290,9 @@ export default function LiftingAccessoriesInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Checklist items builder ─────────────────────────────────────────────────
 
   const checklistItemsForSection = (sectionKey: 'A' | 'B') =>
@@ -356,6 +367,7 @@ export default function LiftingAccessoriesInspectionScreen() {
         isLastStep={step === CONCLUSION_STEP}
         completing={completing}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -442,40 +454,23 @@ export default function LiftingAccessoriesInspectionScreen() {
 
           {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
-                  <Text style={styles.suggestText}>
-                    შემოთ.: {LA_VERDICT_LABELS[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={([
-                  { value: 'pass',   label: LA_VERDICT_LABELS.pass,   type: 'success' },
-                  { value: 'repair', label: LA_VERDICT_LABELS.repair,  type: 'warning' },
-                  { value: 'fail',   label: LA_VERDICT_LABELS.fail,    type: 'danger'  },
-                ] as VerdictOption[])}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as LAVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი"
-              />
-            </KeyboardAwareScrollView>
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={LA_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as LAVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთ.: ${LA_VERDICT_LABELS[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
+              }
+              notes={inspection.verdictComment ?? ''}
+              onNotesChange={v => update('verdictComment', v)}
+              completing={completing}
+            />
           )}
 
       </InspectionShell>
@@ -510,19 +505,9 @@ function getstyles(theme: Theme) {
     },
     twoCol:   { flexDirection: 'row', gap: 8 },
     colHalf:  { flex: 1, gap: 4 },
-    fieldLabel: {
-      fontSize: 12, fontWeight: '600',
-      color: theme.colors.inkSoft, marginBottom: 4,
-    },
     sectionLabel: {
       fontSize: 13, fontWeight: '700',
       color: theme.colors.ink, marginBottom: 4,
     },
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,
-      borderRadius: 10, padding: 10,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -24,6 +24,7 @@ import { PhotoSection } from '../../../components/inspection-parts';
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
@@ -75,6 +76,9 @@ export default function BobcatInspectionScreen() {
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [attachmentCount, setAttachmentCount] = useState(0);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Serial number step state
   const plateRef = useRef<PlateInputHandle>(null);
@@ -284,6 +288,9 @@ export default function BobcatInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Derived data for shared components ────────────────────────────────────
 
   const checklistItems = useMemo(
@@ -369,6 +376,7 @@ export default function BobcatInspectionScreen() {
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
       completing={completing}
+      onBlockedNext={markAttempted}
       onNext={handleNext}
       onPrev={handlePrev}
       onClose={() => router.back()}
@@ -456,6 +464,7 @@ export default function BobcatInspectionScreen() {
             <ConclusionStep
               verdict={inspection.verdict}
               verdictOptions={bobcatVerdictOptions}
+              verdictError={attempted && !inspection.verdict}
               notes={inspection.notes ?? ''}
               onVerdictChange={v => update('verdict', v)}
               onNotesChange={v => update('notes', v || null)}

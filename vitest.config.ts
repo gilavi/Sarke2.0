@@ -41,6 +41,9 @@ export default defineConfig({
   resolve: {
     alias: {
       'react-native': path.resolve(__dirname, 'node_modules/react-native-web'),
+      // reanimated v4 hangs on import under jsdom; alias it to an inert stub so
+      // the real native/worklet graph never loads. See tests/mocks/reanimated-stub.ts.
+      'react-native-reanimated': path.resolve(__dirname, 'tests/mocks/reanimated-stub.ts'),
     },
   },
 });

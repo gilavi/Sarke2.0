@@ -5,6 +5,7 @@ import { RefreshCw, X } from 'lucide-react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button } from './ui';
 import { useTheme } from '../lib/theme';
+import { haptic } from '../lib/haptics';
 
 import { a11y } from '../lib/accessibility';
 
@@ -28,11 +29,15 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
 
   const ref = useRef<SignatureViewRef>(null);
   const [hasStroke, setHasStroke] = useState(false);
+  // Enabled "შენახვა" + on-press hint: tapping save with a blank canvas reveals
+  // the "draw your signature" message instead of leaving the button dead.
+  const [attempted, setAttempted] = useState(false);
 
   // Reset state when modal opens for a new signer
   useEffect(() => {
     if (visible) {
       setHasStroke(false);
+      setAttempted(false);
       // Small timeout so the canvas is mounted before we clear
       const id = setTimeout(() => ref.current?.clearSignature(), 120);
       return () => clearTimeout(id);
@@ -40,7 +45,11 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
   }, [visible]);
 
   const handleConfirm = useCallback(() => {
-    if (!hasStroke) return;
+    if (!hasStroke) {
+      setAttempted(true);
+      haptic.validationError();
+      return;
+    }
     ref.current?.readSignature();
   }, [hasStroke]);
 
@@ -96,7 +105,7 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
           <SignatureScreen
             ref={ref}
             onOK={handleOK}
-            onBegin={() => setHasStroke(true)}
+            onBegin={() => { setHasStroke(true); setAttempted(false); }}
             onEnd={() => setHasStroke(true)}
             webStyle={webStyle}
             descriptionText=""
@@ -120,6 +129,9 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
         </View>
 
         {/* Buttons */}
+        {attempted && !hasStroke ? (
+          <Text style={styles.errorText}>გთხოვთ, ხელი მოაწეროთ</Text>
+        ) : null}
         <View style={styles.footer}>
           <Button
             title="გაუქმება"
@@ -133,7 +145,6 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
             title="შენახვა"
             size="lg"
             onPress={handleConfirm}
-            disabled={!hasStroke}
             style={{ flex: 1.6 }}
             {...a11y('შენახვა', 'ხელმოწერის შენახვა', 'button')}
           />
@@ -213,6 +224,13 @@ function getstyles(theme: any) {
     gap: 10,
     padding: 16,
     paddingTop: 14,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.danger,
+    textAlign: 'center',
+    marginBottom: -4,
   },
 });
 }

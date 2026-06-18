@@ -37,7 +37,9 @@ renamed in Phase 1 of the refactor to distinguish from
   uploads.
 - `SignatureBlock` — single-signature display block.
 - `SignatureSheet` — bottom-sheet container for capturing a signature.
-- `VerdictSelector` — three-way verdict button group.
+- (`VerdictSelector` was **removed** — the canonical verdict picker now
+  lives in [`components/inspection-steps/VerdictSelector.tsx`](../inspection-steps/VerdictSelector.tsx)
+  and is consumed via the shared `ConclusionStep`.)
 
 ## Internal files
 One file per export above, plus `index.ts`.

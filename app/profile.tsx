@@ -36,6 +36,7 @@ import { useTheme, type Theme } from '../lib/theme';
 import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 import { updateProfile, deleteAccount } from '../lib/profileService';
+import { useSubmitGuard } from '../hooks/useSubmitGuard';
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
@@ -51,19 +52,17 @@ export default function ProfileScreen() {
   const [lastName, setLastName] = useState(user?.last_name ?? '');
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Enabled save button + on-press name-field errors.
+  const { attempted, guard } = useSubmitGuard();
 
   useEffect(() => {
     setFirstName(user?.first_name ?? '');
     setLastName(user?.last_name ?? '');
   }, [user?.first_name, user?.last_name]);
 
-  const dirty =
-    firstName.trim() !== (user?.first_name ?? '').trim() ||
-    lastName.trim() !== (user?.last_name ?? '').trim();
-  const canSave = dirty && firstName.trim().length > 0 && lastName.trim().length > 0 && !busy;
-
   const handleSave = async () => {
-    if (!userId || !canSave) return;
+    if (!userId || busy) return;
+    if (!firstName.trim() || !lastName.trim()) return;
     setBusy(true);
     try {
       await updateProfile(userId, firstName.trim(), lastName.trim());
@@ -123,6 +122,7 @@ export default function ProfileScreen() {
               autoComplete="name-given"
               textContentType="givenName"
               required
+              error={attempted && !firstName.trim() ? 'სავალდებულო ველი' : undefined}
             />
             <FloatingLabelInput
               label="გვარი"
@@ -132,6 +132,7 @@ export default function ProfileScreen() {
               autoComplete="name-family"
               textContentType="familyName"
               required
+              error={attempted && !lastName.trim() ? 'სავალდებულო ველი' : undefined}
             />
             <Text style={styles.helperText}>ელ-ფოსტა: {user?.email ?? '-'}</Text>
           </View>
@@ -139,8 +140,8 @@ export default function ProfileScreen() {
           {/* Save button */}
           <Button
             title="შენახვა"
-            onPress={handleSave}
-            disabled={!canSave}
+            onPress={() => guard(!!firstName.trim() && !!lastName.trim(), handleSave)}
+            disabled={busy}
             loading={busy}
             size="lg"
           />

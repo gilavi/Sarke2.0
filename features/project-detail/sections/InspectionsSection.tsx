@@ -13,7 +13,7 @@ import { ChevronRight, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
+import { InspectionListAvatar } from '../../../components/InspectionListAvatar';
 import { RecordTypePill } from '../../../components/RecordTypePill';
 import { EmptyState, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
 import { SkeletonRow } from '../../../components/Skeleton';
@@ -90,7 +90,7 @@ export function InspectionsSection({
                   style={styles.listRow}
                   {...a11y(inspectionDisplayName(tpl?.name), isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
                 >
-                  <InspectionTypeAvatar
+                  <InspectionListAvatar
                     category={item.source ?? tpl?.category}
                     size={36}
                     status={isCompleted ? 'completed' : 'draft'}

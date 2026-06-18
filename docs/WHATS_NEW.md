@@ -1,6 +1,31 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-17 | Branch: `gio-design-update`
+**Updated:** 2026-06-18 | Branch: `gio-design-update`
+
+---
+
+## 2026-06-18 — No more disabled buttons: enabled CTAs + on-press field errors
+
+Every multi-step flow used to **disable** its forward/submit button until the required fields were filled — a dead, dimmed button that never told the user *what* was missing. That's gone. Buttons now stay **enabled**; pressing one while a required field is empty reveals the empty field(s) in red (`სავალდებულო ველი`) and fires an error haptic, so the requirement is obvious.
+
+- **New hook:** [`hooks/useSubmitGuard.ts`](../hooks/useSubmitGuard.ts) — `guard(isValid, onValid)` on the button; `attempted` drives each field's `error`. Generalizes the old `ConclusionStep` `interacted` / `AddRemoteSignerModal` `*Touched` patterns. Companion [`hooks/useScrollToError.ts`](../hooks/useScrollToError.ts) for long forms.
+- **Applied across all flows:** equipment inspections (via `InspectionShell`'s new `onBlockedNext`), the checklist wizard (`AnswerButtons` gained an `error` outline), incident, order, briefing, auth (login/register/forgot/reset/OTP), reports, project create/edit, signers, breathalyzer, profile, template-start.
+- **Primitives gained error state:** `wizard/StatusChip` + `AnswerButtons` (`error`), `DateTimeField` (`error`), `MapPickerInline` and `SignatureCanvas` (self-show their own error + haptic on an empty press).
+- **Kept disabled** only for non-input reasons: in-flight guards (`loading`/`saving`/`busy`/…) and data-not-loaded guards. See [docs/primitives.md](primitives.md#form-validation--enabled-buttons--on-press-errors).
+
+---
+
+## 2026-06-18 — One reusable inspection conclusion (დასკვნა) step
+
+Every inspection flow ends with a "conclusion" step, but it was built **two incompatible ways**: equipment routes + harness + the scaffold wizard used the polished icon-card [`VerdictSelector`](../components/inspection-steps/VerdictSelector.tsx) inside [`ConclusionStep`](../components/inspection-steps/ConclusionStep.tsx), while forklift, cargo-platform, mobile-ladder, lifting-accessories, safety-net and fall-protection hand-rolled an inline `დასკვნა *` label + a re-declared "შემოთავაზება" banner + the older plain-pill `inspection-parts/VerdictSelector` (with a built-in notes field). Same concept, two selectors and two layouts.
+
+- **One last step everywhere:** [`ConclusionStep`](../components/inspection-steps/ConclusionStep.tsx) is now the single component for the last step. It gained a conclusion illustration (on by default), a `summarySection` slot (for the summary tables forklift/cargo-platform show), a `suggestion` banner prop, a first-class photo strip (`photoPaths`), required/error support, and a `scroll` toggle. Styles split into a `ConclusionStep.styles.ts` sibling to stay under the file-size target.
+- **Shared suggestion banner:** the six inline copies became one [`VerdictSuggestionBanner`](../components/inspection-steps/VerdictSuggestionBanner.tsx) (Lightbulb + text, tappable to adopt the suggested verdict).
+- **Migrated:** forklift, cargo-platform, mobile-ladder, lifting-accessories and safety-net now render `ConclusionStep`; fall-protection (per-device verdict) swapped its inline pill selector for the icon-card `VerdictSelector` + the shared banner; the scaffold wizard's `ConclusionStep` is now a thin wrapper that delegates to the canonical one.
+- **Standardized:** the free-text box is now labelled **`კომენტარი`** on every flow (was a mix of `შენიშვნები / ხარვეზები`, `კომენტარი`, and `დასკვნა`), and the conclusion illustration shows on every flow.
+- **Removed:** the duplicate `components/inspection-parts/VerdictSelector.tsx` (plain-pill selector with built-in notes) is deleted; nothing imports it anymore.
+
+Verdict option **labels are unchanged** — they're serialized into the generated act PDFs (UI labels don't affect the PDF). See [docs/primitives.md](primitives.md#inspection-conclusion-step--verdict-selector).
 
 ---
 

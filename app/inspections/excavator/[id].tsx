@@ -28,6 +28,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
 import { excavatorSchema } from '../../../lib/inspection/schemas/excavator';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
@@ -115,6 +116,9 @@ export default function ExcavatorInspectionScreen() {
 
   const [attachmentCount, setAttachmentCount] = useState(0);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Plate-input step state (reuses SerialKeypad like bobcat)
   const plateRef = useRef<PlateInputHandle>(null);
@@ -382,6 +386,9 @@ export default function ExcavatorInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── List item update helper ────────────────────────────────────────────────
 
   const updateItem = useCallback((itemId: number, result: 'good' | 'deficient' | 'unusable') => {
@@ -479,6 +486,7 @@ export default function ExcavatorInspectionScreen() {
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
         completing={completing}
+        onBlockedNext={markAttempted}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -581,6 +589,7 @@ export default function ExcavatorInspectionScreen() {
           <ConclusionStep
             verdict={inspection.verdict}
             verdictOptions={excavatorVerdictOptions}
+            verdictError={attempted && !inspection.verdict}
             notes={inspection.notes ?? ''}
             onVerdictChange={v => update('verdict', v)}
             onNotesChange={v => update('notes', v || null)}

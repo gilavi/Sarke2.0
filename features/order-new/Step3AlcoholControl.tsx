@@ -5,11 +5,12 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step3AlcoholControl({
-  form, setForm, s,
+  form, setForm, s, attempted,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   s: OrderStyles;
+  attempted: boolean;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -20,6 +21,7 @@ export function Step3AlcoholControl({
         required
         value={form.facilityName}
         onChangeText={v => setForm(f => ({ ...f, facilityName: v }))}
+        error={attempted && !form.facilityName.trim() ? 'სავალდებულო ველი' : undefined}
         multiline
         numberOfLines={2}
       />
@@ -29,6 +31,7 @@ export function Step3AlcoholControl({
         required
         value={form.responsiblePersonName}
         onChangeText={v => setForm(f => ({ ...f, responsiblePersonName: v }))}
+        error={attempted && !form.responsiblePersonName.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <FloatingLabelInput
@@ -36,6 +39,7 @@ export function Step3AlcoholControl({
         required
         value={form.responsiblePersonPosition}
         onChangeText={v => setForm(f => ({ ...f, responsiblePersonPosition: v }))}
+        error={attempted && !form.responsiblePersonPosition.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <FloatingLabelInput
@@ -43,6 +47,7 @@ export function Step3AlcoholControl({
         required
         value={form.responsiblePersonPersonalId}
         onChangeText={v => setForm(f => ({ ...f, responsiblePersonPersonalId: v }))}
+        error={attempted && form.responsiblePersonPersonalId.trim().length !== 11 ? 'სავალდებულო ველი' : undefined}
         keyboardType="numeric"
         maxLength={11}
       />

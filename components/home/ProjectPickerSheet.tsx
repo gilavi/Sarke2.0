@@ -20,6 +20,7 @@ import { LocationRow } from '../LocationRow';
 import { MapPickerInline } from '../MapPickerInline';
 import { Button } from '../ui';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import {
   questionnairesApi,
@@ -118,6 +119,7 @@ export function ProjectPickerSheet({
   const [busy, setBusy]           = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const keyboardMargin            = useSheetKeyboardMargin();
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
 
   // Reset form + view every time the sheet opens or props change
   useEffect(() => {
@@ -131,8 +133,9 @@ export function ProjectPickerSheet({
       setLogo(null);
       setBusy(false);
       setMapVisible(false);
+      resetAttempted();
     }
-  }, [visible, initialView, preselectedTemplateId]);
+  }, [visible, initialView, preselectedTemplateId, resetAttempted]);
 
   const onPickLogo = async () => {
     const next = await pickProjectLogo();
@@ -378,6 +381,7 @@ export function ProjectPickerSheet({
                     required
                     value={company}
                     onChangeText={setCompany}
+                    error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
                     autoFocus
                   />
                   <FloatingLabelInput
@@ -397,12 +401,14 @@ export function ProjectPickerSheet({
                       setPhone(formatted);
                     }}
                     keyboardType="phone-pad"
+                    error={attempted && !phone.trim() ? 'სავალდებულო ველი' : undefined}
                   />
                   <FloatingLabelInput
                     label={t('common.address')}
                     required
                     value={address}
                     onChangeText={setAddress}
+                    error={attempted && !address.trim() ? 'სავალდებულო ველი' : undefined}
                     {...a11y(t('common.address'), 'შეიყვანეთ მისამართი', 'text')}
                   />
                   <LocationRow
@@ -415,9 +421,13 @@ export function ProjectPickerSheet({
                 <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
                   <Button
                     title={t('projects.createButton')}
-                    onPress={createProject}
+                    onPress={() =>
+                      guard(
+                        !!company.trim() && !!phone.trim() && !!address.trim(),
+                        createProject,
+                      )
+                    }
                     loading={busy}
-                    disabled={!company.trim() || !phone.trim() || !address.trim()}
                     {...a11y(t('projects.createButton'), 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
                   />
                 </View>

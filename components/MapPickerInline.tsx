@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../lib/theme';
+import { haptic } from '../lib/haptics';
 import { A11yText as Text } from './primitives/A11yText';
 import { Button } from './ui';
 import { MapPicker, type LatLng } from './MapPicker';
@@ -13,6 +14,8 @@ interface MapPickerInlineProps {
   onCancel: () => void;
   /** Border radius of the bottom action bar. Defaults to 24. */
   sheetRadius?: number;
+  /** Danger message shown above the confirm button (e.g. "აირჩიეთ მდებარეობა"). */
+  error?: string;
 }
 
 export function MapPickerInline({
@@ -21,11 +24,26 @@ export function MapPickerInline({
   onConfirm,
   onCancel,
   sheetRadius = 24,
+  error,
 }: MapPickerInlineProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [pin, setPin] = useState<LatLng | null>(initialPin);
   const [address, setAddress] = useState(initialAddress);
+  // Enabled button + on-press error: reveal a hint when the user taps confirm
+  // without dropping a pin, instead of leaving the button dead.
+  const [attempted, setAttempted] = useState(false);
+
+  const handleConfirm = () => {
+    if (!pin) {
+      setAttempted(true);
+      haptic.validationError();
+      return;
+    }
+    onConfirm(pin, address);
+  };
+
+  const errorMessage = error ?? (attempted && !pin ? 'აირჩიეთ მდებარეობა რუკაზე' : undefined);
 
   const screenH = Dimensions.get('window').height;
   // Reserve space for header (~60) + bottom action bar (~160) + safe areas
@@ -59,11 +77,15 @@ export function MapPickerInline({
           },
         ]}
       >
+        {errorMessage ? (
+          <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+            {errorMessage}
+          </Text>
+        ) : null}
         <Button
           title="დადასტურება"
           size="lg"
-          onPress={() => onConfirm(pin, address)}
-          disabled={!pin}
+          onPress={handleConfirm}
         />
         <Pressable onPress={onCancel} style={styles.cancelButton}>
           <Text style={[styles.cancelText, { color: theme.colors.inkSoft }]}>
@@ -92,6 +114,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 8,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 4,
   },
   cancelButton: {
     alignSelf: 'center',

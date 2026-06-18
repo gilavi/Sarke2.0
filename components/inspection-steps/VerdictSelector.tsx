@@ -33,7 +33,8 @@ export interface VerdictOption<T extends string = string> {
 export interface VerdictSelectorProps<T extends string = string> {
   value: T | null;
   options: VerdictOption<T>[];
-  onChange: (v: T) => void;
+  /** Called with the tapped value, or `null` when the active option is re-tapped to deselect. */
+  onChange: (v: T | null) => void;
   /** Caption above the buttons. Defaults to "გადაწყვეტილება". */
   title?: string;
   showError?: boolean;
@@ -63,9 +64,9 @@ export function VerdictSelector<T extends string = string>({
   const { theme } = useTheme();
   const styles = getStyles(theme);
 
-  const press = (v: T) => {
+  const press = (v: T, active: boolean) => {
     haptic.light();
-    onChange(v);
+    onChange(active ? null : v);
   };
 
   return (
@@ -78,7 +79,7 @@ export function VerdictSelector<T extends string = string>({
           return (
             <Pressable
               key={opt.value}
-              onPress={() => press(opt.value)}
+              onPress={() => press(opt.value, active)}
               style={[
                 styles.button,
                 active

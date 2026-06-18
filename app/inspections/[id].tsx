@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleAlert, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
+import { CircleAlert, CloudOff, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -466,7 +466,7 @@ export default function InspectionResultScreen() {
             title={notFound ? 'შემოწმების აქტი ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
             error={loadError ?? undefined}
             message={notFound ? 'შესაძლოა წაიშალა, ან თქვენ არ გაქვთ წვდომა.' : undefined}
-            icon={notFound ? 'alert-circle-outline' : 'cloud-offline-outline'}
+            icon={notFound ? CircleAlert : CloudOff}
             onRetry={notFound ? undefined : () => void loadAll()}
             retrying={loading}
           />

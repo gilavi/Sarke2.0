@@ -13,9 +13,6 @@ export type { ChecklistSectionProps, ChecklistItemData } from './ChecklistSectio
 export { DynamicTable } from './DynamicTable';
 export type { DynamicTableProps, DynamicTableColumn } from './DynamicTable';
 
-export { VerdictSelector } from './VerdictSelector';
-export type { VerdictSelectorProps, VerdictOption } from './VerdictSelector';
-
 export { PhotoSection } from './PhotoSection';
 export type { PhotoSectionProps } from './PhotoSection';
 

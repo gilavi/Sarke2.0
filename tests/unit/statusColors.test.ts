@@ -4,6 +4,7 @@ vi.mock('../../lib/theme', () => ({
   theme: {
     colors: {
       semantic: {
+        success: '#10B981',
         warning: '#F59E0B',
         warningSoft: '#FEF3C7',
         danger: '#DC2626',
@@ -16,7 +17,6 @@ vi.mock('../../lib/theme', () => ({
 
 const {
   STATUS_BADGE_BG,
-  STATUS_BADGE_ICON,
   STATUS_DOT_COLOR,
   INCIDENT_COLORS,
 } = await import('../../lib/statusColors');
@@ -24,7 +24,7 @@ const {
 describe('statusColors', () => {
   describe('STATUS_BADGE_BG', () => {
     it('maps every CalendarStatus to a hex color string', () => {
-      expect(STATUS_BADGE_BG.completed).toBe('#1D9E75');
+      expect(STATUS_BADGE_BG.completed).toBe('#10B981');
       expect(STATUS_BADGE_BG.draft).toBe('#F59E0B');
       expect(STATUS_BADGE_BG.overdue).toBe('#DC2626');
       expect(STATUS_BADGE_BG.due_today).toBe('#F59E0B');
@@ -33,20 +33,9 @@ describe('statusColors', () => {
     });
   });
 
-  describe('STATUS_BADGE_ICON', () => {
-    it('maps every CalendarStatus to an icon name', () => {
-      expect(STATUS_BADGE_ICON.completed).toBe('checkmark');
-      expect(STATUS_BADGE_ICON.draft).toBe('hourglass-outline');
-      expect(STATUS_BADGE_ICON.overdue).toBe('alert');
-      expect(STATUS_BADGE_ICON.due_today).toBe('time');
-      expect(STATUS_BADGE_ICON.due_soon).toBe('time');
-      expect(STATUS_BADGE_ICON.upcoming).toBe('time-outline');
-    });
-  });
-
   describe('STATUS_DOT_COLOR', () => {
     it('matches STATUS_BADGE_BG values', () => {
-      expect(STATUS_DOT_COLOR.completed).toBe('#1D9E75');
+      expect(STATUS_DOT_COLOR.completed).toBe('#10B981');
       expect(STATUS_DOT_COLOR.draft).toBe('#F59E0B');
       expect(STATUS_DOT_COLOR.overdue).toBe('#DC2626');
       expect(STATUS_DOT_COLOR.upcoming).toBe('#A8A49C');

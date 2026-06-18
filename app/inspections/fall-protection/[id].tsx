@@ -1,8 +1,7 @@
-﻿import { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
@@ -14,13 +13,16 @@ import { SectionHeader } from '../../../components/SectionHeader';
 import {
   ChecklistItem,
   ChipNavStrip,
-  VerdictSelector,
   DynamicTable,
   PhotoSection,
   type ChipNavItem,
-  type VerdictOption,
   type DynamicTableColumn,
 } from '../../../components/inspection-parts';
+import {
+  VerdictSelector,
+  VerdictSuggestionBanner,
+  type VerdictOption,
+} from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { fallProtectionApi } from '../../../lib/fallProtectionService';
@@ -32,6 +34,7 @@ import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import {
   FP_CHECKLIST_ITEMS,
@@ -52,6 +55,12 @@ import {
   type FPResult,
   type FPInspectionType,
 } from '../../../types/fallProtection';
+
+const FP_VERDICT_OPTIONS: VerdictOption<FPVerdict>[] = [
+  { value: 'safe',   label: FP_VERDICT_LABELS.safe,   tone: 'success' },
+  { value: 'minor',  label: FP_VERDICT_LABELS.minor,  tone: 'caution' },
+  { value: 'banned', label: FP_VERDICT_LABELS.banned, tone: 'danger'  },
+];
 
 // ── Step constants ────────────────────────────────────────────────────────────
 
@@ -81,6 +90,9 @@ export default function FallProtectionInspectionScreen() {
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   const [activeDeviceIdx, setActiveDeviceIdx] = useState(0);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks.
@@ -353,6 +365,19 @@ export default function FallProtectionInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
+  // On a blocked finish, reveal errors and jump to the first device still
+  // missing a verdict so the red selector is in view.
+  const handleBlockedNext = useCallback(() => {
+    markAttempted();
+    if (step === DEVICES_STEP && inspection) {
+      const idx = inspection.deviceData.findIndex(d => !d.verdict);
+      if (idx >= 0) setActiveDeviceIdx(idx);
+    }
+  }, [markAttempted, step, inspection]);
+
   // ── Loading & completed ─────────────────────────────────────────────────────
 
   if (loading || !inspection) {
@@ -417,6 +442,7 @@ export default function FallProtectionInspectionScreen() {
         completing={completing}
         finishLabel="შემოწმება დასრულდა"
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={handleBlockedNext}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -610,27 +636,23 @@ export default function FallProtectionInspectionScreen() {
                   {/* Verdict */}
                   <SectionHeader title="დასკვნა" />
                   {suggestedVerdict && currentDeviceData.verdict !== suggestedVerdict && (
-                    <Pressable
-                      style={styles.suggestBanner}
-                      onPress={() => handleVerdictChange(safeDeviceIdx, suggestedVerdict)}
-                    >
-                      <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
-                      <Text style={styles.suggestText}>
-                        შემოთავაზება: {FP_VERDICT_LABELS[suggestedVerdict]}
-                      </Text>
-                    </Pressable>
+                    <VerdictSuggestionBanner
+                      text={`შემოთავაზება: ${FP_VERDICT_LABELS[suggestedVerdict]}`}
+                      onApply={() => handleVerdictChange(safeDeviceIdx, suggestedVerdict)}
+                    />
                   )}
                   <VerdictSelector
-                    options={([
-                      { value: 'safe',   label: FP_VERDICT_LABELS.safe,   type: 'success' },
-                      { value: 'minor',  label: FP_VERDICT_LABELS.minor,  type: 'warning' },
-                      { value: 'banned', label: FP_VERDICT_LABELS.banned, type: 'danger'  },
-                    ] as VerdictOption[])}
                     value={currentDeviceData.verdict}
+                    options={FP_VERDICT_OPTIONS}
                     onChange={v => handleVerdictChange(safeDeviceIdx, v)}
-                    note={currentDeviceData.verdictComment}
-                    onNoteChange={v => handleVerdictCommentChange(safeDeviceIdx, v)}
-                    notePlaceholder="კომენტარი"
+                    showError={attempted && !currentDeviceData.verdict}
+                  />
+                  <FloatingLabelInput
+                    label="კომენტარი"
+                    value={currentDeviceData.verdictComment}
+                    onChangeText={v => handleVerdictCommentChange(safeDeviceIdx, v)}
+                    multiline
+                    numberOfLines={4}
                   />
 
                   {/* Device photos */}
@@ -692,11 +714,5 @@ function getstyles(theme: Theme) {
       borderTopColor: theme.colors.hairline,
       paddingTop: 8, marginTop: 4,
     },
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,
-      borderRadius: 10, padding: 10,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

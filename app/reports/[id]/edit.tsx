@@ -175,7 +175,7 @@ export default function ReportSlidesEditor() {
           headerRight: () => (
             <Pressable
               onPress={onComplete}
-              disabled={generating || slides.length === 0}
+              disabled={generating}
               hitSlop={8}
               style={({ pressed }) => [
                 styles.pdfBtn,
@@ -241,7 +241,7 @@ export default function ReportSlidesEditor() {
       <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + 12 }]}>
         <Pressable
           onPress={onComplete}
-          disabled={generating || slides.length === 0}
+          disabled={generating}
           style={({ pressed }) => [
             styles.completeBtn,
             {

@@ -22,6 +22,7 @@ import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { SheetLayout } from '../../components/SheetLayout';
@@ -336,6 +337,8 @@ function CreateProjectSheet({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  // Enabled create button + on-press field error (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -403,9 +406,8 @@ function CreateProjectSheet({
                   <Button
                     title={t('projects.createButton')}
                     size="lg"
-                    onPress={save}
+                    onPress={() => guard(!!company.trim(), save)}
                     loading={busy}
-                    disabled={!company.trim()}
                   />
                 }
               >
@@ -430,6 +432,7 @@ function CreateProjectSheet({
                   required
                   value={company}
                   onChangeText={setCompany}
+                  error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
                   autoFocus
                 />
 
@@ -498,6 +501,8 @@ function MapPickerInline({
   const insets = useSafeAreaInsets();
   const [pin, setPin] = useState<LatLng | null>(initialPin);
   const [address, setAddress] = useState(initialAddress);
+  // Enabled confirm + on-press error when no pin is dropped.
+  const [attempted, setAttempted] = useState(false);
   const screenH = Dimensions.get('window').height;
   // Reserve space for header (~60) + bottom action bar (~160) + safe areas
   const mapHeight = Math.max(240, screenH - insets.top - insets.bottom - 220);
@@ -506,6 +511,15 @@ function MapPickerInline({
     setPin(initialPin);
     setAddress(initialAddress);
   }, [initialPin, initialAddress]);
+
+  const handleConfirm = () => {
+    if (!pin) {
+      setAttempted(true);
+      haptic.validationError();
+      return;
+    }
+    onConfirm(pin, address);
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -537,11 +551,15 @@ function MapPickerInline({
           elevation: 8,
         }}
       >
+        {attempted && !pin ? (
+          <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+            აირჩიეთ მდებარეობა რუკაზე
+          </Text>
+        ) : null}
         <Button
           title="დადასტურება"
           size="lg"
-          onPress={() => onConfirm(pin, address)}
-          disabled={!pin}
+          onPress={handleConfirm}
         />
         <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>

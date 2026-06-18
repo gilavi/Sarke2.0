@@ -43,6 +43,7 @@ import { SignatureCanvas } from '../../../../components/SignatureCanvas';
 import { useTheme } from '../../../../lib/theme';
 import { useToast } from '../../../../lib/toast';
 import { a11y } from '../../../../lib/accessibility';
+import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 import { useProject } from '../../../../lib/apiHooks';
 import { qk } from '../../../../lib/apiHooks';
 import {
@@ -130,6 +131,12 @@ export default function BreathalizerJournalScreen() {
   const [addStep, setAddStep] = useState(1);
   const [repeatFor, setRepeatFor] = useState<BLEntry | null>(null);
   const [savingEntry, setSavingEntry] = useState(false);
+  // Enabled Next/Save buttons + on-press field errors for the add-entry modal.
+  const {
+    attempted: entryAttempted,
+    guard: entryGuard,
+    reset: resetEntryAttempted,
+  } = useSubmitGuard();
 
   // Step 1
   const [search, setSearch] = useState('');
@@ -157,6 +164,12 @@ export default function BreathalizerJournalScreen() {
   const [respName, setRespName] = useState('');
   const [respSig, setRespSig] = useState<string | null>(null);
   const [closingShift, setClosingShift] = useState(false);
+  // Enabled close-shift button + on-press field error (separate from add-entry).
+  const {
+    attempted: closeAttempted,
+    guard: closeGuard,
+    reset: resetCloseAttempted,
+  } = useSubmitGuard();
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -337,6 +350,11 @@ export default function BreathalizerJournalScreen() {
       queryKey: qk.breathalyzerLog.byProject(projectId),
     });
   }
+
+  // Clear the add-entry error reveal whenever the step changes.
+  useEffect(() => {
+    resetEntryAttempted();
+  }, [addStep, resetEntryAttempted]);
 
   // ── Suggestions for step 1 ────────────────────────────────────────────────
   const crewSuggestions = useMemo<PoolPerson[]>(() => {
@@ -547,6 +565,7 @@ export default function BreathalizerJournalScreen() {
                   onPress={() => {
                     setRespName('');
                     setRespSig(null);
+                    resetCloseAttempted();
                     setShowCloseShift(true);
                   }}
                   style={styles.closeShiftBtn}
@@ -725,12 +744,22 @@ export default function BreathalizerJournalScreen() {
                   required
                   value={entryName}
                   onChangeText={setEntryName}
+                  error={
+                    entryAttempted && !entryName.trim()
+                      ? 'სავალდებულო ველი'
+                      : undefined
+                  }
                 />
                 <FloatingLabelInput
                   label="პოზიცია"
                   required
                   value={entryPosition}
                   onChangeText={setEntryPosition}
+                  error={
+                    entryAttempted && !entryPosition.trim()
+                      ? 'სავალდებულო ველი'
+                      : undefined
+                  }
                 />
               </View>
             )}
@@ -851,6 +880,12 @@ export default function BreathalizerJournalScreen() {
                     </View>
                   </View>
                 )}
+
+                {entryAttempted && parseResult(entryResultRaw) < 0 && (
+                  <Text style={styles.inlineError}>
+                    შეიყვანეთ სწორი მაჩვენებელი
+                  </Text>
+                )}
               </View>
             )}
 
@@ -937,6 +972,12 @@ export default function BreathalizerJournalScreen() {
                     ხელმოწერაზე უარი
                   </Text>
                 </Pressable>
+
+                {entryAttempted && !canSaveEntry && (
+                  <Text style={styles.inlineError}>
+                    საჭიროა ხელმოწერა ან უარის მონიშვნა
+                  </Text>
+                )}
               </View>
             )}
           </ScrollView>
@@ -952,20 +993,23 @@ export default function BreathalizerJournalScreen() {
               <Button
                 title="შემდეგი →"
                 size="lg"
-                onPress={() => setAddStep(s => s + 1)}
-                disabled={
-                  (addStep === 1 &&
-                    (!entryName.trim() || !entryPosition.trim())) ||
-                  (addStep === 3 && parseResult(entryResultRaw) < 0)
+                onPress={() =>
+                  entryGuard(
+                    !(
+                      (addStep === 1 &&
+                        (!entryName.trim() || !entryPosition.trim())) ||
+                      (addStep === 3 && parseResult(entryResultRaw) < 0)
+                    ),
+                    () => setAddStep(s => s + 1),
+                  )
                 }
               />
             ) : (
               <Button
                 title="შენახვა"
                 size="lg"
-                onPress={saveEntry}
+                onPress={() => entryGuard(canSaveEntry, saveEntry)}
                 loading={savingEntry}
-                disabled={!canSaveEntry}
               />
             )}
           </View>
@@ -1052,6 +1096,11 @@ export default function BreathalizerJournalScreen() {
               required
               value={respName}
               onChangeText={setRespName}
+              error={
+                closeAttempted && !respName.trim()
+                  ? 'სავალდებულო ველი'
+                  : undefined
+              }
             />
 
             <Pressable
@@ -1112,9 +1161,8 @@ export default function BreathalizerJournalScreen() {
             <Button
               title="დასრულება და PDF გენერაცია"
               size="lg"
-              onPress={closeShift}
+              onPress={() => closeGuard(!!respName.trim(), closeShift)}
               loading={closingShift}
-              disabled={!respName.trim()}
             />
           </View>
         </KeyboardAvoidingView>
@@ -1631,6 +1679,14 @@ function getStyles(theme: any) {
     refuseText: {
       fontSize: 14,
       color: theme.colors.ink,
+    },
+
+    // Inline required-field error for custom controls without an `error` prop.
+    inlineError: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.danger,
+      marginTop: 2,
     },
 
     // Close shift

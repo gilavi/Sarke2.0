@@ -1,13 +1,11 @@
-﻿import { useCallback, useMemo } from 'react';
+﻿import { useCallback, useEffect, useMemo } from 'react';
 import {
-  ActivityIndicator,
   StyleSheet,
   View,
 } from 'react-native';
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
@@ -20,11 +18,9 @@ import {
   IdentificationGrid,
   PhotoSection,
   QualDoc,
-  VerdictSelector,
   type ChecklistItemData,
-
-  type VerdictOption,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 
 import { forkliftSchema } from '../../../lib/inspection/schemas/forklift';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
@@ -32,6 +28,7 @@ import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import {
   FORKLIFT_ITEMS,
@@ -57,6 +54,12 @@ const CONCLUSION_STEP = 2;
 const TOTAL_STEPS     = 3;
 
 const FORKLIFT_CATEGORIES: ForkliftCategory[] = ['A', 'B', 'C'];
+
+const FORKLIFT_VERDICT_OPTIONS: VerdictOption<ForkliftVerdict>[] = [
+  { value: 'approved', label: FORKLIFT_VERDICT_LABEL.approved, tone: 'success' },
+  { value: 'limited',  label: FORKLIFT_VERDICT_LABEL.limited,  tone: 'caution' },
+  { value: 'rejected', label: FORKLIFT_VERDICT_LABEL.rejected, tone: 'danger'  },
+];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -135,6 +138,9 @@ export default function ForkliftInspectionScreen() {
     },
     loadingTitle: 'შემოწმება',
   });
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // ── Item update helper ───────────────────────────────────────────────────────
 
@@ -316,6 +322,9 @@ export default function ForkliftInspectionScreen() {
     else setStep(s => s - 1);
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Loading ───────────────────────────────────────────────────────────────────
 
   if (loading || !inspection) {
@@ -375,6 +384,7 @@ export default function ForkliftInspectionScreen() {
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
+        onBlockedNext={markAttempted}
         onClose={() => router.back()}
       >
 
@@ -462,84 +472,65 @@ export default function ForkliftInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 2: Summary Table + Verdict + Signature ─────────────── */}
+          {/* ── Step 2: Summary Table + Verdict ─────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {/* Summary table */}
-              <Text style={styles.sectionLabel}>შეჯამება</Text>
-              <View style={styles.sumTable}>
-                <View style={[styles.sumRow, styles.sumHeaderRow]}>
-                  <Text style={[styles.sumCell, styles.sumCatCell, styles.sumHeaderText]}>კატეგ.</Text>
-                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✓</Text>
-                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>⚠</Text>
-                  <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✗</Text>
-                </View>
-                {FORKLIFT_SUMMARY_CATS.map(cat => {
-                  const c = forkliftSubcategoryCounts(inspection.items, cat.ids);
-                  return (
-                    <View key={cat.label} style={styles.sumRow}>
-                      <Text style={[styles.sumCell, styles.sumCatCell]}>{cat.label}</Text>
-                      <Text style={[styles.sumCountCell, c.good > 0 && styles.cntGood]}>{c.good > 0 ? c.good : '-'}</Text>
-                      <Text style={[styles.sumCountCell, c.deficient > 0 && styles.cntDef]}>{c.deficient > 0 ? c.deficient : '-'}</Text>
-                      <Text style={[styles.sumCountCell, c.unusable > 0 && styles.cntBad]}>{c.unusable > 0 ? c.unusable : '-'}</Text>
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={FORKLIFT_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as ForkliftVerdict)}
+              suggestion={
+                verdictSuggestion && verdictSuggestion !== inspection.verdict
+                  ? {
+                      text: `შემოწმების შედეგები: «${FORKLIFT_VERDICT_LABEL[verdictSuggestion]}»`,
+                      onApply: () => update('verdict', verdictSuggestion),
+                    }
+                  : null
+              }
+              notes={inspection.notes ?? ''}
+              onNotesChange={v => update('notes', v || null)}
+              completing={completing}
+              summarySection={
+                <View style={{ gap: 8 }}>
+                  <Text style={styles.sectionLabel}>შეჯამება</Text>
+                  <View style={styles.sumTable}>
+                    <View style={[styles.sumRow, styles.sumHeaderRow]}>
+                      <Text style={[styles.sumCell, styles.sumCatCell, styles.sumHeaderText]}>კატეგ.</Text>
+                      <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✓</Text>
+                      <Text style={[styles.sumCountCell, styles.sumHeaderText]}>⚠</Text>
+                      <Text style={[styles.sumCountCell, styles.sumHeaderText]}>✗</Text>
                     </View>
-                  );
-                })}
-              </View>
-
-              {/* Verdict */}
-              <Text style={styles.sectionLabel}>დასკვნა *</Text>
-              {verdictSuggestion && verdictSuggestion !== inspection.verdict && (
-                <View style={styles.suggestionBanner}>
-                  <Lightbulb size={14} color={theme.colors.warn} strokeWidth={1.5} />
-                  <Text style={styles.suggestionText}>
-                    შემოწმების შედეგები: «{FORKLIFT_VERDICT_LABEL[verdictSuggestion]}»
-                  </Text>
+                    {FORKLIFT_SUMMARY_CATS.map(cat => {
+                      const c = forkliftSubcategoryCounts(inspection.items, cat.ids);
+                      return (
+                        <View key={cat.label} style={styles.sumRow}>
+                          <Text style={[styles.sumCell, styles.sumCatCell]}>{cat.label}</Text>
+                          <Text style={[styles.sumCountCell, c.good > 0 && styles.cntGood]}>{c.good > 0 ? c.good : '-'}</Text>
+                          <Text style={[styles.sumCountCell, c.deficient > 0 && styles.cntDef]}>{c.deficient > 0 ? c.deficient : '-'}</Text>
+                          <Text style={[styles.sumCountCell, c.unusable > 0 && styles.cntBad]}>{c.unusable > 0 ? c.unusable : '-'}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
                 </View>
-              )}
-              <VerdictSelector
-                options={([
-                  { value: 'approved', label: FORKLIFT_VERDICT_LABEL.approved, type: 'success' },
-                  { value: 'limited',  label: FORKLIFT_VERDICT_LABEL.limited,  type: 'warning' },
-                  { value: 'rejected', label: FORKLIFT_VERDICT_LABEL.rejected, type: 'danger'  },
-                ] as VerdictOption[])}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as ForkliftVerdict)}
-                note={inspection.notes ?? ''}
-                onNoteChange={v => update('notes', v || null)}
-                notePlaceholder="შენიშვნები / ხარვეზები"
-              />
-
-              {/* Qual doc */}
-              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>კვალიფიკ. დოკ.</Text>
-              <QualDoc
-                photoPath={inspection.qualDocPath}
-                onAdd={() => void handleAddQualDoc()}
-                onDelete={() => void handleDeleteQualDoc()}
-              />
-
-              {/* Summary photos */}
-              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>ფოტოები</Text>
-              <PhotoSection
-                photoPaths={inspection.summaryPhotos ?? []}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-              />
-
-              {completing && (
-                <View style={styles.completingRow}>
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                  <Text style={styles.completingText}>მიმდინარეობს…</Text>
-                </View>
-              )}
-            </KeyboardAwareScrollView>
+              }
+              photoSection={
+                <>
+                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>კვალიფიკ. დოკ.</Text>
+                  <QualDoc
+                    photoPath={inspection.qualDocPath}
+                    onAdd={() => void handleAddQualDoc()}
+                    onDelete={() => void handleDeleteQualDoc()}
+                  />
+                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>ფოტოები</Text>
+                  <PhotoSection
+                    photoPaths={inspection.summaryPhotos ?? []}
+                    onAdd={handleAddSummaryPhoto}
+                    onDelete={handleDeleteSummaryPhoto}
+                  />
+                </>
+              }
+            />
           )}
 
         </InspectionShell>

@@ -1,15 +1,15 @@
 import { memo, useMemo, useState } from 'react';
-import { InputAccessoryView, Keyboard, Platform, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
-import { QuestionAvatar } from '../../components/QuestionAvatar';
+import {
+  ConclusionStep as SharedConclusionStep,
+  type VerdictOption,
+} from '../../components/inspection-steps';
 import { useTheme } from '../../lib/theme';
-import { a11y } from '../../lib/accessibility';
 import type { AnswerPhoto, Question, Template } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { AttachmentBars } from './AttachmentBars';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
-import { VerdictSelector, type VerdictOption } from '../../components/inspection-steps/VerdictSelector';
 
 export type SafetyVerdict = 'safe' | 'caution' | 'unsafe';
 
@@ -23,6 +23,13 @@ const SAFETY_VERDICT_OPTIONS: VerdictOption<SafetyVerdict>[] = [
   { value: 'unsafe', label: 'დაუშვებელია\nგამოყენება', tone: 'danger' },
 ];
 
+/**
+ * Scaffold-wizard conclusion step. Thin wrapper over the shared
+ * `components/inspection-steps/ConclusionStep` so every inspection flow renders
+ * the identical last step (illustration + icon-card verdict + "კომენტარი" box).
+ * The wizard owns the surrounding scroll view, so we pass `scroll={false}`;
+ * photos use the wizard's `AnswerPhoto` model via the photo slot.
+ */
 export const ConclusionStep = memo(function ConclusionStep({
   conclusion,
   onConclusion,
@@ -40,7 +47,7 @@ export const ConclusionStep = memo(function ConclusionStep({
   conclusion: string;
   onConclusion: (s: string) => void;
   safetyVerdict: SafetyVerdict | null;
-  onSafetyVerdict: (v: SafetyVerdict) => void;
+  onSafetyVerdict: (v: SafetyVerdict | null) => void;
   template: Template | null;
   harnessName: string;
   onHarnessName: (s: string) => void;
@@ -55,54 +62,25 @@ export const ConclusionStep = memo(function ConclusionStep({
   void photoAnswerId;
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
-
-  const needsHarness = template?.category === 'harness';
-  const harnessEmpty = needsHarness && !harnessName.trim();
-  const conclusionEmpty = !conclusion.trim();
   // Don't surface "required" errors until the user has engaged with the step.
   const [interacted, setInteracted] = useState(false);
-  const markInteracted = () => setInteracted(true);
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
-  const accessoryId = 'wizardConclusionAccessory';
 
   return (
-    <View style={staticStyles.gap18}>
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={accessoryId}>
-          <View style={styles.kbAccessory}>
-            <Pressable
-              hitSlop={10}
-              onPress={() => Keyboard.dismiss()}
-              style={({ pressed }) => [styles.kbDoneBtn, pressed && { opacity: 0.6 }]}
-              {...a11y('მზადაა', 'შეეხეთ კლავიატურის დასახურად', 'button')}
-            >
-              <Text style={styles.kbDoneText}>მზადაა</Text>
-            </Pressable>
-          </View>
-        </InputAccessoryView>
-      ) : null}
-      <View style={{ alignItems: 'center', paddingTop: 8 }}>
-        <QuestionAvatar illustrationKey="conclusion" />
-      </View>
-      {needsHarness ? (
-        <FloatingLabelInput
-          label="ღვედის დასახელება"
-          required
-          value={harnessName}
-          onChangeText={(s) => { setInteracted(true); onHarnessName(s); }}
-          error={interacted && harnessEmpty ? 'სავალდებულო ველი' : undefined}
-          returnKeyType="done"
-          onSubmitEditing={Keyboard.dismiss}
-          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
-        />
-      ) : null}
-      <VerdictSelector
-        value={safetyVerdict}
-        options={SAFETY_VERDICT_OPTIONS}
-        onChange={(v) => { markInteracted(); onSafetyVerdict(v); }}
-        showError={interacted && safetyVerdict === null}
-      />
-      {photoQuestion ? (
+    <SharedConclusionStep
+      scroll={false}
+      verdict={safetyVerdict}
+      verdictOptions={SAFETY_VERDICT_OPTIONS}
+      onVerdictChange={(v) => { setInteracted(true); onSafetyVerdict(v); }}
+      verdictError={interacted && safetyVerdict === null}
+      showHarnessName={template?.category === 'harness'}
+      harnessName={harnessName}
+      onHarnessNameChange={(s) => { setInteracted(true); onHarnessName(s); }}
+      notes={conclusion}
+      onNotesChange={(s) => { setInteracted(true); onConclusion(s); }}
+      notesRequired
+      notesError={interacted && !conclusion.trim()}
+      photoSection={photoQuestion ? (
         <View style={staticStyles.gap8}>
           <Text style={styles.label}>საერთო ფოტოები</Text>
           <AttachmentBars
@@ -120,18 +98,7 @@ export const ConclusionStep = memo(function ConclusionStep({
             }}
           />
         </View>
-      ) : null}
-      <View>
-        <FloatingLabelInput
-          label="დასკვნა"
-          required
-          value={conclusion}
-          onChangeText={(s) => { setInteracted(true); onConclusion(s); }}
-          error={interacted && conclusionEmpty ? 'სავალდებულო ველი' : undefined}
-          multiline
-          inputAccessoryViewID={Platform.OS === 'ios' ? accessoryId : undefined}
-        />
-      </View>
-    </View>
+      ) : undefined}
+    />
   );
 });

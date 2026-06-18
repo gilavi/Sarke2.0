@@ -11,6 +11,7 @@ import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { projectsApi, reportsApi } from '../../lib/services';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import type { Project } from '../../types/models';
 
 export default function NewReportTitleScreen() {
@@ -25,6 +26,8 @@ export default function NewReportTitleScreen() {
   const [project, setProject] = useState<Project | null>(null);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  // Enabled "შემდეგი" button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   useEffect(() => {
     if (!projectId || project) return;
@@ -34,10 +37,12 @@ export default function NewReportTitleScreen() {
   }, [projectId, project]);
 
   const trimmed = title.trim();
-  const canStart = trimmed.length > 0 && !busy && !!projectId;
+  // Input gate for the (now always-enabled) button — `busy` stays a separate
+  // in-flight disable; this only governs whether a press reveals field errors.
+  const inputValid = trimmed.length > 0 && !!projectId;
 
   const onNext = async () => {
-    if (!canStart || !projectId) return;
+    if (busy || !inputValid || !projectId) return;
     setBusy(true);
     try {
       const created = await reportsApi.create({ projectId, title: trimmed });
@@ -85,15 +90,16 @@ export default function NewReportTitleScreen() {
           onChangeText={setTitle}
           autoFocus
           returnKeyType="done"
-          onSubmitEditing={onNext}
+          onSubmitEditing={() => guard(inputValid, onNext)}
+          error={attempted && !trimmed.length ? 'სავალდებულო ველი' : undefined}
         />
       </KeyboardSafeArea>
 
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom }}>
         <Button
           title="შემდეგი →"
-          onPress={onNext}
-          disabled={!canStart}
+          onPress={() => guard(inputValid, onNext)}
+          disabled={busy}
           loading={busy}
         />
       </View>

@@ -15,6 +15,7 @@ import { FlowHeader } from '../FlowHeader';
 import { WizardStepTransition } from '../wizard/WizardStepTransition';
 import { OfflineBanner } from '../OfflineBanner';
 import { useTheme } from '../../lib/theme';
+import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 
 export interface InspectionShellProps {
@@ -33,9 +34,20 @@ export interface InspectionShellProps {
   isLastStep?: boolean;
   /** Custom finish-button label (defaults to "შენახვა და დასრულება"). */
   finishLabel?: string;
-  /** When true, the non-last Next button is disabled while `canGoNext` is false (no skip). */
+  /**
+   * When true, this step requires `canGoNext` to advance (no skip). The Next
+   * button stays *enabled*; pressing it while invalid fires an error haptic and
+   * calls `onBlockedNext` (so the screen can reveal its red required fields)
+   * instead of advancing.
+   */
   blockNext?: boolean;
   completing?: boolean;
+  /**
+   * Called when the user presses Next/Finish while `canGoNext` is false on a
+   * validated step (`blockNext` or the last step). The screen uses this to flip
+   * its `attempted` flag and light up the empty required fields.
+   */
+  onBlockedNext?: () => void;
   /** Optional banner rendered between the header and the step content (e.g. PdfLockedBanner). */
   banner?: ReactNode;
   onNext: () => void;
@@ -57,6 +69,7 @@ export function InspectionShell({
   completing = false,
   finishLabel,
   blockNext = false,
+  onBlockedNext,
   banner,
   onNext,
   onPrev,
@@ -66,6 +79,19 @@ export function InspectionShell({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(theme, insets.bottom);
+
+  // Enabled button + on-press validation: validated steps (the last step, or any
+  // `blockNext` step) reveal their errors instead of advancing when invalid.
+  const handleNext = () => {
+    if (completing) return;
+    const mustValidate = isLastStep || blockNext;
+    if (mustValidate && !canGoNext) {
+      haptic.validationError();
+      onBlockedNext?.();
+      return;
+    }
+    onNext();
+  };
 
   return (
     <View style={styles.root}>
@@ -102,8 +128,8 @@ export function InspectionShell({
                 style={{ paddingVertical: 14 }}
                 rightIcon={Check}
                 loading={completing}
-                disabled={!canGoNext || completing}
-                onPress={onNext}
+                disabled={completing}
+                onPress={handleNext}
               />
             ) : (
               <Button
@@ -112,8 +138,7 @@ export function InspectionShell({
                 size="lg"
                 style={styles.nextBtn}
                 rightIcon={blockNext || canGoNext ? ChevronRight : undefined}
-                disabled={blockNext && !canGoNext}
-                onPress={onNext}
+                onPress={handleNext}
               />
             )}
           </View>

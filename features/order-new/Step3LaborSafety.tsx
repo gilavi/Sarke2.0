@@ -6,11 +6,12 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step3LaborSafety({
-  form, setForm, s,
+  form, setForm, s, attempted,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   s: OrderStyles;
+  attempted: boolean;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -21,6 +22,7 @@ export function Step3LaborSafety({
         required
         value={form.facilityName}
         onChangeText={v => setForm(f => ({ ...f, facilityName: v }))}
+        error={attempted && !form.facilityName.trim() ? 'სავალდებულო ველი' : undefined}
         multiline
         numberOfLines={2}
       />
@@ -30,6 +32,7 @@ export function Step3LaborSafety({
         required
         value={form.specialistName}
         onChangeText={v => setForm(f => ({ ...f, specialistName: v }))}
+        error={attempted && !form.specialistName.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <FloatingLabelInput
@@ -37,6 +40,7 @@ export function Step3LaborSafety({
         required
         value={form.specialistPersonalId}
         onChangeText={v => setForm(f => ({ ...f, specialistPersonalId: v }))}
+        error={attempted && form.specialistPersonalId.trim().length !== 11 ? 'სავალდებულო ველი' : undefined}
         keyboardType="numeric"
         maxLength={11}
       />
@@ -46,6 +50,7 @@ export function Step3LaborSafety({
         required
         value={form.certificateNumber}
         onChangeText={v => setForm(f => ({ ...f, certificateNumber: v }))}
+        error={attempted && !form.certificateNumber.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <DateTimeField

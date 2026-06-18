@@ -10,7 +10,6 @@ export function WizardHeader({
   total,
   project,
   template,
-  hasProgress,
   onBack,
   onClose,
 }: {
@@ -19,7 +18,6 @@ export function WizardHeader({
   total: number;
   project: Project | null;
   template: Template | null;
-  hasProgress: boolean;
   onBack: () => void;
   onClose: () => void;
 }) {
@@ -37,8 +35,6 @@ export function WizardHeader({
       trailing="close"
       onBack={onBack}
       onClose={onClose}
-      backDisabled={stepIndex === 0}
-      confirmExit={hasProgress}
       surfaceColor={theme.colors.surface}
     />
   );

@@ -142,7 +142,7 @@ export function FilesAndOrdersSection({
           ))}
           {overflowFiles.length > 0 ? (
             <ViewMoreRow
-              items={overflowFiles.map(() => ({ ionicon: 'document-outline' }))}
+              items={overflowFiles.map(() => ({ category: null }))}
               total={overflowFiles.length}
               onPress={() => router.push(`/projects/${id}/files` as any)}
             />

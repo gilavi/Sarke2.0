@@ -1,7 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   TextInput,
@@ -34,6 +33,7 @@ import {
 import { friendlyError } from '../../../lib/errorMap';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../../lib/apiHooks';
@@ -108,6 +108,9 @@ export default function HarnessInspectionScreen() {
   const [harnessName, setHarnessName] = useState('');
   const [verdict, setVerdict] = useState<HarnessVerdict | null>(null);
   const [conclusion, setConclusion] = useState('');
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
   useEffect(() => { prevStepRef.current = step; }, [step]);
@@ -404,7 +407,7 @@ export default function HarnessInspectionScreen() {
       return;
     }
     if (!conclusion.trim()) {
-      toast.error('შეავსეთ: შენიშვნები / დასკვნა');
+      toast.error('შეავსეთ: კომენტარი');
       return;
     }
     setCompleting(true);
@@ -461,17 +464,17 @@ export default function HarnessInspectionScreen() {
     }
   }, [step, handleComplete]);
 
-  const handlePrev = useCallback(async () => {
+  const handlePrev = useCallback(() => {
     if (step === INFO_STEP) {
-      Alert.alert('გასვლა', 'მიმდინარე შემოწმება შენახული იქნება.', [
-        { text: 'გაუქმება', style: 'cancel' },
-        { text: 'გასვლა', style: 'destructive', onPress: () => router.back() },
-      ]);
+      router.back();
     } else {
       haptic.light();
       setStep(s => s - 1);
     }
   }, [step, router]);
+
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -567,6 +570,7 @@ export default function HarnessInspectionScreen() {
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
       completing={completing}
+      onBlockedNext={markAttempted}
       onNext={handleNext}
       onPrev={handlePrev}
       onClose={() => router.back()}
@@ -599,9 +603,11 @@ export default function HarnessInspectionScreen() {
         <ConclusionStep
           verdict={verdict}
           verdictOptions={VERDICT_OPTIONS}
+          verdictError={attempted && verdict === null}
           onVerdictChange={setVerdict}
           notes={conclusion}
           onNotesChange={setConclusion}
+          notesError={attempted && !conclusion.trim()}
           completing={completing}
         />
       )}

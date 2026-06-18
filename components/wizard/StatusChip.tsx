@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -22,6 +22,12 @@ export interface StatusChipProps {
   /** 'pill' stacks the icon above the label (large yes/no); 'chip' is a compact inline row. */
   layout?: 'pill' | 'chip';
   disabled?: boolean;
+  /**
+   * Unselected + required: paints a danger outline and shakes once when it turns
+   * on, so a failed-submit press flags this control as mandatory. Ignored while
+   * `selected` (a chosen chip is never "in error").
+   */
+  error?: boolean;
   /** Overrides the accessible label (defaults to `label`). */
   a11yLabel?: string;
   a11yHint?: string;
@@ -44,6 +50,7 @@ export function StatusChip({
   onPress,
   layout = 'chip',
   disabled = false,
+  error = false,
   a11yLabel,
   a11yHint,
   style,
@@ -52,8 +59,25 @@ export function StatusChip({
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const scale = useSharedValue(1);
+  const shake = useSharedValue(0);
 
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const showError = error && !selected;
+
+  // Shake once when the error turns on (skipped under reduce-motion).
+  useEffect(() => {
+    if (showError && !reduceMotion) {
+      shake.value = withSequence(
+        withTiming(-4, { duration: 50 }),
+        withTiming(4, { duration: 50 }),
+        withTiming(-3, { duration: 50 }),
+        withTiming(0, { duration: 50 }),
+      );
+    }
+  }, [showError, reduceMotion, shake]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }, { translateX: shake.value }],
+  }));
 
   const handlePress = () => {
     if (disabled) return;
@@ -79,7 +103,11 @@ export function StatusChip({
       style={[
         layout === 'pill' ? styles.pill : styles.chip,
         {
-          borderColor: selected ? theme.colors.inverse.background : theme.colors.border,
+          borderColor: selected
+            ? theme.colors.inverse.background
+            : showError
+            ? theme.colors.danger
+            : theme.colors.border,
           backgroundColor: selected ? theme.colors.inverse.background : theme.colors.surface,
         },
         disabled && { opacity: 0.4 },

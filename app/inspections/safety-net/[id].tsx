@@ -1,8 +1,7 @@
-﻿import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
@@ -10,16 +9,17 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  VerdictSelector,
   PhotoSection,
   IdentificationGrid,
   QualDoc,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { safetyNetApi } from '../../../lib/safetyNetService';
 import { safetyNetSchema } from '../../../lib/inspection/schemas/safetyNet';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
@@ -45,6 +45,11 @@ const INSPECTION_STEP = 2;
 const CONCLUSION_STEP = 3;
 const DOCS_STEP       = 4;
 const TOTAL_STEPS     = 4;
+
+const SN_VERDICT_OPTIONS: VerdictOption<SNVerdict>[] = [
+  { value: 'pass', label: SN_VERDICT_LABEL.pass, tone: 'success' },
+  { value: 'fail', label: SN_VERDICT_LABEL.fail, tone: 'danger'  },
+];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -129,6 +134,9 @@ export default function SafetyNetInspectionScreen() {
     },
     loadingTitle: 'ბადის შემოწმება',
   });
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // ── Items ───────────────────────────────────────────────────────────────────
 
@@ -314,6 +322,9 @@ export default function SafetyNetInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Loading & completed ─────────────────────────────────────────────────────
 
   if (loading || !inspection) {
@@ -370,6 +381,7 @@ export default function SafetyNetInspectionScreen() {
         isLastStep={step === DOCS_STEP}
         completing={completing}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -499,39 +511,23 @@ export default function SafetyNetInspectionScreen() {
 
           {/* ── Step 3: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
-                  <Text style={styles.suggestText}>
-                    შემოთავაზება: {SN_VERDICT_LABEL[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={[
-                  { value: 'pass', label: SN_VERDICT_LABEL.pass, type: 'success' },
-                  { value: 'fail', label: SN_VERDICT_LABEL.fail, type: 'danger' },
-                ]}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as SNVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი"
-              />
-            </KeyboardAwareScrollView>
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={SN_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as SNVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთავაზება: ${SN_VERDICT_LABEL[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
+              }
+              notes={inspection.verdictComment ?? ''}
+              onNotesChange={v => update('verdictComment', v)}
+              completing={completing}
+            />
           )}
 
           {/* ── Step 4: Documents & Photos ──────────────────────────────────── */}
@@ -592,12 +588,5 @@ function getstyles(theme: Theme) {
 
     totalLabel: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
     totalValue: { fontSize: 18, fontWeight: '800', color: theme.colors.accent },
-
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: theme.colors.warnSoft,
-      padding: 10, borderRadius: 8,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

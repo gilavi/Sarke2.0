@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -9,6 +9,7 @@ import { FlowHeader } from '../../../components/FlowHeader';
 import { ChipNavStrip } from '../../../components/inspection-parts/ChipNavStrip';
 import { SignatureStage } from '../../../components/briefings/SignatureStage';
 import { useBriefingSigning } from '../../../components/briefings/useBriefingSigning';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTheme } from '../../../lib/theme';
 import { SkeletonListCard } from '../../../components/Skeleton';
 import { a11y } from '../../../lib/accessibility';
@@ -19,6 +20,11 @@ export default function BriefingSignScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const s = useBriefingSigning(id);
+  // Enabled confirm button + on-press signature error (see useSubmitGuard).
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
+  // The canvas remounts per signer (and on the inspector transition); clear the
+  // error reveal so it doesn't leak from one signer to the next.
+  useEffect(() => { resetAttempted(); }, [s.currentIdx, s.phase, resetAttempted]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (s.phase === 'loading' || !s.briefing) {
@@ -111,6 +117,9 @@ export default function BriefingSignScreen() {
           onEnd={s.onStroke}
           onOK={s.handleOK}
         />
+        {attempted && !s.hasStroke && (
+          <Text style={styles.signatureError}>გთხოვთ, ხელი მოაწეროთ</Text>
+        )}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
           {s.hasStroke && (
             <Pressable onPress={s.handleClear} style={styles.skipBtn} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
@@ -121,8 +130,8 @@ export default function BriefingSignScreen() {
           <Button
             title={s.saving ? 'იტვირთება...' : 'დასრულება და PDF გენერირება'}
             size="lg"
-            onPress={s.handleConfirm}
-            disabled={!s.hasStroke || s.saving}
+            onPress={() => guard(s.hasStroke, s.handleConfirm)}
+            disabled={s.saving}
             style={{ flex: 1 }}
           />
         </View>
@@ -147,6 +156,9 @@ export default function BriefingSignScreen() {
         onEnd={s.onStroke}
         onOK={s.handleOK}
       />
+      {attempted && !s.hasStroke && (
+        <Text style={styles.signatureError}>გთხოვთ, ხელი მოაწეროთ</Text>
+      )}
       <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Pressable
           onPress={s.handleClear}
@@ -167,8 +179,8 @@ export default function BriefingSignScreen() {
         <Button
           title={s.saving ? 'ინახება...' : 'დადასტურება →'}
           size="lg"
-          onPress={s.handleConfirm}
-          disabled={!s.hasStroke || s.saving}
+          onPress={() => guard(s.hasStroke, s.handleConfirm)}
+          disabled={s.saving}
           style={{ flex: 1 }}
         />
       </View>
@@ -188,6 +200,14 @@ function getstyles(theme: ReturnType<typeof useTheme>['theme']) {
       gap: 8,
       paddingHorizontal: 16,
       paddingTop: 12,
+    },
+    signatureError: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.danger,
+      textAlign: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 8,
     },
     iconBtn: {
       width: 40,

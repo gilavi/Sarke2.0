@@ -7,13 +7,15 @@ import { DOC_TYPES } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step1DocType({
-  docType, setDocType, theme, s,
+  docType, setDocType, theme, s, attempted,
 }: {
   docType: OrderDocumentType | null;
   setDocType: (t: OrderDocumentType) => void;
   theme: any;
   s: OrderStyles;
+  attempted: boolean;
 }) {
+  const showError = attempted && docType === null;
   return (
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>ბრძანების ტიპი</Text>
@@ -23,7 +25,11 @@ export function Step1DocType({
           <Pressable
             key={type}
             onPress={() => setDocType(type)}
-            style={[s.typeCard, selected && s.typeCardSelected]}
+            style={[
+              s.typeCard,
+              showError && { borderColor: theme.colors.danger },
+              selected && s.typeCardSelected,
+            ]}
           >
             <View style={[s.typeIcon, selected && s.typeIconSelected]}>
               <Icon
@@ -41,6 +47,11 @@ export function Step1DocType({
           </Pressable>
         );
       })}
+      {showError && (
+        <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger, marginTop: 2 }}>
+          აირჩიეთ დოკუმენტის ტიპი
+        </Text>
+      )}
     </View>
   );
 }

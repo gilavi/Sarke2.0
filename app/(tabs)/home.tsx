@@ -46,6 +46,7 @@ import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Template } from '../../types/models';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import { InspectionListAvatar } from '../../components/InspectionListAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { ProjectCard } from '../../components/home/ProjectCard';
@@ -532,7 +533,7 @@ export default function HomeScreen() {
                             onPress={() => router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any)}
                             style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
                           >
-                            <InspectionTypeAvatar
+                            <InspectionListAvatar
                               category={tpl?.category}
                               size={48}
                               status={isDraft ? 'draft' : 'completed'}
@@ -826,13 +827,13 @@ function getStyles(theme: Theme) {
     fontWeight: '800',
   },
   resumePill: {
-    backgroundColor: theme.colors.ink,
+    backgroundColor: theme.colors.neutral[900],
     borderRadius: 100,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   resumePillText: {
-    color: '#ECFA44',
+    color: theme.colors.highlight,
     fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase' as const,
@@ -948,10 +949,10 @@ function getStyles(theme: Theme) {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: withOpacity('#ECFA44', 0.2),
+    backgroundColor: theme.colors.highlightSoft,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#ECFA44',
+    borderColor: theme.colors.highlight,
     borderStyle: 'dashed',
     height: PROJECT_CARD_HEIGHT,
   },
@@ -974,10 +975,10 @@ function getStyles(theme: Theme) {
     color: theme.colors.ink,
   },
   newProjectCard: {
-    backgroundColor: withOpacity('#ECFA44', 0.2),
+    backgroundColor: theme.colors.highlightSoft,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#ECFA44',
+    borderColor: theme.colors.highlight,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',

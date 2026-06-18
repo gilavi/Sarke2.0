@@ -224,7 +224,8 @@ export default function TabsLayout() {
             tabBarAccessibilityLabel: t('tabs.calendarA11y'),
             tabBarBadge: overdueCount > 0 ? overdueCount : undefined,
             tabBarBadgeStyle: {
-              backgroundColor: theme.colors.danger,
+              backgroundColor: theme.colors.highlight,
+              color: theme.colors.neutral[900],
               fontSize: 10,
               fontWeight: '700',
               minWidth: 18,

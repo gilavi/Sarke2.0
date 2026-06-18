@@ -7,12 +7,13 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function StepSignaturesFireSafety({
-  form, setForm, theme, s,
+  form, setForm, theme, s, attempted,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   theme: any;
   s: OrderStyles;
+  attempted: boolean;
 }) {
   const [directorCanvasOpen, setDirectorCanvasOpen] = useState(false);
   const [appointedCanvasOpen, setAppointedCanvasOpen] = useState(false);
@@ -44,11 +45,20 @@ export function StepSignaturesFireSafety({
         ) : (
           <Pressable
             onPress={() => setDirectorCanvasOpen(true)}
-            style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+            style={[
+              s.typeCard,
+              { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 },
+              attempted && !form.directorSignature && { borderColor: theme.colors.danger },
+            ]}
           >
             <Pencil size={22} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
           </Pressable>
+        )}
+        {attempted && !form.directorSignature && (
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger }}>
+            ხელმოწერა სავალდებულოა
+          </Text>
         )}
         <SignatureCanvas
           visible={directorCanvasOpen}
@@ -84,11 +94,20 @@ export function StepSignaturesFireSafety({
         ) : (
           <Pressable
             onPress={() => setAppointedCanvasOpen(true)}
-            style={[s.typeCard, { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 }]}
+            style={[
+              s.typeCard,
+              { justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 20 },
+              attempted && !form.appointedSignature && { borderColor: theme.colors.danger },
+            ]}
           >
             <Pencil size={22} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={[s.typeLabel, { textAlign: 'center', color: theme.colors.accent }]}>+ ხელმოწერა</Text>
           </Pressable>
+        )}
+        {attempted && !form.appointedSignature && (
+          <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger }}>
+            ხელმოწერა სავალდებულოა
+          </Text>
         )}
         <SignatureCanvas
           visible={appointedCanvasOpen}

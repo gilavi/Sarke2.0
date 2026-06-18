@@ -9,25 +9,7 @@ import { useTheme } from '../../../lib/theme';
 import { useIncident, useProject } from '../../../lib/apiHooks';
 import { INCIDENT_TYPE_FULL_LABEL } from '../../../types/models';
 import { formatShortDateTime } from '../../../lib/formatDate';
-
-function getTypeBadge(theme: any, isDark: boolean): Record<string, { bg: string; text: string; border: string }> {
-  if (isDark) {
-    return {
-      minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
-      severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
-      fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
-    };
-  }
-  return {
-    minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-    severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-    fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-  };
-}
+import { incidentColors } from '../../../lib/statusColors';
 
 export default function IncidentSuccessScreen() {
   const { theme, isDark } = useTheme();
@@ -38,7 +20,7 @@ export default function IncidentSuccessScreen() {
   const { data: incident } = useIncident(id);
   const { data: project } = useProject(incident?.project_id);
 
-  const badge = incident ? getTypeBadge(theme, isDark)[incident.type] : null;
+  const badge = incident ? incidentColors(isDark)[incident.type] : null;
 
   return (
     <SuccessScreen

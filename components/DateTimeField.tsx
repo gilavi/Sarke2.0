@@ -41,6 +41,8 @@ interface Props {
   maxDate?: Date;
   /** Disables the trigger. */
   disabled?: boolean;
+  /** Danger message shown below the chips; also paints the chip borders red. */
+  error?: string;
 }
 
 const KA_MONTHS_SHORT = [
@@ -67,6 +69,7 @@ export function DateTimeField({
   minDate,
   maxDate,
   disabled,
+  error,
 }: Props) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -129,6 +132,7 @@ export function DateTimeField({
             style={({ pressed }) => [
               styles.chip,
               { flex: mode === 'datetime' ? 1.5 : 1 },
+              error ? styles.chipError : null,
               pressed && styles.chipPressed,
               disabled && styles.chipDisabled,
             ]}
@@ -148,6 +152,7 @@ export function DateTimeField({
             style={({ pressed }) => [
               styles.chip,
               { flex: 1 },
+              error ? styles.chipError : null,
               pressed && styles.chipPressed,
               disabled && styles.chipDisabled,
             ]}
@@ -160,6 +165,8 @@ export function DateTimeField({
           </Pressable>
         )}
       </View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Modal
         visible={open}
@@ -315,6 +322,15 @@ function makeStyles(theme: any) {
     },
     chipDisabled: {
       opacity: 0.4,
+    },
+    chipError: {
+      borderColor: theme.colors.danger,
+      borderWidth: 1.5,
+    },
+    errorText: {
+      fontSize: 12,
+      color: theme.colors.danger,
+      marginLeft: 2,
     },
     chipText: {
       flex: 1,

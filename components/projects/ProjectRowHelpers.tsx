@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { ChevronRight, File, FileText, TriangleAlert, User } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { InspectionTypeAvatar } from '../InspectionTypeAvatar';
-import { INCIDENT_COLORS } from '../../lib/statusColors';
+import { incidentColors } from '../../lib/statusColors';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -146,9 +146,10 @@ export function IncidentRow({
   incident: Incident;
   onPress: () => void;
 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const rowStyles = useMemo(() => getRowStyles(theme), [theme]);
-  const badge = INCIDENT_COLORS[incident.type as IncidentType] ?? INCIDENT_COLORS.minor;
+  const palette = incidentColors(isDark);
+  const badge = palette[incident.type as IncidentType] ?? palette.minor;
 
   return (
     <Pressable onPress={onPress} style={rowStyles.listRow}>

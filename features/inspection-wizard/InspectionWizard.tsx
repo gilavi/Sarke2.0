@@ -9,7 +9,7 @@ import { KeyboardAwareScrollView, KeyboardStickyView, KeyboardController, useKey
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
-import { Check, ChevronRight } from 'lucide-react-native';
+import { Check, ChevronRight, FileText } from 'lucide-react-native';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -41,6 +41,7 @@ import { ScaffoldFooterButtons } from './ScaffoldFooterButtons';
 import { CompletedRedirect } from './CompletedRedirect';
 import { NavigationRecovery } from './NavigationRecovery';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const { theme } = useTheme();
@@ -122,6 +123,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
   }, []);
 
+  // Enabled forward button + on-press field errors (see useSubmitGuard). Reveals
+  // the yes/no answer buttons in red when a required (photo-gated) question is
+  // submitted unanswered, instead of leaving a dead disabled button.
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
+  useEffect(() => { resetAttempted(); }, [stepIndex, resetAttempted]);
+
   // Step transition direction. Forward navigation slides the new step in
   // from the right and the old one out to the left; back nav reverses both.
   const prevStepIndexRef = useRef(stepIndex);
@@ -180,8 +187,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
 
   const goBack = useCallback(() => {
     haptic.light();
-    setStepIndex(i => Math.max(0, i - 1));
-  }, [setStepIndex]);
+    if (stepIndex === 0) {
+      router.back();
+    } else {
+      setStepIndex(i => i - 1);
+    }
+  }, [stepIndex, setStepIndex, router]);
 
   // Hold the loading screen until EVERYTHING we need is ready.
   const ready = !loading && !!questionnaire && !!template;
@@ -248,7 +259,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           <ErrorState
             title="შაბლონს კითხვები არ აქვს"
             message="ამ შაბლონზე კითხვები არ არის კონფიგურირებული. გთხოვთ მიმართოთ ადმინისტრატორს."
-            icon="document-text-outline"
+            icon={FileText}
           />
         </View>
       </Screen>
@@ -308,7 +319,6 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
             total={steps.length}
             project={project}
             template={template}
-            hasProgress={hasAnyProgress}
             onBack={goBack}
             onClose={() => router.back()}
           />
@@ -384,6 +394,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
             {isYesNo && step.kind === 'question' ? (
               <AnswerButtons
                 compact={keyboardOpen}
+                error={attempted}
                 value={answers[step.question.id]?.value_bool ?? null}
                 onChange={(v) => {
                   patchAnswer(step.question, a => ({ ...a, value_bool: v }));
@@ -414,13 +425,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
               />
             ) : keyboardOpen ? null : (
               <Button
-                title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
-                variant={stepAnswered ? 'primary' : 'secondary'}
+                title={stepAnswered || lockUnanswered ? 'შემდეგი' : 'გამოტოვება'}
+                variant={stepAnswered || lockUnanswered ? 'primary' : 'secondary'}
                 size="lg"
-                disabled={lockUnanswered}
                 style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
                 rightIcon={stepAnswered ? ChevronRight : undefined}
-                onPress={goNext}
+                onPress={() => guard(!lockUnanswered, goNext)}
               />
             )}
           </View>

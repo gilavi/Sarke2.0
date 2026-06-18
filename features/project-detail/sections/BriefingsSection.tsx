@@ -86,7 +86,7 @@ export function BriefingsSection({
           })}
           {overflow.length > 0 ? (
             <ViewMoreRow
-              items={overflow.map(() => ({ ionicon: 'megaphone-outline' }))}
+              items={overflow.map(() => ({ category: null }))}
               total={overflow.length}
               onPress={() => router.push(`/projects/${id}/briefings` as any)}
             />

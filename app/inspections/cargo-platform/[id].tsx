@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo } from 'react';
+﻿import { useCallback, useEffect, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -6,7 +6,6 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../../components/DateTimeField';
@@ -16,9 +15,9 @@ import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  VerdictSelector,
   PhotoSection,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
@@ -30,6 +29,7 @@ import { friendlyError } from '../../../lib/errorMap';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import {
   CP_ITEMS,
@@ -53,6 +53,12 @@ const CARGO_STEP      = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
+
+const CP_VERDICT_OPTIONS: VerdictOption<CPVerdict>[] = [
+  { value: 'approved',    label: CP_VERDICT_LABEL.approved,    tone: 'success' },
+  { value: 'conditional', label: CP_VERDICT_LABEL.conditional, tone: 'caution' },
+  { value: 'rejected',    label: CP_VERDICT_LABEL.rejected,    tone: 'danger'  },
+];
 
 // ── Binary pill selector ──────────────────────────────────────────────────────
 function BinaryPills<T extends string>({
@@ -98,6 +104,9 @@ export default function CargoPlatformInspectionScreen() {
   const router = useRouter();
   const toast = useToast();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so
@@ -311,6 +320,9 @@ export default function CargoPlatformInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Section grouping for checklist ──────────────────────────────────────────
 
   const checklistSections = useMemo(() => {
@@ -376,6 +388,7 @@ export default function CargoPlatformInspectionScreen() {
         isLastStep={step === CONCLUSION_STEP}
         completing={completing}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -551,47 +564,29 @@ export default function CargoPlatformInspectionScreen() {
 
           {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Lightbulb size={16} color={theme.colors.warn} strokeWidth={1.5} />
-                  <Text style={styles.suggestText}>
-                    შემოთავაზება: {CP_VERDICT_LABEL[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={[
-                  { value: 'approved', label: CP_VERDICT_LABEL.approved, type: 'success' },
-                  { value: 'conditional', label: CP_VERDICT_LABEL.conditional, type: 'warning' },
-                  { value: 'rejected', label: CP_VERDICT_LABEL.rejected, type: 'danger' },
-                ]}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as CPVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი *"
-              />
-
-              <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
-              <PhotoSection
-                photoPaths={inspection.summaryPhotos}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-              />
-            </KeyboardAwareScrollView>
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={CP_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as CPVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთავაზება: ${CP_VERDICT_LABEL[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
+              }
+              notes={inspection.verdictComment}
+              onNotesChange={v => update('verdictComment', v)}
+              notesRequired
+              notesError={attempted && !inspection.verdictComment?.trim()}
+              photoPaths={inspection.summaryPhotos}
+              onAddPhoto={handleAddSummaryPhoto}
+              onDeletePhoto={handleDeleteSummaryPhoto}
+              photoLabel="ფოტო / ვიდეო მასალა (სურვ.)"
+              completing={completing}
+            />
           )}
 
         </InspectionShell>
@@ -634,13 +629,5 @@ function getstyles(theme: Theme) {
     // Cargo total
     totalLabel: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
     totalValue: { fontSize: 18, fontWeight: '800', color: theme.colors.accent },
-
-    // Verdict suggestion banner
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: theme.colors.warnSoft,
-      padding: 10, borderRadius: 8,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

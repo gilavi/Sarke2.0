@@ -43,9 +43,18 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   Row rendering delegates to `ChecklistRow` → the shared
   `ChecklistItemRow`. No per-row comments/photos (flag the result only;
   detail lives on the conclusion step).
-- `ConclusionStep` — final step with safety verdict + conclusion
-  text + signatures. Renders the shared `VerdictSelector` for the
-  verdict (only when `verdictOptions` is non-empty).
+- `ConclusionStep` — the **single, shared "last step"** for every
+  inspection flow (equipment routes, harness, the scaffold wizard via a
+  thin delegating wrapper, and — verdict only — fall-protection per
+  device). Renders, in order: a conclusion illustration (`showAvatar`,
+  default true), an optional `summarySection` slot, an optional
+  harness-name field, a `VerdictSuggestionBanner` (`suggestion` prop),
+  the shared `VerdictSelector` (only when `verdictOptions` is non-empty),
+  a `კომენტარი` notes box (`notesLabel`/`notesRequired`/`notesError`),
+  optional suggestion pills, and a photo strip (`photoPaths`/`onAddPhoto`/
+  `onDeletePhoto` → shared `PhotoSection`, or a `photoSection` ReactNode
+  slot for the scaffold's `AttachmentBars`). Generic over the verdict
+  value type; pass `scroll={false}` when the host owns the scroll view.
 - `VerdictSelector` — the **canonical, dynamic** verdict picker for
   every inspection conclusion step (equipment routes, harness, and the
   scaffold wizard). One icon + label button per `VerdictOption`, in the
@@ -54,7 +63,13 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   (`success`/`caution`/`danger`), else by position (first = shield,
   last = warning, middle = eye). Generic over the verdict value type.
   This replaced the bespoke per-flow selectors (the old pill chips in
-  `ConclusionStep` and the local one in `features/inspection-wizard`).
+  `ConclusionStep`, the local one in `features/inspection-wizard`, and
+  the plain-pill `components/inspection-parts/VerdictSelector` — now
+  deleted).
+- `VerdictSuggestionBanner` — shared `შემოთავაზება` hint (Lightbulb +
+  text) for the auto-computed verdict suggestion; pass `text` + optional
+  `onApply` (tappable to adopt). Consolidated the six inline copies that
+  lived in the equipment + fall-protection routes.
 
 ## Internal files
 - `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`
@@ -66,9 +81,10 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   result chips (ვარგისია / ხარვეზი / გამოუსადეგარია), no comment/photo.
   Owns the exported item types (re-exported via ChecklistStep) +
   `CHECKLIST_LEGEND`.
-- `ConclusionStep.tsx`
+- `ConclusionStep.tsx` (+ `ConclusionStep.styles.ts` sibling)
 - `VerdictSelector.tsx` — owns the `VerdictOption` / `VerdictTone` types
   (re-exported via `ConclusionStep` for back-compat).
+- `VerdictSuggestionBanner.tsx` — shared `შემოთავაზება` verdict hint.
 
 ## Gotchas / non-obvious things
 - `VerdictSelector` is the single canonical verdict picker — don't add a

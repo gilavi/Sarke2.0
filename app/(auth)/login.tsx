@@ -34,6 +34,7 @@ import {
 import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const MIN_PASSWORD_LEN = 6;
 
@@ -104,6 +105,8 @@ function ForgotPasswordModal({
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  // Enabled "Send Link" button + on-press field error (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   // Pre-fill the field whenever the modal opens with an email from the login form.
   useEffect(() => {
@@ -163,9 +166,10 @@ function ForgotPasswordModal({
                 textContentType="emailAddress"
                 autoComplete="email"
                 returnKeyType="go"
-                onSubmitEditing={() => { if (email.trim()) submit(); }}
+                error={attempted && !email.trim() ? 'შეიყვანეთ ელ. ფოსტა' : undefined}
+                onSubmitEditing={() => guard(!!email.trim(), submit)}
               />
-              <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
+              <Button title={t('auth.sendLink')} onPress={() => guard(!!email.trim(), submit)} loading={busy} />
             </View>
           )}
         </Card>
@@ -194,8 +198,11 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
   // (typo'd email) do NOT increment - a different problem, different remedy.
   const [wrongPwCount, setWrongPwCount] = useState(0);
   const passwordRef = useRef<TextInput>(null);
+  // Enabled login button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   const showResetPrompt = wrongPwCount >= RESET_PROMPT_AFTER;
+  const loginValid = isEmail(email.trim()) && password.length >= MIN_PASSWORD_LEN;
 
   const onEmailChange = (next: string) => {
     setEmail(next);
@@ -249,6 +256,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         autoComplete="email"
         returnKeyType="next"
         blurOnSubmit={false}
+        error={attempted && !isEmail(email.trim()) ? 'არასწორი ელ. ფოსტა' : undefined}
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
@@ -262,7 +270,8 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         textContentType="password"
         autoComplete="current-password"
         returnKeyType="go"
-        onSubmitEditing={handleSignIn}
+        error={attempted && password.length < MIN_PASSWORD_LEN ? `პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს` : undefined}
+        onSubmitEditing={() => guard(loginValid, handleSignIn)}
       />
       <Pressable
         onPress={() => onForgotPassword(email.trim() || undefined)}
@@ -277,9 +286,8 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
       ) : null}
       <Button
         title={t('auth.login')}
-        onPress={handleSignIn}
+        onPress={() => guard(loginValid, handleSignIn)}
         loading={busy}
-        disabled={!isEmail(email.trim()) || password.length < MIN_PASSWORD_LEN}
       />
       <Divider />
       <SocialAuthButtons mode="login" onError={setError} />
@@ -336,6 +344,8 @@ function RegisterForm({
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  // Enabled register button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   const canSubmit =
     !!firstName.trim() &&
@@ -387,6 +397,7 @@ function RegisterForm({
             autoComplete="name-given"
             returnKeyType="next"
             blurOnSubmit={false}
+            error={attempted && !firstName.trim() ? 'სავალდებულო ველი' : undefined}
             onSubmitEditing={() => lastNameRef.current?.focus()}
           />
         </View>
@@ -400,6 +411,7 @@ function RegisterForm({
             autoComplete="name-family"
             returnKeyType="next"
             blurOnSubmit={false}
+            error={attempted && !lastName.trim() ? 'სავალდებულო ველი' : undefined}
             onSubmitEditing={() => emailRef.current?.focus()}
           />
         </View>
@@ -416,6 +428,7 @@ function RegisterForm({
         autoComplete="email"
         returnKeyType="next"
         blurOnSubmit={false}
+        error={attempted && !isEmail(email.trim()) ? 'არასწორი ელ. ფოსტა' : undefined}
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
@@ -429,10 +442,11 @@ function RegisterForm({
         textContentType="newPassword"
         autoComplete="new-password"
         returnKeyType="go"
-        onSubmitEditing={() => { if (canSubmit) handleRegister(); }}
+        error={attempted && password.length < MIN_PASSWORD_LEN ? `პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს` : undefined}
+        onSubmitEditing={() => guard(canSubmit, handleRegister)}
       />
       {error ? <InlineError>{error}</InlineError> : null}
-      <Button title={t('auth.register')} onPress={handleRegister} loading={busy} disabled={!canSubmit} />
+      <Button title={t('auth.register')} onPress={() => guard(canSubmit, handleRegister)} loading={busy} />
       <Divider />
       <SocialAuthButtons mode="register" onError={setError} />
     </View>

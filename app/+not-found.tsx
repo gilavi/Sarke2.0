@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
+import { Compass } from 'lucide-react-native';
 import { ErrorState } from '../components/ErrorState';
 import { Button } from '../components/ui';
 import { theme } from '../lib/theme';
@@ -14,7 +15,7 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: t('notFound.title'), headerShown: true }} />
       <View style={styles.body}>
         <ErrorState
-          icon="compass-outline"
+          icon={Compass}
           title={t('notFound.title')}
           message={t('notFound.body')}
         />

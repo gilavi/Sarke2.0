@@ -11,6 +11,8 @@ import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-c
 import { Button, Field, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { projectsApi } from '../../../lib/services';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
+import { haptic } from '../../../lib/haptics';
 import { uploadSignature } from '../../../lib/signatures';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
@@ -49,6 +51,7 @@ export default function SignerForm() {
   const [pendingSigData, setPendingSigData] = useState<string | null>(null); // base64 png to upload
   const [capturing, setCapturing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { attempted, guard } = useSubmitGuard();
   const queryClient = useQueryClient();
 
   const { data: signers = [] } = useProjectSigners(id);
@@ -181,8 +184,10 @@ export default function SignerForm() {
 
           <FloatingLabelInput
             label={t('remoteSigner.nameLabel')}
+            required
             value={fullName}
             onChangeText={setFullName}
+            error={attempted && !fullName.trim() ? 'სავალდებულო ველი' : undefined}
           />
           <FloatingLabelInput
             label={t('common.phone')}
@@ -219,9 +224,8 @@ export default function SignerForm() {
 
           <Button
             title={editing ? t('projectSigner.saveButton') : t('projectSigner.addButton')}
-            onPress={save}
+            onPress={() => guard(!!fullName.trim(), save)}
             loading={busy}
-            disabled={!fullName.trim()}
             style={{ marginTop: 8 }}
           />
         </ScrollView>
@@ -255,13 +259,19 @@ function SignatureCaptureModal({
 
   const ref = useRef<SignatureViewRef>(null);
   const [hasStroke, setHasStroke] = useState(false);
+  const [sigError, setSigError] = useState(false);
 
   useEffect(() => {
-    if (visible) setHasStroke(false);
+    if (visible) {
+      setHasStroke(false);
+      setSigError(false);
+    }
   }, [visible]);
 
   const handleSave = () => {
     if (!hasStroke) {
+      setSigError(true);
+      haptic.validationError();
       return;
     }
     ref.current?.readSignature();
@@ -295,14 +305,19 @@ function SignatureCaptureModal({
             <SignatureScreen
               ref={ref}
               onOK={onDone}
-              onBegin={() => setHasStroke(true)}
-              onEnd={() => setHasStroke(true)}
+              onBegin={() => { setHasStroke(true); setSigError(false); }}
+              onEnd={() => { setHasStroke(true); setSigError(false); }}
               webStyle={webStyle}
               descriptionText=""
               autoClear={false}
               imageType="image/png"
             />
           </View>
+          {sigError ? (
+            <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
+              გთხოვთ, ხელი მოაწეროთ
+            </Text>
+          ) : null}
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Button
               title={t('projectSigner.clearButton')}
@@ -314,7 +329,6 @@ function SignatureCaptureModal({
               title={t('projectSigner.saveButton')}
               style={{ flex: 1.4 }}
               onPress={handleSave}
-              disabled={!hasStroke}
             />
           </View>
         </View>

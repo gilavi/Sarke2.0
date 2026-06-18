@@ -10,6 +10,7 @@ import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { useTheme } from '../lib/theme';
+import { haptic } from '../lib/haptics';
 import { SheetLayout } from './SheetLayout';
 import { BottomSheetScrollView } from './BottomSheet';
 
@@ -66,12 +67,19 @@ export function AddRemoteSignerSheet({
   };
 
   const handleSubmit = () => {
-    setNameTouched(true);
-    setPhoneTouched(true);
-    if (!name.trim()) return;
-    if (!phone.trim() || !isGeorgianPhone(phone)) return;
+    if (!name.trim() || !phone.trim() || !isGeorgianPhone(phone)) {
+      setNameTouched(true);
+      setPhoneTouched(true);
+      haptic.validationError();
+      return;
+    }
     const normalized = normalizePhone(phone);
-    if (!normalized) return;
+    if (!normalized) {
+      setNameTouched(true);
+      setPhoneTouched(true);
+      haptic.validationError();
+      return;
+    }
     onSubmit({ signerName: name.trim(), signerPhone: normalized, signerRole: role });
     reset();
   };

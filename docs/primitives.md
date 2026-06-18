@@ -254,15 +254,48 @@ When you add a new template in `supabase/migrations/`, add its full→short pair
 
 **Don't** reintroduce `harness_name || "#" + id.slice(0,8)` style fallbacks in either codebase — that drift (web showing `ქამარი #0c9537aa` while mobile showed the template name) is exactly what this primitive removes. Equipment inspections on web have no template row, so `web-app/src/lib/documentNames.ts` maps their type to a constant full name and routes it through `inspectionDisplayName`.
 
-## Inspection verdict selector
+## Inspection conclusion step + verdict selector
 
-One component: [`components/inspection-steps/VerdictSelector.tsx`](../components/inspection-steps/VerdictSelector.tsx), re-exported from `components/inspection-steps`.
+The single "last step" for **every** inspection flow is [`components/inspection-steps/ConclusionStep.tsx`](../components/inspection-steps/ConclusionStep.tsx) (re-exported from `components/inspection-steps`). Top to bottom it renders: a conclusion illustration (`QuestionAvatar`, `showAvatar` default true), an optional `summarySection` slot (summary tables), an optional harness-name field, a verdict-suggestion banner, the icon-card `VerdictSelector`, a free-text **`კომენტარი`** box (`notesLabel` overridable; `notesRequired`/`notesError` for required flows), optional suggestion pills, and a photo strip (first-class `photoPaths`/`onAddPhoto`/`onDeletePhoto` → `PhotoSection`, or a `photoSection` ReactNode slot for the scaffold's `AttachmentBars`). Generic over the verdict value type. Pass `scroll={false}` when the host already owns the scroll view.
 
-The `გადაწყვეტილება` (decision) picker on **every** inspection conclusion step — equipment routes (bobcat, excavator, forklift, …), the harness flow, and the scaffold wizard. Dynamic: pass `options: VerdictOption[]` (any 2–3 verdicts) and it renders one icon + label button each. Generic over the verdict value type. The icon for each option resolves from an explicit `option.icon`, else a semantic `option.tone` (`success`/`caution`/`danger`), else **by position** (first = `shield-checkmark`, last = `warning`, middle = `eye-outline`) — every flow orders options positive → negative, so most flows wire nothing extra.
+Used by **all** flows: equipment routes (bobcat, excavator, forklift, cargo-platform, mobile-ladder, lifting-accessories, safety-net, and general-equipment — which passes empty `verdictOptions` for a verdict-less conclusion), the harness flow, and the scaffold wizard's [`features/inspection-wizard/ConclusionStep.tsx`](../features/inspection-wizard/ConclusionStep.tsx) (a thin wrapper that delegates with `scroll={false}` and feeds the 3-option `SafetyVerdict` set). Fall-protection is the one exception: its verdict is **per device**, so it composes `VerdictSelector` + `VerdictSuggestionBanner` directly inside each device panel rather than wrapping the whole step.
 
-`ConclusionStep` (equipment routes + harness) renders it from its `verdictOptions` prop. The scaffold wizard's `features/inspection-wizard/ConclusionStep.tsx` feeds it the 3-option `SafetyVerdict` set.
+**`VerdictSelector`** ([`components/inspection-steps/VerdictSelector.tsx`](../components/inspection-steps/VerdictSelector.tsx)) — the `გადაწყვეტილება` (decision) picker. Dynamic: pass `options: VerdictOption[]` (any 2–3 verdicts) and it renders one icon + label button each. The icon resolves from an explicit `option.icon`, else a semantic `option.tone` (`success`/`caution`/`danger`), else **by position** (first = `shield-checkmark`, last = `warning`, middle = `eye-outline`) — every flow orders options positive → negative, so most wire nothing extra.
 
-**Don't** hand-roll verdict chips/buttons in a flow (the old pill chips in `ConclusionStep` and the bespoke `features/inspection-wizard/VerdictSelector` are exactly what this consolidated). If a flow needs a different verdict set, pass different `options`; if it needs a different icon, set `icon`/`tone` on the option rather than reordering or forking the component.
+**`VerdictSuggestionBanner`** ([`components/inspection-steps/VerdictSuggestionBanner.tsx`](../components/inspection-steps/VerdictSuggestionBanner.tsx)) — the shared `შემოთავაზება` hint (Lightbulb + text) shown above the selector when an auto-computed verdict differs from the chosen one. Pass `text` and an optional `onApply` (makes the banner tappable to adopt the suggestion). `ConclusionStep` renders it from its `suggestion` prop.
+
+**Don't** hand-roll verdict chips/buttons, a suggestion banner, or a `დასკვნა` last-step layout in a flow. This consolidation removed three forks: the old pill chips in `ConclusionStep`, the bespoke `features/inspection-wizard/VerdictSelector`, and the separate **`components/inspection-parts/VerdictSelector`** (a plain-pill selector with a built-in notes field, formerly used by forklift/cargo-platform/mobile-ladder/lifting-accessories/safety-net/fall-protection — now **deleted**). If a flow needs a different verdict set, pass different `options`; a different icon, set `icon`/`tone` on the option; extra content above the verdict, use `summarySection`.
+
+## Form validation — enabled buttons + on-press errors
+
+We **do not disable** forward/submit buttons when a required field is empty — a dimmed, unpressable button gives the user no signal about *what* is missing. Instead the button stays **enabled**, and pressing it while invalid reveals the empty required fields in red (+ an error haptic), so the user understands the field is mandatory.
+
+One hook owns this: [`hooks/useSubmitGuard.ts`](../hooks/useSubmitGuard.ts).
+
+```ts
+const { attempted, guard, reset } = useSubmitGuard();
+// button (no validation-based `disabled`):
+<Button onPress={() => guard(canAdvance, goNext)} ... />
+// each required field:
+<FloatingLabelInput required error={attempted && !value.trim() ? 'სავალდებულო ველი' : undefined} ... />
+// multi-step screens: clear the reveal on step change
+useEffect(() => reset(), [step, reset]);
+```
+
+`guard(isValid, onValid, onInvalid?)`: when invalid it sets `attempted`, fires `haptic.validationError()`, and calls `onInvalid` (don't advance); when valid it clears `attempted` and runs `onValid`. The precedent it generalizes lives in `ConclusionStep`'s `interacted` flag and `AddRemoteSignerModal`'s `*Touched` flags.
+
+Field error support already exists on the primitives — wire them, don't rebuild:
+- **Text** — `FloatingLabelInput` (`error?: string`, `required` → `*`), and the `FormField`/`ui/Field` wrappers (render `error` below any child — use them to give radio/picker **groups** an inline error message).
+- **Verdict** — `inspection-steps/VerdictSelector` (`showError`/`errorText`) and `ConclusionStep` (`verdictError`/`notesError`).
+- **Yes/No chips** — `wizard/AnswerButtons` (`error?: boolean`) → `wizard/StatusChip` (`error?: boolean`, danger outline + shake).
+- **Date/time** — `DateTimeField` (`error?: string`).
+- **Signature** — `SignatureCanvas` (enabled by default; shows its own "draw your signature" error + haptic on an empty press).
+- **Map pin** — `MapPickerInline` (enabled by default; self-shows "pick a location" + haptic on an empty press).
+- The equipment-inspection chokepoint is [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx): its Next/Finish button is always enabled; on a validated step (`blockNext` or last step) with `canGoNext === false` it fires the haptic and calls `onBlockedNext` so the screen flips its `attempted` flag.
+
+**Keep `disabled` only for non-input reasons:** in-flight guards (`loading`/`saving`/`busy`/`completing`/`generating`/`sharing` — double-submit protection) and data-not-loaded guards (`!briefing || !project`, reorder `index === 0`, OTP-resend cooldown). Never re-add `disabled={!isValid}` for a missing-input gate.
+
+Optional companion for long forms: [`hooks/useScrollToError.ts`](../hooks/useScrollToError.ts) — attach `scrollRef` to a `ScrollView`, `registerField('key')` on each field's wrapper, and pass `scrollToFirstError(keys)` as `guard`'s `onInvalid` to bring the first red field into view. Best-effort; short single-column forms don't need it.
 
 ## Adding a new primitive
 

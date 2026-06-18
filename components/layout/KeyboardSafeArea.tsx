@@ -20,6 +20,11 @@ interface Props {
    * offset; now KeyboardAwareScrollView handles keyboard avoidance directly.
    */
   headerHeight?: number;
+  /**
+   * Optional ref to the underlying scroll view, so callers can drive scrolling
+   * (e.g. `useScrollToError` to bring the first invalid field into view).
+   */
+  scrollRef?: React.Ref<any>;
 }
 
 /**
@@ -39,9 +44,11 @@ export function KeyboardSafeArea({
   children,
   contentStyle,
   bottomOffset = 80,
+  scrollRef,
 }: Props) {
   return (
     <KeyboardAwareScrollView
+      ref={scrollRef}
       style={styles.scroll}
       contentContainerStyle={[styles.content, contentStyle]}
       keyboardShouldPersistTaps="handled"

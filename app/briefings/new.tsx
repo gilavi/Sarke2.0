@@ -19,6 +19,7 @@ import { TopicSelector } from '../../components/briefings/TopicSelector';
 import { ParticipantsStep } from '../../components/briefings/ParticipantsStep';
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { projectsApi } from '../../lib/services';
 import type { BriefingParticipant, Project } from '../../types/models';
@@ -44,6 +45,8 @@ export default function NewBriefingScreen() {
 
   // ── Wizard step (1 = topics, 2 = participants; signing is the next route) ──
   const [step, setStep] = useState<1 | 2>(1);
+  // Enabled forward button + on-press control errors (see useSubmitGuard).
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
 
   // ── Form state ──
   const [dateTime, setDateTime] = useState(() => new Date());
@@ -120,6 +123,9 @@ export default function NewBriefingScreen() {
     else router.back();
   }, [step, router]);
 
+  // Clear the error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // Launched from Home without a project - pick one as the first full-screen step.
   if (!projectId) {
     return (
@@ -172,6 +178,9 @@ export default function NewBriefingScreen() {
                 customTopic={customTopic}
                 onChangeCustomTopic={setCustomTopic}
               />
+              {attempted && !hasTopics && (
+                <Text style={styles.controlError}>აირჩიეთ მინიმუმ ერთი თემა</Text>
+              )}
             </View>
           </>
         ) : (
@@ -191,6 +200,9 @@ export default function NewBriefingScreen() {
               onAdd={addParticipant}
               onRemove={removeParticipant}
             />
+            {attempted && !canStart && (
+              <Text style={styles.controlError}>დაამატეთ მინიმუმ ერთი მონაწილე</Text>
+            )}
           </View>
         )}
       </KeyboardSafeArea>
@@ -202,24 +214,17 @@ export default function NewBriefingScreen() {
               title="შემდეგი"
               size="lg"
               rightIcon={ChevronRight}
-              onPress={() => setStep(2)}
-              disabled={!hasTopics}
+              onPress={() => guard(hasTopics, () => setStep(2))}
               style={{ width: '100%' }}
             />
           ) : (
-            <>
-              {!canStart && (
-                <Text style={styles.footerHint}>დაამატეთ მინიმუმ 1 მონაწილე</Text>
-              )}
-              <Button
-                title="დაწყება →"
-                size="lg"
-                onPress={onStart}
-                disabled={!canStart}
-                loading={busy}
-                style={{ width: '100%' }}
-              />
-            </>
+            <Button
+              title="დაწყება →"
+              size="lg"
+              onPress={() => guard(canStart, onStart)}
+              loading={busy}
+              style={{ width: '100%' }}
+            />
           )}
         </View>
       </KeyboardStickyView>
@@ -271,10 +276,11 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingTop: 12,
       gap: 8,
     },
-    footerHint: {
-      fontSize: 12,
-      color: theme.colors.inkFaint,
-      textAlign: 'center',
+    controlError: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.danger,
+      marginTop: 2,
     },
   });
 }

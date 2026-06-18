@@ -23,8 +23,11 @@ import { DateTimeField } from '../../components/DateTimeField';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
+import { incidentColors } from '../../lib/statusColors';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
+import { useScrollToError } from '../../hooks/useScrollToError';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
@@ -76,25 +79,6 @@ const INITIAL_FORM: FormData = {
   photos: [],
 };
 
-function getTypeBadge(theme: any, isDark: boolean): Record<IncidentType, { bg: string; text: string; border: string }> {
-  if (isDark) {
-    return {
-      minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
-      severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
-      fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
-    };
-  }
-  return {
-    minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-    severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-    fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-  };
-}
-
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function NewIncident() {
@@ -111,6 +95,10 @@ export default function NewIncident() {
 
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
+  // Enabled "შემდეგი" button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
+  // Scroll the first empty required field into view on a blocked press.
+  const { scrollRef, registerField, scrollToFirstError } = useScrollToError();
   const [project, setProject] = useState<Project | null>(null);
   const [saving, setSaving] = useState(false);
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
@@ -172,9 +160,27 @@ export default function NewIncident() {
   }, [step, form]);
 
   const goNext = () => {
-    if (!canAdvance) return;
     setStep((prev) => (prev + 1) as Step);
   };
+
+  // Ordered keys of the empty required fields on the current step (for scroll-to-error).
+  const missingFieldKeys = useMemo((): string[] => {
+    if (step === 2) return form.location.trim() ? [] : ['location'];
+    if (step === 3) {
+      return [
+        ...(form.description.trim() ? [] : ['description']),
+        ...(form.cause.trim() ? [] : ['cause']),
+      ];
+    }
+    return [];
+  }, [step, form]);
+
+  const handleAdvance = () => {
+    guard(canAdvance, goNext, () => scrollToFirstError(missingFieldKeys));
+  };
+
+  // Clear the error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
   // ── photo handling ──────────────────────────────────────────────────────────
 
@@ -435,14 +441,16 @@ export default function NewIncident() {
         surfaceColor={theme.colors.surface}
       />
 
-      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
-        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} isDark={isDark} s={s} />}
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }} scrollRef={scrollRef}>
+        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} isDark={isDark} s={s} attempted={attempted} />}
         {step === 2 && (
           <Step2
             form={form}
             setForm={setForm}
             theme={theme}
             s={s}
+            attempted={attempted}
+            registerField={registerField}
           />
         )}
         {step === 3 && (
@@ -451,6 +459,8 @@ export default function NewIncident() {
             setForm={setForm}
             theme={theme}
             s={s}
+            attempted={attempted}
+            registerField={registerField}
             witnessInput={witnessInput}
             setWitnessInput={setWitnessInput}
             onAddWitness={addWitness}
@@ -478,8 +488,7 @@ export default function NewIncident() {
           <Button
             title="შემდეგი"
             rightIcon={ArrowRight}
-            onPress={goNext}
-            disabled={!canAdvance}
+            onPress={handleAdvance}
             style={{ width: '100%' }}
           />
         ) : (
@@ -509,23 +518,25 @@ export default function NewIncident() {
 // ─── Step 1 - type selection ──────────────────────────────────────────────────
 
 function Step1({
-  form, setForm, theme, isDark, s,
+  form, setForm, theme, isDark, s, attempted,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
   theme: any;
   isDark: boolean;
   s: ReturnType<typeof makeStyles>;
+  attempted: boolean;
 }) {
   const types: IncidentType[] = ['minor', 'severe', 'fatal', 'mass', 'nearmiss'];
   const needsNotice = form.type === 'severe' || form.type === 'fatal';
+  const showError = attempted && form.type === null;
 
   return (
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>რა სახის შემთხვევა?</Text>
 
       {types.map(t => {
-        const badge = getTypeBadge(theme, isDark)[t];
+        const badge = incidentColors(isDark)[t];
         const selected = form.type === t;
         return (
           <Pressable
@@ -533,6 +544,7 @@ function Step1({
             onPress={() => setForm(f => ({ ...f, type: t }))}
             style={[
               s.typeCard,
+              showError && { borderColor: theme.colors.danger },
               selected && {
                 borderColor: theme.colors.ink,
                 backgroundColor: theme.colors.subtleSurface,
@@ -556,6 +568,10 @@ function Step1({
         );
       })}
 
+      {showError && (
+        <Text style={s.requiredError}>აირჩიეთ შემთხვევის ტიპი</Text>
+      )}
+
       {needsNotice && (
         <View style={s.warningBanner}>
           <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
@@ -572,12 +588,13 @@ function Step1({
 // ─── Step 2 - person + details ────────────────────────────────────────────────
 
 function Step2({
-  form, setForm, theme, s,
+  form, setForm, theme, s, attempted,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
   theme: any;
   s: ReturnType<typeof makeStyles>;
+  attempted: boolean;
 }) {
   const isNearMiss = form.type === 'nearmiss';
 
@@ -622,6 +639,7 @@ function Step2({
         required
         value={form.location}
         onChangeText={v => setForm(f => ({ ...f, location: v }))}
+        error={attempted && !form.location.trim() ? 'სავალდებულო ველი' : undefined}
       />
     </View>
   );
@@ -630,7 +648,7 @@ function Step2({
 // ─── Step 3 - description ─────────────────────────────────────────────────────
 
 function Step3({
-  form, setForm, theme, s,
+  form, setForm, theme, s, attempted,
   witnessInput, setWitnessInput, onAddWitness, onRemoveWitness,
   onAddPhoto, onRemovePhoto,
 }: {
@@ -638,6 +656,7 @@ function Step3({
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
   theme: any;
   s: ReturnType<typeof makeStyles>;
+  attempted: boolean;
   witnessInput: string;
   setWitnessInput: (v: string) => void;
   onAddWitness: () => void;
@@ -651,16 +670,20 @@ function Step3({
 
       <FloatingLabelInput
         label="რა მოხდა"
+        required
         value={form.description}
         onChangeText={v => setForm(f => ({ ...f, description: v }))}
+        error={attempted && !form.description.trim() ? 'სავალდებულო ველი' : undefined}
         multiline
         numberOfLines={4}
       />
 
       <FloatingLabelInput
         label="სავარაუდო მიზეზი"
+        required
         value={form.cause}
         onChangeText={v => setForm(f => ({ ...f, cause: v }))}
+        error={attempted && !form.cause.trim() ? 'სავალდებულო ველი' : undefined}
         multiline
         numberOfLines={3}
       />
@@ -757,7 +780,7 @@ function Step4({
       .catch(() => null);
   }, [sigPath]);
 
-  const badge = form.type ? getTypeBadge(theme, isDark)[form.type] : null;
+  const badge = form.type ? incidentColors(isDark)[form.type] : null;
 
   return (
     <View style={{ gap: 12 }}>
@@ -945,6 +968,14 @@ function makeStyles(theme: any) {
       fontWeight: '600',
       color: theme.colors.inkSoft,
       marginBottom: 2,
+    },
+
+    // inline required-field error (custom controls without an `error` prop)
+    requiredError: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.danger,
+      marginTop: 2,
     },
 
     // witnesses

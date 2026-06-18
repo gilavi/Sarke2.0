@@ -21,6 +21,7 @@ import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
 import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { useTranslation } from 'react-i18next';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 30;
@@ -70,6 +71,9 @@ export default function VerifyEmailScreen() {
   const [resendBusy, setResendBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Enabled verify button + on-press OTP-grid error (see useSubmitGuard).
+  const { guard } = useSubmitGuard();
+  const codeIncomplete = code.length !== CODE_LENGTH;
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 250);
@@ -169,6 +173,7 @@ export default function VerifyEmailScreen() {
                       styles.cell,
                       ch ? styles.cellFilled : null,
                       i === code.length && !busy ? styles.cellActive : null,
+                      error ? styles.cellError : null,
                     ]}
                   >
                     <Text style={styles.cellText}>{ch}</Text>
@@ -203,9 +208,14 @@ export default function VerifyEmailScreen() {
 
               <Button
                 title={t('auth.verifyConfirm')}
-                onPress={() => submit()}
+                onPress={() =>
+                  guard(
+                    !codeIncomplete,
+                    () => submit(),
+                    () => setError(`შეიყვანეთ ${CODE_LENGTH}-ნიშნა კოდი`),
+                  )
+                }
                 loading={busy}
-                disabled={code.length !== CODE_LENGTH}
                 style={{ marginTop: 18 }}
               />
 
@@ -277,6 +287,9 @@ function getstyles(theme: any) {
   },
   cellActive: {
     borderColor: theme.colors.accent,
+  },
+  cellError: {
+    borderColor: theme.colors.danger,
   },
   cellText: { fontSize: 24, fontWeight: '700', color: theme.colors.ink },
   hiddenInput: {

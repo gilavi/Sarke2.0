@@ -8,7 +8,7 @@ import { Card, Screen } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { inspectionsApi } from '../lib/services';
-import { InspectionTypeAvatar } from '../components/InspectionTypeAvatar';
+import { InspectionListAvatar } from '../components/InspectionListAvatar';
 import { RecordTypePill } from '../components/RecordTypePill';
 import { useToast } from '../lib/toast';
 import { useTheme } from '../lib/theme';
@@ -102,7 +102,7 @@ const MemoizedHistoryItem = memo(function HistoryItem({
       >
         <Card padding={12}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <InspectionTypeAvatar
+            <InspectionListAvatar
               category={tpl?.category}
               size={44}
               status={q.status === 'completed' ? 'completed' : 'draft'}

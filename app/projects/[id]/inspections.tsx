@@ -20,7 +20,7 @@ import {
   useExcavatorInspectionsByProject,
   useGeneralEquipmentInspectionsByProject,
 } from '../../../lib/apiHooks';
-import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
+import { InspectionListAvatar } from '../../../components/InspectionListAvatar';
 import { RecentListRow } from '../../../components/RecentListRow';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -132,7 +132,7 @@ export default function ProjectInspectionsList() {
                   <RecentListRow
                     key={`${item.source}-${item.id}`}
                     leading={
-                      <InspectionTypeAvatar
+                      <InspectionListAvatar
                         category={sourceKey}
                         size={40}
                         status={isCompleted ? 'completed' : 'draft'}

@@ -93,7 +93,7 @@ export function ReportsSection({
           })}
           {overflow.length > 0 ? (
             <ViewMoreRow
-              items={overflow.map(() => ({ ionicon: 'document-text-outline' }))}
+              items={overflow.map(() => ({ category: null }))}
               total={overflow.length}
               onPress={() => router.push(`/projects/${id}/reports` as any)}
             />

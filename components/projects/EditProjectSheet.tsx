@@ -18,6 +18,7 @@ import { LocationRow } from '../LocationRow';
 import { MapPickerInline } from '../MapPickerInline';
 import { Button } from '../ui';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
@@ -54,6 +55,7 @@ export function EditProjectSheet({
   const [busy, setBusy]             = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const keyboardMargin              = useSheetKeyboardMargin();
+  const { attempted, guard }        = useSubmitGuard();
 
   // Sync form when modal opens or project changes
   useFocusEffect(
@@ -123,9 +125,8 @@ export function EditProjectSheet({
                 <Button
                   title={t('common.save')}
                   size="lg"
-                  onPress={save}
+                  onPress={() => guard(!!company.trim(), save)}
                   loading={busy}
-                  disabled={!company.trim()}
                 />
               }
             >
@@ -150,6 +151,7 @@ export function EditProjectSheet({
                 required
                 value={company}
                 onChangeText={setCompany}
+                error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
                 autoFocus
               />
 

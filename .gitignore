@@ -30,3 +30,8 @@ test-results/
 
 # Vitest coverage output (regenerated on `npx vitest run --coverage`)
 coverage/
+
+# Editor swap/temp files
+*.swp
+*.swo
+*~

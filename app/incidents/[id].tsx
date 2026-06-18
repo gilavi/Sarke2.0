@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
+import { incidentColors } from '../../lib/statusColors';
 import { SkeletonListCard } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -44,25 +45,6 @@ import {
   INCIDENT_TYPE_FULL_LABEL,
   INCIDENT_TYPE_LABEL,
 } from '../../types/models';
-
-function getTypeBadge(theme: any, isDark: boolean): Record<string, { bg: string; text: string; border: string }> {
-  if (isDark) {
-    return {
-      minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
-      severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
-      fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
-    };
-  }
-  return {
-    minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-    severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-    fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-  };
-}
 
 export default function IncidentDetail() {
   const { theme, isDark } = useTheme();
@@ -121,7 +103,7 @@ export default function IncidentDetail() {
     return () => { cancelled = true; };
   }, [incident?.id]);
 
-  const badge = incident ? getTypeBadge(theme, isDark)[incident.type] : null;
+  const badge = incident ? incidentColors(isDark)[incident.type] : null;
   const isNearMiss = incident?.type === 'nearmiss';
 
   // ── share / generate PDF ─────────────────────────────────────────────────

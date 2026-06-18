@@ -238,17 +238,17 @@ export function Button({
             ]}
           />
         )}
-        {(LeftIcon || iconLeft) && (
+        {iconLeft ? (
+          <View style={{ marginRight: 8 }}>{iconLeft}</View>
+        ) : LeftIcon ? (
           <View style={{ marginRight: 8 }}>
-            {iconLeft ?? (
-              <LeftIcon
-                size={textSizes[size].fontSize + 2}
-                color={v.color}
-                strokeWidth={1.5}
-              />
-            )}
+            <LeftIcon
+              size={textSizes[size].fontSize + 2}
+              color={v.color}
+              strokeWidth={1.5}
+            />
           </View>
-        )}
+        ) : null}
         <Text
           style={[
             styles.text,
@@ -259,17 +259,17 @@ export function Button({
         >
           {title}
         </Text>
-        {(RightIcon || iconRight) && (
+        {iconRight ? (
+          <View style={{ marginLeft: 8 }}>{iconRight}</View>
+        ) : RightIcon ? (
           <View style={{ marginLeft: 8 }}>
-            {iconRight ?? (
-              <RightIcon
-                size={textSizes[size].fontSize + 2}
-                color={v.color}
-                strokeWidth={1.5}
-              />
-            )}
+            <RightIcon
+              size={textSizes[size].fontSize + 2}
+              color={v.color}
+              strokeWidth={1.5}
+            />
           </View>
-        )}
+        ) : null}
       </Pressable>
     </Animated.View>
   );

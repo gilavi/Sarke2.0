@@ -26,6 +26,7 @@ import { imageForDisplay } from '../../../../lib/imageUrl';
 import { qk } from '../../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePhotoPicker } from '../../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 import type { Report, ReportSlide } from '../../../../types/models';
 
 export default function ReportSlideEditor() {
@@ -48,6 +49,8 @@ export default function ReportSlideEditor() {
   const [busy, setBusy] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [thumbUri, setThumbUri] = useState<string | null>(null);
+  // Enabled "შენახვა" button + on-press title error (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   // Prevents useFocusEffect from resetting user-edited fields when the screen
   // regains focus after returning from the photo picker / annotator.
@@ -177,10 +180,12 @@ export default function ReportSlideEditor() {
     );
   };
 
-  const canSave = title.trim().length > 0 && !busy && !imageUploading;
+  // Title gate for the (now always-enabled) save button. `busy`/`imageUploading`
+  // stay separate in-flight disables.
+  const titleValid = title.trim().length > 0;
 
   const onSave = async () => {
-    if (!report || !slide || !canSave) return;
+    if (!report || !slide || busy || imageUploading || !titleValid) return;
     setBusy(true);
     const next = report.slides.map(s =>
       s.id === slide.id
@@ -252,6 +257,7 @@ export default function ReportSlideEditor() {
           value={title}
           onChangeText={setTitle}
           returnKeyType="next"
+          error={attempted && !title.trim() ? 'სავალდებულო ველი' : undefined}
         />
 
         {/* Description */}
@@ -264,7 +270,12 @@ export default function ReportSlideEditor() {
       </KeyboardSafeArea>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-        <Button title="შენახვა" onPress={onSave} disabled={!canSave} loading={busy} />
+        <Button
+          title="შენახვა"
+          onPress={() => guard(titleValid, onSave)}
+          disabled={busy || imageUploading}
+          loading={busy}
+        />
       </View>
     </View>
   );

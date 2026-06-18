@@ -29,6 +29,7 @@ import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { CelebrationBurst } from '../../../components/animations';
 import {
@@ -74,6 +75,9 @@ export default function GeneralEquipmentScreen() {
   const conclusionHistory  = useFieldHistory(userId, 'ge:conclusion');
 
   const [attachmentCount, setAttachmentCount] = useState(0);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // ── Shared orchestration ──────────────────────────────────────────────────
   const {
@@ -263,6 +267,9 @@ export default function GeneralEquipmentScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   const verdictOptions = useMemo<VerdictOption[]>(() => [], []);
 
   const handleConditionChange = useCallback((itemId: string, result: string | null) => {
@@ -339,6 +346,7 @@ export default function GeneralEquipmentScreen() {
         completing={completing}
         onNext={handleNext}
         onPrev={handlePrev}
+        onBlockedNext={markAttempted}
         onClose={() => router.back()}
       >
         {/* ── Step 1: Inspection details ─────────────────────────────────── */}
@@ -432,7 +440,7 @@ export default function GeneralEquipmentScreen() {
               if (v.trim()) conclusionHistory.addToHistory(v.trim());
             }}
             conclusionHistory={conclusionHistory.suggestions}
-            onConclusionChange={v => update('conclusion', v || null)}
+            notesError={attempted && !inspection.conclusion?.trim()}
             photoSection={
               <View>
                 <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
