@@ -13,4 +13,17 @@
     font-display: swap;
   }
   body { font-family: 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif; }
+
+  /* react-native-web renders TextInput as a DOM <input>/<textarea>, which gets
+     the browser's default focus outline (a blue, square-cornered ring). The
+     native app never shows this — components draw their own focus border (e.g.
+     FloatingLabelInput goes to an ink 1.5px border). Strip the UA outline so
+     focus states match the app 1:1 in both color and radius. */
+  input:focus,
+  textarea:focus,
+  select:focus,
+  [contenteditable="true"]:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
 </style>

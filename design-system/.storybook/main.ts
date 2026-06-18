@@ -61,6 +61,9 @@ const config: StorybookConfig = {
         dedupe: ['react', 'react-dom', 'react-native-web'],
         alias: [
           { find: 'expo-haptics', replacement: path.resolve(dirname, '../shims/expo-haptics.web.ts') },
+          // expo-router ships JSX in .js (rollup can't parse) and the showcase
+          // never navigates — stub it. Components only use useRouter() for back.
+          { find: /^expo-router$/, replacement: path.resolve(dirname, '../shims/expo-router.web.ts') },
           // react-native-gesture-handler ships untranspiled .ts that the babel
           // pass can't parse; we only need swipe-to-dismiss (non-essential on
           // web), so stub it. Mirrors metro.config.js WEB_SHIMS.
