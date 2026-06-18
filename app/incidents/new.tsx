@@ -3,6 +3,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
@@ -588,13 +589,14 @@ function Step1({
 // ─── Step 2 - person + details ────────────────────────────────────────────────
 
 function Step2({
-  form, setForm, theme, s, attempted,
+  form, setForm, theme, s, attempted, registerField,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
   theme: any;
   s: ReturnType<typeof makeStyles>;
   attempted: boolean;
+  registerField: (key: string) => (e: LayoutChangeEvent) => void;
 }) {
   const isNearMiss = form.type === 'nearmiss';
 
@@ -634,13 +636,15 @@ function Step2({
       />
 
       {/* Location */}
-      <FloatingLabelInput
-        label="ზუსტი ადგილი"
-        required
-        value={form.location}
-        onChangeText={v => setForm(f => ({ ...f, location: v }))}
-        error={attempted && !form.location.trim() ? 'სავალდებულო ველი' : undefined}
-      />
+      <View onLayout={registerField('location')}>
+        <FloatingLabelInput
+          label="ზუსტი ადგილი"
+          required
+          value={form.location}
+          onChangeText={v => setForm(f => ({ ...f, location: v }))}
+          error={attempted && !form.location.trim() ? 'სავალდებულო ველი' : undefined}
+        />
+      </View>
     </View>
   );
 }
@@ -648,7 +652,7 @@ function Step2({
 // ─── Step 3 - description ─────────────────────────────────────────────────────
 
 function Step3({
-  form, setForm, theme, s, attempted,
+  form, setForm, theme, s, attempted, registerField,
   witnessInput, setWitnessInput, onAddWitness, onRemoveWitness,
   onAddPhoto, onRemovePhoto,
 }: {
@@ -657,6 +661,7 @@ function Step3({
   theme: any;
   s: ReturnType<typeof makeStyles>;
   attempted: boolean;
+  registerField: (key: string) => (e: LayoutChangeEvent) => void;
   witnessInput: string;
   setWitnessInput: (v: string) => void;
   onAddWitness: () => void;
@@ -668,25 +673,29 @@ function Step3({
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>აღწერა და მიზეზი</Text>
 
-      <FloatingLabelInput
-        label="რა მოხდა"
-        required
-        value={form.description}
-        onChangeText={v => setForm(f => ({ ...f, description: v }))}
-        error={attempted && !form.description.trim() ? 'სავალდებულო ველი' : undefined}
-        multiline
-        numberOfLines={4}
-      />
+      <View onLayout={registerField('description')}>
+        <FloatingLabelInput
+          label="რა მოხდა"
+          required
+          value={form.description}
+          onChangeText={v => setForm(f => ({ ...f, description: v }))}
+          error={attempted && !form.description.trim() ? 'სავალდებულო ველი' : undefined}
+          multiline
+          numberOfLines={4}
+        />
+      </View>
 
-      <FloatingLabelInput
-        label="სავარაუდო მიზეზი"
-        required
-        value={form.cause}
-        onChangeText={v => setForm(f => ({ ...f, cause: v }))}
-        error={attempted && !form.cause.trim() ? 'სავალდებულო ველი' : undefined}
-        multiline
-        numberOfLines={3}
-      />
+      <View onLayout={registerField('cause')}>
+        <FloatingLabelInput
+          label="სავარაუდო მიზეზი"
+          required
+          value={form.cause}
+          onChangeText={v => setForm(f => ({ ...f, cause: v }))}
+          error={attempted && !form.cause.trim() ? 'სავალდებულო ველი' : undefined}
+          multiline
+          numberOfLines={3}
+        />
+      </View>
 
       <FloatingLabelInput
         label="მიღებული ზომები"
