@@ -2,7 +2,6 @@ import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { View } from 'react-native';
 import { HeaderBackButton } from '@root/components/HeaderBackButton';
-import { HeaderBackPill } from '@root/components/HeaderBackPill';
 import { FlowHeader } from '@root/components/FlowHeader';
 
 const meta: Meta = { title: 'Components/Navigation' };
@@ -10,13 +9,13 @@ export default meta;
 type Story = StoryObj;
 
 export const BackControls: Story = {
-  name: 'Back buttons',
+  name: 'Back button',
   render: () => (
+    // The one canonical back control: a circular outline IconButton (ChevronLeft)
+    // with the shared press bounce. The old text "< Back" pill was removed.
     <View style={{ flexDirection: 'row', gap: 24, alignItems: 'center' }}>
       <HeaderBackButton onPress={() => {}} />
       <HeaderBackButton onPress={() => {}} disabled />
-      <HeaderBackPill onPress={() => {}} />
-      <HeaderBackPill label="Back" onPress={() => {}} />
     </View>
   ),
 };

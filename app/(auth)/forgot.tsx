@@ -9,7 +9,7 @@ import { Keyboard } from 'react-native';
 import * as Linking from 'expo-linking';
 import { supabase } from '../../lib/supabase';
 import { Button, Card, ErrorText } from '../../components/ui';
-import { HeaderBackPill } from '../../components/HeaderBackPill';
+import { HeaderBackButton } from '../../components/HeaderBackButton';
 import { useTheme } from '../../lib/theme';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { toErrorMessage } from '../../lib/logError';
@@ -64,7 +64,7 @@ export default function ForgotPasswordScreen() {
           contentStyle={{ paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 }}
         >
           <View style={{ marginBottom: 18 }}>
-            <HeaderBackPill label={t('auth.login')} />
+            <HeaderBackButton />
           </View>
 
           <Text style={{ fontSize: 28, fontWeight: '900', color: theme.colors.ink }}>

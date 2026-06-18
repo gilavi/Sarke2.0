@@ -15,7 +15,7 @@ import { A11yText as Text } from '../../../../components/primitives/A11yText';
 import { useBottomSheet } from '../../../../components/BottomSheet';
 import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
-import { HeaderBackPill } from '../../../../components/HeaderBackPill';
+import { HeaderBackButton } from '../../../../components/HeaderBackButton';
 import { useTheme } from '../../../../lib/theme';
 import { SkeletonPreview } from '../../../../components/Skeleton';
 import { useToast } from '../../../../lib/toast';
@@ -225,7 +225,7 @@ export default function ReportSlideEditor() {
           headerShown: true,
           title: `სლაიდი ${slideIndex + 1}`,
           headerBackVisible: false,
-          headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerShadowVisible: false,
           headerStyle: { backgroundColor: theme.colors.background },
           headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },

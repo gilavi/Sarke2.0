@@ -3,6 +3,7 @@ import { Modal } from '@mantine/core';
 import { X } from 'lucide-react';
 import { StepBar } from '@/components/ui/step-bar';
 import { WizardNav } from '@/components/ui/wizard-nav';
+import { IconButton } from '@/components/ui/icon-button';
 
 interface WizardShellProps {
   open: boolean;
@@ -58,13 +59,7 @@ export function WizardShell({
             {steps.length > 1 && <StepBar steps={steps} current={currentStep} />}
           </div>
           <div className="flex justify-end">
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 focus:outline-none dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
-              aria-label="დახურვა"
-            >
-              <X size={18} />
-            </button>
+            <IconButton icon={X} label="დახურვა" variant="plain" size="md" onClick={onClose} />
           </div>
         </div>
       </div>

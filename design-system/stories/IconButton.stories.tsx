@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { View } from 'react-native';
-import { X, Trash2, Pencil, Plus, MoreVertical } from 'lucide-react-native';
+import { X, Trash2, Pencil, Plus, MoreVertical, ChevronLeft } from 'lucide-react-native';
 import { IconButton } from '@ds/IconButton';
 
 // The canonical icon-only button — replaces hand-rolled Pressable + <Icon> for
@@ -23,6 +23,7 @@ type Story = StoryObj<typeof meta>;
 export const Variants: Story = {
   render: () => (
     <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
+      <IconButton icon={ChevronLeft} onPress={() => {}} a11yLabel="Back" variant="outline" />
       <IconButton icon={Pencil} onPress={() => {}} a11yLabel="Edit" variant="plain" />
       <IconButton icon={MoreVertical} onPress={() => {}} a11yLabel="More" variant="ghost" />
       <IconButton icon={Trash2} onPress={() => {}} a11yLabel="Delete" variant="danger" />

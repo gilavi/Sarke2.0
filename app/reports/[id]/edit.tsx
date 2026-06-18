@@ -13,7 +13,7 @@ import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { HeaderBackPill } from '../../../components/HeaderBackPill';
+import { HeaderBackButton } from '../../../components/HeaderBackButton';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { useTheme } from '../../../lib/theme';
 import { SkeletonListCard } from '../../../components/Skeleton';
@@ -167,7 +167,7 @@ export default function ReportSlidesEditor() {
           headerShown: true,
           title: reportDisplayName(report.title),
           headerBackVisible: false,
-          headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerShadowVisible: false,
           headerStyle: { backgroundColor: theme.colors.background },
           headerTintColor: theme.colors.accent,

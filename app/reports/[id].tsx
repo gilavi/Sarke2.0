@@ -11,7 +11,7 @@ import { Trash2, CircleCheck } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
-import { HeaderBackPill } from '../../components/HeaderBackPill';
+import { HeaderBackButton } from '../../components/HeaderBackButton';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { useTheme } from '../../lib/theme';
 import { SkeletonPreview } from '../../components/Skeleton';
@@ -148,7 +148,7 @@ export default function ReportDetailScreen() {
         options={{
           title: reportDisplayName(report?.title),
           headerBackVisible: false,
-          headerLeft: () => <HeaderBackPill onPress={() => router.back()} />,
+          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
           headerShadowVisible: false,
           headerStyle: { backgroundColor: theme.colors.background },
           headerTintColor: theme.colors.accent,

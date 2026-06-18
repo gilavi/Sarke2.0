@@ -19,7 +19,7 @@ import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
-import { HeaderBackPill } from '../../components/HeaderBackPill';
+import { HeaderBackButton } from '../../components/HeaderBackButton';
 import { useTranslation } from 'react-i18next';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
@@ -151,7 +151,7 @@ export default function VerifyEmailScreen() {
           contentStyle={styles.scroll}
         >
             <View style={styles.backBtn}>
-              <HeaderBackPill label={t('auth.login')} />
+              <HeaderBackButton />
             </View>
 
             <View style={{ alignItems: 'center', gap: 12, marginTop: 24 }}>

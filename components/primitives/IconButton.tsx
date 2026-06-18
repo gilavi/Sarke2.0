@@ -17,7 +17,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * sibling so those controls stop being hand-rolled `Pressable` + `<Icon>`.
  * Shares the canonical press bounce ({@link usePressBounce}) with every button.
  */
-export type IconButtonVariant = 'plain' | 'ghost' | 'danger' | 'overlay';
+export type IconButtonVariant = 'plain' | 'ghost' | 'danger' | 'overlay' | 'outline';
 export type IconButtonSize = 'sm' | 'md' | 'lg';
 
 interface IconButtonProps {
@@ -26,7 +26,7 @@ interface IconButtonProps {
   /** Accessible label (required — there is no visible text). */
   a11yLabel: string;
   a11yHint?: string;
-  /** plain = transparent ink · ghost = subtle surface · danger = soft red · overlay = dark scrim over images. */
+  /** plain = transparent ink · ghost = subtle surface · danger = soft red · overlay = dark scrim over images · outline = bordered circle (back/close). */
   variant?: IconButtonVariant;
   size?: IconButtonSize;
   disabled?: boolean;
@@ -61,6 +61,8 @@ export function IconButton({
       ? theme.colors.semantic.danger
       : variant === 'overlay'
       ? theme.colors.white
+      : variant === 'outline'
+      ? theme.colors.ink
       : theme.colors.inkSoft;
 
   const handlePress = () => {
@@ -97,6 +99,7 @@ function getStyles(theme: Theme) {
     ghost: { backgroundColor: theme.colors.surfaceSecondary },
     danger: { backgroundColor: theme.colors.semantic.dangerSoft },
     overlay: { backgroundColor: 'rgba(0,0,0,0.55)' },
+    outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: theme.colors.border },
     disabled: { opacity: 0.4 },
   });
 }

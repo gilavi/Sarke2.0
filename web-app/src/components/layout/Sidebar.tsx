@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, X } from 'lucide-react';
 import { SidebarNavList } from './SidebarNav';
 import { SidebarFooter } from './SidebarFooter';
+import { IconButton } from '@/components/ui/icon-button';
 
 /* ── Main Sidebar Component ─────────────────────────────
    Single permanent state - always full + labeled (no icon-only collapse). The
@@ -55,14 +56,14 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             className="relative z-10 flex h-full w-72 shrink-0 flex-col bg-[var(--bg-body)]"
           >
-            <button
-              type="button"
+            <IconButton
+              icon={X}
+              label="დახურვა"
+              variant="plain"
+              size="sm"
               onClick={onClose}
-              aria-label="დახურვა"
-              className="absolute right-3 top-4 z-10 rounded-lg p-1 text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/10"
-            >
-              <X size={18} />
-            </button>
+              className="absolute right-3 top-4 z-10"
+            />
             <SidebarBody onNavigate={onClose} />
           </motion.aside>
         </div>
