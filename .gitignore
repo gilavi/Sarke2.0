@@ -9,6 +9,11 @@ dist/
 .env.*.local
 .claude/
 
+# Local prod schema dumps used during staging setup — never commit (large,
+# prod-derived). See docs/STAGING_SETUP_LOG.md.
+supabase/baseline_prod_schema.sql
+supabase/prod_storage_*.sql
+
 # Native build output from `expo prebuild` / `expo run:ios|android`.
 # This is a managed Expo project — native dirs regenerate on demand
 # and shouldn't be tracked.

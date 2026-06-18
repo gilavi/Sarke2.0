@@ -4,10 +4,13 @@ How Hubble separates **local → staging → production** across the mobile app,
 three web bundles, and Supabase. Read this before cutting a build, publishing an
 OTA update, or running a migration against a cloud project.
 
-> Status (2026-06-17): the **code + CI plumbing is done and verified**. The
-> staging tier is **not live yet** — it is blocked on external steps (EAS account
-> access, the second Supabase project, an Apple App ID, GitHub Environments). The
-> "Manual setup" checklist below is the remaining work, in order.
+> Status (2026-06-18): staging is **largely live** — org move, staging Supabase
+> project, `eas.json` creds, GitHub Environments, and the staging **database**
+> (schema + storage + seed) are all done. Remaining: edge functions + their
+> secrets, demo account, the first staging device build, and the deferred prod
+> migration reconciliation. **For the actual execution log + current state, read
+> [STAGING_SETUP_LOG.md](STAGING_SETUP_LOG.md).** The checklist below is the
+> original plan (sections marked ✅ DONE inline).
 
 ---
 
