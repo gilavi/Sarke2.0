@@ -214,7 +214,7 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: false,
   },
-  owner: 'x4ylee',
+  owner: 'hubble-ge',
 };
 
 export default config;

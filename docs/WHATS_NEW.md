@@ -303,7 +303,7 @@ Post-App-Store-launch work to give every change an isolated place to run before 
 - **Edge functions** — `send-signing-sms` (`SIGN_WEB_URL`) and `create-bog-order` (`APP_SCHEME`, redirect allow-list) are now env-driven; defaults reproduce current prod values exactly (prod redeploy is a no-op).
 - **CI** — new `db-and-functions.yml` (develop → staging migrations + functions auto; production via gated manual run) and `deploy-web-app-staging.yml` (develop → `/app-staging/`). Existing prod web/docs workflows untouched. The prod-web GitHub-Environments rewiring is deliberately deferred until the Environments exist.
 - **Supabase** — fixed the `config.toml` seed path so `db reset` actually seeds (`./seed/01_system_templates.sql`).
-- **Pending (external):** EAS account access from the `x4ylee` owner, the second Supabase project, the `ge.sarke2.app.staging` Apple App ID, the GitHub `staging`/`production` Environments, and the one-time prod migration reconciliation + baseline squash (four colliding version tokens). Tracked in [ENVIRONMENTS.md](ENVIRONMENTS.md).
+- **Pending (external):** the second Supabase project, the `ge.sarke2.app.staging` Apple App ID, the GitHub `staging`/`production` Environments, and the one-time prod migration reconciliation + baseline squash (four colliding version tokens). EAS account access is now resolved — the project was moved into the shared `hubble-ge` Expo org and `app.config.ts` `owner` updated to `hubble-ge` (2026-06-18). Tracked in [ENVIRONMENTS.md](ENVIRONMENTS.md).
 
 ---
 

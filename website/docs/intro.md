@@ -39,7 +39,7 @@ cd website && npm install && npm start
 ### 📱 EAS builds
 
 ```sh
-npx eas build --platform ios --profile preview        # TestFlight / internal
+npx eas build --platform ios --profile staging        # internal distribution (staging backend)
 npx eas build --platform ios --profile production     # App Store
 npx eas build --platform android --profile production # Play Store
 ```

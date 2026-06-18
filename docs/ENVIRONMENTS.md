@@ -4,10 +4,13 @@ How Hubble separates **local → staging → production** across the mobile app,
 three web bundles, and Supabase. Read this before cutting a build, publishing an
 OTA update, or running a migration against a cloud project.
 
-> Status (2026-06-17): the **code + CI plumbing is done and verified**. The
-> staging tier is **not live yet** — it is blocked on external steps (EAS account
-> access, the second Supabase project, an Apple App ID, GitHub Environments). The
-> "Manual setup" checklist below is the remaining work, in order.
+> Status (2026-06-18): staging is **largely live** — org move, staging Supabase
+> project, `eas.json` creds, GitHub Environments, and the staging **database**
+> (schema + storage + seed) are all done. Remaining: edge functions + their
+> secrets, demo account, the first staging device build, and the deferred prod
+> migration reconciliation. **For the actual execution log + current state, read
+> [STAGING_SETUP_LOG.md](STAGING_SETUP_LOG.md).** The checklist below is the
+> original plan (sections marked ✅ DONE inline).
 
 ---
 
@@ -59,25 +62,17 @@ npm run update:production  # APP_ENV=production eas update --branch production
 
 ## 3. Manual setup checklist (the remaining work, in order)
 
-### 0.A — EAS account access (blocks all mobile staging builds)
-The EAS project (`ab800403-…`, owner **`x4ylee`**) is owned by someone else, and the working CLI account (`gilavi2000`) can't administer it. Ask the owner to either (a) transfer the project into a shared Expo **org** both accounts admin, or (b) add `gilavi2000` as a member with admin role. Until then: no staging build, no `eas env`, no `eas update:configure`.
+### 0.A — EAS account access (blocks all mobile staging builds) — ✅ DONE (2026-06-18)
+The EAS project (`ab800403-…`) was transferred from the personal account `x4ylee` into a shared Expo **org `hubble-ge`** that both maintainers admin (`gilavi2000` added as an org Admin). The project ref/id is unchanged by the transfer, so EAS Update channels and continuity are preserved. The config `owner` field in `app.config.ts` was updated `x4ylee` → `hubble-ge` accordingly. Staging builds, `eas env`, and `eas update:configure` are now unblocked.
 
-### 0.B — Create the staging Supabase project
-Dashboard → New project, **same region as prod**. Capture:
-- project ref (e.g. `abcdwxyz…`), project URL, **publishable anon key**, **service-role key**.
-Then enable the **Apple** auth provider and add staging redirect URLs / the `sarke2staging://` scheme to Auth → URL Configuration (otherwise staging logins fail silently).
+### 0.B — Create the staging Supabase project — ✅ DONE (2026-06-18)
+Created. Ref `oiwkfzadftmgmshidyqx`, URL `https://oiwkfzadftmgmshidyqx.supabase.co`, anon key `sb_publishable_if2XIf1WB03rHEC0PQKNSg_eJ4frwNu` (publishable, safe to commit). Apple auth provider enabled with Client IDs `ge.sarke2.app.staging,ge.sarke2.app.dev`; redirect URLs `sarke2staging://` + `sarke2dev://` added. The service-role key + DB password are held privately for the GitHub `staging` Environment (Step 0.E). The project is empty — schema gets populated after the prod reconciliation (Phase 1/2).
 
 ### 0.C — Apple App ID for the staging app
 Apple Developer portal → Identifiers → new App ID `ge.sarke2.app.staging` (or let EAS auto-create credentials on the first `npm run build:staging`). **No** new App Store Connect listing — staging is internal distribution only.
 
-### 0.D — Wire the staging Supabase creds into the mobile build
-Once 0.B is done, add the publishable values to the `staging` profile in `eas.json` (anon key is safe to commit) **or** create them as EAS env vars:
-```jsonc
-// eas.json → build.staging.env
-"APP_ENV": "staging",
-"STAGING_SUPABASE_URL": "https://<STAGING_REF>.supabase.co",
-"STAGING_SUPABASE_ANON_KEY": "sb_publishable_<staging>"
-```
+### 0.D — Wire the staging Supabase creds into the mobile build — ✅ DONE (2026-06-18)
+The publishable values are committed to the `staging` profile in `eas.json` (`build.staging.env.STAGING_SUPABASE_URL` / `STAGING_SUPABASE_ANON_KEY`); anon key is safe to commit.
 For local `npm run start:staging`, put the same two vars in a git-ignored `.env` (loaded by `dotenv`) or export them in your shell.
 
 ### 0.E — GitHub Environments (fixes the global-secret hazard)
@@ -183,7 +178,7 @@ Once the `production` GitHub Environment has its `VITE_SUPABASE_*` secrets, swit
 | R2 | Global repo secret repoints all 3 prod web deploys | GitHub Environments (§0.E) — pending; prod workflows untouched until then ✅ |
 | R3 | Colliding version tokens mis-apply on push | local `db reset` first + squash to baseline (§4) — pending Docker/prod |
 | R4 | `db push` replays applied migrations on prod | `migration repair` + `--dry-run` + manual-approval Environment (§4, §6) |
-| R5 | Touching the `production` channel breaks live OTA | never rename `production`; `staging` added alongside legacy `preview` ✅ |
+| R5 | Touching the `production` channel breaks live OTA | never rename `production`; `staging` is its own profile ✅. The unused `preview` profile (channel but no `APP_ENV` → silently resolved to PRODUCTION) was removed 2026-06-18 — it was a loaded gun. |
 | R6 | Repointing prod `SIGN_WEB_URL` kills in-flight SMS links | prod default unchanged; `gilavi.github.io/Sarke2.0` → `hubble.ge` 301 kept ✅ |
 | R7 | Staging build collides with prod Apple identity | distinct bundle id + scheme + channel ✅; prod config verified byte-identical ✅ |
 | R8 | CLI left linked to staging → next push hits wrong project | re-link to prod after every session; CI always `link` explicitly ✅ |

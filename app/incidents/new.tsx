@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
