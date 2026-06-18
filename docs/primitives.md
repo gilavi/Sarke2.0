@@ -14,13 +14,15 @@ Use `<Button variant="primary" size="lg" title="..." onPress={...} style={{ widt
 
 **Don't** inline a `Pressable` + manual styling for a CTA button — that was the bug this consolidation fixed (WizardNav had a bespoke `nextBtn`; InspectionShell used deprecated `iconRight` ReactNodes). **Don't** pass `iconRight={<Ionicons color={theme.colors.white}>}` — use the string-based `rightIcon="icon-name"` prop so the colour inherits from the button's `color` token automatically. For a small inline "add row / add item" affordance use `<Button variant="ghost" size="sm" leftIcon={CirclePlus} title="..." />` (see `components/inspection-parts/DynamicTable.tsx`), not a hand-rolled `Pressable` + accent `Text`.
 
+**Icon-only** controls (delete ✕, close, overflow) use [`components/primitives/IconButton.tsx`](../components/primitives/IconButton.tsx): `<IconButton icon={X} a11yLabel="..." variant="danger|ghost|plain|overlay" size="sm|md|lg" onPress={...} />`. `overlay` is for deletes sitting on top of images (white icon + dark scrim). **Don't** hand-roll a `Pressable` + `<Icon>` for these (was duplicated in PhotoSection/QualDoc/DynamicTable). The remaining dashed "create new" tiles (New project, Add photo) are an intentional separate affordance — candidates for a future `AddTile` primitive, not `Button`.
+
 ## Form selector (option picker)
 
 One component: [`components/ui/Selector.tsx`](../components/ui/Selector.tsx) — the canonical single/multi option picker.
 
-`<Selector label="..." options={[{ value, label, icon?, subtitle? }]} value={v} onChange={setV} />` for single-select; add `mode="multi" values={...} onValuesChange={...}` for multi. `presentation="rows"` renders a full-width radio list, `"chips"` (default) wraps compact pills. Monochrome by design (ink border + subtle fill). For a dropdown/bottom-sheet presentation use [`components/ui/CustomDropdown.tsx`](../components/ui/CustomDropdown.tsx), which shares the option shape.
+`<Selector label="..." options={[{ value, label, icon?, leading?, subtitle? }]} value={v} onChange={setV} />` for single-select; add `mode="multi" values={...} onValuesChange={...}` for multi. Three presentations: `"chips"` (default, compact pills), `"rows"` (bordered cards), `"list"` (divided full-bleed rows for sheets/scrollable pickers — supports a custom `leading` element e.g. an avatar). Monochrome by design (ink border + subtle fill). For a dropdown/bottom-sheet trigger use [`components/ui/CustomDropdown.tsx`](../components/ui/CustomDropdown.tsx), which shares the option shape.
 
-**Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated (`IdentificationGrid` previously had three near-identical inline selectors). Remaining ad-hoc selectors still to migrate: `TopicSelector`, `SlingTypeSheet`, `ProjectPickerStep` (tracked, not yet converted).
+**Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated. Now built on `Selector`: `IdentificationGrid` (3 inline selectors), `TopicSelector`, `ProjectPickerStep`, `SlingTypeSheet`. `CustomDropdown` still owns the sheet-trigger case and shares `SelectorOption`.
 
 ## Storage images
 

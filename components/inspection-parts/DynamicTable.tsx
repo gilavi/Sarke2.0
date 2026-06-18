@@ -1,12 +1,12 @@
 import { memo, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CirclePlus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../primitives/Button';
+import { IconButton } from '../primitives/IconButton';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
-import { a11y } from '../../lib/accessibility';
 
 export interface DynamicTableColumn {
   key: string;
@@ -108,14 +108,13 @@ const DynamicTableRow = memo(function DynamicTableRow({
           <Text style={styles.numText}>{index + 1}</Text>
         </View>
         {canDelete && (
-          <Pressable
+          <IconButton
+            icon={X}
             onPress={onDelete}
-            hitSlop={10}
-            style={styles.deleteBtn}
-            {...a11y('სტრიქონის წაშლა', undefined, 'button')}
-          >
-            <X size={16} color={theme.colors.danger} strokeWidth={1.5} />
-          </Pressable>
+            a11yLabel="სტრიქონის წაშლა"
+            variant="danger"
+            size="sm"
+          />
         )}
       </View>
 
@@ -222,14 +221,6 @@ function getstyles(theme: Theme) {
       justifyContent: 'center',
     },
     numText: { fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft },
-    deleteBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
-      backgroundColor: theme.colors.dangerTint,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     readonlyField: {
       paddingHorizontal: 4,
       paddingVertical: 6,

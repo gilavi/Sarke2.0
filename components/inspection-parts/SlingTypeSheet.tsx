@@ -12,12 +12,12 @@
 
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { CircleCheck, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { Button } from '../ui';
+import { Selector } from '../ui/Selector';
 import { useTheme, type Theme } from '../../lib/theme';
-import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 
 export interface SlingTypeSheetProps {
@@ -51,13 +51,6 @@ export function SlingTypeSheet({
 
   const otherActive = !!otherOptionValue && selected.includes(otherOptionValue);
 
-  const toggle = (opt: string) => {
-    haptic.light();
-    setSelected(prev =>
-      prev.includes(opt) ? prev.filter(v => v !== opt) : [...prev, opt],
-    );
-  };
-
   const done = () => {
     onChange(selected, otherText);
     onClose();
@@ -77,27 +70,13 @@ export function SlingTypeSheet({
         contentContainerStyle={{ paddingBottom: 8 }}
         showsVerticalScrollIndicator={false}
       >
-        {options.map(opt => {
-          const active = selected.includes(opt);
-          return (
-            <Pressable
-              key={opt}
-              onPress={() => toggle(opt)}
-              style={({ pressed }) => [
-                styles.row,
-                pressed && { opacity: 0.6 },
-              ]}
-              {...a11y(opt, active ? 'არჩეულია' : 'არ არის არჩეული', 'checkbox')}
-            >
-              <Text style={styles.rowLabel}>{opt}</Text>
-              {active ? (
-                <CircleCheck size={22} color={theme.colors.accent} strokeWidth={1.5} />
-              ) : (
-                <View style={styles.emptyCircle} />
-              )}
-            </Pressable>
-          );
-        })}
+        <Selector
+          mode="multi"
+          presentation="list"
+          options={options.map((o) => ({ value: o, label: o }))}
+          values={selected}
+          onValuesChange={setSelected}
+        />
 
         {otherActive && otherOptionValue ? (
           <View style={styles.otherWrap}>
@@ -138,28 +117,6 @@ function getStyles(theme: Theme) {
     },
     list: {
       maxHeight: 380,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-    },
-    rowLabel: {
-      flex: 1,
-      fontSize: 16,
-      fontWeight: '500',
-      color: theme.colors.ink,
-    },
-    emptyCircle: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1.5,
-      borderColor: theme.colors.borderStrong,
     },
     otherWrap: {
       paddingHorizontal: 20,

@@ -74,3 +74,28 @@ export const MultiChips: Story = {
     );
   },
 };
+
+const Dot = ({ c }: { c: string }) => (
+  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c }} />
+);
+
+export const ListWithLeading: Story = {
+  name: 'List · with leading + subtitle',
+  render: () => {
+    const [v, setV] = useState<string | null>('p2');
+    return (
+      <View style={{ width: 420 }}>
+        <Selector
+          presentation="list"
+          value={v}
+          onChange={setV}
+          options={[
+            { value: 'p1', label: 'Hubble Construction', subtitle: 'Tbilisi, Georgia', leading: <Dot c="#E6FF4D" /> },
+            { value: 'p2', label: 'Site B — Tower crane', subtitle: 'Batumi', leading: <Dot c="#FE7A43" /> },
+            { value: 'p3', label: 'Warehouse 4', subtitle: 'Kutaisi', leading: <Dot c="#3B82F6" /> },
+          ]}
+        />
+      </View>
+    );
+  },
+};

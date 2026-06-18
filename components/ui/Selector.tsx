@@ -23,18 +23,22 @@ export interface SelectorOption {
   label?: string;
   /** Optional leading icon (rows presentation). */
   icon?: LucideIcon;
+  /** Optional custom leading element (rows presentation) — wins over `icon`.
+   *  e.g. an avatar in a project/equipment picker. */
+  leading?: React.ReactNode;
   /** Optional second line (rows presentation). */
   subtitle?: string;
   disabled?: boolean;
 }
 
-export type SelectorPresentation = 'rows' | 'chips';
+export type SelectorPresentation = 'rows' | 'list' | 'chips';
 
 interface CommonProps {
   options: SelectorOption[];
   /** Group caption shown above the options. */
   label?: string;
-  /** 'chips' (default) wraps compact pills; 'rows' is a full-width radio list. */
+  /** 'chips' (default) wraps compact pills; 'rows' is bordered cards; 'list' is
+   *  a divided full-bleed list (for sheets / scrollable pickers). */
   presentation?: SelectorPresentation;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -82,20 +86,25 @@ export function Selector(props: SelectorProps) {
     <View style={[styles.group, style]} testID={testID}>
       {label ? <Text style={styles.groupLabel}>{label}</Text> : null}
 
-      {presentation === 'rows' ? (
-        <View style={styles.rowList}>
+      {presentation !== 'chips' ? (
+        <View style={presentation === 'list' ? styles.listContainer : styles.rowList}>
           {options.map((opt) => {
             const active = isSelected(opt.value);
             const Icon = opt.icon;
+            const isList = presentation === 'list';
             return (
               <Pressable
                 key={opt.value}
-                style={[styles.row, active && styles.rowActive, opt.disabled && styles.disabled]}
+                style={[
+                  isList ? styles.listRow : styles.row,
+                  active && (isList ? styles.listRowActive : styles.rowActive),
+                  opt.disabled && styles.disabled,
+                ]}
                 onPress={() => handlePress(opt)}
                 disabled={opt.disabled}
                 {...a11y(opt.label ?? opt.value, undefined, a11yRole)}
               >
-                {Icon ? <Icon size={20} color={active ? theme.colors.ink : theme.colors.inkSoft} strokeWidth={1.8} /> : null}
+                {opt.leading ?? (Icon ? <Icon size={20} color={active ? theme.colors.ink : theme.colors.inkSoft} strokeWidth={1.8} /> : null)}
                 <View style={styles.rowTextWrap}>
                   <Text style={[styles.rowText, active && styles.rowTextActive]}>{opt.label ?? opt.value}</Text>
                   {opt.subtitle ? <Text style={styles.rowSubtitle}>{opt.subtitle}</Text> : null}
@@ -153,6 +162,21 @@ function getStyles(theme: Theme) {
       backgroundColor: theme.colors.card,
     },
     rowActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
+
+    // list (divided full-bleed rows, for sheets / scrollable pickers)
+    listContainer: {},
+    listRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 14,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.hairline,
+    },
+    listRowActive: { backgroundColor: theme.colors.subtleSurface },
+
     rowTextWrap: { flex: 1, gap: 2 },
     rowText: { fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
     rowTextActive: { color: theme.colors.ink, fontWeight: '700' },

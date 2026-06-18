@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CircleX, Paperclip } from 'lucide-react-native';
+import { Paperclip, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
+import { IconButton } from '../primitives/IconButton';
 import { useTheme, type Theme } from '../../lib/theme';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
@@ -38,14 +39,14 @@ export function QualDoc({
     return (
       <View style={styles.photoContainer}>
         <Image source={{ uri }} style={styles.photo} contentFit="cover" transition={200} />
-        <Pressable
-          style={styles.deleteBtn}
+        <IconButton
+          icon={X}
           onPress={onDelete}
-          hitSlop={8}
-          {...a11y('ფოტოს წაშლა', undefined, 'button')}
-        >
-          <CircleX size={24} color={theme.colors.white} strokeWidth={1.5} />
-        </Pressable>
+          a11yLabel="ფოტოს წაშლა"
+          variant="overlay"
+          size="md"
+          style={styles.deleteBtn}
+        />
       </View>
     );
   }

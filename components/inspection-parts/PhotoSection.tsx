@@ -1,8 +1,9 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Camera, CircleX } from 'lucide-react-native';
+import { Camera, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
+import { IconButton } from '../primitives/IconButton';
 import { useTheme, type Theme } from '../../lib/theme';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
@@ -81,14 +82,14 @@ const PhotoThumb = memo(function PhotoThumb({
   return (
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
-      <Pressable
-        style={styles.thumbDelete}
+      <IconButton
+        icon={X}
         onPress={onDelete}
-        hitSlop={8}
-        {...a11y('ფოტოს წაშლა', undefined, 'button')}
-      >
-        <CircleX size={18} color={theme.colors.white} strokeWidth={1.5} />
-      </Pressable>
+        a11yLabel="ფოტოს წაშლა"
+        variant="overlay"
+        size="sm"
+        style={styles.thumbDelete}
+      />
     </View>
   );
 });
