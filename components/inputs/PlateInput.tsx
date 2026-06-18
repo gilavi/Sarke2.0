@@ -20,8 +20,6 @@ const SLOTS = [
   { kind: 'letter' as const },
 ];
 
-const PLATE_ACCENT = '#FF6D2E';
-
 function parseValue(raw: string): string[] {
   const cleaned = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);
   const out: string[] = ['', '', '', '', '', '', ''];
@@ -150,14 +148,16 @@ export const PlateInput = React.forwardRef<PlateInputHandle, PlateInputProps>(
           onPress={() => focusSlot(i)}
           style={[
             styles.cell,
-            { backgroundColor: isActive ? PLATE_ACCENT + '12' : theme.colors.subtleSurface },
+            {
+              backgroundColor: theme.colors.subtleSurface,
+              // Active = thick ink border all around (no orange, no bottom bar).
+              borderColor: isActive ? theme.colors.ink : 'transparent',
+            },
           ]}
         >
-          <Text style={[styles.cellText, { color: isActive && !ch ? PLATE_ACCENT + 'AA' : theme.colors.ink }]}>
+          <Text style={[styles.cellText, { color: isActive && !ch ? theme.colors.inkFaint : theme.colors.ink }]}>
             {ch || (isActive ? '·' : '')}
           </Text>
-          {/* Active indicator bar at bottom */}
-          {isActive && <View style={styles.activeBar} />}
           {!customKeyboard && (
             <TextInput
               ref={r => { nativeRefs.current[i] = r; }}
@@ -220,18 +220,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 52,
     borderRadius: 10,
+    // Transparent border at rest so the active ink border doesn't shift layout.
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  activeBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 6,
-    right: 6,
-    height: 2.5,
-    borderRadius: 2,
-    backgroundColor: PLATE_ACCENT,
   },
   cellText: {
     fontSize: 22,
