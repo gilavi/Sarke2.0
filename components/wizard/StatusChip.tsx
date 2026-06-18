@@ -7,12 +7,12 @@ import Animated, {
   useAnimatedStyle,
   withSequence,
   withTiming,
-  withSpring,
 } from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
+import { usePressBounce } from '../animations/usePressBounce';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -67,7 +67,9 @@ export function StatusChip({
   const { theme } = useTheme();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const scale = useSharedValue(1);
+  // Canonical press bounce, shared with every button. `scale` is composed with
+  // the local error `shake` below.
+  const { scale, bounce } = usePressBounce();
   const shake = useSharedValue(0);
 
   const showError = error && !selected;
@@ -90,12 +92,7 @@ export function StatusChip({
 
   const handlePress = () => {
     if (disabled) return;
-    if (!reduceMotion) {
-      scale.value = withSequence(
-        withTiming(0.94, { duration: 80 }),
-        withSpring(1, theme.motion.spring.bouncy)
-      );
-    }
+    bounce();
     onPress();
   };
 

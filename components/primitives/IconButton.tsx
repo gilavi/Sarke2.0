@@ -1,9 +1,13 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
+import { usePressBounce } from '../animations/usePressBounce';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * IconButton — the canonical icon-only button.
@@ -11,6 +15,7 @@ import { a11y } from '../../lib/accessibility';
  * Use for tappable controls that show only an icon (delete ✕, close, overflow,
  * inline remove). The text-label CTA is {@link Button}; this is its icon-only
  * sibling so those controls stop being hand-rolled `Pressable` + `<Icon>`.
+ * Shares the canonical press bounce ({@link usePressBounce}) with every button.
  */
 export type IconButtonVariant = 'plain' | 'ghost' | 'danger' | 'overlay';
 export type IconButtonSize = 'sm' | 'md' | 'lg';
@@ -48,6 +53,7 @@ export function IconButton({
 }: IconButtonProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
+  const { pressStyle, bounce } = usePressBounce();
   const dims = SIZES[size];
 
   const iconColor =
@@ -57,27 +63,30 @@ export function IconButton({
       ? theme.colors.white
       : theme.colors.inkSoft;
 
+  const handlePress = () => {
+    if (disabled) return;
+    bounce();
+    haptic.light();
+    onPress();
+  };
+
   return (
-    <Pressable
-      onPress={() => {
-        if (disabled) return;
-        haptic.light();
-        onPress();
-      }}
+    <AnimatedPressable
+      onPress={handlePress}
       disabled={disabled}
       hitSlop={hitSlop}
-      style={({ pressed }) => [
+      style={[
         styles.base,
         { width: dims.box, height: dims.box, borderRadius: dims.box / 2 },
         styles[variant],
-        pressed && styles.pressed,
         disabled && styles.disabled,
+        pressStyle,
         style,
       ]}
       {...a11y(a11yLabel, a11yHint, 'button')}
     >
       <Icon size={dims.icon} color={iconColor} strokeWidth={1.8} />
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -88,7 +97,6 @@ function getStyles(theme: Theme) {
     ghost: { backgroundColor: theme.colors.surfaceSecondary },
     danger: { backgroundColor: theme.colors.semantic.dangerSoft },
     overlay: { backgroundColor: 'rgba(0,0,0,0.55)' },
-    pressed: { opacity: 0.6 },
     disabled: { opacity: 0.4 },
   });
 }

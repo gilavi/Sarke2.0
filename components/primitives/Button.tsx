@@ -1,15 +1,10 @@
-import React, {useState, useMemo} from 'react';
-import { GestureResponderEvent, LayoutChangeEvent, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  Easing,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import React, {useMemo} from 'react';
+import { Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
+import { usePressBounce } from '../animations/usePressBounce';
 
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'link';
@@ -48,60 +43,14 @@ export function Button({
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
-  const scale = useSharedValue(1);
-  const rippleScale = useSharedValue(0);
-  const rippleOpacity = useSharedValue(0);
-  const [ripplePos, setRipplePos] = useState({ x: 0, y: 0 });
-  const [layout, setLayout] = useState({ width: 0, height: 0 });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  // Ripple radius covers the button from the press point to the farthest
-  // corner so it always fully expands across the surface.
-  const rippleRadius = (() => {
-    const { x, y } = ripplePos;
-    const w = layout.width;
-    const h = layout.height;
-    const dx = Math.max(x, w - x);
-    const dy = Math.max(y, h - y);
-    return Math.sqrt(dx * dx + dy * dy);
-  })();
-
-  const rippleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: rippleScale.value }],
-    opacity: rippleOpacity.value,
-  }));
-
-  const handleLayout = (e: LayoutChangeEvent) => {
-    setLayout({
-      width: e.nativeEvent.layout.width,
-      height: e.nativeEvent.layout.height,
-    });
-  };
-
-  const handlePressIn = (e: GestureResponderEvent) => {
-    scale.value = withTiming(0.96, { duration: 80 });
-    setRipplePos({ x: e.nativeEvent.locationX, y: e.nativeEvent.locationY });
-    rippleScale.value = 0;
-    rippleOpacity.value = 0.18;
-    rippleScale.value = withTiming(1, {
-      duration: 380,
-      easing: Easing.out(Easing.quad),
-    });
-    haptic.light();
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, theme.motion.spring.gentle);
-    rippleOpacity.value = withTiming(0, { duration: 240 });
-  };
+  // Canonical DS press feel (squish + bouncy spring), shared with every button.
+  const { pressStyle, bounce } = usePressBounce();
 
   const handlePress = () => {
-    if (!disabled && !loading) {
-      onPress?.();
-    }
+    if (disabled || loading) return;
+    bounce();
+    haptic.light();
+    onPress?.();
   };
 
   const sizeStyles = {
@@ -204,40 +153,20 @@ export function Button({
   };
 
   return (
-    <Animated.View style={[animatedStyle, v.shadow, { borderRadius: s.borderRadius, alignSelf: 'flex-start' }, layoutStyle]}>
+    <Animated.View style={[pressStyle, v.shadow, { borderRadius: s.borderRadius, alignSelf: 'flex-start' }, layoutStyle]}>
       <Pressable
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
         onPress={handlePress}
-        onLayout={handleLayout}
         disabled={disabled || loading}
         style={[
           styles.base,
           s,
-          { backgroundColor: v.backgroundColor, overflow: 'hidden' },
+          { backgroundColor: v.backgroundColor },
           v.borderColor ? { borderColor: v.borderColor, borderWidth: v.borderWidth } : null,
           (disabled || loading) && styles.disabled,
           innerStyle,
         ]}
         {...rest}
       >
-        {rippleRadius > 0 && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.ripple,
-              {
-                width: rippleRadius * 2,
-                height: rippleRadius * 2,
-                borderRadius: rippleRadius,
-                left: ripplePos.x - rippleRadius,
-                top: ripplePos.y - rippleRadius,
-                backgroundColor: variant === 'danger' ? '#FFFFFF' : variant === 'primary' ? 'rgba(0,0,0,0.12)' : v.color,
-              },
-              rippleAnimatedStyle,
-            ]}
-          />
-        )}
         {iconLeft ? (
           <View style={{ marginRight: 8 }}>{iconLeft}</View>
         ) : LeftIcon ? (
@@ -287,9 +216,6 @@ function getstyles(theme: any) {
   },
   disabled: {
     opacity: 0.5,
-  },
-  ripple: {
-    position: 'absolute',
   },
 });
 }

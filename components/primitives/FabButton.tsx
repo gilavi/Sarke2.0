@@ -1,16 +1,12 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { Plus } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
+import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
+import { usePressBounce } from '../animations/usePressBounce';
 
 interface FabButtonProps {
   onPress: () => void;
@@ -23,33 +19,27 @@ interface FabButtonProps {
 }
 
 /**
- * Shared floating action button. 60x60 circle, accent background with green
- * glow shadow. Pass `iconRotation` (degrees) to animate the icon (e.g. 45 for
- * a x close state).
+ * Shared floating action button. 60x60 circle, accent background with glow
+ * shadow. Pass `iconRotation` (degrees) to animate the icon (e.g. 45 for a
+ * x close state). Shares the canonical press bounce with every button.
  */
 export const FabButton = React.forwardRef<View, FabButtonProps>(function FabButton(
   { onPress, icon: Icon = Plus, iconRotation = 0, a11yLabel, a11yHint, style },
   ref,
 ) {
   const { theme } = useTheme();
-  const scale = useSharedValue(1);
+  const { pressStyle, bounce } = usePressBounce();
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = useCallback(() => {
-    scale.value = withSequence(
-      withTiming(0.92, { duration: 80 }),
-      withSpring(1, { stiffness: 300, damping: 10 }),
-    );
-  }, []);
+  const handlePress = () => {
+    bounce();
+    haptic.light();
+    onPress();
+  };
 
   return (
     <Pressable
       ref={ref as any}
-      onPress={onPress}
-      onPressIn={handlePressIn}
+      onPress={handlePress}
       style={[
         {
           position: 'absolute',
@@ -76,7 +66,7 @@ export const FabButton = React.forwardRef<View, FabButtonProps>(function FabButt
             shadowRadius: 12,
             elevation: 10,
           },
-          animatedStyle,
+          pressStyle,
         ]}
       >
         <Icon
