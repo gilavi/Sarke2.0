@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { Button } from './ui';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { BottomSheetScrollView } from './BottomSheet';
@@ -24,9 +24,9 @@ interface Props {
   /** For `other`: the previously-stored custom role label, if editing. */
   initialRoleLabel?: string;
   /**
-   * `create` (default) leads into the SignatureCanvas after submit — button
+   * `create` (default) leads into the SignatureCanvas after submit - button
    * reads "ხელმოწერა →". `editDetails` saves the new name/role on an
-   * existing member without re-signing — button reads "შენახვა" and
+   * existing member without re-signing - button reads "შენახვა" and
    * `onResign` (if provided) is exposed as a secondary link for the user
    * to opt into a fresh signature.
    */
@@ -42,7 +42,7 @@ interface Props {
  * Bottom-sheet content for the **details** step of adding/editing a role-slot
  * person. Collects name (and a custom role label for the `other` slot), then
  * hands off to the parent which dismisses the sheet and launches the
- * full-screen `SignatureCanvas` modal — rendering the signature WebView
+ * full-screen `SignatureCanvas` modal - rendering the signature WebView
  * inside the animated bottom-sheet Modal crashed on iOS.
  */
 export function RoleSlotSheet({
@@ -62,6 +62,7 @@ export function RoleSlotSheet({
   const [customRole, setCustomRole] = useState(
     roleKey === 'other' ? initialRoleLabel ?? '' : '',
   );
+  const [attempted, setAttempted] = useState(false);
 
   const isOther = roleKey === 'other';
   const roleLabel = isOther ? customRole.trim() || 'სხვა' : CREW_ROLE_LABEL[roleKey];
@@ -73,7 +74,12 @@ export function RoleSlotSheet({
   }, [name, customRole, isOther]);
 
   const submit = async () => {
-    if (!valid || loading) return;
+    if (loading) return;
+    if (!valid) {
+      setAttempted(true);
+      haptic.validationError();
+      return;
+    }
     haptic.light();
     await onSubmit({ name: name.trim(), role: roleLabel });
   };
@@ -89,7 +95,7 @@ export function RoleSlotSheet({
             <Text style={styles.title} numberOfLines={2}>{roleLabel}</Text>
           </View>
           <Pressable onPress={onCancel} hitSlop={10} style={styles.iconBtn} {...a11y('დახურვა', 'ფორმის დახურვა', 'button')}>
-            <Ionicons name="close" size={20} color={theme.colors.inkSoft} />
+            <X size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </Pressable>
         </View>
       }
@@ -98,11 +104,13 @@ export function RoleSlotSheet({
           <Button
             title={mode === 'editDetails' ? 'შენახვა' : 'ხელმოწერა →'}
             onPress={submit}
-            disabled={!valid || loading}
+            disabled={loading}
             loading={loading}
           />
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
+          {error || (attempted && !valid) ? (
+            <Text style={styles.errorText}>
+              {error ?? 'შეავსეთ სავალდებულო ველები'}
+            </Text>
           ) : null}
           {mode === 'editDetails' && onResign ? (
             <Pressable
@@ -120,15 +128,19 @@ export function RoleSlotSheet({
       {isOther ? (
         <FloatingLabelInput
           label="როლი"
+          required
           value={customRole}
           onChangeText={setCustomRole}
+          error={attempted && !customRole.trim() ? 'სავალდებულო ველი' : undefined}
           autoFocus
         />
       ) : null}
       <FloatingLabelInput
         label="სახელი გვარი"
+        required
         value={name}
         onChangeText={setName}
+        error={attempted && !name.trim() ? 'სავალდებულო ველი' : undefined}
         autoFocus={!isOther}
       />
     </SheetLayout>

@@ -1,7 +1,7 @@
 import Svg, { Path } from 'react-native-svg';
 
 /**
- * Hubble brand mark — the official H-monogram (two rounded "blob" forms whose
+ * Hubble brand mark - the official H-monogram (two rounded "blob" forms whose
  * negative space is the H + orbital wave). Canonical in-app logo; mirrors the
  * web `HubbleLogo` (web-app/src/pages/landing/shared.tsx) and the source vector
  * (Khelogo.svg). Recolor via `color`.

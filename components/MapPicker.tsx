@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import MapView, { Marker, type Region, PROVIDER_DEFAULT } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import { MapPin, Hand, X } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
 
 import { a11y } from '../lib/accessibility';
@@ -21,14 +21,14 @@ type Props = {
   /**
    * Controlled address text. The search box edits this directly, and tapping
    * or dragging the pin on the map reverse-geocodes into it. There is no
-   * separate address Input above this component — this IS the address field.
+   * separate address Input above this component - this IS the address field.
    */
   address: string;
   onAddressChange: (s: string) => void;
   height?: number;
 };
 
-// Tbilisi — sane fallback when no pin and no geocode result yet. Most users
+// Tbilisi - sane fallback when no pin and no geocode result yet. Most users
 // of this app are working on construction sites in Georgia.
 const FALLBACK_REGION: Region = {
   latitude: 41.7151,
@@ -52,7 +52,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
     }
   }, [value]);
 
-  // Geocoding was removed with the expo-location dependency (2026-06 —
+  // Geocoding was removed with the expo-location dependency (2026-06 -
   // location permission dropped app-wide). The address field is plain text;
   // the pin is set by tapping/dragging the map.
   const handleMapPress = (e: { nativeEvent: { coordinate: LatLng } }) => {
@@ -70,7 +70,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
   return (
     <View style={styles.wrap}>
       <View style={styles.searchRow}>
-        <Ionicons name="location-outline" size={16} color={theme.colors.inkFaint} />
+        <MapPin size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
         <TextInput
           value={address}
           onChangeText={onAddressChange}
@@ -100,13 +100,13 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
         {!value ? (
           <View pointerEvents="none" style={styles.hintOverlay}>
             <View style={styles.hintBubble}>
-              <Ionicons name="hand-left" size={14} color={theme.colors.ink} />
+              <Hand size={14} color={theme.colors.ink} strokeWidth={1.5} />
               <Text style={styles.hintText}>შეეხეთ რუკას ან მოძებნეთ მისამართი</Text>
             </View>
           </View>
         ) : (
           <Pressable onPress={() => onChange(null)} hitSlop={{ top: 7, bottom: 7, left: 0, right: 0 }} style={styles.clearBtn} {...a11y('მდებარეობის გასუფთავება', 'შეეხეთ მონიშნული მდებარეობის წასაშლელად', 'button')}>
-            <Ionicons name="close" size={14} color={theme.colors.white} />
+            <X size={14} color={theme.colors.white} strokeWidth={1.5} />
             <Text style={styles.clearTxt}>პინის მოხსნა</Text>
           </Pressable>
         )}

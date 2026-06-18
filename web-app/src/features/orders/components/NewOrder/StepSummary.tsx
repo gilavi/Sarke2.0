@@ -27,16 +27,16 @@ export default function StepSummary({
             ['დანიშნული პირი', form.appointedName],
             ['ტელეფონი', form.appointedPhone],
             ['ობიექტი', form.objectName],
-            ['დირექტ. ხელმოწ.', form.directorSignature ? '✓ ხელმოწერილია' : '—'],
-            ['პასუხისმ. ხელმოწ.', form.appointedSignature ? '✓ ხელმოწერილია' : '—'],
+            ['დირექტ. ხელმოწ.', form.directorSignature ? '✓ ხელმოწერილია' : '-'],
+            ['პასუხისმ. ხელმოწ.', form.appointedSignature ? '✓ ხელმოწერილია' : '-'],
           ] : docType === 'fire_safety_order_enterprise' ? [
             ['დანიშნული პირი', form.appointedName],
             ['თანამდებობა', form.appointedPosition],
             ['პ/ნ', form.appointedIdNumber],
             ['ტელეფონი', form.appointedPhone],
             ['ობიექტი', form.objectName],
-            ['დირექტ. ხელმოწ.', form.directorSignature ? '✓ ხელმოწერილია' : '—'],
-            ['პასუხისმ. ხელმოწ.', form.appointedSignature ? '✓ ხელმოწერილია' : '—'],
+            ['დირექტ. ხელმოწ.', form.directorSignature ? '✓ ხელმოწერილია' : '-'],
+            ['პასუხისმ. ხელმოწ.', form.appointedSignature ? '✓ ხელმოწერილია' : '-'],
           ] : docType === 'labor_safety_specialist' ? [
             ['სპეციალისტი', form.specialistName],
             ['ობიექტი', form.facilityName],
@@ -47,12 +47,12 @@ export default function StepSummary({
         ].map(([label, value]) => (
           <div key={label} className="flex items-center gap-3 px-4 py-2 text-sm">
             <span className="w-36 shrink-0 text-neutral-500">{label}</span>
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">{value || '—'}</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">{value || '-'}</span>
           </div>
         ))}
       </div>
       <p className="text-xs text-neutral-500">
-        „PDF გენერირება" — ბრძანება შეინახება და გაიხსნება ახალ ჩანართში ბეჭდვისთვის.
+        „PDF გენერირება" - ბრძანება შეინახება და გაიხსნება ახალ ჩანართში ბეჭდვისთვის.
       </p>
       <Button
         variant="outline"

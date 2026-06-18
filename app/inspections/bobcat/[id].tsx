@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -6,13 +6,12 @@ import {
 } from 'react-native';
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
-import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
+import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -25,6 +24,7 @@ import { PhotoSection } from '../../../components/inspection-parts';
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
@@ -76,6 +76,9 @@ export default function BobcatInspectionScreen() {
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [attachmentCount, setAttachmentCount] = useState(0);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Serial number step state
   const plateRef = useRef<PlateInputHandle>(null);
@@ -150,7 +153,7 @@ export default function BobcatInspectionScreen() {
     loadingTitle: 'შემოწმება',
   });
 
-  // ── Template-derived catalog (local — template bounds must stay in screen) ──
+  // ── Template-derived catalog (local - template bounds must stay in screen) ──
 
   const catalog: BobcatChecklistEntry[] = useMemo(
     () => inspection?.templateId === LARGE_LOADER_TEMPLATE_ID ? LARGE_LOADER_ITEMS : BOBCAT_ITEMS,
@@ -285,6 +288,9 @@ export default function BobcatInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Derived data for shared components ────────────────────────────────────
 
   const checklistItems = useMemo(
@@ -317,10 +323,20 @@ export default function BobcatInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title={screenTitle}
+        projectName={projectName ?? ''}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === SERIAL_STEP ? 'keypad'
+            : step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={1}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -359,14 +375,11 @@ export default function BobcatInspectionScreen() {
       animate={animateSteps}
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
-      saving={saving}
       completing={completing}
-      showPdfIcon={step > PROJECT_STEP}
-      generatingPdf={generatingPdf}
+      onBlockedNext={markAttempted}
       onNext={handleNext}
       onPrev={handlePrev}
       onClose={() => router.back()}
-      onPdf={() => handlePdf()}
     >
           {/* ── Step 1: Equipment model ─────────────────────────────────── */}
           {step === INFO_STEP && (
@@ -451,6 +464,7 @@ export default function BobcatInspectionScreen() {
             <ConclusionStep
               verdict={inspection.verdict}
               verdictOptions={bobcatVerdictOptions}
+              verdictError={attempted && !inspection.verdict}
               notes={inspection.notes ?? ''}
               onVerdictChange={v => update('verdict', v)}
               onNotesChange={v => update('notes', v || null)}
@@ -476,7 +490,6 @@ export default function BobcatInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
   });
 }

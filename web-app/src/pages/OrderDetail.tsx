@@ -105,7 +105,7 @@ export default function OrderDetail() {
     ? [
         ['ბრძანება №', fd.orderNumber],
         ['ქალაქი', fd.city],
-        ['თარიღი', fd.orderDate ? new Date(fd.orderDate).toLocaleDateString('ka-GE') : '—'],
+        ['თარიღი', fd.orderDate ? new Date(fd.orderDate).toLocaleDateString('ka-GE') : '-'],
         ['კომპანია', fd.companyName],
         ['დირექტორი', fd.directorName],
         ['დანიშნული პირი', fd.appointedName],
@@ -117,7 +117,7 @@ export default function OrderDetail() {
     ? [
         ['ბრძანება №', fdEnterprise.orderNumber],
         ['ქალაქი', fdEnterprise.city],
-        ['თარიღი', fdEnterprise.orderDate ? new Date(fdEnterprise.orderDate).toLocaleDateString('ka-GE') : '—'],
+        ['თარიღი', fdEnterprise.orderDate ? new Date(fdEnterprise.orderDate).toLocaleDateString('ka-GE') : '-'],
         ['კომპანია', fdEnterprise.companyName],
         ['დირექტორი', fdEnterprise.directorName],
         ['დანიშნული პირი', fdEnterprise.appointedName],
@@ -131,7 +131,7 @@ export default function OrderDetail() {
     ? [
         ['ბრძანება №', fdLabor.orderNumber],
         ['ქალაქი', fdLabor.city],
-        ['თარიღი', fdLabor.orderDate ? new Date(fdLabor.orderDate).toLocaleDateString('ka-GE') : '—'],
+        ['თარიღი', fdLabor.orderDate ? new Date(fdLabor.orderDate).toLocaleDateString('ka-GE') : '-'],
         ['კომპანია', fdLabor.companyName],
         ['დირექტორი', fdLabor.directorName],
         ['სპეციალისტი', fdLabor.specialistName],
@@ -140,7 +140,7 @@ export default function OrderDetail() {
     : [
         ['ბრძანება №', fdAlcohol.orderNumber],
         ['ქალაქი', fdAlcohol.city],
-        ['თარიღი', fdAlcohol.orderDate ? new Date(fdAlcohol.orderDate).toLocaleDateString('ka-GE') : '—'],
+        ['თარიღი', fdAlcohol.orderDate ? new Date(fdAlcohol.orderDate).toLocaleDateString('ka-GE') : '-'],
         ['კომპანია', fdAlcohol.companyName],
         ['დირექტორი', fdAlcohol.directorName],
         ['პასუხისმგებელი', fdAlcohol.responsiblePersonName],
@@ -192,7 +192,7 @@ export default function OrderDetail() {
         {infoRows.map(([label, value]) => (
           <div key={label} className="flex items-center gap-4 px-4 py-2.5 text-sm">
             <span className="w-36 shrink-0 text-neutral-500">{label}</span>
-            <span className="font-medium text-neutral-900 dark:text-neutral-100">{value || '—'}</span>
+            <span className="font-medium text-neutral-900 dark:text-neutral-100">{value || '-'}</span>
           </div>
         ))}
       </div>
@@ -206,7 +206,7 @@ export default function OrderDetail() {
           <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-neutral-800">
-                დირექტორი — {fd.directorName || '—'}
+                დირექტორი - {fd.directorName || '-'}
               </span>
               {fd.directorSignature && (
                 <Button
@@ -250,7 +250,7 @@ export default function OrderDetail() {
           <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-neutral-800">
-                დანიშნული პირი — {fd.appointedName || '—'}
+                დანიშნული პირი - {fd.appointedName || '-'}
               </span>
               {fd.appointedSignature && (
                 <Button

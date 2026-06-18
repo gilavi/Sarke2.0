@@ -1,12 +1,12 @@
 /**
- * Cargo receiving platform inspection schema — web mirror of the Expo app's
+ * Cargo receiving platform inspection schema - web mirror of the Expo app's
  * `lib/inspection/schemas/cargoPlatform.ts` (the `@root` import is eslint-banned).
  * Ported faithfully (custom blocks) so the web PDF matches mobile: general info,
  * platform identification, cargo weight table, fix-row checklist, verdict.
  * Types live in the web data module (`@/lib/data/cargoPlatform`), not a separate
  * `lib/types/` file.
  *
- * Regulatory: the persisted "VII — ხელმოწერები" two-signatory grid is NOT
+ * Regulatory: the persisted "VII - ხელმოწერები" two-signatory grid is NOT
  * rendered here. The captured signature is appended by `buildInspectionPdf` from
  * the in-memory session (never persisted).
  */
@@ -64,18 +64,18 @@ const EXTRA_CSS = `
 
 function renderSectionI(insp: CargoPlatformInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">სართული / ზონა</span><span class="val">${escapeHtml(insp.floorZone) || '—'}</span></td>
+        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">სართული / ზონა</span><span class="val">${escapeHtml(insp.floorZone) || '-'}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
         <td></td>
       </tr>
     </table>
@@ -85,22 +85,22 @@ function renderSectionI(insp: CargoPlatformInspection): string {
 function binaryLabel(val: string | null, noneLabel: string, completeLabel: string): string {
   if (val === 'none') return `☑ ${noneLabel} &nbsp; ☐ ${completeLabel}`;
   if (val === 'complete') return `☐ ${noneLabel} &nbsp; ☑ ${completeLabel}`;
-  return '—';
+  return '-';
 }
 function guardrailHeightLabel(val: string | null): string {
   if (val === 'non_standard') return '☑ ვერ აკმაყოფილებს სტანდარტს &nbsp; ☐ სტანდარტს აკმაყოფილებს';
   if (val === 'standard') return '☐ ვერ აკმაყოფილებს სტანდარტს &nbsp; ☑ სტანდარტს აკმაყოფილებს';
-  return '—';
+  return '-';
 }
 
 function renderSectionII(insp: CargoPlatformInspection): string {
   return `
-    <div class="section-title">II — პლატფორმის იდენტიფიკაცია</div>
+    <div class="section-title">II - პლატფორმის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>პლატფორმის ტიპი / მოდელი</td><td>${escapeHtml(insp.platformTypeModel) || '—'}</td></tr>
-      <tr><td>სიგრძე (მ)</td><td>${insp.platformLength != null ? insp.platformLength : '—'}</td></tr>
-      <tr><td>სიგანე (მ)</td><td>${insp.platformWidth != null ? insp.platformWidth : '—'}</td></tr>
-      <tr><td>ვიზუალური აღწერა / ფერი</td><td>${escapeHtml(insp.platformColorDesc) || '—'}</td></tr>
+      <tr><td>პლატფორმის ტიპი / მოდელი</td><td>${escapeHtml(insp.platformTypeModel) || '-'}</td></tr>
+      <tr><td>სიგრძე (მ)</td><td>${insp.platformLength != null ? insp.platformLength : '-'}</td></tr>
+      <tr><td>სიგანე (მ)</td><td>${insp.platformWidth != null ? insp.platformWidth : '-'}</td></tr>
+      <tr><td>ვიზუალური აღწერა / ფერი</td><td>${escapeHtml(insp.platformColorDesc) || '-'}</td></tr>
       <tr><td>გვერდის დამცავი მოაჯირი</td><td>${binaryLabel(insp.sideGuardrail, 'არ გააჩნია', 'მოაჯირი სრულია')}</td></tr>
       <tr><td>წინა დამცავი მოაჯირი</td><td>${binaryLabel(insp.frontGuardrail, 'არ გააჩნია', 'მოაჯირი სრულია')}</td></tr>
       <tr><td>მოაჯირის სიმაღლე (სტანდ. 90–120 სმ)</td><td>${guardrailHeightLabel(insp.guardrailHeight)}</td></tr>
@@ -115,9 +115,9 @@ function renderSectionIII(insp: CargoPlatformInspection): string {
       (r, idx) => `
     <tr>
       <td class="col-num-sm">${idx + 1}</td>
-      <td>${escapeHtml(r.name) || '—'}</td>
-      <td class="col-weight">${r.unit_weight_kg != null ? r.unit_weight_kg : '—'}</td>
-      <td class="col-weight">${r.total_weight_kg != null ? r.total_weight_kg : '—'}</td>
+      <td>${escapeHtml(r.name) || '-'}</td>
+      <td class="col-weight">${r.unit_weight_kg != null ? r.unit_weight_kg : '-'}</td>
+      <td class="col-weight">${r.total_weight_kg != null ? r.total_weight_kg : '-'}</td>
       <td>${escapeHtml(r.note) || ''}</td>
     </tr>
   `,
@@ -125,7 +125,7 @@ function renderSectionIII(insp: CargoPlatformInspection): string {
     .join('');
 
   return `
-    <div class="section-title">III — ტვირთის იდენტიფიკაცია</div>
+    <div class="section-title">III - ტვირთის იდენტიფიკაცია</div>
     <table class="cargo-table">
       <thead>
         <tr>
@@ -151,8 +151,8 @@ function renderSectionIII(insp: CargoPlatformInspection): string {
 function resultPill(result: CPResult | null): string {
   if (result === 'good') return '<span class="pill pill-good">✓ კარგი</span>';
   if (result === 'fix') return '<span class="pill pill-fix">✗ გამოსასწ.</span>';
-  if (result === 'na') return '<span class="pill pill-na">— N/A</span>';
-  return '<span class="pill pill-null">—</span>';
+  if (result === 'na') return '<span class="pill pill-na">- N/A</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function renderSectionIV(insp: CargoPlatformInspection, photos: PhotoMap): string {
@@ -188,11 +188,11 @@ function renderSectionIV(insp: CargoPlatformInspection, photos: PhotoMap): strin
   }
 
   return `
-    <div class="section-title">IV — პლატფორმის შემოწმება</div>
+    <div class="section-title">IV - პლატფორმის შემოწმება</div>
     <div class="legend">
       <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი</span>
       <span class="legend-item"><span class="dot dot-fix"></span>✗ გამოსასწორებელი</span>
-      <span class="legend-item"><span class="dot dot-na"></span>N/A — არ ვრცელდება</span>
+      <span class="legend-item"><span class="dot dot-na"></span>N/A - არ ვრცელდება</span>
     </div>
     <table class="cl-table">
       <thead>
@@ -207,7 +207,7 @@ function renderSectionV(insp: CargoPlatformInspection): string {
   const vx = (v: string) => (insp.verdict === v ? 'selected' : '');
   const vchecked = (v: string) => (insp.verdict === v ? 'checked' : '');
   return `
-    <div class="section-title">V — დასკვნა</div>
+    <div class="section-title">V - დასკვნა</div>
     <div class="verdict-block">
       ${(['approved', 'conditional', 'rejected'] as const)
         .map(
@@ -241,7 +241,7 @@ function renderSectionVI(insp: CargoPlatformInspection, photos: PhotoMap): strin
 
   return insp.summaryPhotos.length > 0
     ? `
-    <div class="section-title">VI — ფოტო / ვიდეო მასალა</div>
+    <div class="section-title">VI - ფოტო / ვიდეო მასალა</div>
     <div class="photo-grid">${photoItems}</div>
   `
     : '';
@@ -262,8 +262,8 @@ export const cargoPlatformSchema: InspectionSchema<CargoPlatformInspection> = {
   templateId: CARGO_PLATFORM_TEMPLATE_ID,
 
   docTitle: 'ტვირთის მიმღები პლატფორმის<br>შემოწმების აქტი',
-  docSubtitle: 'Cargo Receiving Platform — Technical Inspection & Safety Acceptance Act',
-  pdfFooterLabel: 'Hubble — ტვირთის მიმღები პლატფორმის შემოწმების აქტი',
+  docSubtitle: 'Cargo Receiving Platform - Technical Inspection & Safety Acceptance Act',
+  pdfFooterLabel: 'Hubble - ტვირთის მიმღები პლატფორმის შემოწმების აქტი',
   pdfNameLabel: 'CargoPlatformInspection',
   extraCss: EXTRA_CSS,
 

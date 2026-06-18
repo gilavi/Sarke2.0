@@ -6,7 +6,7 @@ import { SidebarNavList } from './SidebarNav';
 import { SidebarFooter } from './SidebarFooter';
 
 /* ── Main Sidebar Component ─────────────────────────────
-   Single permanent state — always full + labeled (no icon-only collapse). The
+   Single permanent state - always full + labeled (no icon-only collapse). The
    sidebar sits directly on the app canvas (no panel background of its own). */
 
 interface SidebarProps {
@@ -14,7 +14,7 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-/** Logo + nav + footer — shared by the desktop sidebar and the mobile drawer. */
+/** Logo + nav + footer - shared by the desktop sidebar and the mobile drawer. */
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>

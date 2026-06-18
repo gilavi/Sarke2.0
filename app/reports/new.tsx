@@ -6,10 +6,12 @@ import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { FlowHeader } from '../../components/FlowHeader';
+import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { projectsApi, reportsApi } from '../../lib/services';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import type { Project } from '../../types/models';
 
 export default function NewReportTitleScreen() {
@@ -17,24 +19,30 @@ export default function NewReportTitleScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
+  const [pickedProject, setPickedProject] = useState<Project | null>(null);
+  const projectId = paramProjectId ?? pickedProject?.id;
 
   const [project, setProject] = useState<Project | null>(null);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
+  // Enabled "შემდეგი" button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || project) return;
     let mounted = true;
     projectsApi.getById(projectId).then(p => { if (mounted) setProject(p); }).catch(() => null);
     return () => { mounted = false; };
-  }, [projectId]);
+  }, [projectId, project]);
 
   const trimmed = title.trim();
-  const canStart = trimmed.length > 0 && !busy && !!projectId;
+  // Input gate for the (now always-enabled) button — `busy` stays a separate
+  // in-flight disable; this only governs whether a press reveals field errors.
+  const inputValid = trimmed.length > 0 && !!projectId;
 
   const onNext = async () => {
-    if (!canStart || !projectId) return;
+    if (busy || !inputValid || !projectId) return;
     setBusy(true);
     try {
       const created = await reportsApi.create({ projectId, title: trimmed });
@@ -45,8 +53,20 @@ export default function NewReportTitleScreen() {
     }
   };
 
+  // Launched from Home without a project - pick one as the first full-screen step.
+  if (!projectId) {
+    return (
+      <FlowProjectPicker
+        flowTitle="რეპორტი"
+        action="report"
+        onBack={() => router.back()}
+        onPicked={(p) => { setPickedProject(p); setProject(p); }}
+      />
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
@@ -54,8 +74,12 @@ export default function NewReportTitleScreen() {
         project={project}
         step={1}
         totalSteps={2}
+        leading="back"
+        trailing="close"
         onBack={() => router.back()}
+        onClose={() => router.back()}
         confirmExit={trimmed.length > 0}
+        surfaceColor={theme.colors.surface}
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
@@ -66,15 +90,16 @@ export default function NewReportTitleScreen() {
           onChangeText={setTitle}
           autoFocus
           returnKeyType="done"
-          onSubmitEditing={onNext}
+          onSubmitEditing={() => guard(inputValid, onNext)}
+          error={attempted && !trimmed.length ? 'სავალდებულო ველი' : undefined}
         />
       </KeyboardSafeArea>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: insets.bottom + 8, borderTopWidth: 1, borderTopColor: theme.colors.hairline }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom }}>
         <Button
           title="შემდეგი →"
-          onPress={onNext}
-          disabled={!canStart}
+          onPress={() => guard(inputValid, onNext)}
+          disabled={busy}
           loading={busy}
         />
       </View>

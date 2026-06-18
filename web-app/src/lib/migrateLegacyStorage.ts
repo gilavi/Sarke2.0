@@ -4,7 +4,7 @@
  * isn't already set, then removes the old key. Preserves existing users'
  * theme / language / onboarding / pending-create state through the rename.
  *
- * Safe to call on every boot — it's idempotent (no-op once migrated).
+ * Safe to call on every boot - it's idempotent (no-op once migrated).
  */
 const PAIRS: readonly [string, string][] = [
   ['sarke-theme', 'hubble-theme'],
@@ -25,6 +25,6 @@ export function migrateLegacyStorage(): void {
       localStorage.removeItem(oldKey);
     }
   } catch {
-    /* localStorage unavailable (private mode / SSR) — nothing to migrate */
+    /* localStorage unavailable (private mode / SSR) - nothing to migrate */
   }
 }

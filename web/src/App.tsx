@@ -5,16 +5,16 @@ import { DeclinedPage } from './pages/DeclinedPage';
 import SafetyGuidePage from './pages/SafetyGuidePage';
 
 /**
- * Hash-based routing — GitHub Pages serves a single index.html, and any path
+ * Hash-based routing - GitHub Pages serves a single index.html, and any path
  * other than / would 404 unless we put a custom 404 redirect in place. Hash
  * routes sidestep that entirely.
  *
  * Routes:
- *   /#/sign/<token>   — main signing page
- *   /#/success        — post-sign confirmation
- *   /#/declined       — post-decline confirmation
- *   /#/safety         — 3D construction safety guide
- *   anything else     — landing fallback
+ *   /#/sign/<token>   - main signing page
+ *   /#/success        - post-sign confirmation
+ *   /#/declined       - post-decline confirmation
+ *   /#/safety         - 3D construction safety guide
+ *   anything else     - landing fallback
  */
 export function App() {
   const [hash, setHash] = useState<string>(() => window.location.hash || '');
@@ -42,7 +42,7 @@ export function App() {
     return <SafetyGuidePage />;
   }
 
-  // Fallback — index.html already redirects non-signing visitors to /app/
+  // Fallback - index.html already redirects non-signing visitors to /app/
   // before React loads, so this branch should never be reached in production.
   return null;
 }

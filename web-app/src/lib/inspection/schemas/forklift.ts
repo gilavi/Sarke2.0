@@ -1,5 +1,5 @@
 /**
- * Forklift inspection schema — web mirror of the Expo app's
+ * Forklift inspection schema - web mirror of the Expo app's
  * `lib/inspection/schemas/forklift.ts` (the `@root` import is eslint-banned).
  * Category-grouped pill checklist + verdict (custom blocks). The persisted
  * signature section is omitted (regulatory); the captured signature is appended
@@ -35,7 +35,7 @@ function resultPill(result: string | null): string {
   if (result === 'good') return '<span class="pill pill-good">✓ კარგია</span>';
   if (result === 'deficient') return '<span class="pill pill-def">⚠ ნაკლი</span>';
   if (result === 'unusable') return '<span class="pill pill-bad">✗ გამოუსადეგ.</span>';
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function renderIdentification(insp: ForkliftInspection): string {
@@ -46,21 +46,21 @@ function renderIdentification(insp: ForkliftInspection): string {
     })
     .join('');
   return `
-    <div class="section-title">I — საიდენტიფიკაციო მონაცემები</div>
+    <div class="section-title">I - საიდენტიფიკაციო მონაცემები</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">ობიექტი / კომპანია</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
-        <td><span class="lbl">მარკა / მოდელი</span><span class="val">${escapeHtml(insp.brandModel) || '—'}</span></td>
+        <td><span class="lbl">ობიექტი / კომპანია</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
+        <td><span class="lbl">მარკა / მოდელი</span><span class="val">${escapeHtml(insp.brandModel) || '-'}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">ინვენტ. / სერიული ნომერი</span><span class="val">${escapeHtml(insp.inventoryNumber) || '—'}</span></td>
+        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">ინვენტ. / სერიული ნომერი</span><span class="val">${escapeHtml(insp.inventoryNumber) || '-'}</span></td>
       </tr>
       <tr>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
         <td><span class="lbl">ძრავის ტიპი</span><div class="engine-chips">${chips}</div></td>
       </tr>
-      <tr><td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td><td></td></tr>
+      <tr><td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td><td></td></tr>
     </table>
   `;
 }
@@ -87,10 +87,10 @@ function renderChecklist(insp: ForkliftInspection, photos: PhotoMap): string {
       </tr>`;
   }
   return `
-    <div class="section-title">II — შემოწმების ჩეკლისტი</div>
+    <div class="section-title">II - შემოწმების ჩეკლისტი</div>
     <div class="legend">
-      <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი — ნორმაში</span>
-      <span class="legend-item"><span class="dot dot-def"></span>⚠ ნაკლი — საჭიროებს მომსახურებას</span>
+      <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი - ნორმაში</span>
+      <span class="legend-item"><span class="dot dot-def"></span>⚠ ნაკლი - საჭიროებს მომსახურებას</span>
       <span class="legend-item"><span class="dot dot-bad"></span>✗ გამოუსადეგარი</span>
     </div>
     <table class="cl-table">
@@ -113,7 +113,7 @@ function renderVerdict(insp: ForkliftInspection, photos: PhotoMap): string {
     ? `<div class="notes-label" style="margin-top:14px;">ფოტოები</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">${summaryImgs}</div>`
     : '';
   return `
-    <div class="section-title">III — დასკვნა</div>
+    <div class="section-title">III - დასკვნა</div>
     <div class="verdict-block">
       <div class="verdict-option ${vx('approved')}"><div class="verdict-box ${vchecked('approved')}"></div><span class="verdict-label">${escapeHtml(FORKLIFT_VERDICT_LABEL.approved)}</span></div>
       <div class="verdict-option ${vx('limited')}"><div class="verdict-box ${vchecked('limited')}"></div><span class="verdict-label">${escapeHtml(FORKLIFT_VERDICT_LABEL.limited)}</span></div>
@@ -132,7 +132,7 @@ export const forkliftSchema: InspectionSchema<ForkliftInspection> = {
 
   docTitle: 'ჩანგლიანი დამტვირთველის<br>შემოწმების აქტი',
   docSubtitle: 'Forklift Technical Inspection Act',
-  pdfFooterLabel: 'Hubble — ჩანგლიანი დამტვირთველის შემოწმების აქტი',
+  pdfFooterLabel: 'Hubble - ჩანგლიანი დამტვირთველის შემოწმების აქტი',
   pdfNameLabel: 'ForkliftInspection',
   extraCss: EXTRA_CSS,
 

@@ -1,11 +1,11 @@
 /**
- * Read-only result/detail screen for a COMPLETED structured inspection — the
+ * Read-only result/detail screen for a COMPLETED structured inspection - the
  * structured-act equivalent of `pages/HarnessInspectionDetail`. A normal
  * scrollable page (NOT the wizard frame): breadcrumb header + PDF/delete actions,
  * read-only general info / checklist summary / verdict, and the SignatureCapture
  * section at the bottom that generates the signed PDF.
  *
- * Regulatory: `SignatureCapture` lives here (mirrors harness) — the captured
+ * Regulatory: `SignatureCapture` lives here (mirrors harness) - the captured
  * signature is handed to the print route via in-memory router state and never
  * persisted. Drafts render the wizard instead (see StructuredActPage).
  */
@@ -116,7 +116,7 @@ export function StructuredInspectionResult({ act }: { act: StructuredAct }) {
                 {step.fields.map((f) => (
                   <div key={f.key}>
                     <div className="text-xs text-neutral-500">{f.label}</div>
-                    <div className="text-neutral-900 dark:text-neutral-100">{f.value(item) || '—'}</div>
+                    <div className="text-neutral-900 dark:text-neutral-100">{f.value(item) || '-'}</div>
                   </div>
                 ))}
               </CardContent>
@@ -130,8 +130,8 @@ export function StructuredInspectionResult({ act }: { act: StructuredAct }) {
             <Card key={step.key}>
               <CardHeader><CardTitle className="text-base">{step.title}</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div>დასკვნა: <span className="font-medium">{opt?.label ?? '—'}</span></div>
-                <div className="text-neutral-600 dark:text-neutral-400">{step.getNotes(item) || '—'}</div>
+                <div>დასკვნა: <span className="font-medium">{opt?.label ?? '-'}</span></div>
+                <div className="text-neutral-600 dark:text-neutral-400">{step.getNotes(item) || '-'}</div>
               </CardContent>
             </Card>
           );
@@ -153,7 +153,7 @@ export function StructuredInspectionResult({ act }: { act: StructuredAct }) {
 
       {/* Stat line */}
       <p className="text-sm text-neutral-500">
-        {summary.total} {descriptor.itemLabel} შემოწმდა — {summary.good} კარგია, {summary.problem} პრობლემა
+        {summary.total} {descriptor.itemLabel} შემოწმდა - {summary.good} კარგია, {summary.problem} პრობლემა
       </p>
 
       {/* Signature capture (regulatory: in-memory only, never persisted) */}

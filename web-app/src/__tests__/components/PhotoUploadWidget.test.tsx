@@ -1,5 +1,5 @@
 /**
- * PhotoUploadWidget (46% covered) — upload, thumbnail, delete.
+ * PhotoUploadWidget (46% covered) - upload, thumbnail, delete.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@/test-utils';

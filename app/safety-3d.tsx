@@ -4,7 +4,7 @@ import { WebView } from 'react-native-webview';
 import { Screen } from '../components/ui';
 import { useTheme } from '../lib/theme';
 import { useMemo } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft } from 'lucide-react-native';
 import { Pressable } from 'react-native';
 
 export default function Safety3DScreen() {
@@ -23,7 +23,7 @@ export default function Safety3DScreen() {
           headerTintColor: theme.colors.accent,
           headerLeft: () => (
             <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={theme.colors.accent} />
+              <ArrowLeft size={24} color={theme.colors.accent} strokeWidth={1.5} />
             </Pressable>
           ),
         }}

@@ -1,29 +1,30 @@
-﻿import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
+import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
   ChecklistItem,
   ChipNavStrip,
-  VerdictSelector,
   DynamicTable,
   PhotoSection,
   type ChipNavItem,
-  type VerdictOption,
   type DynamicTableColumn,
 } from '../../../components/inspection-parts';
+import {
+  VerdictSelector,
+  VerdictSuggestionBanner,
+  type VerdictOption,
+} from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fallProtectionApi } from '../../../lib/fallProtectionService';
 import { fallProtectionSchema } from '../../../lib/inspection/schemas/fallProtection';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
@@ -33,6 +34,7 @@ import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import {
   FP_CHECKLIST_ITEMS,
@@ -51,7 +53,14 @@ import {
   type FPDeviceData,
   type FPVerdict,
   type FPResult,
+  type FPInspectionType,
 } from '../../../types/fallProtection';
+
+const FP_VERDICT_OPTIONS: VerdictOption<FPVerdict>[] = [
+  { value: 'safe',   label: FP_VERDICT_LABELS.safe,   tone: 'success' },
+  { value: 'minor',  label: FP_VERDICT_LABELS.minor,  tone: 'caution' },
+  { value: 'banned', label: FP_VERDICT_LABELS.banned, tone: 'danger'  },
+];
 
 // ── Step constants ────────────────────────────────────────────────────────────
 
@@ -78,10 +87,12 @@ export default function FallProtectionInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   const [activeDeviceIdx, setActiveDeviceIdx] = useState(0);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks.
@@ -354,14 +365,32 @@ export default function FallProtectionInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
+  // On a blocked finish, reveal errors and jump to the first device still
+  // missing a verdict so the red selector is in view.
+  const handleBlockedNext = useCallback(() => {
+    markAttempted();
+    if (step === DEVICES_STEP && inspection) {
+      const idx = inspection.deviceData.findIndex(d => !d.verdict);
+      if (idx >= 0) setActiveDeviceIdx(idx);
+    }
+  }, [markAttempted, step, inspection]);
+
   // ── Loading & completed ─────────────────────────────────────────────────────
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="დამჭერი მოწყობილობა"
+        projectName={projectName ?? ''}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        variant={step === DEVICES_STEP ? 'checklist' : 'form'}
+        fields={4}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -400,46 +429,24 @@ export default function FallProtectionInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="დამჭერი მოწყობილობა"
-        project={projectName ? { name: projectName } : null}
-        step={step + 1}
+      <InspectionShell
+        title="დამჭერი მოწყობილობა"
+        projectName={projectName ?? ''}
+        step={step}
         totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === DEVICES_STEP}
+        blockNext
+        completing={completing}
+        finishLabel="შემოწმება დასრულდა"
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={handleBlockedNext}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={
-          step > 0 ? (
-            <Pressable
-              onPress={() => handlePdf()}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && (
-        <Text style={styles.savingHint}>შენახვა…</Text>
-      )}
-
-      {pdfLocked && (
-        <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />
-      )}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+      >
 
           {/* ── Step 0: Equipment Registry ──────────────────────────────────── */}
           {step === REGISTRY_STEP && (
@@ -489,27 +496,19 @@ export default function FallProtectionInspectionScreen() {
                 keyboardType="phone-pad"
               />
 
-              <View style={{ gap: 6 }}>
-                <Text style={styles.fieldLabel}>შემოწმების სახე</Text>
-                <View style={styles.chipRow}>
-                  {(['primary', 'secondary'] as const).map(type => {
-                    const label = type === 'primary' ? 'პირველადი' : 'განმეორებითი';
-                    const active = inspection.inspectionType === type;
-                    return (
-                      <Pressable
-                        key={type}
-                        style={[styles.typeChip, active && styles.typeChipActive]}
-                        onPress={() => { haptic.light(); update('inspectionType', type); }}
-                        {...a11y(label, undefined, 'radio')}
-                      >
-                        <Text style={[styles.typeChipText, active && styles.typeChipTextActive]}>
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
+              <IdentificationGrid
+                columns={1}
+                fields={[
+                  {
+                    label: 'შემოწმების სახე',
+                    type: 'select',
+                    value: inspection.inspectionType ?? '',
+                    onChange: v => update('inspectionType', (v || null) as FPInspectionType | null),
+                    options: ['primary', 'secondary'],
+                    optionLabels: ['პირველადი', 'განმეორებითი'],
+                  },
+                ]}
+              />
 
               <View style={{ gap: 6 }}>
                 <SectionHeader title="მოწყობილობების რეესტრი" />
@@ -534,10 +533,11 @@ export default function FallProtectionInspectionScreen() {
                   key: d.id,
                   label: d.id,
                   state: tabStates[idx] ?? 'pending',
-                  a11yHint: `${d.id} — ${d.type || 'მოწყობილობა'}`,
+                  a11yHint: `${d.id} - ${d.type || 'მოწყობილობა'}`,
                 }))}
                 activeIndex={safeDeviceIdx}
                 onSelect={setActiveDeviceIdx}
+                tone="neutral"
               />
 
               {/* Device details */}
@@ -636,27 +636,23 @@ export default function FallProtectionInspectionScreen() {
                   {/* Verdict */}
                   <SectionHeader title="დასკვნა" />
                   {suggestedVerdict && currentDeviceData.verdict !== suggestedVerdict && (
-                    <Pressable
-                      style={styles.suggestBanner}
-                      onPress={() => handleVerdictChange(safeDeviceIdx, suggestedVerdict)}
-                    >
-                      <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
-                      <Text style={styles.suggestText}>
-                        შემოთავაზება: {FP_VERDICT_LABELS[suggestedVerdict]}
-                      </Text>
-                    </Pressable>
+                    <VerdictSuggestionBanner
+                      text={`შემოთავაზება: ${FP_VERDICT_LABELS[suggestedVerdict]}`}
+                      onApply={() => handleVerdictChange(safeDeviceIdx, suggestedVerdict)}
+                    />
                   )}
                   <VerdictSelector
-                    options={([
-                      { value: 'safe',   label: FP_VERDICT_LABELS.safe,   type: 'success' },
-                      { value: 'minor',  label: FP_VERDICT_LABELS.minor,  type: 'warning' },
-                      { value: 'banned', label: FP_VERDICT_LABELS.banned, type: 'danger'  },
-                    ] as VerdictOption[])}
                     value={currentDeviceData.verdict}
+                    options={FP_VERDICT_OPTIONS}
                     onChange={v => handleVerdictChange(safeDeviceIdx, v)}
-                    note={currentDeviceData.verdictComment}
-                    onNoteChange={v => handleVerdictCommentChange(safeDeviceIdx, v)}
-                    notePlaceholder="კომენტარი"
+                    showError={attempted && !currentDeviceData.verdict}
+                  />
+                  <FloatingLabelInput
+                    label="კომენტარი"
+                    value={currentDeviceData.verdictComment}
+                    onChangeText={v => handleVerdictCommentChange(safeDeviceIdx, v)}
+                    multiline
+                    numberOfLines={4}
                   />
 
                   {/* Device photos */}
@@ -671,30 +667,7 @@ export default function FallProtectionInspectionScreen() {
             </View>
           )}
 
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === DEVICES_STEP ? (
-            <Button
-              title="შემოწმება დასრულდა"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title="შემდეგი"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={20} color={theme.colors.white} />}
-              disabled={!canGoNext}
-              onPress={handleNext}
-            />
-          )}
-        </View>
-      </View>
+        </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
@@ -711,7 +684,6 @@ export default function FallProtectionInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: {
       textAlign: 'center', fontSize: 11,
       color: theme.colors.inkFaint, paddingVertical: 2,
@@ -731,19 +703,6 @@ function getstyles(theme: Theme) {
       fontSize: 12, fontWeight: '600',
       color: theme.colors.inkSoft, marginBottom: 4,
     },
-    chipRow: { flexDirection: 'row', gap: 8 },
-    typeChip: {
-      paddingHorizontal: 16, paddingVertical: 10,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    typeChipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
-    },
-    typeChipText: { fontSize: 13, color: theme.colors.inkSoft },
-    typeChipTextActive: { color: theme.colors.accent, fontWeight: '700' },
     // Device tabs
     deviceMeta: {
       fontSize: 11, color: theme.colors.inkSoft,
@@ -755,11 +714,5 @@ function getstyles(theme: Theme) {
       borderTopColor: theme.colors.hairline,
       paddingTop: 8, marginTop: 4,
     },
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,
-      borderRadius: 10, padding: 10,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

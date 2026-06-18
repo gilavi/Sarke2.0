@@ -14,6 +14,9 @@ queue.
 ## Internal files
 - `InspectionWizard.tsx` — orchestrator. Renders header/footer + the
   current step. Owns local UI state (tour, swipe gesture, entrance anim).
+  Its initial-load gate renders the shared `InspectionShellSkeleton`
+  (`variant="question"`, no `totalSteps` — step count isn't known until
+  questions load), keeping the real header on screen during the fetch.
 - `useWizardState.ts` — single hook owning wizard state, load,
   answer/photo mutations and finish flow. Larger than the 150-line
   "hook" target on purpose — see "Gotchas".
@@ -27,15 +30,23 @@ queue.
   `hasAnswer`, `isAnswerShapeValidForType`, `parseMeasure`, `measureError`,
   `scaffoldColStyle`, AsyncStorage key helpers, bounded photo-URL cache.
 - `styles.ts` — `getstyles(theme)` factory, `staticStyles`, `uploadPillStyles`.
-- `QuestionStep.tsx` — generic question step (yesno/measure/freetext +
-  photos + notes).
+- `QuestionStep.tsx` — generic question step (yesno/measure/freetext);
+  photos + notes via the shared `AttachmentBars`.
+- `AttachmentBars.tsx` — the two dashed photo/note bars (photo bar +
+  thumbnails; note bar morphs into `DebouncedNotes`). Reused by
+  `QuestionStep` and `ConclusionStep` (photo-only there, via an
+  optional `onNoteCommit`). Monochrome.
 - `HarnessRowStep.tsx` — harness (N1-N15) `component_grid` row step:
   ✓/✗ chips per col + row-count picker on the first row.
 - `ScaffoldRowStep.tsx` — non-harness `component_grid` row step:
   big status buttons rendered by `ScaffoldFooterButtons` in the
   global footer + an optional comment field.
-- `ConclusionStep.tsx` — final step with safety verdict, harness name,
-  general photos, and conclusion textarea.
+- `ConclusionStep.tsx` — final step with the shared monochrome safety
+  verdict picker (`VerdictSelector` from `components/inspection-steps`,
+  fed the 3-option `SafetyVerdict` set defined in this file), harness
+  name, general photos (`AttachmentBars`, photo-only), and conclusion
+  textarea. The bespoke local `VerdictSelector` was removed when the
+  selector was unified across every inspection flow.
 - `MeasureInput.tsx`, `DebouncedFreetext.tsx`, `DebouncedNotes.tsx` —
   debounced text/number inputs that commit through `patchAnswer`.
 - `ScaffoldFooterButtons.tsx` — the action bar rendered in the global

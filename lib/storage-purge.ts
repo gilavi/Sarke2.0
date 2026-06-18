@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // must never leak across accounts on a shared device.
 //
 // `home_cache_*` and `regulation_seen_*` are user-specific reads (projects,
-// inspections, "regulation seen by THIS expert" markers) — leaving them on
+// inspections, "regulation seen by THIS expert" markers) - leaving them on
 // disk lets a second account see the previous user's content for ~1s before
 // the live fetch overwrites it.
 const USER_SCOPED_PREFIXES = [
@@ -30,7 +30,7 @@ const USER_SCOPED_PREFIXES = [
  * account signing in on the same device cannot flush the first account's
  * queued writes under its own auth token.
  *
- * Never throws — a purge failure must not block sign-out.
+ * Never throws - a purge failure must not block sign-out.
  */
 export async function purgeUserScopedStorage(): Promise<void> {
   try {
@@ -42,6 +42,6 @@ export async function purgeUserScopedStorage(): Promise<void> {
       await AsyncStorage.multiRemove(toRemove);
     }
   } catch {
-    // Swallow — a purge failure shouldn't block sign-out.
+    // Swallow - a purge failure shouldn't block sign-out.
   }
 }

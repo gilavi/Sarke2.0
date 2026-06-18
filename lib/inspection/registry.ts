@@ -5,7 +5,7 @@
  * only 3 and silently fell through to the generic questionnaire for the rest).
  *
  * Keyed by each schema's own `category`, so the dispatch key can never diverge
- * from the schema. `breathalyzerLog` is intentionally absent — it's a log, not a
+ * from the schema. `breathalyzerLog` is intentionally absent - it's a log, not a
  * checklist inspection. Unknown categories fall back to the generic questionnaire
  * at the call sites.
  */

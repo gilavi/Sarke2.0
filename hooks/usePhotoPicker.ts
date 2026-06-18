@@ -15,28 +15,28 @@ export interface PickedPhoto {
 }
 
 /**
- * Hook for all photo-pick flows. (Formerly `usePhotoWithLocation` — photo
+ * Hook for all photo-pick flows. (Formerly `usePhotoWithLocation` - photo
  * geotagging was dropped in 2026-06 with the location permission; payloads
  * that still carry latitude/longitude/address columns now always receive null.)
  *
- * - `pickPhotoWithAnnotation` — the canonical SINGLE-photo entry point.
+ * - `pickPhotoWithAnnotation` - the canonical SINGLE-photo entry point.
  *   Opens /photo-picker (live camera + gallery), then /photo-annotate.
  *   The annotation step is always presented; the user may save without drawing.
  *   Pass `skipAnnotate: true` for contexts where markup is not useful (incidents,
  *   certificates, qualifications). Returns one photo (or null).
  *
- * - `pickPhotosWithAnnotation` — the MULTI-photo entry point (galleries: inspection
+ * - `pickPhotosWithAnnotation` - the MULTI-photo entry point (galleries: inspection
  *   item/summary photos, answer photos, incident photos, project files). Opens
  *   /photo-picker in batch mode. A single live capture still annotates and returns
  *   one photo; a recent-strip / system-library batch skips annotation and returns
  *   all selected photos (sharing one timestamp). Returns `[]` if cancelled.
- *   Callers should upload sequentially (or with a small concurrency cap) — never an
+ *   Callers should upload sequentially (or with a small concurrency cap) - never an
  *   unbounded Promise.all over many full-res photos.
  *
- * - `pickPhotoWithAnnotationFromUri` — re-annotate an existing stored photo.
+ * - `pickPhotoWithAnnotationFromUri` - re-annotate an existing stored photo.
  *   Opens /photo-annotate directly. Returns the annotated URI, or null if cancelled.
  *
- * - `takePhoto`, `pickPhoto`, `pickMultiplePhotos` — kept for callers that need
+ * - `takePhoto`, `pickPhoto`, `pickMultiplePhotos` - kept for callers that need
  *   direct ImagePicker access (only app/photo-picker.tsx and this hook may use
  *   ImagePicker directly; all other screens must call pickPhotoWithAnnotation).
  */

@@ -3,10 +3,10 @@
 // Modal for capturing a single signature, wrapping the canonical
 // components/SignatureCanvas (which owns the react-native-signature-canvas
 // WebView + capture buttons). This thin wrapper exists so the no-persistence
-// rule travels with the new signatures module — callers should import this
+// rule travels with the new signatures module - callers should import this
 // file, not the bare SignatureCanvas.
 //
-// REGULATORY — IMPORTANT: the base64 PNG passed to `onConfirm` MUST NOT be
+// REGULATORY - IMPORTANT: the base64 PNG passed to `onConfirm` MUST NOT be
 // persisted. The only allowed downstream is wizard component state (cleared
 // after PDF generation) and the in-flight HTML payload sent to expo-print.
 // Do NOT upload to Supabase storage, write to a DB, cache in AsyncStorage /

@@ -46,7 +46,7 @@ export const inspectionsApi = {
   // 10 per-source `listByProject` calls (generic + 9 equipment types). Backed
   // by the get_project_inspections_unified() RPC + the unify-identity
   // migration's `inspections.type` column. Returns only the four columns the
-  // screen actually consumes — full equipment payloads are never needed here.
+  // screen actually consumes - full equipment payloads are never needed here.
   unifiedByProject: async (
     projectId: string,
   ): Promise<Array<{ id: string; source: string; template_id: string; status: 'draft' | 'completed'; created_at: string }>> => {
@@ -107,7 +107,7 @@ export const inspectionsApi = {
     completed: number;
     latestCreatedAt: string | null;
   }> => {
-    // Three parallel COUNT-only requests — no rows are transferred to the client.
+    // Three parallel COUNT-only requests - no rows are transferred to the client.
     const [draftRes, completedRes, latestRes] = await Promise.all([
       supabase.from('inspections').select('*', { count: 'exact', head: true }).eq('status', 'draft'),
       supabase.from('inspections').select('*', { count: 'exact', head: true }).eq('status', 'completed'),

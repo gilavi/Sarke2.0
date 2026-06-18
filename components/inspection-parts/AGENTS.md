@@ -13,7 +13,17 @@ renamed in Phase 1 of the refactor to distinguish from
   `pending|active|done|problem|warning`), `activeIndex`, `onSelect`.
   Used by `app/inspections/fall-protection` and
   `components/harness-list/HarnessListFlow`.
-- `ChecklistItem` — yes/no row used in checklist sections.
+- `ChecklistItemRow` — **canonical checklist row** for any "several
+  items on one page" list: label + inline help `?` + a cluster of
+  monochrome `StatusChip`s (2–4 options incl. N/A). Neutral by default,
+  no per-row note/photo. Harness `ChipRow`, equipment `ChecklistRow`,
+  and `ChecklistItem` are all thin adapters over it. `dense` for 3–4
+  options.
+- `ChecklistLegend` — monochrome key (filled chip glyph + Georgian
+  label) shown above a `ChecklistItemRow` list.
+- `ChecklistItem` — thin adapter over `ChecklistItemRow`: maps the 2–4
+  state vocabulary (binary / three_state / four_state, incl. N/A) to
+  result chips. Legacy comment/photo props are accepted but ignored.
 - `ChecklistSection` — a labelled group of `ChecklistItem`s.
 - `DynamicTable` — small data table for read-only summaries.
 - `IdentificationGrid` — label/value grid for inspection identification
@@ -27,7 +37,9 @@ renamed in Phase 1 of the refactor to distinguish from
   uploads.
 - `SignatureBlock` — single-signature display block.
 - `SignatureSheet` — bottom-sheet container for capturing a signature.
-- `VerdictSelector` — three-way verdict button group.
+- (`VerdictSelector` was **removed** — the canonical verdict picker now
+  lives in [`components/inspection-steps/VerdictSelector.tsx`](../inspection-steps/VerdictSelector.tsx)
+  and is consumed via the shared `ConclusionStep`.)
 
 ## Internal files
 One file per export above, plus `index.ts`.

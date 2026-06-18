@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
  * Animated.Value for the bottom margin of a custom-sheet card so it sits
  * exactly on top of the keyboard. Uses iOS keyboard `e.duration` and the
  * iOS keyboard easing curve so the sheet rides the keyboard 1:1 with no
- * overshoot. `useNativeDriver: false` — `marginBottom` is a layout prop.
+ * overshoot. `useNativeDriver: false` - `marginBottom` is a layout prop.
  *
  * Subtracts `insets.bottom` so a sheet that already pads for the home
  * indicator doesn't double-lift past it.

@@ -14,7 +14,7 @@
  * regulation badge inside its own bespoke header, and the EN-standards line in
  * its own footer. The shared engine owns the header/footer now, so the
  * regulation/standards strings move into header/footer schema fields and
- * `nextInspectionDate` is surfaced as a row in Section I (general info) — the
+ * `nextInspectionDate` is surfaced as a row in Section I (general info) - the
  * one place body content can carry it without losing the datum.
  */
 import { escapeHtml, fmtDate } from '../escape';
@@ -77,7 +77,7 @@ const EXTRA_CSS = `
   }
   .device-meta { font-size: 11px; color: var(--inkSoft); }
 
-  /* Checklist table — override base .cl-table th text styling (base makes
+  /* Checklist table - override base .cl-table th text styling (base makes
      headers small/uppercase/gray/centered; the fall-protection sheet uses
      left-aligned, ink-colored, non-transformed 11px headers). */
   .cl-table { width: 100%; border-collapse: collapse; font-size: 11px; }
@@ -93,7 +93,7 @@ const EXTRA_CSS = `
   .chip-minor    { color: #92400E; font-weight: 700; }
   .chip-na       { color: var(--inkFaint); }
 
-  /* Verdict — override base .verdict-block (base adds a top margin; here it sits
+  /* Verdict - override base .verdict-block (base adds a top margin; here it sits
      flush as a band inside the device card). */
   .verdict-block { margin-top: 0; padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
   .verdict-label { font-size: 10px; color: var(--inkFaint); margin-bottom: 4px; line-height: 1.45; }
@@ -102,7 +102,7 @@ const EXTRA_CSS = `
   .verdict-banned { color: var(--redText); font-weight: 800; font-size: 13px; }
   .verdict-comment { font-size: 11px; color: var(--inkSoft); margin-top: 4px; }
 
-  /* Signature — override base .sig-block (a bordered grid container); the
+  /* Signature - override base .sig-block (a bordered grid container); the
      fall-protection signature is a plain block with only a bottom rule. Reset
      every base property that would otherwise leak (display/border/radius/etc). */
   .sig-block {
@@ -135,7 +135,7 @@ function chipClass(result: FPResult | null): string {
 }
 
 function chipDisplay(result: FPResult | null): string {
-  if (!result) return '—';
+  if (!result) return '-';
   return FP_RESULT_TO_CHIP[result];
 }
 
@@ -176,7 +176,7 @@ function buildDeviceSection(
     </tr>`;
 
   // Verdict
-  const vLabel = data.verdict ? FP_VERDICT_LABELS[data.verdict] : '—';
+  const vLabel = data.verdict ? FP_VERDICT_LABELS[data.verdict] : '-';
   const verdictHtml = `
     <div class="verdict-block">
       <div class="verdict-label">დასკვნა</div>
@@ -184,7 +184,7 @@ function buildDeviceSection(
       ${data.verdictComment ? `<div class="verdict-comment">${escapeHtml(data.verdictComment)}</div>` : ''}
     </div>`;
 
-  // Photos — item-level photos first, then device summary photos
+  // Photos - item-level photos first, then device summary photos
   const allItemPhotoPaths = [
     ...data.items.flatMap(i => i.photo_paths ?? []),
     ...(ci.photo_paths ?? []),
@@ -196,10 +196,10 @@ function buildDeviceSection(
     .join('');
   const photosHtml = `
     <div class="photos-block">
-      <div class="photos-label">${escapeHtml(deviceLabel)} — ფოტო</div>
+      <div class="photos-label">${escapeHtml(deviceLabel)} - ფოტო</div>
       ${photoCells
         ? `<div class="photos-grid">${photoCells}</div>`
-        : '<span style="color:var(--inkFaint)">—</span>'}
+        : '<span style="color:var(--inkFaint)">-</span>'}
     </div>`;
 
   return `
@@ -239,7 +239,7 @@ function renderGeneralInfo(ins: FallProtectionInspection): string {
 
   const inspTypeLabel =
     ins.inspectionType === 'primary' ? 'პირველადი' :
-    ins.inspectionType === 'secondary' ? 'განმეორებითი' : '—';
+    ins.inspectionType === 'secondary' ? 'განმეორებითი' : '-';
 
   const nextInspRow = ins.nextInspectionDate ? `
       <div class="info-row">
@@ -249,23 +249,23 @@ function renderGeneralInfo(ins: FallProtectionInspection): string {
 
   return `
   <div class="section">
-    <div class="section-title">I — ზოგადი ინფორმაცია / General Information</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია / General Information</div>
     <div class="info-grid">
       <div class="info-row">
         <span class="info-label">ობიექტის დასახელება</span>
-        <span class="info-value">${escapeHtml(ins.company) || '—'}</span>
+        <span class="info-value">${escapeHtml(ins.company) || '-'}</span>
       </div>
       <div class="info-row">
         <span class="info-label">მისამართი</span>
-        <span class="info-value">${escapeHtml(ins.address) || '—'}</span>
+        <span class="info-value">${escapeHtml(ins.address) || '-'}</span>
       </div>
       <div class="info-row">
         <span class="info-label">უსაფრთხ. ხელმძღვ.</span>
-        <span class="info-value">${escapeHtml(ins.safetyLeaderName) || '—'}</span>
+        <span class="info-value">${escapeHtml(ins.safetyLeaderName) || '-'}</span>
       </div>
       <div class="info-row">
         <span class="info-label">ტელეფონი</span>
-        <span class="info-value">${escapeHtml(ins.safetyLeaderPhone) || '—'}</span>
+        <span class="info-value">${escapeHtml(ins.safetyLeaderPhone) || '-'}</span>
       </div>
       <div class="info-row">
         <span class="info-label">შემოწმების სახე</span>
@@ -309,11 +309,11 @@ function renderSignature(ins: FallProtectionInspection): string {
         <div class="sig-fields">
           <div class="info-row">
             <span class="info-label">სახელი, გვარი</span>
-            <span class="info-value">${escapeHtml(sig?.name) || '—'}</span>
+            <span class="info-value">${escapeHtml(sig?.name) || '-'}</span>
           </div>
           <div class="info-row">
             <span class="info-label">სამუშაო პოზიცია</span>
-            <span class="info-value">${escapeHtml(sig?.position) || '—'}</span>
+            <span class="info-value">${escapeHtml(sig?.position) || '-'}</span>
           </div>
         </div>
         <div class="sig-canvas">

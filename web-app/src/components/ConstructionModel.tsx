@@ -91,7 +91,7 @@ function FoundationZone() {
   );
 }
 
-/* ═══ 2. BUILDING STRUCTURE — 4 floors ═══ */
+/* ═══ 2. BUILDING STRUCTURE - 4 floors ═══ */
 function StructureZone() {
   const tip = safetyTips.structure;
   const floors = 4;
@@ -307,7 +307,7 @@ function CraneZone() {
   );
 }
 
-/* ═══ 5. SAFETY BARRIERS — Orange Perimeter ═══ */
+/* ═══ 5. SAFETY BARRIERS - Orange Perimeter ═══ */
 function BarriersZone() {
   const tip = safetyTips.barriers;
   return (

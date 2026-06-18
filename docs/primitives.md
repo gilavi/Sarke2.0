@@ -6,6 +6,14 @@ The single most common bug pattern in this repo (see [BUG_REPORT.md](reports/BUG
 
 `scripts/check-primitives.mjs` enforces a small subset of these via `npm run lint`. Whenever an entry below would benefit from automated enforcement, add a rule there.
 
+## Primary action button
+
+One component: [`components/primitives/Button.tsx`](../components/primitives/Button.tsx), re-exported from `components/ui`.
+
+Use `<Button variant="primary" size="lg" title="..." onPress={...} style={{ width: '100%' }} />` for all full-width CTA / bottom-of-screen action buttons. Shape is pill (radius 1000), text is black, background is `theme.colors.accent` (orange).
+
+**Don't** inline a `Pressable` + manual styling for a CTA button — that was the bug this consolidation fixed (WizardNav had a bespoke `nextBtn`; InspectionShell used deprecated `iconRight` ReactNodes). **Don't** pass `iconRight={<Ionicons color={theme.colors.white}>}` — use the string-based `rightIcon="icon-name"` prop so the colour inherits from the button's `color` token automatically.
+
 ## Storage images
 
 One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose so picking the right name picks the right defaults:
@@ -118,12 +126,51 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 
 | Component | Export | Purpose |
 |---|---|---|
-| [components/FlowHeader.tsx](../components/FlowHeader.tsx) | `FlowHeader` | Header for all inspection / briefing / incident flows: project name, back button, optional trailing element, edge-to-edge progress bar. Use `trailing="none"` + `trailingElement` for a custom right button (e.g. PDF icon). |
+| [components/FlowHeader.tsx](../components/FlowHeader.tsx) | `FlowHeader` | Header for all inspection / briefing / incident flows: project name subtitle, circular back + circular close buttons, thin **ink (monochrome)** progress bar + `step / total` counter. `trailingElement` renders alongside the close ✕ when `trailing="close"` (e.g. a PDF icon next to the X), or on its own with `trailing="none"`. |
+| [components/wizard/StatusChip.tsx](../components/wizard/StatusChip.tsx) | `StatusChip` | **Monochrome** single-select answer control — the shared building block for every inspection answer surface (yes/no, 3-state good/deficient/unusable, harness chips, verdict pills). Selected = **solid ink fill** (`inverse.background`) + inverted light content; unselected = hairline outline + `surface` + muted content. Built on the theme `inverse` palette so the fill stays legible in dark mode. Severity is carried by the icon (`✓/⚠/✗`) + label, never color. `layout="pill"` (stacked, big yes/no) or `"chip"` (compact row). |
+| [components/inspection-parts/ChecklistItemRow.tsx](../components/inspection-parts/ChecklistItemRow.tsx) | `ChecklistItemRow` | **Canonical "one item in a several-items-on-one-page checklist" row.** Label + inline `HelpIcon` on the left, a cluster of `StatusChip`s on the right (2 = harness ✓/✗; 3–4 = equipment ratings incl. N/A). Neutral (no chip filled) by default; tapping the selected chip clears to null. `dense` for 3–4 options. No per-row note/photo — problem detail lives on the conclusion step. Harness `ChipRow`, equipment `ChecklistRow`, and `ChecklistItem` are all thin adapters over this. |
+| [components/inspection-parts/ChecklistLegend.tsx](../components/inspection-parts/ChecklistLegend.tsx) | `ChecklistLegend` | Quiet monochrome key pairing each answer chip's glyph (shown filled) with its Georgian label. Render above a `ChecklistItemRow` list. |
+| [features/inspection-wizard/AttachmentBars.tsx](../features/inspection-wizard/AttachmentBars.tsx) | `AttachmentBars` | Photo + note attachments as two quiet dashed bars — the photo bar stays put and shows `PhotoThumb` thumbnails as they're added; the note bar morphs into the `DebouncedNotes` textarea on tap. Omit `onNoteCommit` for a photo-only bar (the conclusion step). Used by the wizard QuestionStep/ConclusionStep — **not** inside checklist rows (those are flag-only). |
 | [components/wizard/StepBar.tsx](../components/wizard/StepBar.tsx) | `StepBar` | Dot + connector step indicator for multi-step flows with named steps. Pass `step` (0-based) and `stepLabels` (label per step). Used below `FlowHeader` in bobcat and excavator screens. |
 | [components/wizard/StepSectionLabel.tsx](../components/wizard/StepSectionLabel.tsx) | `StepSectionLabel` | Uppercase hairline-bottom section divider used between named sections inside a step. |
 | [components/wizard/WizardNav.tsx](../components/wizard/WizardNav.tsx) | `WizardNav` | Fixed-footer "წინა / შემდეგი / ✓ დასრულება" row. Shared by all five inspection flows. |
 
-**Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **Don't** hardcode `'#10B981'` or `'#1D9E75'` for inspection green — use `theme.colors.semantic.success` and `theme.colors.semantic.successSoft`.
+**Don't** define a local `StepBar` or `StepSectionLabel` inline in a screen file — that's exactly the duplication pattern that was cleaned up (two copy-pasted `StepBar` + `slStyles` blocks in bobcat and excavator). **For any "several items on one page" checklist, render `ChecklistItemRow`** — don't hand-roll a row + verdict-chip cluster (that's what the now-deleted per-equipment `*ChecklistItem` copies did). **Inspection answer / rating controls are monochrome** (decided 2026-06-17; solid-fill selected state same day): build them with `StatusChip`, or apply its token treatment directly — selected = **solid `theme.colors.inverse.background` fill + `inverse.ink` content**; unselected = `border` + `surface` + `inkSoft`/`inkFaint`. Don't use `semantic.success/warning/danger` or `accent` as a fill/border on an answer control, and never hardcode `'#10B981'`/`'#1D9E75'` greens there — color is reserved for non-answer affordances (badges, toasts, step checkmarks, destructive actions). Per-row notes/photos were removed from all checklists — problem detail + photos live on the conclusion step.
+
+## Inspection flow loading state
+
+Every inspection flow blocks on an initial data fetch (equipment routes via [`lib/inspection/useInspectionFlow.ts`](../lib/inspection/useInspectionFlow.ts); the generic scaffold wizard + harness load their own). During that window render [`InspectionShellSkeleton`](../components/inspection-steps/InspectionShellSkeleton.tsx) from the `if (loading || !inspection)` gate — it reuses the **real `FlowHeader`** (same `card` background, same back/close **and the live progress bar**) over a body skeleton + footer-button placeholder, so the header and progress strip **never wait on loading**; only the body morphs skeleton → content. Pass the same `title`, `projectName`, **0-based `step`**, `totalSteps` and `stepLabels` the route hands `InspectionShell` so the progress bar lands in its final position with no jump, plus `onClose={() => router.back()}`.
+
+The body placeholder is chosen by **`variant`** so each step shows a shape matching the content it is about to become — `form` (input bars, with `fields` count), `keypad`, `checklist`, `conclusion`, `table`, or `question` (generic wizard). Map the current `step` → `variant` in the route's loading gate (mirror the route's `step` transform). Variants live in [`StepSkeletons.tsx`](../components/inspection-steps/StepSkeletons.tsx) (`StepBodySkeleton`) and are all built from the shared [`Skeleton`](../components/Skeleton.tsx) atom, so the shimmer colour + animation stay identical across every flow. Omit `totalSteps` to hide the progress bar (the generic wizard does this — its step count isn't known until questions load).
+
+**Don't** fall back to a native `<Stack.Screen headerShown title=… />` + centered "იტვირთება…" `Text` — that was the pattern in all 9 equipment flows; it shows a native iOS header on a `background`-colored screen, then swaps to the `InspectionShell` chrome (`headerShown:false` + `FlowHeader` + `card` bg) once data lands, which reads as a generic loader rather than the flow. **Don't** reintroduce a single generic body skeleton (the removed `SkeletonWizard`) for every step — pick the matching `variant`. Other non-flow screens still use the shared list/preview skeletons (`SkeletonListCard` / `SkeletonPreview`).
+
+## Flow-entry project picker
+
+When a document flow (incident, briefing, report) is launched **without** a project — i.e. from Home rather than a project screen — it shows the project picker as a full-screen first step, not a bottom sheet. One owner: [components/FlowProjectPicker.tsx](../components/FlowProjectPicker.tsx) (`FlowProjectPicker`). It composes `FlowHeader` + a dashed "ახალი პროექტი" row + the canonical [`ProjectPickerStep`](../components/inspection-steps/ProjectPickerStep.tsx) list + a "გაგრძელება" button, and reuses [`ProjectPickerSheet`](../components/home/ProjectPickerSheet.tsx) (`initialView="new"`) for create-a-project.
+
+The host `new` screen gates on the project: `const projectId = paramProjectId ?? pickedProject?.id;` — render `<FlowProjectPicker>` when it's missing, the real form otherwise. The inspection flow keeps its own equivalent inside [`app/inspections/new.tsx`](../app/inspections/new.tsx) (wrapped in `InspectionShell`, since it then creates a record and routes on). **Don't** reintroduce a per-flow project bottom sheet, and **don't** hand-roll another project list — render `ProjectPickerStep` (it owns the `useProjects()` three-state guard).
+
+## Post-save success screens
+
+One folder: [`components/success/`](../components/success/). The check-mark + summary card + primary CTA + secondary action-card screen reached after a document is saved. This replaced ~6 byte-identical copies of the same `Screen` + `CelebrationBurst` + `AnimatedSuccessIcon` + `ActionCard` + `StyleSheet`.
+
+| Use case | Owner |
+|---|---|
+| Generic success scaffold (header, burst, check-mark, CTA, action cards, completion haptic) | `SuccessScreen` — [components/success/SuccessScreen.tsx](../components/success/SuccessScreen.tsx) |
+| Inspection "act saved" body (corrected wording baked in) | `InspectionDoneView` — [components/success/InspectionDoneView.tsx](../components/success/InspectionDoneView.tsx) |
+
+**Don't** rebuild the success scaffold inline in a new `done.tsx` / `success.tsx` — render `<SuccessScreen>` with a summary card as `children`, or `<InspectionDoneView>` for inspection acts. **Don't** fire `haptic.inspectionComplete()` in a consumer — `SuccessScreen` already does it once on mount.
+
+**Terminology:** the inspection document is a **"შემოწმების აქტი"**, never "ინსპექცია" (a wrong term). Keep "ინსპექცია" out of every user-facing string. `reports/[id]/success.tsx` intentionally stays separate — it's a full-bleed PDF-share layout, not the card scaffold.
+
+## Count / quantity selector
+
+One file: [`components/inputs/QuantitySelector.tsx`](../components/inputs/QuantitySelector.tsx). A one-tap count picker — a wrap-grid of preset chips plus a custom numeric field, clamped to `[min, max]`. Use it for any "how many?" prompt instead of rolling another inline `remove-circle`/`add-circle` stepper (the harness count step uses it).
+
+Props: `value`, `onChange`, `presets?`, `min?`, `max?`, `accessibilityLabelPrefix?`. The caller supplies domain presets + bounds; the component owns the chip/typing UX and the clamp, so a typed entry can never go out of range.
+
+**For new count prompts, prefer `QuantitySelector`** over a hand-rolled stepper. (Several older steppers predate it — `app/qualifications`, `app/reports/[id]/edit`, `DynamicTable`, etc. — and can migrate opportunistically.)
 
 ## PDF security / integrity
 
@@ -139,6 +186,24 @@ Pass `PdfSecurityOptions` as the 5th argument to `generateAndSharePdf` (from `li
 | `lockPdf(uri, opts)` | Stamps pdf-lib metadata (title, author, subject, producer, dates) into the PDF at `uri` in place |
 | `hashPdf(uri)` | SHA-256 digest of the PDF Base64 — deterministic for the same bytes |
 | `verifyPdf(uri, storedHash)` | Compares current hash to a previously stored value; returns `false` if the file was modified |
+
+## Illustration palette (monochrome SVG art)
+
+One file: [lib/illustrationPalette.ts](../lib/illustrationPalette.ts). Export: `useIllustrationPalette()` → `IllustrationPalette`.
+
+Hubble's hand-drawn SVG illustrations are strictly **monochrome**: shades of the primary (brand orange `#FF6D2E`), the secondary (electric/hi-vis yellow), and black / warm neutrals. **No green, no blue, no amber** — those were pre-rebrand leftovers that read as "wrong" against the current identity (the green hard hat, green scaffold avatars, green blueprint were all this bug).
+
+Any illustration component (`QuestionAvatar`, `EmptyState`, `ErrorScreen`, `SkeletonMap`, `InspectionTypeAvatar`, …) must source its colors from this hook (or the named tokens below) instead of hardcoding hex values, so the system stays cohesive and can't drift back to off-brand colors.
+
+| Token | Meaning |
+|---|---|
+| `line` / `lineDeep` / `lineDeepest` | Primary orange stroke + its darker shades (faces, recesses) |
+| `fill` / `fillStrong` | Soft primary washes (tile backgrounds, large fills) |
+| `pop` / `popSoft` | Secondary electric-yellow accent — sparingly, for stamps/sparks/stars/flash on a darker backing |
+| `ink` | Black (adapts to theme) |
+| `hardware` / `material` / `materialLine` / `metal` / `metalDark` / `ground` | Fixed neutral grays for steel, decks, base bars |
+
+**Don't** reintroduce per-category color coding (the old `InspectionTypeAvatar` pastel rainbow, `EmptyState`'s blue/amber category tints). Differentiate with shape/emoji, not off-brand hues. Semantic status colors (`semantic.success` green for "completed", verdict greens/reds) are a **separate** system in [lib/statusColors.ts](../lib/statusColors.ts) and are intentionally not monochrome.
 
 ## PDF usage gate
 
@@ -188,6 +253,49 @@ One file: [`lib/shared/documentName.ts`](../lib/shared/documentName.ts). Exports
 When you add a new template in `supabase/migrations/`, add its full→short pair to `INSPECTION_SHORT_NAME` in this **one** file — both codebases import it, so there is no second map to keep in sync. (This replaced the earlier duplicated `lib/inspectionDisplayName.ts` + `web-app/src/lib/inspectionDisplayName.ts` pair.)
 
 **Don't** reintroduce `harness_name || "#" + id.slice(0,8)` style fallbacks in either codebase — that drift (web showing `ქამარი #0c9537aa` while mobile showed the template name) is exactly what this primitive removes. Equipment inspections on web have no template row, so `web-app/src/lib/documentNames.ts` maps their type to a constant full name and routes it through `inspectionDisplayName`.
+
+## Inspection conclusion step + verdict selector
+
+The single "last step" for **every** inspection flow is [`components/inspection-steps/ConclusionStep.tsx`](../components/inspection-steps/ConclusionStep.tsx) (re-exported from `components/inspection-steps`). Top to bottom it renders: a conclusion illustration (`QuestionAvatar`, `showAvatar` default true), an optional `summarySection` slot (summary tables), an optional harness-name field, a verdict-suggestion banner, the icon-card `VerdictSelector`, a free-text **`კომენტარი`** box (`notesLabel` overridable; `notesRequired`/`notesError` for required flows), optional suggestion pills, and a photo strip (first-class `photoPaths`/`onAddPhoto`/`onDeletePhoto` → `PhotoSection`, or a `photoSection` ReactNode slot for the scaffold's `AttachmentBars`). Generic over the verdict value type. Pass `scroll={false}` when the host already owns the scroll view.
+
+Used by **all** flows: equipment routes (bobcat, excavator, forklift, cargo-platform, mobile-ladder, lifting-accessories, safety-net, and general-equipment — which passes empty `verdictOptions` for a verdict-less conclusion), the harness flow, and the scaffold wizard's [`features/inspection-wizard/ConclusionStep.tsx`](../features/inspection-wizard/ConclusionStep.tsx) (a thin wrapper that delegates with `scroll={false}` and feeds the 3-option `SafetyVerdict` set). Fall-protection is the one exception: its verdict is **per device**, so it composes `VerdictSelector` + `VerdictSuggestionBanner` directly inside each device panel rather than wrapping the whole step.
+
+**`VerdictSelector`** ([`components/inspection-steps/VerdictSelector.tsx`](../components/inspection-steps/VerdictSelector.tsx)) — the `გადაწყვეტილება` (decision) picker. Dynamic: pass `options: VerdictOption[]` (any 2–3 verdicts) and it renders one icon + label button each. The icon resolves from an explicit `option.icon`, else a semantic `option.tone` (`success`/`caution`/`danger`), else **by position** (first = `shield-checkmark`, last = `warning`, middle = `eye-outline`) — every flow orders options positive → negative, so most wire nothing extra.
+
+**`VerdictSuggestionBanner`** ([`components/inspection-steps/VerdictSuggestionBanner.tsx`](../components/inspection-steps/VerdictSuggestionBanner.tsx)) — the shared `შემოთავაზება` hint (Lightbulb + text) shown above the selector when an auto-computed verdict differs from the chosen one. Pass `text` and an optional `onApply` (makes the banner tappable to adopt the suggestion). `ConclusionStep` renders it from its `suggestion` prop.
+
+**Don't** hand-roll verdict chips/buttons, a suggestion banner, or a `დასკვნა` last-step layout in a flow. This consolidation removed three forks: the old pill chips in `ConclusionStep`, the bespoke `features/inspection-wizard/VerdictSelector`, and the separate **`components/inspection-parts/VerdictSelector`** (a plain-pill selector with a built-in notes field, formerly used by forklift/cargo-platform/mobile-ladder/lifting-accessories/safety-net/fall-protection — now **deleted**). If a flow needs a different verdict set, pass different `options`; a different icon, set `icon`/`tone` on the option; extra content above the verdict, use `summarySection`.
+
+## Form validation — enabled buttons + on-press errors
+
+We **do not disable** forward/submit buttons when a required field is empty — a dimmed, unpressable button gives the user no signal about *what* is missing. Instead the button stays **enabled**, and pressing it while invalid reveals the empty required fields in red (+ an error haptic), so the user understands the field is mandatory.
+
+One hook owns this: [`hooks/useSubmitGuard.ts`](../hooks/useSubmitGuard.ts).
+
+```ts
+const { attempted, guard, reset } = useSubmitGuard();
+// button (no validation-based `disabled`):
+<Button onPress={() => guard(canAdvance, goNext)} ... />
+// each required field:
+<FloatingLabelInput required error={attempted && !value.trim() ? 'სავალდებულო ველი' : undefined} ... />
+// multi-step screens: clear the reveal on step change
+useEffect(() => reset(), [step, reset]);
+```
+
+`guard(isValid, onValid, onInvalid?)`: when invalid it sets `attempted`, fires `haptic.validationError()`, and calls `onInvalid` (don't advance); when valid it clears `attempted` and runs `onValid`. The precedent it generalizes lives in `ConclusionStep`'s `interacted` flag and `AddRemoteSignerModal`'s `*Touched` flags.
+
+Field error support already exists on the primitives — wire them, don't rebuild:
+- **Text** — `FloatingLabelInput` (`error?: string`, `required` → `*`), and the `FormField`/`ui/Field` wrappers (render `error` below any child — use them to give radio/picker **groups** an inline error message).
+- **Verdict** — `inspection-steps/VerdictSelector` (`showError`/`errorText`) and `ConclusionStep` (`verdictError`/`notesError`).
+- **Yes/No chips** — `wizard/AnswerButtons` (`error?: boolean`) → `wizard/StatusChip` (`error?: boolean`, danger outline + shake).
+- **Date/time** — `DateTimeField` (`error?: string`).
+- **Signature** — `SignatureCanvas` (enabled by default; shows its own "draw your signature" error + haptic on an empty press).
+- **Map pin** — `MapPickerInline` (enabled by default; self-shows "pick a location" + haptic on an empty press).
+- The equipment-inspection chokepoint is [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx): its Next/Finish button is always enabled; on a validated step (`blockNext` or last step) with `canGoNext === false` it fires the haptic and calls `onBlockedNext` so the screen flips its `attempted` flag.
+
+**Keep `disabled` only for non-input reasons:** in-flight guards (`loading`/`saving`/`busy`/`completing`/`generating`/`sharing` — double-submit protection) and data-not-loaded guards (`!briefing || !project`, reorder `index === 0`, OTP-resend cooldown). Never re-add `disabled={!isValid}` for a missing-input gate.
+
+Optional companion for long forms: [`hooks/useScrollToError.ts`](../hooks/useScrollToError.ts) — attach `scrollRef` to a `ScrollView`, `registerField('key')` on each field's wrapper, and pass `scrollToFirstError(keys)` as `guard`'s `onInvalid` to bring the first red field into view. Best-effort; short single-column forms don't need it.
 
 ## Adding a new primitive
 

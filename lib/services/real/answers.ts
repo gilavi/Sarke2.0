@@ -70,7 +70,7 @@ export const answersApi = {
   },
   removePhoto: async (photoId: string) => {
     // Read the storage path first so we can also delete the blob in the
-    // `answer-photos` bucket — otherwise deleting the row leaks the file.
+    // `answer-photos` bucket - otherwise deleting the row leaks the file.
     const { data: existing } = await supabase
       .from('answer_photos')
       .select('storage_path')

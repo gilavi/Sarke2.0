@@ -1,6 +1,6 @@
 /**
  * One checklist item, in the shared wizard-kit look: numbered label + description
- * with the kit SegmentedControl on the right, and — once a result is chosen — an
+ * with the kit SegmentedControl on the right, and - once a result is chosen - an
  * uncontrolled comment field + photo drop zone. Generic over the result enum so
  * each equipment type maps its own values; `tone` drives the selected color.
  *

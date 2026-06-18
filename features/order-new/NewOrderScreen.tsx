@@ -1,4 +1,4 @@
-// NewOrderScreen.tsx — orchestrator for the order wizard.
+// NewOrderScreen.tsx - orchestrator for the order wizard.
 // All step renderers, types, validation, and styles live in sibling files.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -8,6 +8,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { ArrowRight, FileText } from 'lucide-react-native';
 import { FlowHeader } from '../../components/FlowHeader';
 import { Button } from '../../components/ui';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
@@ -35,6 +36,7 @@ import {
 import { storageApi, projectsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 import type {
   AlcoholControlOrderFormData,
@@ -109,6 +111,8 @@ export default function NewOrderScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
 
   const [step, setStep] = useState<Step>(1);
+  // Enabled forward/submit button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
   const [docType, setDocType] = useState<OrderDocumentType | null>(null);
   const [form, setForm] = useState<CombinedForm>(INITIAL_FORM);
   const [project, setProject] = useState<Project | null>(null);
@@ -190,9 +194,11 @@ export default function NewOrderScreen() {
   );
 
   const goNext = () => {
-    if (!canAdvance) return;
     setStep(prev => (prev + 1) as Step);
   };
+
+  // Clear the error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
   // ── save draft ──────────────────────────────────────────────────────────────
   const saveDraft = async () => {
@@ -309,36 +315,36 @@ export default function NewOrderScreen() {
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
         {step === 1 && (
-          <Step1DocType docType={docType} setDocType={setDocType} theme={theme} s={s} />
+          <Step1DocType docType={docType} setDocType={setDocType} theme={theme} s={s} attempted={attempted} />
         )}
         {step === 2 && !isCraneOperatorVariant(docType) && (
-          <Step2Company form={form} setForm={setForm} s={s} />
+          <Step2Company form={form} setForm={setForm} s={s} attempted={attempted} />
         )}
         {step === 2 && isCraneOperatorVariant(docType) && (
-          <Step2CraneCompany form={form} setForm={setForm} s={s} />
+          <Step2CraneCompany form={form} setForm={setForm} s={s} attempted={attempted} />
         )}
         {step === 3 && docType === 'labor_safety_specialist' && (
-          <Step3LaborSafety form={form} setForm={setForm} s={s} />
+          <Step3LaborSafety form={form} setForm={setForm} s={s} attempted={attempted} />
         )}
         {step === 3 && docType === 'alcohol_control' && (
-          <Step3AlcoholControl form={form} setForm={setForm} s={s} />
+          <Step3AlcoholControl form={form} setForm={setForm} s={s} attempted={attempted} />
         )}
         {step === 3 && docType === 'fire_safety_order' && (
-          <Step3FireSafety form={form} setForm={setForm} s={s} />
+          <Step3FireSafety form={form} setForm={setForm} s={s} attempted={attempted} />
         )}
         {step === 3 && docType === 'fire_safety_order_enterprise' && (
-          <Step3FireSafetyEnterprise form={form} setForm={setForm} s={s} />
+          <Step3FireSafetyEnterprise form={form} setForm={setForm} s={s} attempted={attempted} />
         )}
         {step === 3 && docType === 'crane_operator_order' && (
           <Step3CraneOperator
-            form={form} setForm={setForm} s={s}
+            form={form} setForm={setForm} s={s} attempted={attempted}
             onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
             onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
           />
         )}
         {step === 3 && docType === 'crane_technical_order' && (
           <Step3CraneOperator
-            form={form} setForm={setForm} s={s}
+            form={form} setForm={setForm} s={s} attempted={attempted}
             onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
             onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
             positionLabel="კვალიფიკაცია / სპეციალობა"
@@ -363,10 +369,10 @@ export default function NewOrderScreen() {
         )}
         {/* Combined signature step: step 5 fire safety, step 6 crane */}
         {step === 5 && isFireSafetyVariant(docType) && (
-          <StepSignaturesFireSafety form={form} setForm={setForm} theme={theme} s={s} />
+          <StepSignaturesFireSafety form={form} setForm={setForm} theme={theme} s={s} attempted={attempted} />
         )}
         {step === 6 && isCraneOperatorVariant(docType) && (
-          <StepSignaturesCrane form={form} setForm={setForm} theme={theme} s={s} docType={docType} />
+          <StepSignaturesCrane form={form} setForm={setForm} theme={theme} s={s} docType={docType} attempted={attempted} />
         )}
       </KeyboardSafeArea>
 
@@ -374,19 +380,17 @@ export default function NewOrderScreen() {
         {step < getTotalSteps(docType) ? (
           <Button
             title="შემდეგი"
-            rightIcon="arrow-forward"
-            onPress={goNext}
-            disabled={!canAdvance}
+            rightIcon={ArrowRight}
+            onPress={() => guard(canAdvance, goNext)}
             style={{ width: '100%' }}
           />
         ) : (
           <View style={{ gap: 10 }}>
             <Button
               title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon="document-text"
+              leftIcon={FileText}
               loading={saving}
-              disabled={!canAdvance}
-              onPress={saveAndGeneratePdf}
+              onPress={() => guard(canAdvance, saveAndGeneratePdf)}
               style={{ width: '100%' }}
             />
             <Button

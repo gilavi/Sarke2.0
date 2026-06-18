@@ -1,38 +1,35 @@
-﻿import { useCallback, useMemo } from 'react';
+﻿import { useCallback, useEffect, useMemo } from 'react';
 import {
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import {
   ChecklistSection,
   DynamicTable,
-  VerdictSelector,
   PhotoSection,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
 import { cargoPlatformSchema } from '../../../lib/inspection/schemas/cargoPlatform';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
 import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import {
   CP_ITEMS,
@@ -56,6 +53,12 @@ const CARGO_STEP      = 2;
 const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
+
+const CP_VERDICT_OPTIONS: VerdictOption<CPVerdict>[] = [
+  { value: 'approved',    label: CP_VERDICT_LABEL.approved,    tone: 'success' },
+  { value: 'conditional', label: CP_VERDICT_LABEL.conditional, tone: 'caution' },
+  { value: 'rejected',    label: CP_VERDICT_LABEL.rejected,    tone: 'danger'  },
+];
 
 // ── Binary pill selector ──────────────────────────────────────────────────────
 function BinaryPills<T extends string>({
@@ -100,8 +103,10 @@ export default function CargoPlatformInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so
@@ -315,6 +320,9 @@ export default function CargoPlatformInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Section grouping for checklist ──────────────────────────────────────────
 
   const checklistSections = useMemo(() => {
@@ -330,10 +338,20 @@ export default function CargoPlatformInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'პლატფორმის შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="პლატფორმის შემოწმება"
+        projectName={projectName ?? ''}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === CARGO_STEP ? 'table'
+            : step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={5}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -359,42 +377,22 @@ export default function CargoPlatformInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="პლატფორმის შემოწმება"
-        project={projectName ? { name: projectName } : null}
-        step={step}
+      <InspectionShell
+        title="პლატფორმის შემოწმება"
+        projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS - 1}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === CONCLUSION_STEP}
+        completing={completing}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={
-          step > INFO_STEP ? (
-            <Pressable
-              onPress={() => handlePdf()}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
-
-      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+      >
 
           {/* ── Step 1: Platform ID ──────────────────────────────────────────── */}
           {step === PLATFORM_STEP && (
@@ -566,78 +564,32 @@ export default function CargoPlatformInspectionScreen() {
 
           {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
-                  <Text style={styles.suggestText}>
-                    შემოთავაზება: {CP_VERDICT_LABEL[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={[
-                  { value: 'approved', label: CP_VERDICT_LABEL.approved, type: 'success' },
-                  { value: 'conditional', label: CP_VERDICT_LABEL.conditional, type: 'warning' },
-                  { value: 'rejected', label: CP_VERDICT_LABEL.rejected, type: 'danger' },
-                ]}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as CPVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი *"
-              />
-
-              <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
-              <PhotoSection
-                photoPaths={inspection.summaryPhotos}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-              />
-            </KeyboardAwareScrollView>
-          )}
-
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="შენახვა და დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-              variant={canGoNext ? 'primary' : 'secondary'}
-              size="lg"
-              style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-              iconRight={
-                canGoNext
-                  ? <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  : undefined
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={CP_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as CPVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთავაზება: ${CP_VERDICT_LABEL[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
               }
-              onPress={handleNext}
+              notes={inspection.verdictComment}
+              onNotesChange={v => update('verdictComment', v)}
+              notesRequired
+              notesError={attempted && !inspection.verdictComment?.trim()}
+              photoPaths={inspection.summaryPhotos}
+              onAddPhoto={handleAddSummaryPhoto}
+              onDeletePhoto={handleDeleteSummaryPhoto}
+              photoLabel="ფოტო / ვიდეო მასალა (სურვ.)"
+              completing={completing}
             />
           )}
-        </View>
-      </View>
+
+        </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
@@ -654,7 +606,6 @@ export default function CargoPlatformInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
     stepBody: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24, gap: 12 },
     footer: { gap: 10, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, backgroundColor: theme.colors.card },
@@ -678,13 +629,5 @@ function getstyles(theme: Theme) {
     // Cargo total
     totalLabel: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },
     totalValue: { fontSize: 18, fontWeight: '800', color: theme.colors.accent },
-
-    // Verdict suggestion banner
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: theme.colors.warnSoft,
-      padding: 10, borderRadius: 8,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

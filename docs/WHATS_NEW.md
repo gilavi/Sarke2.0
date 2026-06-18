@@ -1,6 +1,194 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-17 | Branch: `main`
+**Updated:** 2026-06-18 | Branch: `gio-design-update`
+
+---
+
+## 2026-06-18 — No more disabled buttons: enabled CTAs + on-press field errors
+
+Every multi-step flow used to **disable** its forward/submit button until the required fields were filled — a dead, dimmed button that never told the user *what* was missing. That's gone. Buttons now stay **enabled**; pressing one while a required field is empty reveals the empty field(s) in red (`სავალდებულო ველი`) and fires an error haptic, so the requirement is obvious.
+
+- **New hook:** [`hooks/useSubmitGuard.ts`](../hooks/useSubmitGuard.ts) — `guard(isValid, onValid)` on the button; `attempted` drives each field's `error`. Generalizes the old `ConclusionStep` `interacted` / `AddRemoteSignerModal` `*Touched` patterns. Companion [`hooks/useScrollToError.ts`](../hooks/useScrollToError.ts) for long forms.
+- **Applied across all flows:** equipment inspections (via `InspectionShell`'s new `onBlockedNext`), the checklist wizard (`AnswerButtons` gained an `error` outline), incident, order, briefing, auth (login/register/forgot/reset/OTP), reports, project create/edit, signers, breathalyzer, profile, template-start.
+- **Primitives gained error state:** `wizard/StatusChip` + `AnswerButtons` (`error`), `DateTimeField` (`error`), `MapPickerInline` and `SignatureCanvas` (self-show their own error + haptic on an empty press).
+- **Kept disabled** only for non-input reasons: in-flight guards (`loading`/`saving`/`busy`/…) and data-not-loaded guards. See [docs/primitives.md](primitives.md#form-validation--enabled-buttons--on-press-errors).
+
+---
+
+## 2026-06-18 — One reusable inspection conclusion (დასკვნა) step
+
+Every inspection flow ends with a "conclusion" step, but it was built **two incompatible ways**: equipment routes + harness + the scaffold wizard used the polished icon-card [`VerdictSelector`](../components/inspection-steps/VerdictSelector.tsx) inside [`ConclusionStep`](../components/inspection-steps/ConclusionStep.tsx), while forklift, cargo-platform, mobile-ladder, lifting-accessories, safety-net and fall-protection hand-rolled an inline `დასკვნა *` label + a re-declared "შემოთავაზება" banner + the older plain-pill `inspection-parts/VerdictSelector` (with a built-in notes field). Same concept, two selectors and two layouts.
+
+- **One last step everywhere:** [`ConclusionStep`](../components/inspection-steps/ConclusionStep.tsx) is now the single component for the last step. It gained a conclusion illustration (on by default), a `summarySection` slot (for the summary tables forklift/cargo-platform show), a `suggestion` banner prop, a first-class photo strip (`photoPaths`), required/error support, and a `scroll` toggle. Styles split into a `ConclusionStep.styles.ts` sibling to stay under the file-size target.
+- **Shared suggestion banner:** the six inline copies became one [`VerdictSuggestionBanner`](../components/inspection-steps/VerdictSuggestionBanner.tsx) (Lightbulb + text, tappable to adopt the suggested verdict).
+- **Migrated:** forklift, cargo-platform, mobile-ladder, lifting-accessories and safety-net now render `ConclusionStep`; fall-protection (per-device verdict) swapped its inline pill selector for the icon-card `VerdictSelector` + the shared banner; the scaffold wizard's `ConclusionStep` is now a thin wrapper that delegates to the canonical one.
+- **Standardized:** the free-text box is now labelled **`კომენტარი`** on every flow (was a mix of `შენიშვნები / ხარვეზები`, `კომენტარი`, and `დასკვნა`), and the conclusion illustration shows on every flow.
+- **Removed:** the duplicate `components/inspection-parts/VerdictSelector.tsx` (plain-pill selector with built-in notes) is deleted; nothing imports it anymore.
+
+Verdict option **labels are unchanged** — they're serialized into the generated act PDFs (UI labels don't affect the PDF). See [docs/primitives.md](primitives.md#inspection-conclusion-step--verdict-selector).
+
+---
+
+## 2026-06-17 — Home screen: even vertical rhythm + project-card address line
+
+The home feed's individual sections looked fine but didn't sit well together — the gaps between them jumped around (`~10px` cert→projects, `44px` projects→quick-actions, `40px` before recent, `42px` before the tip), and the recent-activity block sat at a `24px` gutter while everything else used `20px`.
+
+- **Uniform section rhythm:** every major section in [`home.tsx`](../app/(tabs)/home.tsx) (cert banner, projects, quick actions, recent activity, tip) now owns its **top** gap (~28px) with bottoms zeroed, so the spacing stays even no matter which optional blocks render. Removed the redundant double `marginTop` on the section header.
+- **One gutter:** recent-activity rows, the section header, and the date separators moved from `24px` → `20px` horizontal padding to match the rest of the screen (projects, quick actions, banner, draft card, tip).
+- **Project cards** ([`ProjectCard`](../components/home/ProjectCard.tsx)) now show the project **address** as a soft second line under the name, replacing the experimental per-project "დრაფტი / X აქტი" badges (and the `projectStats` bookkeeping that fed them).
+
+---
+
+## 2026-06-17 — Illustrations: monochrome brand palette (no more old-branding green)
+
+Every hand-drawn illustration in the app carried leftover **green/teal from the pre-rebrand identity** (`#1D9E75`, `#0F6E56`, `#E8F5F0`, …) plus a stale orange (`#FF5A1F`, before the `#FF6D2E` switch). They now follow one cohesive **monochrome** system: shades of primary orange + secondary electric-yellow + black/neutral grays.
+
+- **New primitive** [`lib/illustrationPalette.ts`](../lib/illustrationPalette.ts) (`useIllustrationPalette()`) — the single source of truth for illustration colors. Documented in [docs/primitives.md](primitives.md#illustration-palette-monochrome-svg-art). Components must source colors from here rather than hardcoding hex, so the art can't drift back off-brand.
+- **Recolored:** [`QuestionAvatar`](../components/QuestionAvatar.tsx) (16 scaffold avatars — greens → orange/yellow/black), [`ErrorScreen`](../components/ErrorScreen.tsx) (green hard hat → safety orange), [`SkeletonMap`](../components/SkeletonMap.tsx) (green blueprint → graphite + orange pulse), [`OrbitField`](../components/OrbitField.tsx) & [`ProjectAvatar`](../components/ProjectAvatar.tsx) (`#FF5A1F` → `#FF6D2E`).
+- **Flattened to monochrome:** [`EmptyState`](../components/EmptyState.tsx) (blue/amber category illustrations → orange + black, one yellow star pop) and [`InspectionTypeAvatar`](../components/InspectionTypeAvatar.tsx) (rainbow pastel tiles → one brand wash; emoji carries the recognition).
+- **Other green cleanup:** [`PlateInput`](../components/inputs/PlateInput.tsx) and the Kamari counter controls (`BRAND_GREEN` → orange `BRAND_ACCENT`); [`statusColors`](../lib/statusColors.ts) "completed" now uses the canonical `semantic.success` green instead of the retired brand-green hex.
+- Semantic verdict/status colors (safe = green, danger = red) are unchanged — they're meaning, not branding.
+
+**Not touched:** PDF templates (`lib/reportPdf.ts`, `lib/briefingPdf.ts`, `lib/pdf/inspection/template.css.ts`, `lib/inspection/pdfStyles.ts`, …) still carry green `--accent`/old-orange. Those are generated legal documents, deliberately left for a separate, explicit pass.
+
+---
+
+## 2026-06-17 — General equipment checklist: editable rows + dead PDF icon removed
+
+The ტექ.აღჭ. (general equipment) inspection checklist step was showing "—" for every row because `EquipmentItem.name` starts blank and there was no UI to enter it. Each checklist row is now an inline `TextInput` (placeholder "დასახელება...") that writes back to `EquipmentItem.name` via `updateEquipmentName`. The row reuses the existing `ChecklistItemRow` component (now accepts an optional `editableLabel` prop) so it looks and behaves identically to the ქამრები/equipment flows.
+
+The orange document icon that appeared next to the ✕ button in equipment inspection headers did nothing — `showPdfIcon`, `generatingPdf`, `saving`, and `onPdf` were passed by all 9 inspection routes but `InspectionShell` never read them. All dead props removed from `InspectionShellProps` and every caller (bobcat, excavator, cargo-platform, forklift, fall-protection, lifting-accessories, mobile-ladder, safety-net, general-equipment). The dead `savingHint` style and the unused `progressPill`/`progressPillText` styles in general-equipment were also removed.
+
+---
+
+## 2026-06-17 — Auto-focus keyboard on single-input wizard steps
+
+Landing on a step that contains exactly one text input (measure or freetext question types in the inspection wizard; the participants name field in the briefing wizard) now opens the keyboard immediately without requiring a tap. `autoFocus` added to [`MeasureInput`](../features/inspection-wizard/MeasureInput.tsx), [`DebouncedFreetext`](../features/inspection-wizard/DebouncedFreetext.tsx), and [`ParticipantsStep`](../components/briefings/ParticipantsStep.tsx). Steps with multiple inputs or non-text primary interactions are unaffected.
+
+---
+
+## 2026-06-17 — One verdict picker on every შემოწმება conclusion step
+
+The conclusion (`დასკვნა`) step looked different depending on which flow you entered: the scaffold (ხარაჩო) wizard used a tall, icon-based decision selector (`გადაწყვეტილება` — shield / eye / warning buttons), while the equipment routes and the harness (დამცავი ქამრები) flow showed flat pill chips (`უსაფრთხოა` / `არ არის უსაფრთხო`). Same decision, two looks.
+
+- **New shared component** [`VerdictSelector`](../components/inspection-steps/VerdictSelector.tsx) — the scaffold's icon-button picker, now **dynamic**: pass any 2–3 `VerdictOption`s and it renders one icon + label button each, generic over the verdict value type. Icons resolve from an explicit `option.icon`, else a semantic `option.tone` (`success`/`caution`/`danger`), else **by position** (first = shield, last = warning, middle = eye) — every flow orders its verdicts positive → negative, so no per-route wiring was needed.
+- **`ConclusionStep`** (the reusable equipment + harness step) now renders `VerdictSelector` instead of pill chips, so **all 8 equipment flows** (bobcat, excavator, cargo-platform, forklift, fall-protection, lifting-accessories, mobile-ladder, safety-net) and the harness flow pick up the scaffold look automatically. The empty-`verdictOptions` case (general-equipment, no verdict) now renders nothing instead of an orphaned `დასკვნა *` label.
+- **Consolidation** — the bespoke `features/inspection-wizard/VerdictSelector` was deleted; the scaffold wizard's `ConclusionStep` now imports the shared one and supplies the 3-option `SafetyVerdict` set. The old pill-chip styles and the wizard's dead `decision*`/`fieldError` styles were removed. Added to [primitives.md](primitives.md) as the canonical verdict picker.
+
+---
+
+## 2026-06-17 — Equipment flow loading state: flow skeleton, not a generic loader
+
+Entering an equipment inspection (which blocks ~2–3s on the initial fetch in [`useInspectionFlow`](../lib/inspection/useInspectionFlow.ts)) used to flash a native iOS header + centered "იტვირთება…" text on an off-white screen, then swap to the real [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) chrome once data landed — header style and background both changed, reading as a generic loader rather than the flow.
+
+- **New** [`InspectionShellSkeleton`](../components/inspection-steps/InspectionShellSkeleton.tsx) — the loading twin of `InspectionShell`. Reuses the **real `FlowHeader`** (same `card` background, same back/close + progress strip) over a form-shaped body skeleton + footer-button placeholder, built on the existing [`Skeleton`](../components/Skeleton.tsx) primitive. Only the body morphs skeleton → content; the header no longer flashes or shifts.
+- **All 9 equipment flows** (bobcat, excavator, cargo-platform, general-equipment, forklift, fall-protection, lifting-accessories, mobile-ladder, safety-net) swapped their `if (loading || !inspection)` gate from the centered-text view to `<InspectionShellSkeleton title=… totalSteps=… onClose={() => router.back()} />`. The orphaned native `Stack.Screen` header, `styles.centred`, and `Stack` imports were removed.
+- Non-equipment flows already used flow-shaped skeletons (incidents → `SkeletonListCard`, briefings/reports → `SkeletonPreview`, harness → `SkeletonWizard`) and were left unchanged.
+
+---
+
+## 2026-06-17 — ინციდენტი / რეპორტი: header + footer parity with შემოწმება
+
+Cheap consistency fixes carried over from the briefing rework to [`incidents/new.tsx`](../app/incidents/new.tsx) and [`reports/new.tsx`](../app/reports/new.tsx):
+
+- **`card` background** (was `theme.colors.background`) + `surfaceColor={theme.colors.surface}` on `FlowHeader`.
+- **X close button** added (`leading="back" trailing="close"`, `onClose` → `router.back()`) — both flows were missing it.
+- **Exit confirmation** — incidents now passes `confirmExit={isFormDirty}` (was `step === 1 && isFormDirty`, so steps 2–4 exited with no `გასვლა` modal). The X-close is the confirmed-exit affordance; the back arrow still navigates steps.
+- **Footer** — dropped the top border / `surface` fill so it matches the inspection footer (just padding).
+- **Incident type selector → hybrid** — the type cards (Step 1) and the Step-4 summary chip are now monochrome for selection chrome (ink fill + `inverse.ink` content when selected, like `StatusChip`) while severity stays color-coded via a small dot (`getTypeBadge[...].border`: amber/orange/red/purple). Severity color is meaningful (escalation scale), so it's preserved as a secondary cue rather than flattened. The redundant short-label colored pill (`INCIDENT_TYPE_LABEL`) was dropped — the full label already states the type.
+
+---
+
+## 2026-06-17 — ინსტრუქტაჟი flow: aligned with შემოწმება / ქამრები
+
+Reworked the briefing (ინსტრუქტაჟი) flow so it reads as one coherent flow that matches the inspection (შემოწმება) and harness (ქამრები) flows. Code-only briefing changes — no shared-flow behaviour changed except an additive [`ChipNavStrip`](../components/inspection-parts/ChipNavStrip.tsx) option.
+
+- **3-step wizard** — split into `თემები` (date/time + topics) → `მონაწილეები` (participants) → `ხელმოწერა` (signing). All three screens pass `step` + `totalSteps={3}` to [`FlowHeader`](../components/FlowHeader.tsx) and use the **standard plain progress bar + `N/3` count** (same as every other flow — no bespoke segmented/labelled stepper). [`new.tsx`](../app/briefings/new.tsx) drives steps 1–2 from internal state; [`sign.tsx`](../app/briefings/[id]/sign.tsx) is step 3.
+- **Shell parity** — `card` background, `leading="back" trailing="close"` (the X was previously missing), `surfaceColor={theme.colors.surface}`, and the canonical [`გასვლა` bottom-sheet](../components/wizard/ExitModal.tsx) via `confirmExit` (the signing screen previously used a native `Alert.alert` system dialog). Footer matches the inspection footer (no top border, just padding).
+- **Monochrome selectors (low-contrast)** — topic rows, participant chips, count badge and the "დამატება" button moved off green/orange. Selected state is intentionally **low-contrast**: a `subtleSurface` (beige) fill + a strong `ink` border + an `ink` check — not a solid ink fill (too heavy for full-width rows).
+- **Signing = secondary tab navigation** — the hand-rolled status pill + roster bottom sheet are gone; the signing screen keeps the `FlowHeader` and renders a [`ChipNavStrip`](../components/inspection-parts/ChipNavStrip.tsx) roster (one chip per participant + a trailing `ინსპექტორი` chip) for jump-to navigation, exactly like the harness flow. The phase is now driven by where `currentIdx` points, so you can jump back to re-sign any worker.
+- **`ChipNavStrip` gained `dotMode`** — new opt-in `dotMode?: 'color' | 'mono' | 'check'` (default `'color'` = unchanged). Briefings use `'check'` (✓ for signed, monochrome dots otherwise) to avoid green; the harness flow keeps the default and is byte-for-byte unchanged. Added a `'skipped'` `ChipNavState`.
+- **New module** [`components/briefings/`](../components/briefings/AGENTS.md) — `TopicSelector`, `ParticipantsStep`, `SignatureStage` extracted from the (oversized) route files.
+
+---
+
+## 2026-06-17 — Global design refresh: white background, monochrome nav, pill buttons
+
+Unified the core visual language across the app.
+
+- **White app background** — `theme.colors.background` is now pure `#FFFFFF` (was warm off-white `#F2F1EC`). Cards/surfaces remain white and stay visible via existing shadows and borders.
+- **Monochrome navigation** — tab bar active tint and icon colour changed from orange to `theme.colors.ink` (near-black `#1A1A1A`). Active glow background updated to a subtle grey. The orange brand colour no longer bleeds into chrome.
+- **Pill-shaped buttons (radius 1000)** — all `Button` sizes now use `borderRadius: 1000` (true pill). Text colour on the primary (orange) variant changed from white to black for legibility.
+- **Unified CTA button** — [`WizardNav`](../components/wizard/WizardNav.tsx) replaced its bespoke `nextBtn` Pressable with the canonical [`Button`](../components/primitives/Button.tsx) component. [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) migrated from deprecated `iconRight={<Ionicons>}` nodes to the string-based `rightIcon` prop so icon colour inherits from the button's text colour automatically.
+
+---
+
+## 2026-06-17 — Incident / briefing / report: full-screen project pick, no bottom sheet
+
+The four Home quick actions now behave consistently. **ინციდენტი**, **ინსტრუქტაჟი**, and **რეპორტი** used to open the `ProjectPickerSheet` bottom sheet (confusingly titled "შემოწმების აქტის დაწყება" for all three) before navigating into the flow. They now route straight to `/incidents/new` · `/briefings/new` · `/reports/new`, and each screen renders the project picker as a **full-screen first step** when launched without a `projectId` — exactly like the inspection (`შემოწმება`) flow.
+
+- **New shared first step** ([`FlowProjectPicker`](../components/FlowProjectPicker.tsx)) — `FlowHeader` + a dashed "ახალი პროექტი" row + the canonical [`ProjectPickerStep`](../components/inspection-steps/ProjectPickerStep.tsx) list + a "გაგრძელება" button. Creating a project reuses [`ProjectPickerSheet`](../components/home/ProjectPickerSheet.tsx) (`initialView="new"`) and re-enters the flow with the new id. See [primitives.md](primitives.md#flow-entry-project-picker).
+- **Each `new` screen gates on the project** ([`incidents/new`](../app/incidents/new.tsx), [`briefings/new`](../app/briefings/new.tsx), [`reports/new`](../app/reports/new.tsx)) — `projectId = paramProjectId ?? pickedProject?.id`; no param + nothing picked → show the picker, otherwise the existing form (unchanged).
+- **Project-detail entries unchanged** — those already pass `?projectId=`, so they skip the picker and open the form directly.
+- **Home cleanup** ([`home.tsx`](../app/(tabs)/home.tsx)) — dropped the now-unused `pickerAction` state; the Home `ProjectPickerSheet` stays only for the empty-projects "create first project" case.
+
+---
+
+## 2026-06-17 — Equipment details step: fewer inputs, monochrome type selector
+
+Trimmed redundant data entry from the general-equipment inspection and made the inspection-type selector consistent everywhere.
+
+- **General-equipment details step** ([`general-equipment/[id]`](../app/inspections/general-equipment/[id].tsx)) — dropped the *object name*, *activity type*, *date*, and *act №* inputs. Object name + address now autofill from the project (`company_name || name`); the date and act № are already set automatically at creation. The step now shows only the inspection-type selector. The `activity_type` column is untouched (kept in the type/patch, just no longer entered by hand) — no Supabase changes.
+- **Monochrome type selector, reused** — fall-protection ([`fall-protection/[id]`](../app/inspections/fall-protection/[id].tsx)) replaced its bespoke orange `typeChip` row with the shared monochrome [`IdentificationGrid`](../components/inspection-parts/IdentificationGrid.tsx) `select`, matching general-equipment and the other equipment screens.
+
+---
+
+## 2026-06-17 — One checklist design across every inspection
+
+Made the harness/belt flow match the rest of the monochrome inspection UI and unified every "several-items-on-one-page" checklist onto one reusable row — a design-system consolidation, not per-screen forks.
+
+- **Canonical checklist row** — new [`ChecklistItemRow`](../components/inspection-parts/ChecklistItemRow.tsx) (+ [`ChecklistLegend`](../components/inspection-parts/ChecklistLegend.tsx)): label + inline help `?` + a cluster of monochrome [`StatusChip`](../components/wizard/StatusChip.tsx)s (2 options for the harness ✓/✗; 3–4 for equipment ratings incl. N/A), neutral until tapped. The harness [`ChipRow`](../components/harness-list/ChipRow.tsx), equipment [`ChecklistRow`](../components/inspection-steps/ChecklistRow.tsx), and [`ChecklistItem`](../components/inspection-parts/ChecklistItem.tsx) are now thin adapters over it.
+- **Solid-ink selected state** — `StatusChip` selection went from a subtle outline-fill to a **solid ink fill** (via the theme `inverse` palette, so it stays legible in dark mode). This bolder, clearer state reaches yes/no, equipment ratings, and harness chips at once.
+- **Ink progress bar** — `FlowHeader`'s progress bar is now ink (monochrome) instead of brand-orange, across every inspection / briefing / incident / report / order flow.
+- **Harness flow on the shared header** — [`HarnessListFlow`](../components/harness-list/HarnessListFlow.tsx) dropped its bespoke header for `FlowHeader` (circular back/close, `step / total` counter), added a `ChecklistLegend`, and rows now start neutral (an untouched belt still auto-fills ✓ on confirm, so the PDF is unchanged).
+- **Per-row notes/photos removed** from every checklist (harness + equipment) — problem detail + photos belong on the conclusion step. **No schema or PDF changes**: the multi-state `result` still drives the regulatory PDF's pills, category counts, and verdict; the now-unused `comment`/`photo_paths` fields simply render empty.
+- **Cleanup** — deleted three dead duplicate row components (`BobcatChecklistItem`, `ExcavatorChecklistItem`, `CargoPlatformChecklistItem`) and the harness `CellPhotoThumb`.
+
+---
+
+## 2026-06-17 — Fix: loading skeletons clipped under the notch
+
+Two loading states painted their skeletons under the status bar / Dynamic Island because they bypassed iOS's automatic `ScrollView` content inset without re-adding a manual one. The **project detail** skeleton ([`LoadingSkeletonScreen`](../features/project-detail/LoadingSkeletonScreen.tsx)) copied the loaded screen's edge-to-edge config (`contentInsetAdjustmentBehavior="never"`) — which is correct there only because its first element is a full-bleed map hero — and now adds `insets.top` to its top padding. The **report viewer** ([`reports/[id]`](../app/reports/[id].tsx)) loading branch renders its `SkeletonPreview` in a bare `View` (no auto-inset) and now applies `paddingTop: insets.top`. Pure UI; no other screens changed (home, wizards, tab screens, and native-header detail screens already inset correctly).
+
+---
+
+## 2026-06-17 — Inspection redesign: monochrome answers, shared header, dashed attachments
+
+A consistency pass so no single inspection screen looks bespoke — built by changing the shared chrome, not by forking per-screen styles.
+
+- **One shared header** ([`FlowHeader`](../components/FlowHeader.tsx)) — the `< უკან` text pill became a circular back icon button (mirroring the close `✕`), the small project logo was dropped (project name stays as a subtitle), and the progress indicator is now a thin **brand-orange** bar + a `step / total` counter. Every inspection / briefing / incident flow renders `FlowHeader`, so the new header + progress reach all of them at once.
+- **Monochrome answer controls** — the green/red "looks like a quiz" yes/no buttons and the green/amber/red 3-state equipment ratings (bobcat, excavator, general-equipment, cargo-platform, harness chips, checklist rows, verdict pills) are now black-and-white via the new [`StatusChip`](../components/wizard/StatusChip.tsx): selected = ink outline + subtle fill, severity carried by the `✓/⚠/✗` icon + label, never color. See [primitives.md](primitives.md#inspection-wizard-shared-ui).
+- **Dashed photo + note bars** — the wizard `QuestionStep` / `ConclusionStep` photo & note inputs became two quiet dashed bars via [`AttachmentBars`](../features/inspection-wizard/AttachmentBars.tsx): the photo bar stays put and shows thumbnails as they're added, the note bar morphs into the notes textarea on tap.
+- **Illustration refresh** — the passport question illustration was redrawn (portrait box + GEO language stamp + machine-readable strip) and the certificate de-greened; both follow the brand palette.
+- No Supabase / PDF / schema changes — pure UI. The smart "გამოტოვება → შემდეგი" footer button (skip until answered) is unchanged.
+- **Equipment-route dedup (done):** the 6 formerly inline-chrome equipment routes (cargo-platform, forklift, safety-net, mobile-ladder, fall-protection, lifting-accessories) now render through the shared [`InspectionShell`](../components/inspection-steps/InspectionShell.tsx) — which gained `finishLabel`, `banner`, and `blockNext` props, and `FlowHeader` now shows a trailing element (the PDF icon) alongside the close ✕. ~490 lines of duplicated header/footer chrome removed; every equipment flow now shares one shell. fall-protection keeps its custom finish label (`შემოწმება დასრულდა`) and its "can't proceed without a device" block via `blockNext`.
+- **Still follow-ups:** applying `AttachmentBars` inside the equipment checklist accordions + consolidating the duplicate `PhotoThumb` copies, and a fuller refresh of the remaining 14 SVG illustrations — best done with on-device verification.
+
+---
+
+## 2026-06-17 — Harness count: one-tap chip selector replaces the +/- stepper
+
+The "რამდენი ქამარი სულ?" step in the harness flow ([`HarnessListFlow`](../components/harness-list/HarnessListFlow.tsx)) swapped its +/- stepper for a new reusable **[`QuantitySelector`](../components/inputs/QuantitySelector.tsx)**: a wrap-grid of preset chips (1, 2, 3, 4, 5, 6, 8, 10, 12, 15) for one-tap selection, plus a custom numeric field for in-between values. The field is clamped to the harness max (15 — the template defines a fixed N1–N15 grid and the legal PDF renders exactly those rows, so the count can't exceed it). New input primitive; see [primitives.md](primitives.md#count--quantity-selector). No Supabase/PDF changes.
+
+---
+
+## 2026-06-17 — Success screens: corrected wording + one reusable scaffold
+
+Terminology + design pass on every post-save success screen, plus the de-duplication that made it safe.
+
+- **Wording (`ინსპექცია` → `შემოწმების აქტი`)** — "ინსპექცია" is the wrong term for the document; it's a **შემოწმების აქტი**. All five inspection done screens now read "შემოწმების აქტი შენახულია!", the summary shows the full act name (e.g. "ექსკავატორის შემოწმების აქტი", "დამცავი ქამრების შემოწმების აქტი"), and the subtitle points at "აქტის გვერდიდან". Also fixed the two remaining user-facing uses outside the success screens (crane-cert field label in `order-new`, wizard navigation-recovery message).
+- **Buttons** — primary CTA renamed "ინსპექციის ნახვა" → **"PDF-ის ნახვა"**; the dead **"PDF პრევიუ და ჩამოტვირთვა"** card (it just re-fired the same action) was removed; the home card is now **"მთავარ გვერდზე დაბრუნება"**.
+- **One reusable scaffold** — new [`components/success/`](../components/success/): `SuccessScreen` (the check-mark + summary + CTA + action-card shell, owns the completion haptic) and `InspectionDoneView` (the inspection body with the corrected wording baked in). The five `done.tsx` routes dropped from ~250 lines each to ~60–80 (thin data-loaders); the incident + order success screens were moved onto the same scaffold too, deleting ~6 byte-identical copies of the old `ActionCard` + `StyleSheet`. `reports/[id]/success.tsx` stays separate (different full-bleed PDF-share layout). See [primitives.md](primitives.md#post-save-success-screens).
 
 ---
 

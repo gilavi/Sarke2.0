@@ -11,7 +11,7 @@ export interface LegalDocBody {
 
 /**
  * Shared renderer for public legal documents (Terms, Privacy). Standalone
- * full page — these routes live OUTSIDE the app shell so they stay reachable
+ * full page - these routes live OUTSIDE the app shell so they stay reachable
  * logged-out (App Store Connect links the privacy policy URL directly).
  */
 export function LegalDocPage({ ka, en, icon: Icon }: { ka: LegalDocBody; en: LegalDocBody; icon: LucideIcon }) {

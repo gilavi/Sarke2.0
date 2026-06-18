@@ -1,7 +1,7 @@
 ﻿import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { useTheme } from '../../../lib/theme';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
@@ -36,7 +36,7 @@ export const KamariPhotoThumb = memo(function KamariPhotoThumb({
         {uri ? <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} /> : null}
       </View>
       <Pressable onPress={onDelete} style={styles.thumbDelete} hitSlop={12}>
-        <Ionicons name="close" size={12} color="#fff" />
+        <X size={12} color="#fff" strokeWidth={1.5} />
       </Pressable>
     </View>
   );

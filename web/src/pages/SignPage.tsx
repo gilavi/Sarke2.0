@@ -160,7 +160,7 @@ export function SignPage({ token, onNavigate }: { token: string; onNavigate: (ha
         <div className="card" style={{ marginTop: 14 }}>
           <p className="eyebrow">უარი ხელის მოწერაზე</p>
           <p className="meta">
-            მიუთითე მოკლე მიზეზი (არასავალდებულო) — ექსპერტი ხედავს ამ ტექსტს.
+            მიუთითე მოკლე მიზეზი (არასავალდებულო) - ექსპერტი ხედავს ამ ტექსტს.
           </p>
           <textarea
             className="textarea"

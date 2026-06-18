@@ -1,5 +1,5 @@
 /**
- * AlertDialog (23% covered) — the Mantine-Modal-backed dialog wrapper.
+ * AlertDialog (23% covered) - the Mantine-Modal-backed dialog wrapper.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@/test-utils';

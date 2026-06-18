@@ -1,141 +1,62 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSequence,
-  withTiming,
-  withSpring,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import Animated, { LinearTransition } from 'react-native-reanimated';
+import { Check, X } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
-import { useTheme } from '../../lib/theme';
-
-import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
+import { useAccessibilitySettings } from '../../lib/accessibility';
+import { StatusChip } from './StatusChip';
 
 interface AnswerButtonsProps {
   value: boolean | null;
   onChange: (v: boolean) => void;
+  /**
+   * Compact = icon beside label (chip), used while the keyboard is open so the
+   * footer shrinks and the note input stays visible. Default = stacked pills.
+   */
+  compact?: boolean;
+  /** Reveal a danger outline (+ shake) when no answer is chosen — set on a failed submit. */
+  error?: boolean;
 }
 
-export function AnswerButtons({ value, onChange }: AnswerButtonsProps) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
-  const yesScale = useSharedValue(1);
-  const noScale = useSharedValue(1);
+/**
+ * Binary yes/no answer for the inspection wizard. Monochrome via StatusChip -
+ * the ✓/✗ icons carry the meaning, not color. Haptics fire here; the chip owns
+ * the press animation. The row morphs between stacked pills and a compact row
+ * via a layout transition when `compact` flips.
+ */
+export function AnswerButtons({ value, onChange, compact, error }: AnswerButtonsProps) {
   const { reduceMotion } = useAccessibilitySettings();
-
-  const handleYes = () => {
-    if (!reduceMotion) {
-      yesScale.value = withSequence(
-        withTiming(0.92, { duration: 80 }),
-        withSpring(1, theme.motion.spring.bouncy)
-      );
-    }
-    haptic.answerYes();
-    onChange(true);
-  };
-
-  const handleNo = () => {
-    if (!reduceMotion) {
-      noScale.value = withSequence(
-        withTiming(0.92, { duration: 80 }),
-        withSpring(1, theme.motion.spring.bouncy)
-      );
-    }
-    haptic.answerNo();
-    onChange(false);
-  };
-
-  const yesStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: yesScale.value }],
-    backgroundColor: value === true ? theme.colors.semantic.success : theme.colors.surface,
-    borderColor: value === true ? theme.colors.semantic.success : theme.colors.border,
-  }));
-
-  const noStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: noScale.value }],
-    backgroundColor: value === false ? theme.colors.semantic.danger : theme.colors.surface,
-    borderColor: value === false ? theme.colors.semantic.danger : theme.colors.border,
-  }));
-
+  const layout = compact ? 'chip' : 'pill';
+  const showError = !!error && value === null;
   return (
-    <View style={{ flexDirection: 'row', gap: 12 }}>
-      <AnimatedPressable
-        onPress={handleYes}
-        style={[styles.answerBtn, yesStyle]}
-        {...a11y(
-          'პასუხი: კი. უსაფრთხოა.',
-          'შეეხეთ თუ პასუხი დადებითია',
-          'button',
-          { selected: value === true }
-        )}
-      >
-        <Ionicons
-          name="checkmark"
-          size={20}
-          color={value === true ? theme.colors.white : theme.colors.ink}
-          style={{ marginBottom: 4 }}
-        />
-        <Text
-          style={{
-            color: value === true ? theme.colors.white : theme.colors.ink,
-            fontWeight: '700',
-            fontSize: 15,
-          }}
-        >
-          კი
-        </Text>
-      </AnimatedPressable>
-
-      <AnimatedPressable
-        onPress={handleNo}
-        style={[styles.answerBtn, noStyle]}
-        {...a11y(
-          'პასუხი: არა. არ არის უსაფრთხო.',
-          'შეეხეთ თუ პასუხი უარყოფითია',
-          'button',
-          { selected: value === false }
-        )}
-      >
-        <Ionicons
-          name="close"
-          size={20}
-          color={value === false ? theme.colors.white : theme.colors.ink}
-          style={{ marginBottom: 4 }}
-        />
-        <Text
-          style={{
-            color: value === false ? theme.colors.white : theme.colors.ink,
-            fontWeight: '700',
-            fontSize: 15,
-          }}
-        >
-          არა
-        </Text>
-      </AnimatedPressable>
-    </View>
+    <Animated.View
+      layout={reduceMotion ? undefined : LinearTransition.duration(200)}
+      style={{ flexDirection: 'row', gap: 12 }}
+    >
+      <StatusChip
+        layout={layout}
+        selected={value === true}
+        error={showError}
+        label="კი"
+        icon={Check}
+        onPress={() => {
+          haptic.answerYes();
+          onChange(true);
+        }}
+        a11yLabel="პასუხი: კი. უსაფრთხოა."
+        a11yHint="შეეხეთ თუ პასუხი დადებითია"
+      />
+      <StatusChip
+        layout={layout}
+        selected={value === false}
+        error={showError}
+        label="არა"
+        icon={X}
+        onPress={() => {
+          haptic.answerNo();
+          onChange(false);
+        }}
+        a11yLabel="პასუხი: არა. არ არის უსაფრთხო."
+        a11yHint="შეეხეთ თუ პასუხი უარყოფითია"
+      />
+    </Animated.View>
   );
-}
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function getstyles(theme: any) {
-  return StyleSheet.create({
-  answerBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: theme.radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    minHeight: 56,
-  },
-});
 }

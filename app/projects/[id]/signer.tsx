@@ -6,11 +6,13 @@ import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Trash2, Check, Pencil, X } from 'lucide-react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { projectsApi } from '../../../lib/services';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
+import { haptic } from '../../../lib/haptics';
 import { uploadSignature } from '../../../lib/signatures';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useToast } from '../../../lib/toast';
@@ -26,7 +28,7 @@ import { SIGNER_ROLE_LABEL } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
 
-// Roster roles only — "expert" is always the logged-in user per inspection, not rostered.
+// Roster roles only - "expert" is always the logged-in user per inspection, not rostered.
 const ROSTER_ROLES: SignerRole[] = ['xaracho_supervisor', 'xaracho_assembler'];
 
 export default function SignerForm() {
@@ -49,6 +51,7 @@ export default function SignerForm() {
   const [pendingSigData, setPendingSigData] = useState<string | null>(null); // base64 png to upload
   const [capturing, setCapturing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { attempted, guard } = useSubmitGuard();
   const queryClient = useQueryClient();
 
   const { data: signers = [] } = useProjectSigners(id);
@@ -85,7 +88,7 @@ export default function SignerForm() {
       let sigPath = existing?.signature_png_url ?? null;
 
       if (sigDirty && pendingSigData) {
-        // Upload via the canonical helper — the old fetch(dataURL).blob() +
+        // Upload via the canonical helper - the old fetch(dataURL).blob() +
         // storageApi.upload path produced 0-byte objects on Hermes/SDK 54.
         const path = `project/${id}/signer-${existing?.id ?? Date.now()}-${Date.now()}.png`;
         const { pending } = await uploadSignature(path, pendingSigData);
@@ -142,7 +145,7 @@ export default function SignerForm() {
           headerRight: () =>
             editing ? (
               <Pressable onPress={remove} hitSlop={12}>
-                <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
+                <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.5} />
               </Pressable>
             ) : null,
         }}
@@ -168,7 +171,7 @@ export default function SignerForm() {
                 >
                   <View style={[styles.radio, role === r && styles.radioOn]}>
                     {role === r ? (
-                      <Ionicons name="checkmark" size={14} color={theme.colors.white} />
+                      <Check size={14} color={theme.colors.white} strokeWidth={1.5} />
                     ) : null}
                   </View>
                   <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
@@ -181,8 +184,10 @@ export default function SignerForm() {
 
           <FloatingLabelInput
             label={t('remoteSigner.nameLabel')}
+            required
             value={fullName}
             onChangeText={setFullName}
+            error={attempted && !fullName.trim() ? 'სავალდებულო ველი' : undefined}
           />
           <FloatingLabelInput
             label={t('common.phone')}
@@ -202,7 +207,7 @@ export default function SignerForm() {
                 <Image source={{ uri: sigPreview }} style={styles.sigImage} contentFit="contain" />
               ) : (
                 <View style={styles.sigEmpty}>
-                  <Ionicons name="create-outline" size={22} color={theme.colors.inkFaint} />
+                  <Pencil size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
                   <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>
                     {t('projectSigner.noSignature')}
                   </Text>
@@ -219,9 +224,8 @@ export default function SignerForm() {
 
           <Button
             title={editing ? t('projectSigner.saveButton') : t('projectSigner.addButton')}
-            onPress={save}
+            onPress={() => guard(!!fullName.trim(), save)}
             loading={busy}
-            disabled={!fullName.trim()}
             style={{ marginTop: 8 }}
           />
         </ScrollView>
@@ -255,13 +259,19 @@ function SignatureCaptureModal({
 
   const ref = useRef<SignatureViewRef>(null);
   const [hasStroke, setHasStroke] = useState(false);
+  const [sigError, setSigError] = useState(false);
 
   useEffect(() => {
-    if (visible) setHasStroke(false);
+    if (visible) {
+      setHasStroke(false);
+      setSigError(false);
+    }
   }, [visible]);
 
   const handleSave = () => {
     if (!hasStroke) {
+      setSigError(true);
+      haptic.validationError();
       return;
     }
     ref.current?.readSignature();
@@ -288,21 +298,26 @@ function SignatureCaptureModal({
               {title}
             </Text>
             <Pressable onPress={onCancel} hitSlop={12}>
-              <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+              <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
           </View>
           <View style={styles.canvasBox}>
             <SignatureScreen
               ref={ref}
               onOK={onDone}
-              onBegin={() => setHasStroke(true)}
-              onEnd={() => setHasStroke(true)}
+              onBegin={() => { setHasStroke(true); setSigError(false); }}
+              onEnd={() => { setHasStroke(true); setSigError(false); }}
               webStyle={webStyle}
               descriptionText=""
               autoClear={false}
               imageType="image/png"
             />
           </View>
+          {sigError ? (
+            <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
+              გთხოვთ, ხელი მოაწეროთ
+            </Text>
+          ) : null}
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Button
               title={t('projectSigner.clearButton')}
@@ -314,7 +329,6 @@ function SignatureCaptureModal({
               title={t('projectSigner.saveButton')}
               style={{ flex: 1.4 }}
               onPress={handleSave}
-              disabled={!hasStroke}
             />
           </View>
         </View>

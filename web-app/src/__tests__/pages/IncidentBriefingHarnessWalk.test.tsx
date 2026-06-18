@@ -1,6 +1,6 @@
 /**
  * Interaction walks for IncidentDetail, BriefingDetail, HarnessInspectionDetail
- * — three detail pages each in the 30-35% coverage range. We start from a draft,
+ * - three detail pages each in the 30-35% coverage range. We start from a draft,
  * exercise the edit form (open → change fields → submit → updateX), and confirm
  * the delete confirmation flow.
  */
@@ -104,7 +104,7 @@ describe('IncidentDetail (draft edit)', () => {
     // The edit form pre-fills with current values.
     expect(await screen.findByDisplayValue('დაშავებული')).toBeInTheDocument();
     fireEvent.change(screen.getByDisplayValue('დაშავებული'), { target: { value: 'ახალი დაშავებული' } });
-    // Submit — submit button is type=submit "შენახვა".
+    // Submit - submit button is type=submit "შენახვა".
     fireEvent.click(screen.getByRole('button', { name: 'შენახვა' }));
     await waitFor(() => expect(updateIncident).toHaveBeenCalled());
     const [calledId, patch] = vi.mocked(updateIncident).mock.calls[0];
@@ -120,7 +120,7 @@ describe('IncidentDetail (draft edit)', () => {
       '/incidents/i1',
     );
     await screen.findByRole('heading', { level: 1, name: 'მსუბუქი' });
-    // Click the trigger — AlertDialog opens.
+    // Click the trigger - AlertDialog opens.
     const deleteBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
     fireEvent.click(deleteBtns[0]);
     // Wait for the dialog title to appear, then click the confirm button.
@@ -146,7 +146,7 @@ describe('BriefingDetail (draft edit)', () => {
       <Routes><Route path="/briefings/:id" element={<BriefingDetail />} /></Routes>,
       '/briefings/b1',
     );
-    expect(await screen.findByRole('heading', { level: 1, name: /ინსტრუქტაჟი —/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: /ინსტრუქტაჟი -/ })).toBeInTheDocument();
   });
 });
 

@@ -6,7 +6,7 @@ export interface ScaffoldHelpEntry {
   oneLiner: string;
 }
 
-// Section 1 questions — also get a "?" help icon, but are NOT shown in the
+// Section 1 questions - also get a "?" help icon, but are NOT shown in the
 // onboarding tour (the tour focuses on the 9 scaffold components).
 export const SECTION1_HELP: ScaffoldHelpEntry[] = [
   {
@@ -95,7 +95,7 @@ const BY_KEY: Record<string, ScaffoldHelpEntry> = [
   {} as Record<string, ScaffoldHelpEntry>,
 );
 
-// TODO: harness help copy — fill once user provides per-row guidance
+// TODO: harness help copy - fill once user provides per-row guidance
 const HARNESS_FALLBACK: ScaffoldHelpEntry = {
   key: 'certificate',
   name: '',

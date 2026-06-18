@@ -5,7 +5,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { logError } from './logError';
 
 // Project logos are rendered as a 88px circle (`ProjectAvatar size={88}`).
-// Even at retina 3x that's a 264px source — a 240px-wide downscale gives
+// Even at retina 3x that's a 264px source - a 240px-wide downscale gives
 // pixel-perfect rendering with zero visible quality loss. Earlier code
 // inlined the picker output at quality 0.4, which still produced ~1.36 MB
 // base64 strings that bloated the projects table row and made every project
@@ -16,13 +16,13 @@ const LOGO_QUALITY = 0.6;
 /**
  * Open the photo library and return the picked image as a base64 data URL
  * ready to be persisted as `projects.logo`. Returns `null` if the user
- * cancelled or permission was denied — callers should treat that as a
+ * cancelled or permission was denied - callers should treat that as a
  * no-op.
  *
  * We feed the picker's base64 output directly into `expo-image-manipulator`
  * as a data URL, never the asset URI. The historical "PHAsset URI / HEIC"
  * failure mode of `renderAsync` happens when the manipulator tries to read
- * a `ph://` source — the data-URL path is in-memory and avoids that entirely.
+ * a `ph://` source - the data-URL path is in-memory and avoids that entirely.
  */
 export async function pickProjectLogo(): Promise<string | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -58,7 +58,7 @@ export async function pickProjectLogo(): Promise<string | null> {
   if (!pickerBase64 || pickerBase64.length === 0) return null;
 
   // Resize + re-encode as JPEG. If the manipulator throws (very rare with a
-  // data-URL input), fall back to the picker's raw base64 — better a slow
+  // data-URL input), fall back to the picker's raw base64 - better a slow
   // insert than a dead UX.
   try {
     const sourceDataUrl = `data:image/jpeg;base64,${pickerBase64}`;

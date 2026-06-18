@@ -1,8 +1,8 @@
 // Files + Orders section of the project detail screen.
 //
 // One card on the screen shows both:
-//   - Generated orders (ბრძანებები) — read-only previews
-//   - Uploaded files (ფაილები) — swipe-to-delete, tap-to-open
+//   - Generated orders (ბრძანებები) - read-only previews
+//   - Uploaded files (ფაილები) - swipe-to-delete, tap-to-open
 //
 // Header has two `+` actions: "+ ბრძანება" (new order) and
 // "+ ატვირთვა" (upload file). Empty state renders only when both
@@ -11,7 +11,7 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Ionicons } from '@expo/vector-icons';
+import { Award, ChevronRight, FileText, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
@@ -58,7 +58,7 @@ export function FilesAndOrdersSection({
     <>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="ribbon-outline" size={16} color={theme.colors.inkSoft} />
+          <Award size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>ბრძანებები</Text>
           <Text style={styles.sectionCount}>{files.length + orders.length}</Text>
         </View>
@@ -88,7 +88,7 @@ export function FilesAndOrdersSection({
                 backgroundColor: theme.colors.accentSoft,
                 alignItems: 'center', justifyContent: 'center',
               }}>
-                <Ionicons name="document-text-outline" size={17} color={theme.colors.accent} />
+                <FileText size={17} color={theme.colors.accent} strokeWidth={1.5} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.listRowTitle} numberOfLines={1}>
@@ -119,7 +119,7 @@ export function FilesAndOrdersSection({
               key={f.id}
               renderRightActions={() => (
                 <Pressable onPress={() => onDeleteFile(f)} style={styles.swipeDelete} {...a11y('ფაილის წაშლა', 'ფაილის წაშლა', 'button')}>
-                  <Ionicons name="trash" size={18} color={theme.colors.white} />
+                  <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
                 </Pressable>
               )}
               overshootRight={false}
@@ -136,13 +136,13 @@ export function FilesAndOrdersSection({
                     {formatShortDateTime(f.created_at)}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
               </Pressable>
             </Swipeable>
           ))}
           {overflowFiles.length > 0 ? (
             <ViewMoreRow
-              items={overflowFiles.map(() => ({ ionicon: 'document-outline' }))}
+              items={overflowFiles.map(() => ({ category: null }))}
               total={overflowFiles.length}
               onPress={() => router.push(`/projects/${id}/files` as any)}
             />

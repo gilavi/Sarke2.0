@@ -6,7 +6,7 @@
  * when the user leaves the info/specs step (no `/<type>/draft` dead-end). It
  * owns: the create-vs-edit mode, the item/project queries, the patch + delete
  * mutations with cache invalidation, the step/direction state, and the in-memory
- * signature session (regulatory: never persisted — handed to the print route via
+ * signature session (regulatory: never persisted - handed to the print route via
  * router state only).
  */
 import { useCallback, useState } from 'react';

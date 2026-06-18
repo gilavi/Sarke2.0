@@ -6,7 +6,7 @@
  * key value violates unique constraint …") are jargon to them, and many are in English.
  *
  * `humanizeError` maps a thrown value to a short, actionable Georgian sentence (via the
- * i18next `errors.*` namespace in lib/i18n.ts). It is PURE — no side effects — so it is
+ * i18next `errors.*` namespace in lib/i18n.ts). It is PURE - no side effects - so it is
  * safe to call during render (e.g. inside `<ErrorMessage>{humanizeError(err)}</ErrorMessage>`).
  *
  * `toastError` is the DRY replacement for the ~60 inline
@@ -28,7 +28,7 @@ export function rawErrorMessage(e: unknown): string {
 /**
  * True for transient network/connectivity failures that are worth retrying
  * (construction-site Wi-Fi drops). Deliberately does NOT match RLS, duplicate-key,
- * validation or other 4xx errors — retrying those is pointless and, for a
+ * validation or other 4xx errors - retrying those is pointless and, for a
  * non-idempotent create, risks a double write.
  */
 export function isTransientError(e: unknown): boolean {
@@ -49,7 +49,7 @@ export function isTransientError(e: unknown): boolean {
 
 /**
  * Map a thrown value to a short, actionable, localized message.
- * Pure — safe to call during render. Order matters: more specific cases first.
+ * Pure - safe to call during render. Order matters: more specific cases first.
  */
 export function humanizeError(e: unknown): string {
   const raw = rawErrorMessage(e);
@@ -95,7 +95,7 @@ export function humanizeError(e: unknown): string {
     return t('payloadTooLarge');
   }
 
-  // Network / offline. (fetch failures, timeouts — construction-site Wi-Fi.)
+  // Network / offline. (fetch failures, timeouts - construction-site Wi-Fi.)
   if (
     lower.includes('failed to fetch') ||
     lower.includes('networkerror') ||

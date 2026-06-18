@@ -70,7 +70,7 @@ beforeEach(() => {
   vi.mocked(createOrder).mockResolvedValue({ id: 'order-1' } as never);
 });
 
-describe('NewOrder — full fire_safety_order walkthrough', () => {
+describe('NewOrder - full fire_safety_order walkthrough', () => {
   it('walks all 6 steps and renders the StepSummary', async () => {
     renderPage(<NewOrder />, '/orders/new?project=p1');
 
@@ -78,18 +78,18 @@ describe('NewOrder — full fire_safety_order walkthrough', () => {
     fireEvent.click(screen.getByText('სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა'));
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 1: company step — fill required fields
+    // step 1: company step - fill required fields
     await screen.findByText('ბრძანების ნომერი *');
     await screen.findByDisplayValue('შპს ალფა');
     fillStep1Company();
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 2: Step3FireSafety — appointed person + object
+    // step 2: Step3FireSafety - appointed person + object
     await screen.findByText('დანიშნული პირი');
     fillStep2FireSafety();
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 3: StepSignDirector — exercises the "no signature" branch (button shown).
+    // step 3: StepSignDirector - exercises the "no signature" branch (button shown).
     await screen.findByText('დირექტორის ხელმოწერა');
     // Open the signing UI, then click the fake-sign button.
     fireEvent.click(screen.getByRole('button', { name: /\+ ხელმოწერა/ }));
@@ -99,7 +99,7 @@ describe('NewOrder — full fire_safety_order walkthrough', () => {
     await screen.findByText('ხელმოწერა დადებულია');
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 4: StepSignAppointed — same pattern.
+    // step 4: StepSignAppointed - same pattern.
     await screen.findByText('პასუხისმგებელი პირის ხელმოწერა');
     fireEvent.click(screen.getByRole('button', { name: /\+ ხელმოწერა/ }));
     fireEvent.click(screen.getByRole('button', { name: 'fake-sign' }));
@@ -107,7 +107,7 @@ describe('NewOrder — full fire_safety_order walkthrough', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 5: StepSummary — final step. "შეჯამება" appears in both the stepper
+    // step 5: StepSummary - final step. "შეჯამება" appears in both the stepper
     // label and the section h2; we want the h2.
     expect(await screen.findByRole('heading', { name: 'შეჯამება' })).toBeInTheDocument();
     // Director + appointed signature rows show as ✓.
@@ -125,7 +125,7 @@ describe('NewOrder — full fire_safety_order walkthrough', () => {
     fillStep1Company();
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 2: Step3AlcoholControl — required: facilityName, responsiblePersonName, responsiblePersonPosition.
+    // step 2: Step3AlcoholControl - required: facilityName, responsiblePersonName, responsiblePersonPosition.
     await screen.findByText('პასუხისმგებელი პირი');
     const t2 = Array.from(document.body.querySelectorAll<HTMLInputElement>('input'))
       .filter((i) => i.type === 'text');
@@ -151,7 +151,7 @@ describe('NewOrder — full fire_safety_order walkthrough', () => {
     fillStep1Company();
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 2: Step3LaborSafety — required: facilityName, specialistName, certificateNumber.
+    // step 2: Step3LaborSafety - required: facilityName, specialistName, certificateNumber.
     await screen.findByText('სპეციალისტი');
     const t = Array.from(document.body.querySelectorAll<HTMLInputElement>('input'))
       .filter((i) => i.type === 'text');
@@ -161,7 +161,7 @@ describe('NewOrder — full fire_safety_order walkthrough', () => {
     fireEvent.change(t[3], { target: { value: 'CERT-001' } });
     fireEvent.click(screen.getByRole('button', { name: 'შემდეგი' }));
 
-    // step 3: StepSummary — has "შენახვა მონახაზად" (Save as draft) button.
+    // step 3: StepSummary - has "შენახვა მონახაზად" (Save as draft) button.
     await screen.findByRole('heading', { name: 'შეჯამება' });
     const saveDraftBtn = screen.getByRole('button', { name: /შენახვა/ });
     fireEvent.click(saveDraftBtn);

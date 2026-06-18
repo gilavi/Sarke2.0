@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 
 /**
- * Shared wizard header — full viewport width, 80px tall (matches the footer).
+ * Shared wizard header - full viewport width, 80px tall (matches the footer).
  * Left: 3-line context stack (project · inspection · step). Right: big close
  * button. A full-width progress bar is pinned to the bottom edge.
  */

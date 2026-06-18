@@ -5,11 +5,12 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step3FireSafety({
-  form, setForm, s,
+  form, setForm, s, attempted,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   s: OrderStyles;
+  attempted: boolean;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -20,12 +21,14 @@ export function Step3FireSafety({
         required
         value={form.appointedName}
         onChangeText={v => setForm(f => ({ ...f, appointedName: v }))}
+        error={attempted && !form.appointedName.trim() ? 'სავალდებულო ველი' : undefined}
       />
       <FloatingLabelInput
         label="ტელეფონის ნომერი"
         required
         value={form.appointedPhone}
         onChangeText={v => setForm(f => ({ ...f, appointedPhone: v }))}
+        error={attempted && !form.appointedPhone.trim() ? 'სავალდებულო ველი' : undefined}
         keyboardType="phone-pad"
       />
 
@@ -36,6 +39,7 @@ export function Step3FireSafety({
         required
         value={form.objectName}
         onChangeText={v => setForm(f => ({ ...f, objectName: v }))}
+        error={attempted && !form.objectName.trim() ? 'სავალდებულო ველი' : undefined}
       />
       <FloatingLabelInput
         label="ობიექტის მისამართი"

@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check, X } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { A11yText as Text } from '../primitives/A11yText';
 import { DateTimeField } from '../DateTimeField';
@@ -9,9 +9,6 @@ import { useAccessibilitySettings } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 import type { ExcavatorMaintenanceEntry, ExcavatorMaintenanceItemState } from '../../types/excavator';
-
-const BRAND_GREEN      = '#10B981';
-const BRAND_GREEN_SOFT = '#D1FAE5';
 
 interface Props {
   index: number;
@@ -54,12 +51,12 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
             style={[styles.toggle, yesActive && styles.toggleYesActive]}
             onPress={() => setAnswer('yes')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('კი', undefined, 'button')}
+            {...a11y('კი', undefined, 'button', { selected: yesActive })}
           >
-            <Ionicons
-              name="checkmark"
+            <Check
               size={14}
-              color={yesActive ? theme.colors.white : BRAND_GREEN}
+              color={yesActive ? theme.colors.ink : theme.colors.inkFaint}
+              strokeWidth={1.5}
             />
             <Text style={[styles.toggleText, yesActive && styles.toggleTextActive]}>კი</Text>
           </Pressable>
@@ -68,12 +65,12 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
             style={[styles.toggle, noActive && styles.toggleNoActive]}
             onPress={() => setAnswer('no')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('არა', undefined, 'button')}
+            {...a11y('არა', undefined, 'button', { selected: noActive })}
           >
-            <Ionicons
-              name="close"
+            <X
               size={14}
-              color={noActive ? theme.colors.white : theme.colors.danger}
+              color={noActive ? theme.colors.ink : theme.colors.inkFaint}
+              strokeWidth={1.5}
             />
             <Text style={[styles.toggleText, noActive && styles.toggleTextActive]}>არა</Text>
           </Pressable>
@@ -125,26 +122,26 @@ function getstyles(theme: Theme) {
     toggle: {
       flexDirection: 'row', alignItems: 'center', gap: 4,
       paddingHorizontal: 10, paddingVertical: 6,
-      borderRadius: 8, borderWidth: 1.5, borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.subtleSurface,
+      borderRadius: 8, borderWidth: 1.5, borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
     },
     toggleYesActive: {
-      backgroundColor: BRAND_GREEN,
-      borderColor: BRAND_GREEN,
+      backgroundColor: theme.colors.subtleSurface,
+      borderColor: theme.colors.ink,
     },
     toggleNoActive: {
-      backgroundColor: theme.colors.danger,
-      borderColor: theme.colors.danger,
+      backgroundColor: theme.colors.subtleSurface,
+      borderColor: theme.colors.ink,
     },
     toggleText:       { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-    toggleTextActive: { color: theme.colors.white },
+    toggleTextActive: { color: theme.colors.ink },
     dateRow: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
       paddingHorizontal: 12, paddingBottom: 12,
       borderTopWidth: 1, borderTopColor: theme.colors.hairline,
       paddingTop: 10,
-      backgroundColor: BRAND_GREEN_SOFT,
+      backgroundColor: theme.colors.subtleSurface,
     },
-    dateLabel: { fontSize: 12, color: BRAND_GREEN, fontWeight: '600', flex: 1 },
+    dateLabel: { fontSize: 12, color: theme.colors.inkSoft, fontWeight: '600', flex: 1 },
   });
 }

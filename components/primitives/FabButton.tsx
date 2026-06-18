@@ -7,13 +7,14 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 
 interface FabButtonProps {
   onPress: () => void;
-  iconName?: string;
+  icon?: LucideIcon;
   iconRotation?: number;
   a11yLabel: string;
   a11yHint?: string;
@@ -22,12 +23,12 @@ interface FabButtonProps {
 }
 
 /**
- * Shared floating action button. 60×60 circle, accent background with green
+ * Shared floating action button. 60x60 circle, accent background with green
  * glow shadow. Pass `iconRotation` (degrees) to animate the icon (e.g. 45 for
- * a × close state).
+ * a x close state).
  */
 export const FabButton = React.forwardRef<View, FabButtonProps>(function FabButton(
-  { onPress, iconName = 'add', iconRotation = 0, a11yLabel, a11yHint, style },
+  { onPress, icon: Icon = Plus, iconRotation = 0, a11yLabel, a11yHint, style },
   ref,
 ) {
   const { theme } = useTheme();
@@ -78,10 +79,10 @@ export const FabButton = React.forwardRef<View, FabButtonProps>(function FabButt
           animatedStyle,
         ]}
       >
-        <Ionicons
-          name={iconName as any}
+        <Icon
           size={28}
           color={theme.colors.white}
+          strokeWidth={1.5}
           style={iconRotation !== 0 ? { transform: [{ rotate: `${iconRotation}deg` }] } : undefined}
         />
       </Animated.View>

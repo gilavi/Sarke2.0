@@ -15,7 +15,7 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
   const { theme } = useTheme();
   const projectsQ = useProjects();
   const projects = projectsQ.data ?? [];
-  // Canonical three-state guard (see CLAUDE.md) — skeleton rows, never a
+  // Canonical three-state guard (see CLAUDE.md) - skeleton rows, never a
   // flashed empty state over a stale [].
   const loading = (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
 
@@ -51,14 +51,14 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
             style={({ pressed }) => [
               styles.row,
               { borderBottomColor: theme.colors.hairline },
-              selected && { backgroundColor: theme.colors.accentSoft },
+              selected && { backgroundColor: theme.colors.subtleSurface },
               pressed && { opacity: 0.75 },
             ]}
           >
             <ProjectAvatar project={p} size={44} />
             <View style={styles.info}>
               <Text
-                style={[styles.name, { color: selected ? theme.colors.accent : theme.colors.ink }]}
+                style={[styles.name, { color: theme.colors.ink }]}
                 numberOfLines={1}
               >
                 {p.company_name || p.name}
@@ -72,11 +72,11 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
             <View
               style={[
                 styles.radio,
-                { borderColor: selected ? theme.colors.accent : theme.colors.hairline },
+                { borderColor: selected ? theme.colors.ink : theme.colors.hairline },
               ]}
             >
               {selected && (
-                <View style={[styles.radioDot, { backgroundColor: theme.colors.accent }]} />
+                <View style={[styles.radioDot, { backgroundColor: theme.colors.ink }]} />
               )}
             </View>
           </Pressable>

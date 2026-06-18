@@ -16,7 +16,7 @@ export default defineConfig({
       VITE_SUPABASE_ANON_KEY: 'sb_publishable_OF_L2E27-Uv8MMw87fWfSA_znD7moYY',
     },
     // Unit tests live under src/. Keep Playwright specs (e2e-smoke/, run via
-    // `npm run smoke`) out of Vitest — their `test()` comes from @playwright/test
+    // `npm run smoke`) out of Vitest - their `test()` comes from @playwright/test
     // and throws "did not expect test() to be called here" under Vitest.
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: [...configDefaults.exclude, 'e2e-smoke/**', '**/*.smoke.*'],
@@ -34,7 +34,7 @@ export default defineConfig({
         'src/main.tsx',
         'src/**/*.d.ts',
       ],
-      // No enforced thresholds yet — run `npm run test:coverage` to establish a
+      // No enforced thresholds yet - run `npm run test:coverage` to establish a
       // baseline, then ratchet thresholds up here (e.g. lines/functions: 60).
     },
   },

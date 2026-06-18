@@ -69,7 +69,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const all: ActivityItem[] = [
     ...ins.map(i  => {
       // Distinguish scaffold acts (xaracho / mobile_scaffold / mobile_scaffold_n3)
-      // from harness via the joined template.category — otherwise every
+      // from harness via the joined template.category - otherwise every
       // inspections-table row gets the harness badge (BUG-21).
       const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
       const type: ActivityItem['type'] =
@@ -137,7 +137,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
                   to={item.href}
                   className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                 >
-                  {/* Emoji avatar — matches mobile InspectionTypeAvatar style */}
+                  {/* Emoji avatar - matches mobile InspectionTypeAvatar style */}
                   <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', av.bg)}>
                     <span className="text-lg leading-none">{av.emoji}</span>
                   </div>

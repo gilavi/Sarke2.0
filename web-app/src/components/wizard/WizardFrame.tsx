@@ -6,7 +6,7 @@ import { WizardFooter } from './WizardFooter';
 import { WizardContent } from './WizardContent';
 
 /**
- * Flow-agnostic full-screen wizard shell — the harness flow's chrome extracted
+ * Flow-agnostic full-screen wizard shell - the harness flow's chrome extracted
  * for reuse by every document-building flow. Renders a portal overlay with:
  * backdrop + animated panel + WizardHeader + optional sidebar slot + scrollable
  * WizardContent (with a left/right step-slide) + fixed WizardFooter.

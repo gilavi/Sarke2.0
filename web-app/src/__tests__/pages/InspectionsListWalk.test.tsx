@@ -86,7 +86,7 @@ beforeEach(() => {
 describe('Inspections list', () => {
   it('renders rows from all inspection types (data-driven)', async () => {
     renderPage(<Inspections />);
-    // One <a href> row per seeded type — generic harness + 4 structured equipment.
+    // One <a href> row per seeded type - generic harness + 4 structured equipment.
     await waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).toBeInTheDocument());
     expect(document.querySelector('a[href="/excavator/e1"]')).toBeInTheDocument();
     expect(document.querySelector('a[href="/general-equipment/g1"]')).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('Inspections list', () => {
   it('the project filter pills filter rows', async () => {
     renderPage(<Inspections />);
     await waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).toBeInTheDocument());
-    // Filter to პროექტი ბეტა (p2) — bobcat (p1) hides, excavator (p2) stays.
+    // Filter to პროექტი ბეტა (p2) - bobcat (p1) hides, excavator (p2) stays.
     fireEvent.click(screen.getByRole('button', { name: 'პროექტი ბეტა' }));
     await waitFor(() => expect(document.querySelector('a[href="/bobcat/b1"]')).not.toBeInTheDocument());
     expect(document.querySelector('a[href="/excavator/e1"]')).toBeInTheDocument();
@@ -107,7 +107,7 @@ describe('Inspections list', () => {
     vi.mocked(deleteInspection).mockResolvedValue(undefined);
     renderPage(<Inspections />);
     await waitFor(() => expect(document.querySelector('a[href="/harness/h1"]')).toBeInTheDocument());
-    // First row (sorted by date, generic harness leads) — click its trash button.
+    // First row (sorted by date, generic harness leads) - click its trash button.
     const allTrash = document.body.querySelectorAll('[class*="lucide-trash"]');
     expect(allTrash.length).toBeGreaterThan(0);
     const trashBtn = allTrash[0].closest('button');

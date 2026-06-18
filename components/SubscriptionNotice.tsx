@@ -1,6 +1,6 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useMemo } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Lock } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
@@ -15,7 +15,7 @@ interface Props {
  * Neutral notice shown when the free PDF limit is reached.
  *
  * Deliberately contains NO price, NO URL, NO purchase wording, and no button
- * other than dismiss — Apple guideline 3.1.1 forbids in-app purchase flows or
+ * other than dismiss - Apple guideline 3.1.1 forbids in-app purchase flows or
  * copy directing users where to buy digital subscriptions; Google Play has the
  * same rule. Subscriptions activate server-side (`subscription_status` on the
  * users row) and the app unlocks automatically via `usePdfUsage`.
@@ -31,7 +31,7 @@ export function SubscriptionNotice({ visible, onClose }: Props) {
       <View style={s.backdrop}>
         <View style={s.card}>
           <View style={s.iconWrap}>
-            <Ionicons name="lock-closed" size={26} color={theme.colors.warn} />
+            <Lock size={26} color={theme.colors.warn} strokeWidth={1.5} />
           </View>
 
           <Text style={s.title}>{t('components.subscriptionNotice.title')}</Text>

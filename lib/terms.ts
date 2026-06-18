@@ -2,7 +2,7 @@
 // prompted to re-accept on next sign-in.
 export const TERMS_VERSION = '2026-04-22';
 
-// The live public terms page (web-app hash route — hubble.ge/terms does not
+// The live public terms page (web-app hash route - hubble.ge/terms does not
 // exist; the gh-pages root is owned by the signing app).
 export const TERMS_PUBLIC_URL = 'https://hubble.ge/app/#/terms';
 

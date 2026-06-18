@@ -1,4 +1,4 @@
-// Google Calendar integration — OAuth via expo-auth-session, tokens in SecureStore.
+// Google Calendar integration - OAuth via expo-auth-session, tokens in SecureStore.
 // Independent of Supabase auth; uses the Calendar events scope directly.
 import * as AuthSession from 'expo-auth-session';
 import * as SecureStore from 'expo-secure-store';
@@ -91,7 +91,7 @@ async function authed<T>(path: string, init: RequestInit): Promise<T> {
   let res = await doFetch(token);
   if (res.status === 401) {
     const refreshed = await refreshAccessToken();
-    if (!refreshed) throw new Error('Google სესია ამოიწურა — შეაერთე თავიდან');
+    if (!refreshed) throw new Error('Google სესია ამოიწურა - შეაერთე თავიდან');
     res = await doFetch(refreshed);
   }
   if (!res.ok) {
@@ -182,7 +182,7 @@ export const googleCalendar = {
     const itemName = schedule.project_items?.name ?? 'შემოწმება';
     const proj = schedule.project_items?.projects;
     const projectName = proj?.company_name || proj?.name || '';
-    const summary = `შემოწმება: ${projectName} — ${itemName}`;
+    const summary = `შემოწმება: ${projectName} - ${itemName}`;
     const startYmd = allDayIsoDate(schedule.next_due_at);
     const endYmd = addDaysYmd(startYmd, 1);
     const body = {

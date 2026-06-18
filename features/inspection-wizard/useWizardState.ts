@@ -1,11 +1,11 @@
-// useWizardState.ts — owns the inspection wizard's state, loading, persistence,
+// useWizardState.ts - owns the inspection wizard's state, loading, persistence,
 // and answer/photo mutations. The InspectionWizard component is a thin shell
 // that renders the values returned here.
 //
 // Kept as one hook (rather than 5+ slices) because the moving pieces are
 // deeply intertwined: load() touches every state field, patchAnswer touches
 // answers + offline cache, doUpload touches photos + answers + offline. The
-// file is over the 150-line "hook" target — see AGENTS.md for why splitting
+// file is over the 150-line "hook" target - see AGENTS.md for why splitting
 // further would be net negative.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -151,7 +151,7 @@ export function useWizardState(id: string | undefined) {
           pmap[a.id] = photoResults[i];
         });
         if (!remoteOk) {
-          toast.info('ჩატვირთულია ლოკალური ასლი — სინქრონიზაცია მოხდება ავტომატურად.');
+          toast.info('ჩატვირთულია ლოკალური ასლი - სინქრონიზაცია მოხდება ავტომატურად.');
         }
         const cached = await offline.hydrateAnswers(qMerged.id);
         if (ctrl.cancelled) return;
@@ -219,7 +219,7 @@ export function useWizardState(id: string | undefined) {
   // Load once per inspection id. We intentionally do NOT reload on screen
   // re-focus: the wizard owns its in-flight state (answers, step, harness
   // position, optimistic photos) and a focus refetch would tear the UI down
-  // and overwrite local state — e.g. returning from the photo picker would
+  // and overwrite local state - e.g. returning from the photo picker would
   // "reload" the screen mid-flow. Matches the equipment screens, which also
   // load once on [id]. Resume-after-kill is covered by the offline cache.
   useEffect(() => {
@@ -345,7 +345,7 @@ export function useWizardState(id: string | undefined) {
           address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
-        toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
+        toast.success('ფოტო შენახულია - აიტვირთება ქსელის დაბრუნებისას');
         return;
       }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime, 'inspection');
@@ -363,7 +363,7 @@ export function useWizardState(id: string | undefined) {
     } catch (e) {
       // If the inspection was completed while this upload was in flight the DB
       // trigger rejects the answer write. The completion already succeeded, so
-      // there is nothing to recover — swallow silently instead of alarming the
+      // there is nothing to recover - swallow silently instead of alarming the
       // user with a red toast on the success screen.
       const msg = toErrorMessage(e, '');
       if (msg.includes('is completed')) return;
@@ -401,7 +401,7 @@ export function useWizardState(id: string | undefined) {
             }
             return next;
           });
-          toast.success('ფოტო წაიშალა — სინქრონიზაცია მოხდება ქსელის დაბრუნებისას');
+          toast.success('ფოტო წაიშალა - სინქრონიზაცია მოხდება ქსელის დაბრუნებისას');
           return;
         }
         await answersApi.removePhoto(photo.id);

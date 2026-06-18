@@ -17,7 +17,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 const { toErrorMessage, logError, readErrorLog, clearErrorLog } =
   await import('../../lib/logError');
 
-// `logError` schedules writes via `void appendToRing(...)` — fire-and-forget on
+// `logError` schedules writes via `void appendToRing(...)` - fire-and-forget on
 // an internal serialized promise chain. To make tests deterministic we drain
 // the chain by yielding the event loop until the buffer stops changing.
 async function drainRing() {
@@ -28,7 +28,7 @@ async function drainRing() {
     try {
       cur = JSON.parse(store['@errors:ring'] ?? '[]').length;
     } catch {
-      cur = -2; // sentinel for "non-JSON value present" — keeps polling
+      cur = -2; // sentinel for "non-JSON value present" - keeps polling
     }
     if (cur === prev) return;
     prev = cur;
@@ -82,7 +82,7 @@ describe('toErrorMessage', () => {
 
   it('caps recursion depth at 3 to avoid infinite loops', () => {
     const deeplyNested: any = { error: { error: { error: { error: { message: 'too deep' } } } } };
-    // depth limit hits before reaching 'too deep' — falls through to JSON.stringify
+    // depth limit hits before reaching 'too deep' - falls through to JSON.stringify
     const result = toErrorMessage(deeplyNested);
     expect(typeof result).toBe('string');
   });

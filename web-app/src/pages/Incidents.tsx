@@ -84,7 +84,7 @@ export default function Incidents() {
           {items.map((i) => {
             const proj = projects[i.project_id];
             const avatar = INCIDENT_AVATAR[i.type] ?? { emoji: '⚠️', bg: 'bg-neutral-100 dark:bg-neutral-800' };
-            const label = i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : INCIDENT_TYPE_LABEL[i.type] ?? '—');
+            const label = i.injured_name || (i.type === 'nearmiss' ? 'საშიში შემთხვევა' : INCIDENT_TYPE_LABEL[i.type] ?? '-');
             return (
               <motion.div
                 key={i.id}
@@ -98,7 +98,7 @@ export default function Incidents() {
                   <div className="min-w-0">
                     <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{label}</p>
                     <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                      {proj?.name ?? '—'}
+                      {proj?.name ?? '-'}
                       {' · '}
                       <span className="font-mono tabular-nums text-neutral-400 dark:text-neutral-500">
                         {new Date(i.date_time).toLocaleDateString('ka-GE')}

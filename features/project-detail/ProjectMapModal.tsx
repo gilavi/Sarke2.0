@@ -8,7 +8,7 @@ import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Building2, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { useTheme } from '../../lib/theme';
@@ -83,7 +83,7 @@ export function ProjectMapModal({ state }: { state: ProjectMapModalState }) {
             პროექტები რუკაზე
           </Text>
           <Pressable onPress={close} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
-            <Ionicons name="close" size={24} color={theme.colors.ink} />
+            <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
           </Pressable>
         </View>
         <MapView
@@ -121,7 +121,7 @@ export function ProjectMapModal({ state }: { state: ProjectMapModalState }) {
                     shadowRadius: 4,
                     elevation: 5,
                   }}>
-                    <Ionicons name="business" size={15} color={theme.colors.white} />
+                    <Building2 size={15} color={theme.colors.white} strokeWidth={1.5} />
                   </View>
                   <View style={{
                     width: 0, height: 0,

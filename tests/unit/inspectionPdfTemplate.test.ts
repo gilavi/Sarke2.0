@@ -204,7 +204,7 @@ describe('buildInspectionPdfTemplate', () => {
   });
 });
 
-describe('buildInspectionPdfTemplate — draft mode', () => {
+describe('buildInspectionPdfTemplate - draft mode', () => {
   it('renders a draft inspection', () => {
     const html = buildInspectionPdfTemplate({
       questionnaire: mockInspection({ status: 'draft', completed_at: null }),
@@ -219,7 +219,7 @@ describe('buildInspectionPdfTemplate — draft mode', () => {
   });
 });
 
-describe('buildInspectionPdfTemplate — empty edges', () => {
+describe('buildInspectionPdfTemplate - empty edges', () => {
   it('handles zero questions/answers/signatures', () => {
     const html = buildInspectionPdfTemplate({
       questionnaire: mockInspection(),

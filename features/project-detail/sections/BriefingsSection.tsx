@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, Hourglass, Megaphone, ShieldCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
@@ -38,7 +38,7 @@ export function BriefingsSection({
     <>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="megaphone-outline" size={16} color={theme.colors.inkSoft} />
+          <Megaphone size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
           <Text style={styles.sectionCount}>{briefings.length}</Text>
         </View>
@@ -66,11 +66,11 @@ export function BriefingsSection({
                 {...a11y('ინსტრუქტაჟი', 'დეტალების სანახავად დააჭირეთ', 'button')}
               >
                 <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                  <Ionicons
-                    name={isCompleted ? 'shield-checkmark' : 'hourglass-outline'}
-                    size={14}
-                    color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
-                  />
+                  {isCompleted ? (
+                    <ShieldCheck size={14} color={theme.colors.semantic.success} strokeWidth={1.5} />
+                  ) : (
+                    <Hourglass size={14} color={theme.colors.certTint} strokeWidth={1.5} />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.listRowTitle}>
@@ -80,13 +80,13 @@ export function BriefingsSection({
                     {b.participants.length} მონაწილე · {isCompleted ? 'დასრულებული' : 'მიმდინარე'}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
               </Pressable>
             );
           })}
           {overflow.length > 0 ? (
             <ViewMoreRow
-              items={overflow.map(() => ({ ionicon: 'megaphone-outline' }))}
+              items={overflow.map(() => ({ category: null }))}
               total={overflow.length}
               onPress={() => router.push(`/projects/${id}/briefings` as any)}
             />

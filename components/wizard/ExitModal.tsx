@@ -20,7 +20,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
 
   useEffect(() => {
     if (!visible) {
-      // Parent closed us — dismiss any open sheet
+      // Parent closed us - dismiss any open sheet
       sheetRef.current?.dismiss();
       sheetRef.current = null;
       return;
@@ -94,6 +94,7 @@ function makeStyles(theme: any) {
     content: {
       paddingTop: 4,
       paddingBottom: 24,
+      paddingHorizontal: 20,
       gap: 16,
     },
     title: {

@@ -57,7 +57,7 @@ const PHOTOS = {
   'cargo/x/sum.jpg': 'data:image/jpeg;base64,SUM',
 };
 
-describe('buildInspectionPdf — cargoPlatform', () => {
+describe('buildInspectionPdf - cargoPlatform', () => {
   const html = buildInspectionPdf(
     cargoPlatformSchema,
     { inspection: mockInsp(), projectName: 'პროექტი' },
@@ -91,7 +91,7 @@ describe('buildInspectionPdf — cargoPlatform', () => {
   });
 });
 
-describe('buildInspectionPdf — cargoPlatform verdict variants', () => {
+describe('buildInspectionPdf - cargoPlatform verdict variants', () => {
   it('renders conditional verdict', () => {
     const insp = buildDefaultCPInspection('cp', 'p1', 'u1', CARGO_PLATFORM_TEMPLATE_ID, '2026-05-20T10:00:00Z');
     insp.verdict = 'conditional';
@@ -107,7 +107,7 @@ describe('buildInspectionPdf — cargoPlatform verdict variants', () => {
   });
 });
 
-describe('buildInspectionPdf — cargoPlatform default state', () => {
+describe('buildInspectionPdf - cargoPlatform default state', () => {
   const insp = buildDefaultCPInspection('cp-id', 'p1', 'u1', CARGO_PLATFORM_TEMPLATE_ID, '2026-05-20T10:00:00Z');
   const html = buildInspectionPdf(cargoPlatformSchema, { inspection: insp, projectName: 'P' }, {});
 

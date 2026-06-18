@@ -45,7 +45,7 @@ export async function listInspections(projectId?: string): Promise<Inspection[]>
   if (projectId) q = q.eq('project_id', projectId);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  // Signatures are no longer persisted (regulatory) — surface safe defaults.
+  // Signatures are no longer persisted (regulatory) - surface safe defaults.
   return (data ?? []).map((d) => ({ ...d, inspector_signature: null, signatories: [] })) as unknown as Inspection[];
 }
 

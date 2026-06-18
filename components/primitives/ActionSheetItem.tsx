@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import { A11yText } from './A11yText';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
@@ -10,7 +11,7 @@ export type ActionSheetItemVariant = 'default' | 'destructive' | 'highlight';
 
 interface ActionSheetItemProps {
   label: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: LucideIcon;
   onPress: () => void;
   variant?: ActionSheetItemVariant;
   isSelected?: boolean;
@@ -19,7 +20,7 @@ interface ActionSheetItemProps {
 
 export function ActionSheetItem({
   label,
-  icon,
+  icon: Icon,
   onPress,
   variant = 'default',
   isSelected = false,
@@ -61,11 +62,11 @@ export function ActionSheetItem({
           {isSelected && <View style={styles.selectionCircleInner} />}
         </View>
 
-        {icon && (
-          <Ionicons
-            name={icon}
+        {Icon && (
+          <Icon
             size={20}
             color={iconColor}
+            strokeWidth={1.5}
             style={styles.icon}
           />
         )}
@@ -78,7 +79,7 @@ export function ActionSheetItem({
           {label}
         </A11yText>
         {isSelected && (
-          <Ionicons name="checkmark" size={20} color={theme.colors.accent} />
+          <Check size={20} color={theme.colors.accent} strokeWidth={1.5} />
         )}
       </Pressable>
       {!isLast && <View style={styles.separator} />}

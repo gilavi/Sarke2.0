@@ -68,7 +68,7 @@ export interface FallProtectionInspection {
   // Per-device inspection data (parallel array to devices)
   deviceData: FPDeviceData[];
 
-  // Single top-level signature (ephemeral — not persisted to DB)
+  // Single top-level signature (ephemeral - not persisted to DB)
   signature: FPSignatory;
 
   completedAt: string | null;
@@ -91,7 +91,7 @@ export const FP_CHECKLIST_ITEMS: FPChecklistEntry[] = [
   { id: 5,  label: 'ლითონის ბაგირის კავშირების/კვანძების მდგ.' },
   { id: 6,  label: 'უსაფრთხოების ბაგირის მდგომარეობა' },
   { id: 7,  label: 'ბაგირის დაერთების/კვანძების მდგომარეობა' },
-  { id: 8,  label: 'კონსტრუქცია — მიმაგრების სიმტკიცე' },
+  { id: 8,  label: 'კონსტრუქცია - მიმაგრების სიმტკიცე' },
   { id: 9,  label: 'კოუშების მდგომარეობა' },
   { id: 10, label: 'ვარდნის შემაკავებელი სისტემის მდგ.' },
   { id: 11, label: 'კავების/ჩამკეტიანი კავების მდგომარეობა' },
@@ -121,9 +121,9 @@ export const FP_CHIP_TO_RESULT: Record<string, FPResult> = {
 };
 
 export const FP_VERDICT_LABELS: Record<FPVerdict, string> = {
-  safe:   'უსაფრთხოა — გამოყენება დაშვებულია',
-  minor:  'მცირე დაზიანება — საჭიროა დაკვირვება',
-  banned: 'დაზიანებულია — აკრძალულია გამოყენება',
+  safe:   'უსაფრთხოა - გამოყენება დაშვებულია',
+  minor:  'მცირე დაზიანება - საჭიროა დაკვირვება',
+  banned: 'დაზიანებულია - აკრძალულია გამოყენება',
 };
 
 /** Tab display state for a device. */

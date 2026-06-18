@@ -37,12 +37,12 @@ export function Step4CraneSpecs({
         keyboardType="decimal-pad"
       />
 
-      <Text style={s.sectionLabel}>ამწის ინსპ. სერთიფ.</Text>
+      <Text style={s.sectionLabel}>ამწის შემოწმ. სერთიფ.</Text>
       <QualDoc
         photoPath={form.craneInspCertPhoto}
         onAdd={onPickPhoto}
         onDelete={onDeletePhoto}
-        label="ამწის ინსპექციის სერთიფიკატი"
+        label="ამწის შემოწმების სერთიფიკატი"
       />
     </View>
   );

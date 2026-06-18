@@ -91,7 +91,7 @@ function FoundationZone() {
   );
 }
 
-/* ═══ 2. BUILDING — 4 floors ═══ */
+/* ═══ 2. BUILDING - 4 floors ═══ */
 function StructureZone() {
   const tip = safetyTips.structure;
   const floors = 4;

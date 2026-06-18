@@ -51,7 +51,7 @@ export default function Register() {
         lastName: lastName.trim(),
       });
       if (needsEmailConfirmation) {
-        setInfo('შემოწმეთ ელ-ფოსტა — გამოვაგზავნეთ დადასტურების კოდი.');
+        setInfo('შემოწმეთ ელ-ფოსტა - გამოვაგზავნეთ დადასტურების კოდი.');
         navigate(`/verify-email?email=${encodeURIComponent(email.trim())}`);
       } else {
         navigate('/');

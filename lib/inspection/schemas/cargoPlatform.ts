@@ -2,9 +2,9 @@
  * Cargo receiving platform inspection schema (ტვირთის მიმღები პლატფორმის შემოწმების აქტი).
  *
  * Behavior-faithful replacement for lib/cargoPlatformPdf.ts. This type's layout
- * diverges from the typed-block shapes in several ways — a parameter table for
+ * diverges from the typed-block shapes in several ways - a parameter table for
  * platform identification, a cargo weight table with a total row, fix rows with
- * an amber left border (fixable, not rejected — unlike other templates), and TWO
+ * an amber left border (fixable, not rejected - unlike other templates), and TWO
  * signatories rendered as side-by-side blocks plus a legal note. Every body
  * section is therefore ported as a `custom` block for byte-identical output. It
  * still inherits the shared base CSS, header/footer, and the cross-platform
@@ -80,7 +80,7 @@ const EXTRA_CSS = `
   .photo-item img { width: 100%; border-radius: 6px; border: 0.5px solid var(--hairline); display: block; }
   .photo-caption { font-size: 10px; color: var(--inkFaint); margin-top: 3px; text-align: center; }
 
-  /* Signatures — two blocks side by side */
+  /* Signatures - two blocks side by side */
   .sig-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
   .sig-block {
     display: block; gap: 0; margin-top: 0;
@@ -100,47 +100,47 @@ const EXTRA_CSS = `
   }
 `;
 
-// ── Section I — ზოგადი ინფორმაცია ──────────────────────────────────────────────
+// ── Section I - ზოგადი ინფორმაცია ──────────────────────────────────────────────
 function renderSectionI(insp: CargoPlatformInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">სართული / ზონა</span><span class="val">${escapeHtml(insp.floorZone) || '—'}</span></td>
+        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">სართული / ზონა</span><span class="val">${escapeHtml(insp.floorZone) || '-'}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
         <td></td>
       </tr>
     </table>
   `;
 }
 
-// ── Section II — პლატფორმის იდენტიფიკაცია ──────────────────────────────────────
+// ── Section II - პლატფორმის იდენტიფიკაცია ──────────────────────────────────────
 function binaryLabel(val: string | null, noneLabel: string, completeLabel: string): string {
   if (val === 'none')     return `☑ ${noneLabel} &nbsp; ☐ ${completeLabel}`;
   if (val === 'complete') return `☐ ${noneLabel} &nbsp; ☑ ${completeLabel}`;
-  return '—';
+  return '-';
 }
 function guardrailHeightLabel(val: string | null): string {
   if (val === 'non_standard') return '☑ ვერ აკმაყოფილებს სტანდარტს &nbsp; ☐ სტანდარტს აკმაყოფილებს';
   if (val === 'standard')     return '☐ ვერ აკმაყოფილებს სტანდარტს &nbsp; ☑ სტანდარტს აკმაყოფილებს';
-  return '—';
+  return '-';
 }
 
 function renderSectionII(insp: CargoPlatformInspection): string {
   return `
-    <div class="section-title">II — პლატფორმის იდენტიფიკაცია</div>
+    <div class="section-title">II - პლატფორმის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>პლატფორმის ტიპი / მოდელი</td><td>${escapeHtml(insp.platformTypeModel) || '—'}</td></tr>
-      <tr><td>სიგრძე (მ)</td><td>${insp.platformLength != null ? insp.platformLength : '—'}</td></tr>
-      <tr><td>სიგანე (მ)</td><td>${insp.platformWidth != null ? insp.platformWidth : '—'}</td></tr>
-      <tr><td>ვიზუალური აღწერა / ფერი</td><td>${escapeHtml(insp.platformColorDesc) || '—'}</td></tr>
+      <tr><td>პლატფორმის ტიპი / მოდელი</td><td>${escapeHtml(insp.platformTypeModel) || '-'}</td></tr>
+      <tr><td>სიგრძე (მ)</td><td>${insp.platformLength != null ? insp.platformLength : '-'}</td></tr>
+      <tr><td>სიგანე (მ)</td><td>${insp.platformWidth != null ? insp.platformWidth : '-'}</td></tr>
+      <tr><td>ვიზუალური აღწერა / ფერი</td><td>${escapeHtml(insp.platformColorDesc) || '-'}</td></tr>
       <tr><td>გვერდის დამცავი მოაჯირი</td><td>${binaryLabel(insp.sideGuardrail, 'არ გააჩნია', 'მოაჯირი სრულია')}</td></tr>
       <tr><td>წინა დამცავი მოაჯირი</td><td>${binaryLabel(insp.frontGuardrail, 'არ გააჩნია', 'მოაჯირი სრულია')}</td></tr>
       <tr><td>მოაჯირის სიმაღლე (სტანდ. 90–120 სმ)</td><td>${guardrailHeightLabel(insp.guardrailHeight)}</td></tr>
@@ -148,21 +148,21 @@ function renderSectionII(insp: CargoPlatformInspection): string {
   `;
 }
 
-// ── Section III — ტვირთის იდენტიფიკაცია ────────────────────────────────────────
+// ── Section III - ტვირთის იდენტიფიკაცია ────────────────────────────────────────
 function renderSectionIII(insp: CargoPlatformInspection): string {
   const totalKg = cpTotalWeight(insp.cargo);
   const cargoRows = insp.cargo.map((r, idx) => `
     <tr>
       <td class="col-num-sm">${idx + 1}</td>
-      <td>${escapeHtml(r.name) || '—'}</td>
-      <td class="col-weight">${r.unit_weight_kg != null ? r.unit_weight_kg : '—'}</td>
-      <td class="col-weight">${r.total_weight_kg != null ? r.total_weight_kg : '—'}</td>
+      <td>${escapeHtml(r.name) || '-'}</td>
+      <td class="col-weight">${r.unit_weight_kg != null ? r.unit_weight_kg : '-'}</td>
+      <td class="col-weight">${r.total_weight_kg != null ? r.total_weight_kg : '-'}</td>
       <td>${escapeHtml(r.note) || ''}</td>
     </tr>
   `).join('');
 
   return `
-    <div class="section-title">III — ტვირთის იდენტიფიკაცია</div>
+    <div class="section-title">III - ტვირთის იდენტიფიკაცია</div>
     <p style="font-size:10px;color:var(--inkSoft);font-style:italic;margin-bottom:8px;">
       ყველა ტვირთი, რომელიც განთავსდება პლატფორმაზე, ექვემდებარება იდენტიფიკაციას და წინასწარ წონის დადასტურებას
     </p>
@@ -188,12 +188,12 @@ function renderSectionIII(insp: CargoPlatformInspection): string {
   `;
 }
 
-// ── Section IV — შემოწმება ──────────────────────────────────────────────────────
+// ── Section IV - შემოწმება ──────────────────────────────────────────────────────
 function resultPill(result: CPResult | null): string {
   if (result === 'good') return '<span class="pill pill-good">✓ კარგი</span>';
   if (result === 'fix')  return '<span class="pill pill-fix">✗ გამოსასწ.</span>';
-  if (result === 'na')   return '<span class="pill pill-na">— N/A</span>';
-  return '<span class="pill pill-null">—</span>';
+  if (result === 'na')   return '<span class="pill pill-na">- N/A</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function renderSectionIV(insp: CargoPlatformInspection, photos: PhotoMap): string {
@@ -237,11 +237,11 @@ function renderSectionIV(insp: CargoPlatformInspection, photos: PhotoMap): strin
   }
 
   return `
-    <div class="section-title">IV — პლატფორმის შემოწმება</div>
+    <div class="section-title">IV - პლატფორმის შემოწმება</div>
     <div class="legend">
       <span class="legend-item"><span class="dot dot-good"></span>✓ კარგი</span>
       <span class="legend-item"><span class="dot dot-fix"></span>✗ გამოსასწორებელი</span>
-      <span class="legend-item"><span class="dot dot-na"></span>N/A — არ ვრცელდება</span>
+      <span class="legend-item"><span class="dot dot-na"></span>N/A - არ ვრცელდება</span>
     </div>
     <table class="cl-table">
       <thead>
@@ -256,13 +256,13 @@ function renderSectionIV(insp: CargoPlatformInspection, photos: PhotoMap): strin
   `;
 }
 
-// ── Section V — დასკვნა ─────────────────────────────────────────────────────────
+// ── Section V - დასკვნა ─────────────────────────────────────────────────────────
 function renderSectionV(insp: CargoPlatformInspection): string {
   const vx = (v: string) => insp.verdict === v ? 'selected' : '';
   const vchecked = (v: string) => insp.verdict === v ? 'checked' : '';
 
   return `
-    <div class="section-title">V — დასკვნა</div>
+    <div class="section-title">V - დასკვნა</div>
     <div class="verdict-block">
       ${(['approved', 'conditional', 'rejected'] as const).map(v => `
         <div class="verdict-option ${vx(v)}">
@@ -276,7 +276,7 @@ function renderSectionV(insp: CargoPlatformInspection): string {
   `;
 }
 
-// ── Section VI — ფოტო / ვიდეო მასალა ────────────────────────────────────────────
+// ── Section VI - ფოტო / ვიდეო მასალა ────────────────────────────────────────────
 function renderSectionVI(insp: CargoPlatformInspection, photos: PhotoMap): string {
   const photoItems = insp.summaryPhotos.map((p, idx) => {
     const src = photos[p];
@@ -290,7 +290,7 @@ function renderSectionVI(insp: CargoPlatformInspection, photos: PhotoMap): strin
   }).filter(Boolean).join('');
 
   return insp.summaryPhotos.length > 0 ? `
-    <div class="section-title">VI — ფოტო / ვიდეო მასალა</div>
+    <div class="section-title">VI - ფოტო / ვიდეო მასალა</div>
     <p style="font-size:10px;color:var(--inkSoft);font-style:italic;margin-bottom:8px;">
       დოკუმენტს თან ერთვის ტესტირების ამსახველი ფოტო/ვიდეო მასალა
     </p>
@@ -299,7 +299,7 @@ function renderSectionVI(insp: CargoPlatformInspection, photos: PhotoMap): strin
   ` : '';
 }
 
-// ── Section VII — ხელმოწერები ───────────────────────────────────────────────────
+// ── Section VII - ხელმოწერები ───────────────────────────────────────────────────
 function romanLabel(i: number): string {
   const romans = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
   return romans[i] ?? `${i + 1}`;
@@ -317,7 +317,7 @@ function renderSignatoryBlock(
     <div class="sig-block">
       <div class="sig-cell">
         <div class="sig-lbl">${escapeHtml(label)}</div>
-        <div class="sig-name">${escapeHtml(sig?.name) || '—'}</div>
+        <div class="sig-name">${escapeHtml(sig?.name) || '-'}</div>
         <div class="sig-role">${escapeHtml(sig?.position) || ''}</div>
         <div class="sig-org">${escapeHtml(sig?.organization) || ''}</div>
       </div>
@@ -337,7 +337,7 @@ function renderSectionVII(insp: CargoPlatformInspection): string {
   const sigBlocks = insp.signatures.map((sig, i) => renderSignatoryBlock(sig, `${romanLabel(i)} ხელმომწერი`, insp)).join('');
 
   return `
-    <div class="section-title">VII — ხელმოწერები</div>
+    <div class="section-title">VII - ხელმოწერები</div>
     <div class="sig-two-col">
       ${sigBlocks}
     </div>
@@ -355,8 +355,8 @@ export const cargoPlatformSchema: InspectionSchema<CargoPlatformInspection> = {
   templateId: CARGO_PLATFORM_TEMPLATE_ID,
 
   docTitle: 'ტვირთის მიმღები პლატფორმის<br>შემოწმების აქტი',
-  docSubtitle: 'Cargo Receiving Platform — Technical Inspection & Safety Acceptance Act',
-  pdfFooterLabel: 'Hubble — ტვირთის მიმღები პლატფორმის შემოწმების აქტი',
+  docSubtitle: 'Cargo Receiving Platform - Technical Inspection & Safety Acceptance Act',
+  pdfFooterLabel: 'Hubble - ტვირთის მიმღები პლატფორმის შემოწმების აქტი',
   pdfNameLabel: 'CargoPlatformInspection',
   extraCss: EXTRA_CSS,
 

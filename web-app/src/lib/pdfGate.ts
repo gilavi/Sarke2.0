@@ -29,7 +29,7 @@ export class PdfLimitReachedError extends Error {
 /**
  * Atomically checks whether the user may generate another PDF and, if so,
  * increments their server-side pdf_count. Runs inside Postgres via
- * supabase.rpc — cannot be bypassed from the client.
+ * supabase.rpc - cannot be bypassed from the client.
  *
  * Usage pattern (when web PDF generation is added):
  *

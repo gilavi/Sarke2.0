@@ -1,5 +1,5 @@
 /**
- * Subscribe page — covers the auth error branch + the payment-error branch.
+ * Subscribe page - covers the auth error branch + the payment-error branch.
  * Currently 41%; this picks up the cases the simple mount test misses.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -36,7 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('Subscribe — auth states', () => {
+describe('Subscribe - auth states', () => {
   it('shows the auth error when setSession fails (with at/rt in URL)', async () => {
     vi.mocked(supabase.auth.setSession).mockResolvedValue({ error: new Error('bad') } as never);
     renderPage('/subscribe?at=expired&rt=tok');
@@ -57,7 +57,7 @@ describe('Subscribe — auth states', () => {
     expect(await screen.findByText('Hubble Pro')).toBeInTheDocument();
     expect(screen.getByText('შეუზღუდავი PDF გენერაცია')).toBeInTheDocument();
     // Price-agnostic: the amount is ₾1 during the test-price window and ₾19
-    // at launch — the test must survive the flip (docs/payments.md).
+    // at launch - the test must survive the flip (docs/payments.md).
     expect(screen.getByRole('button', { name: /გადახდა ₾\d+/ })).toBeInTheDocument();
   });
 
@@ -73,7 +73,7 @@ describe('Subscribe — auth states', () => {
     const payBtn = await screen.findByRole('button', { name: /გადახდა ₾\d+/ });
     fireEvent.click(payBtn);
     // After clicking, payStatus → "creating" or → "error". Just verify the button
-    // changed state — disabled + state was set.
+    // changed state - disabled + state was set.
     await waitFor(() => {
       expect(payBtn).toBeDisabled();
     });

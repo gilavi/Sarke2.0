@@ -6,14 +6,14 @@
 // with `verify_jwt = false` (see supabase/config.toml).
 //
 // Required Supabase secret (set via `supabase secrets set`):
-//   ANTHROPIC_API_KEY — key from console.anthropic.com
+//   ANTHROPIC_API_KEY - key from console.anthropic.com
 //
 // Request body: { messages: { role: 'user' | 'assistant'; content: string }[] }
 // Response:     { reply: string } | { error: string }
 //
 // Abuse/cost guards (public endpoint): cheap model + small max_tokens, an
 // input length/turn cap, and a best-effort in-memory per-IP throttle (resets on
-// cold start — fine for v1; move to a DB/Upstash counter for hard limits).
+// cold start - fine for v1; move to a DB/Upstash counter for hard limits).
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,7 +50,7 @@ const SYSTEM_PROMPT = `შენ ხარ HUBBLE-ის (ხაბლი) მ�
 წესები:
 - უპასუხე მოკლედ, თბილად და ქართულად.
 - ისაუბრე მხოლოდ HUBBLE-სა და შრომის უსაფრთხოებაზე. სხვა თემაზე თავაზიანად თქვი, რომ ვერ დაეხმარები.
-- არ მისცე ავტორიტეტული იურიდიული რჩევა — კონკრეტული სამართლებრივი საკითხებისთვის მიუთითე matsne.gov.ge ან hello@hubble.ge.
+- არ მისცე ავტორიტეტული იურიდიული რჩევა - კონკრეტული სამართლებრივი საკითხებისთვის მიუთითე matsne.gov.ge ან hello@hubble.ge.
 - თუ არ იცი პასუხი ან საჭიროა ადამიანი, მიმართე hello@hubble.ge-ზე.`;
 
 type Msg = { role: 'user' | 'assistant'; content: string };

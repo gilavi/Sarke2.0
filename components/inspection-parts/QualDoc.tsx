@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleX, Paperclip } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -44,7 +44,7 @@ export function QualDoc({
           hitSlop={8}
           {...a11y('ფოტოს წაშლა', undefined, 'button')}
         >
-          <Ionicons name="close-circle" size={24} color={theme.colors.white} />
+          <CircleX size={24} color={theme.colors.white} strokeWidth={1.5} />
         </Pressable>
       </View>
     );
@@ -56,7 +56,7 @@ export function QualDoc({
       onPress={onAdd}
       {...a11y('დოკუმენტის ფოტოს დამატება', label, 'button')}
     >
-      <Ionicons name="document-attach-outline" size={28} color={theme.colors.inkSoft} />
+      <Paperclip size={28} color={theme.colors.inkSoft} strokeWidth={1.5} />
       <Text style={styles.placeholderLabel}>{label}</Text>
       <Text style={styles.placeholderHint}>+ ფოტოს გადაღება</Text>
     </Pressable>

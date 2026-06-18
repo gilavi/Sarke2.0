@@ -4,8 +4,8 @@
  * Behavior-faithful replacement for lib/mobileLadderPdf.ts. The mobile-ladder
  * layout uses a parameter table with "unknown" pills, pill-style result columns,
  * a tri-state verdict block with per-verdict colors, a single stacked signature
- * block, and an EN 131 standards footer note — none of which map onto the typed
- * blocks — so every section is ported as a `custom` block for equivalent output.
+ * block, and an EN 131 standards footer note - none of which map onto the typed
+ * blocks - so every section is ported as a `custom` block for equivalent output.
  * It still inherits the shared base CSS, header/footer, and the photo resolver.
  *
  * Known divergences from the old standalone builder (shared-engine tradeoffs,
@@ -112,14 +112,14 @@ const EXTRA_CSS = `
 function unknownOrValue(unknown: boolean, value: string | number | null): string {
   if (unknown) return '<span class="pill pill-unknown">მონაცემი ვერ დგინდება</span>';
   const v = value != null ? String(value) : '';
-  return escapeHtml(v) || '—';
+  return escapeHtml(v) || '-';
 }
 
 function checklistPill(result: string | null): string {
   if (result === 'safe')    return '<span class="pill pill-safe">✓ უსაფრთხოა</span>';
   if (result === 'damaged') return '<span class="pill pill-damaged">✗ დაზიანებულია</span>';
   if (result === 'na')      return '<span class="pill pill-na">Z არ გეკუთვნება</span>';
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 // ── Sections ──────────────────────────────────────────────────────────────────
@@ -135,24 +135,24 @@ function renderRegulationBadge(): string {
 
 function renderSectionI(insp: MobileLadderInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
       </tr>
     </table>
   `;
 }
 
 function renderSectionII(insp: MobileLadderInspection): string {
-  const nextDateVal = insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '—';
+  const nextDateVal = insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '-';
   return `
-    <div class="section-title">II — კიბის იდენტიფიკაცია</div>
+    <div class="section-title">II - კიბის იდენტიფიკაცია</div>
     <table class="param-table">
       <tr><td>სახეობა / Type</td><td>${unknownOrValue(insp.ladderTypeUnknown, insp.ladderType)}</td></tr>
       <tr><td>მწარმოებელი / Model</td><td>${unknownOrValue(insp.modelUnknown, insp.model)}</td></tr>
@@ -196,7 +196,7 @@ function buildChecklistRows(insp: MobileLadderInspection, photos: PhotoMap, sect
 
 function renderSectionIII(insp: MobileLadderInspection, photos: PhotoMap): string {
   return `
-    <div class="section-title">III — სტრუქტურული მდგომარეობა</div>
+    <div class="section-title">III - სტრუქტურული მდგომარეობა</div>
     <table class="cl-table">
       <thead>
         <tr>
@@ -212,7 +212,7 @@ function renderSectionIII(insp: MobileLadderInspection, photos: PhotoMap): strin
 
 function renderSectionIV(insp: MobileLadderInspection, photos: PhotoMap): string {
   return `
-    <div class="section-title">IV — სამობილო სისტემა</div>
+    <div class="section-title">IV - სამობილო სისტემა</div>
     <table class="cl-table">
       <thead>
         <tr>
@@ -239,7 +239,7 @@ function renderSectionV(insp: MobileLadderInspection): string {
   }).join('');
 
   return `
-    <div class="section-title">V — დასკვნა</div>
+    <div class="section-title">V - დასკვნა</div>
     <div class="verdict-block">${verdictOptions}</div>
     <div class="comment-block">
       <div class="comment-label">კომენტარი</div>
@@ -255,11 +255,11 @@ function renderSectionVI(insp: MobileLadderInspection): string {
     : `<div class="sig-line"></div>`;
 
   return `
-    <div class="section-title">VI — ხელმოწერა</div>
+    <div class="section-title">VI - ხელმოწერა</div>
     <div class="sig-block">
       <div class="sig-cell">
         <div class="sig-lbl">შემომწმებელი პირი</div>
-        <div class="sig-name">${escapeHtml(sig.name) || '—'}</div>
+        <div class="sig-name">${escapeHtml(sig.name) || '-'}</div>
         <div class="sig-role">${escapeHtml(sig.position) || ''}</div>
       </div>
       <div class="sig-cell">
@@ -291,7 +291,7 @@ export const mobileLadderSchema: InspectionSchema<MobileLadderInspection> = {
 
   docTitle: 'სამუშაო სივრცეში არსებული კიბეების<br>ტექნიკური შემოწმების აქტი',
   docSubtitle: 'Mobile Ladder Technical Inspection',
-  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble - შრომის უსაფრთხოება',
   pdfNameLabel: 'MobileLadderInspection',
   extraCss: EXTRA_CSS,
 

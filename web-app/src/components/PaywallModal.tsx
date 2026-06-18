@@ -14,13 +14,13 @@ const FEATURES = [
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Headline override — defaults to "{LIMIT} უფასო PDF ამოიწურა" */
+  /** Headline override - defaults to "{LIMIT} უფასო PDF ამოიწურა" */
   headline?: string;
 }
 
 /**
  * Shown when the user exhausts their free PDF limit (or clicks "Upgrade" from
- * the subscription card). Mirrors the mobile components/PaywallModal.tsx —
+ * the subscription card). Mirrors the mobile components/PaywallModal.tsx -
  * unlike mobile (which opens an SFAuthenticationSession) the web variant
  * navigates to the existing /subscribe route in-place.
  */

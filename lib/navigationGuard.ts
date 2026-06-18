@@ -1,4 +1,4 @@
-// Navigation oscillation guard — prevents infinite redirect loops between two screens
+// Navigation oscillation guard - prevents infinite redirect loops between two screens
 // when local and server state diverge.
 
 interface RedirectEvent {

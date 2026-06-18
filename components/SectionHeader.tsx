@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 
@@ -11,7 +11,7 @@ interface SectionHeaderProps {
   title: string;
   action?: {
     label: string;
-    icon?: keyof typeof Ionicons.glyphMap;
+    icon?: LucideIcon;
     onPress: () => void;
   };
   variant?: SectionHeaderVariant;
@@ -53,14 +53,17 @@ export function SectionHeader({
           accessibilityRole="button"
           accessibilityLabel={action.label}
         >
-          {action.icon && (
-            <Ionicons
-              name={action.icon}
-              size={18}
-              color={theme.colors.accent}
-              style={{ marginRight: 4 }}
-            />
-          )}
+          {action.icon && (() => {
+            const IconComp = action.icon;
+            return (
+              <IconComp
+                size={18}
+                color={theme.colors.accent}
+                strokeWidth={1.5}
+                style={{ marginRight: 4 }}
+              />
+            );
+          })()}
           <A11yText
             size="sm"
             weight="semibold"

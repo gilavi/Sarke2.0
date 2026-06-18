@@ -13,12 +13,13 @@ import { hashPdf } from '../../lib/pdfSecurity';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, Share2, FileText, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
+import { incidentColors } from '../../lib/statusColors';
 import { SkeletonListCard } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
@@ -44,25 +45,6 @@ import {
   INCIDENT_TYPE_FULL_LABEL,
   INCIDENT_TYPE_LABEL,
 } from '../../types/models';
-
-function getTypeBadge(theme: any, isDark: boolean): Record<string, { bg: string; text: string; border: string }> {
-  if (isDark) {
-    return {
-      minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
-      severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
-      fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-      nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
-    };
-  }
-  return {
-    minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-    severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-    fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-    nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-  };
-}
 
 export default function IncidentDetail() {
   const { theme, isDark } = useTheme();
@@ -121,7 +103,7 @@ export default function IncidentDetail() {
     return () => { cancelled = true; };
   }, [incident?.id]);
 
-  const badge = incident ? getTypeBadge(theme, isDark)[incident.type] : null;
+  const badge = incident ? incidentColors(isDark)[incident.type] : null;
   const isNearMiss = incident?.type === 'nearmiss';
 
   // ── share / generate PDF ─────────────────────────────────────────────────
@@ -263,7 +245,7 @@ export default function IncidentDetail() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
         <Stack.Screen options={{ headerShown: true, title: 'ინციდენტი' }} />
-        <Ionicons name="alert-circle-outline" size={48} color={theme.colors.borderStrong} />
+        <CircleAlert size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
         <Text style={{ color: theme.colors.inkFaint, fontSize: 15 }}>ინციდენტი ვერ მოიძებნა</Text>
       </View>
     );
@@ -303,7 +285,7 @@ export default function IncidentDetail() {
           </Text>
           {incident.status === 'draft' && (
             <View style={s.draftChip}>
-              <Ionicons name="hourglass-outline" size={12} color={theme.colors.certTint} />
+              <Hourglass size={12} color={theme.colors.certTint} strokeWidth={1.5} />
               <Text style={s.draftChipText}>დრაფტი</Text>
             </View>
           )}
@@ -316,13 +298,13 @@ export default function IncidentDetail() {
           </Text>
           {isNearMiss ? (
             <Text style={s.nearMissNote}>
-              საშიში შემთხვევა — დაზიანება არ მომხდარა
+              საშიში შემთხვევა - დაზიანება არ მომხდარა
             </Text>
           ) : (
             <>
               {incident.injured_name ? (
                 <DetailRow
-                  icon="person-outline"
+                  Icon={User}
                   label="სახელი, გვარი"
                   value={incident.injured_name}
                   theme={theme}
@@ -331,7 +313,7 @@ export default function IncidentDetail() {
               ) : null}
               {incident.injured_role ? (
                 <DetailRow
-                  icon="briefcase-outline"
+                  Icon={Briefcase}
                   label="თანამდებობა"
                   value={incident.injured_role}
                   theme={theme}
@@ -341,15 +323,15 @@ export default function IncidentDetail() {
             </>
           )}
           <DetailRow
-            icon="location-outline"
+            Icon={MapPin}
             label="ადგილი"
-            value={incident.location || '—'}
+            value={incident.location || '-'}
             theme={theme}
             s={s}
           />
           {project && (
             <DetailRow
-              icon="business-outline"
+              Icon={Building2}
               label="პროექტი"
               value={project.company_name || project.name}
               theme={theme}
@@ -388,7 +370,7 @@ export default function IncidentDetail() {
             <Text style={s.sectionTitle}>მოწმეები</Text>
             {incident.witnesses.map((w, i) => (
               <View key={`${i}-${w}`} style={s.witnessRow}>
-                <Ionicons name="person-outline" size={14} color={theme.colors.inkSoft} />
+                <User size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
                 <Text style={s.witnessText}>{w}</Text>
               </View>
             ))}
@@ -417,7 +399,7 @@ export default function IncidentDetail() {
         {/* Labour inspection notice */}
         {(incident.type === 'severe' || incident.type === 'fatal') && (
           <View style={s.warningBanner}>
-            <Ionicons name="warning" size={18} color={theme.colors.danger} />
+            <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
             <Text style={s.warningText}>
               შრომის შემოწმების აქტის სამსახური უნდა ეცნობოს 24 საათის
               განმავლობაში:{'\n'}
@@ -438,7 +420,7 @@ export default function IncidentDetail() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button
               title="PDF გაზიარება"
-              leftIcon="share-outline"
+              leftIcon={Share2}
               variant="ghost"
               onPress={sharePdf}
               style={{ flex: 1 }}
@@ -455,7 +437,7 @@ export default function IncidentDetail() {
           <View style={{ gap: 10 }}>
             <Button
               title={generatingPdf && pdfPhase ? pdfPhase : pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon="document-text"
+              leftIcon={FileText}
               loading={generatingPdf}
               onPress={generatePdf}
               style={{ width: '100%' }}
@@ -475,9 +457,9 @@ export default function IncidentDetail() {
 }
 
 function DetailRow({
-  icon, label, value, theme, s,
+  Icon, label, value, theme, s,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  Icon: LucideIcon;
   label: string;
   value: string;
   theme: any;
@@ -485,7 +467,7 @@ function DetailRow({
 }) {
   return (
     <View style={s.detailRow}>
-      <Ionicons name={icon} size={15} color={theme.colors.inkSoft} style={{ marginTop: 1 }} />
+      <Icon size={15} color={theme.colors.inkSoft} style={{ marginTop: 1 }} strokeWidth={1.5} />
       <View style={{ flex: 1 }}>
         <Text style={s.detailLabel}>{label}</Text>
         <Text style={s.detailValue}>{value}</Text>

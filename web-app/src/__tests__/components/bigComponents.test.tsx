@@ -88,7 +88,7 @@ describe('PhotoUploadZone', () => {
         onRemove={() => {}}
       />,
     );
-    // Either thumbnails (img) or placeholder slots — at least one element renders.
+    // Either thumbnails (img) or placeholder slots - at least one element renders.
     expect(container.firstChild).toBeTruthy();
   });
 

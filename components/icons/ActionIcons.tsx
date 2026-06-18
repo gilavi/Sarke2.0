@@ -18,7 +18,7 @@ type Props = { size?: number; color: string };
 export function InspectionAddIcon({ size = 26, color }: Props) {
   return (
     <Svg width={size} height={size} viewBox="0 0 26 26" fill="none">
-      {/* Body — gap left between x=10..16 at top for the tab */}
+      {/* Body - gap left between x=10..16 at top for the tab */}
       <Path
         d="M 16 5 L 21 5 Q 22.5 5 22.5 6.5 L 22.5 22.5 Q 22.5 24 21 24 L 5 24 Q 3.5 24 3.5 22.5 L 3.5 6.5 Q 3.5 5 5 5 L 10 5"
         stroke={color}
@@ -26,7 +26,7 @@ export function InspectionAddIcon({ size = 26, color }: Props) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Tab — U-shape sitting atop the gap */}
+      {/* Tab - U-shape sitting atop the gap */}
       <Path
         d="M 10 5 L 10 3.5 Q 10 2.5 13 2.5 Q 16 2.5 16 3.5 L 16 5"
         stroke={color}

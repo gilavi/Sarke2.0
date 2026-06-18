@@ -55,7 +55,7 @@ beforeEach(() => {
   vi.mocked(listQualifications).mockResolvedValue([]);
 });
 
-describe('Account — pdf-usage variants', () => {
+describe('Account - pdf-usage variants', () => {
   it('renders the FREE state with the PRO button + usage counter', () => {
     vi.mocked(usePdfUsage).mockReturnValue({
       data: { status: 'free', count: 5, limit: 30, isLocked: false, expiresAt: null, cancelledAt: null },
@@ -88,7 +88,7 @@ describe('Account — pdf-usage variants', () => {
   });
 });
 
-describe('Account — interactions', () => {
+describe('Account - interactions', () => {
   it('clicking the appearance toggle calls toggleMode', () => {
     vi.mocked(usePdfUsage).mockReturnValue({
       data: { status: 'free', count: 0, limit: 30, isLocked: false, expiresAt: null, cancelledAt: null },

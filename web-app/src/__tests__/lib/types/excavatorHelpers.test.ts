@@ -1,5 +1,5 @@
 /**
- * Helpers in lib/types/excavator.ts — buildDefaultExcavatorItems +
+ * Helpers in lib/types/excavator.ts - buildDefaultExcavatorItems +
  * computeExcavatorVerdictSuggestion.
  */
 import { describe, it, expect } from 'vitest';

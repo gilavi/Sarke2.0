@@ -19,7 +19,7 @@ export const queryClient = new QueryClient({
 
 const persister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  // Throttle disk writes — react-query fires updates on every fetch, and
+  // Throttle disk writes - react-query fires updates on every fetch, and
   // serializing the cache to AsyncStorage on every keystroke would be
   // wasteful. 1s coalesces bursts.
   throttleTime: 5_000,
@@ -31,7 +31,7 @@ const persister = createAsyncStoragePersister({
 const CACHE_BUSTER = 'sdk54-v2';
 
 // Bind once at module load. The hook variant (`PersistQueryClientProvider`)
-// would gate render until rehydration completes, which we don't want — better
+// would gate render until rehydration completes, which we don't want - better
 // to render with empty data and swap in cached data the moment it's ready.
 persistQueryClient({
   queryClient,

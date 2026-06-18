@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Users } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RoleSlotList, type InspectorRow } from '../../../components/RoleSlotList';
 import { useTheme } from '../../../lib/theme';
@@ -26,7 +26,7 @@ export default function ProjectParticipantsList() {
   const projectQ = useProject(id);
   const project = projectQ.data;
   // Single-object detail: skeleton until the row arrives (cached data renders
-  // instantly on return visits — isPending stays false then).
+  // instantly on return visits - isPending stays false then).
   const loading = projectQ.isPending;
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -113,7 +113,7 @@ export default function ProjectParticipantsList() {
 
         {!loading && !project ? (
           <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={40} color={theme.colors.borderStrong} />
+            <Users size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
         ) : null}

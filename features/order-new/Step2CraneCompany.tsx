@@ -6,11 +6,12 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step2CraneCompany({
-  form, setForm, s,
+  form, setForm, s, attempted,
 }: {
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   s: OrderStyles;
+  attempted: boolean;
 }) {
   return (
     <View style={{ gap: 12 }}>
@@ -21,6 +22,7 @@ export function Step2CraneCompany({
         required
         value={form.orderNumber}
         onChangeText={v => setForm(f => ({ ...f, orderNumber: v }))}
+        error={attempted && !form.orderNumber.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <DateTimeField
@@ -35,6 +37,7 @@ export function Step2CraneCompany({
         required
         value={form.companyName}
         onChangeText={v => setForm(f => ({ ...f, companyName: v }))}
+        error={attempted && !form.companyName.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <FloatingLabelInput
@@ -48,6 +51,7 @@ export function Step2CraneCompany({
         required
         value={form.directorName}
         onChangeText={v => setForm(f => ({ ...f, directorName: v }))}
+        error={attempted && !form.directorName.trim() ? 'სავალდებულო ველი' : undefined}
       />
     </View>
   );

@@ -31,7 +31,7 @@ export function escapeHtml(s: string | null | undefined): string {
  * Returns an em dash for empty input and echoes the raw string for unparseable input.
  */
 export function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('ka-GE', { year: 'numeric', month: 'long', day: 'numeric' });

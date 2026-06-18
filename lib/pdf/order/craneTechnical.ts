@@ -8,7 +8,7 @@ export interface CraneTechnicalOrderPdfArgs {
 
 /**
  * Builds HTML for "კოშკურა ამწის ტექნიკური გამართულობის...პასუხისმგებელი პირის დანიშვნის შესახებ".
- * Mirrors buildCraneOperatorOrderHtml — same layout, different title, legal basis, field label, and duties.
+ * Mirrors buildCraneOperatorOrderHtml - same layout, different title, legal basis, field label, and duties.
  */
 export function buildCraneTechnicalOrderHtml({ formData: f }: CraneTechnicalOrderPdfArgs): string {
   const orderDate = fmtDate(f.orderDate);
@@ -216,13 +216,13 @@ export function buildCraneTechnicalOrderHtml({ formData: f }: CraneTechnicalOrde
   <li>
     <strong>${escHtml(f.craneOperatorName)}</strong>, პ/ნ ${escHtml(f.craneOperatorPersonalId)},
     სერტ. №${escHtml(f.craneOperatorCertNumber)} (ვადა: ${certExpiry}),
-    დაინიშნოს კოშკურა ამწის ტექნიკური გამართულობაზე პასუხისმგებელ პირად ობიექტზე —
+    დაინიშნოს კოშკურა ამწის ტექნიკური გამართულობაზე პასუხისმგებელ პირად ობიექტზე -
     <strong>„${escHtml(f.objectAddress)}"</strong>${f.craneModel ? `, ამწეზე: ${escHtml(f.craneModel)}` : ''}${f.craneNumber ? ` №${escHtml(f.craneNumber)}` : ''}.
     <br/>დაევალოს შემდეგი ვალდებულებები:
     <ol class="duties">
       <li>ა) მექანიკური და ელექტრო სისტემების პერიოდული შემოწმება და ტექნიკური გამართულობის კონტროლი;</li>
       <li>ბ) მბრუნავი და გადაადგილების მექანიზმების (ბრჭყალების, სახსრების, ბლოკების) კვება, შეზეთვა და ცვეთის კონტროლი;</li>
-      <li>გ) ტვირთის აწევა-დაწევის მექანიზმის — ლებედკის, ჭოჭოს, კარკასის — ფუნქციონალური შემოწმება;</li>
+      <li>გ) ტვირთის აწევა-დაწევის მექანიზმის - ლებედკის, ჭოჭოს, კარკასის - ფუნქციონალური შემოწმება;</li>
       <li>დ) სამუხრუჭე სისტემის (სამომჭირავე და სამარჯვე მუხრუჭების) მდგომარეობის შემოწმება და გამართვა;</li>
       <li>ე) ფოლადის ბაგირის (ტროსის) ვიზუალური და ზომითი შემოწმება გაგლეჯებზე, კინკებსა და კოროზიაზე;</li>
       <li>ვ) ბაგირის დამაგრების კვანძების (სარჭების, ბოლო სამჭედელების, ბაგირის გამტარი ბლოკების) მდგომარეობის კონტროლი;</li>
@@ -266,7 +266,7 @@ export function buildCraneTechnicalOrderHtml({ formData: f }: CraneTechnicalOrde
 
 <div class="footer">
   <span>გვერდი 1 / 1</span>
-  <span>ბრძანება №${escHtml(f.orderNumber)} — ამწის ტექ. გამართულობა</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - ამწის ტექ. გამართულობა</span>
 </div>
 
 </body>

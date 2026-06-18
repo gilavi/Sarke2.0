@@ -1,5 +1,5 @@
 /**
- * Mobile ladder inspection schema — web mirror of the Expo app's
+ * Mobile ladder inspection schema - web mirror of the Expo app's
  * `lib/inspection/schemas/mobileLadder.ts` (the `@root` import is eslint-banned).
  * Custom blocks for byte-faithful output: EN 131 badge, ladder-ID param table,
  * two pill checklists (structural / mobile), tri-state verdict, EN-131 footer.
@@ -49,20 +49,20 @@ function checklistPill(result: string | null): string {
   if (result === 'safe') return `<span class="pill pill-safe">✓ ${ML_RESULT_TO_CHIP.safe}</span>`;
   if (result === 'damaged') return `<span class="pill pill-damaged">✗ ${ML_RESULT_TO_CHIP.damaged}</span>`;
   if (result === 'na') return `<span class="pill pill-na">${ML_RESULT_TO_CHIP.na}</span>`;
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function renderSectionI(insp: MobileLadderInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანია</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანია</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
       </tr>
     </table>
   `;
@@ -70,13 +70,13 @@ function renderSectionI(insp: MobileLadderInspection): string {
 
 function renderSectionII(insp: MobileLadderInspection): string {
   return `
-    <div class="section-title">II — კიბის იდენტიფიკაცია</div>
+    <div class="section-title">II - კიბის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>სახეობა / Type</td><td>${escapeHtml(insp.ladderType) || '—'}</td></tr>
-      <tr><td>მწარმოებელი / Model</td><td>${escapeHtml(insp.model) || '—'}</td></tr>
-      <tr><td>სიმაღლე (მ)</td><td>${insp.heightM != null ? `${insp.heightM} მ` : '—'}</td></tr>
-      <tr><td>მაქს. დატვირთვა (კგ)</td><td>${insp.maxLoadKg != null ? `${insp.maxLoadKg} კგ` : '—'}</td></tr>
-      <tr><td>მომდევნო შემოწმება</td><td>${insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '—'}</td></tr>
+      <tr><td>სახეობა / Type</td><td>${escapeHtml(insp.ladderType) || '-'}</td></tr>
+      <tr><td>მწარმოებელი / Model</td><td>${escapeHtml(insp.model) || '-'}</td></tr>
+      <tr><td>სიმაღლე (მ)</td><td>${insp.heightM != null ? `${insp.heightM} მ` : '-'}</td></tr>
+      <tr><td>მაქს. დატვირთვა (კგ)</td><td>${insp.maxLoadKg != null ? `${insp.maxLoadKg} კგ` : '-'}</td></tr>
+      <tr><td>მომდევნო შემოწმება</td><td>${insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '-'}</td></tr>
     </table>
   `;
 }
@@ -122,7 +122,7 @@ function renderVerdict(insp: MobileLadderInspection): string {
     })
     .join('');
   return `
-    <div class="section-title">V — დასკვნა</div>
+    <div class="section-title">V - დასკვნა</div>
     <div class="verdict-block">${options}</div>
     <div class="comment-block"><div class="comment-label">კომენტარი</div>${escapeHtml(insp.verdictComment) || ''}</div>
   `;
@@ -145,7 +145,7 @@ export const mobileLadderSchema: InspectionSchema<MobileLadderInspection> = {
 
   docTitle: 'სამუშაო სივრცეში არსებული კიბეების<br>ტექნიკური შემოწმების აქტი',
   docSubtitle: 'Mobile Ladder Technical Inspection',
-  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble - შრომის უსაფრთხოება',
   pdfNameLabel: 'MobileLadderInspection',
   extraCss: EXTRA_CSS,
 
@@ -157,8 +157,8 @@ export const mobileLadderSchema: InspectionSchema<MobileLadderInspection> = {
     { kind: 'custom', render: () => '<span class="regulation-badge">EN 131</span>' },
     { kind: 'custom', render: (d) => renderSectionI(d) },
     { kind: 'custom', render: (d) => renderSectionII(d) },
-    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'A', 'III — სტრუქტურული მდგომარეობა') },
-    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'B', 'IV — სამობილო სისტემა') },
+    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'A', 'III - სტრუქტურული მდგომარეობა') },
+    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'B', 'IV - სამობილო სისტემა') },
     { kind: 'custom', render: (d) => renderVerdict(d) },
     { kind: 'custom', render: () => renderFooterNote() },
   ],

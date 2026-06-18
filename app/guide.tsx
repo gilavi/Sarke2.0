@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../components/primitives/A11yText';
 
@@ -22,7 +22,7 @@ const PARTS_DATA = {
     steps: [
       'Place on firm, level surface. No dirt or debris under legs.',
       'Check all spring clips / pins are locked and seated fully.',
-      'Use a level — frame must be plumb (vertical) within 1°.',
+      'Use a level - frame must be plumb (vertical) within 1°.',
       'Ensure coupling pins are greased and slide freely.',
     ],
   },
@@ -41,7 +41,7 @@ const PARTS_DATA = {
     steps: [
       'Install braces BEFORE climbing or loading the platform.',
       'Hook one end first, then stretch and lock the opposite end.',
-      'Never omit braces — they provide 70% of lateral stability.',
+      'Never omit braces - they provide 70% of lateral stability.',
       'Check tension: brace should not rattle or bow under hand pressure.',
     ],
   },
@@ -70,7 +70,7 @@ const PARTS_DATA = {
     title_eng: 'Casters / Wheels',
     steps: [
       'Brakes must be engaged before anyone steps onto the scaffold.',
-      'Wheels rated for hard flat surfaces only — never gravel slopes.',
+      'Wheels rated for hard flat surfaces only - never gravel slopes.',
       'If scaffold height > 3m, replace wheels with base plates.',
       'Inspect wheel locks daily; replace worn casters immediately.',
     ],
@@ -131,7 +131,7 @@ export default function GuideScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color="#cbd5e1" />
+          <ChevronLeft size={24} color="#cbd5e1" strokeWidth={1.5} />
         </Pressable>
         <Text style={styles.headerTitle}>ხარაჩო 3D გიდი</Text>
         <View style={{ width: 40 }} />
@@ -193,7 +193,7 @@ export default function GuideScreen() {
                 <Text style={styles.titleEng}>{data.title_eng}</Text>
               </View>
               <Pressable onPress={closePanel} style={styles.closeBtn} hitSlop={8}>
-                <Ionicons name="close" size={22} color="#94a3b8" />
+                <X size={22} color="#94a3b8" strokeWidth={1.5} />
               </Pressable>
             </View>
 

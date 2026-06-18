@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -20,7 +20,7 @@ import {
   useExcavatorInspectionsByProject,
   useGeneralEquipmentInspectionsByProject,
 } from '../../../lib/apiHooks';
-import { InspectionTypeAvatar } from '../../../components/InspectionTypeAvatar';
+import { InspectionListAvatar } from '../../../components/InspectionListAvatar';
 import { RecentListRow } from '../../../components/RecentListRow';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -52,7 +52,7 @@ export default function ProjectInspectionsList() {
   const templates = templatesQ.data ?? [];
   // Canonical three-state guard (see CLAUDE.md), unioned across the source
   // queries: skeleton while any source hasn't produced a real answer and the
-  // merged list is still empty — never flash empty state over a stale [].
+  // merged list is still empty - never flash empty state over a stale [].
   const anyUnsettled = [genericQ, bobcatQ, excavatorQ, geQ, templatesQ].some(q => q.isFetching || !q.isFetched);
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -110,7 +110,7 @@ export default function ProjectInspectionsList() {
           </View>
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
+            <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
         ) : (
@@ -132,7 +132,7 @@ export default function ProjectInspectionsList() {
                   <RecentListRow
                     key={`${item.source}-${item.id}`}
                     leading={
-                      <InspectionTypeAvatar
+                      <InspectionListAvatar
                         category={sourceKey}
                         size={40}
                         status={isCompleted ? 'completed' : 'draft'}

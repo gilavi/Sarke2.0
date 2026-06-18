@@ -7,7 +7,7 @@
  * Catalogs + vocab come from `@/lib/types/safetyNet`, the same source the PDF
  * schema uses, so screen and PDF stay in sync.
  *
- * Regulatory: signatures are never persisted — captured on the completed verdict
+ * Regulatory: signatures are never persisted - captured on the completed verdict
  * step via SignatureCapture and rasterized into the PDF only.
  */
 import {

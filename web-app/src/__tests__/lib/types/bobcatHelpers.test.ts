@@ -1,5 +1,5 @@
 /**
- * Helpers in lib/types/bobcat.ts — buildDefaultItems, computeVerdictSuggestion,
+ * Helpers in lib/types/bobcat.ts - buildDefaultItems, computeVerdictSuggestion,
  * categoryCounts. These are pure functions; testing them directly covers the
  * lines + branches.
  */

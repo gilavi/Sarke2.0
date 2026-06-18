@@ -1,5 +1,5 @@
 /**
- * Mount test for InspectionWizard's harness preset — the flow that replaced the
+ * Mount test for InspectionWizard's harness preset - the flow that replaced the
  * standalone HarnessInspectionModal. Verifies the preset locks the template:
  * the info step shows only the project picker (no template select) and uses the
  * preset title. Guards the riskiest part of the wizard-merge wiring.
@@ -65,7 +65,7 @@ function renderWizard() {
   );
 }
 
-describe('InspectionWizard — harness preset', () => {
+describe('InspectionWizard - harness preset', () => {
   it('renders a locked, project-only info step with the preset title', async () => {
     renderWizard();
 
@@ -73,7 +73,7 @@ describe('InspectionWizard — harness preset', () => {
     expect(await screen.findByText('დამცავი ქამრების შემოწმება')).toBeInTheDocument();
     // The streamlined project-only step renders its prompt.
     expect(screen.getByText('აირჩიეთ პროექტი')).toBeInTheDocument();
-    // Template picker is NOT shown — the template is locked by the preset.
+    // Template picker is NOT shown - the template is locked by the preset.
     expect(screen.queryByText('შაბლონი')).not.toBeInTheDocument();
   });
 });

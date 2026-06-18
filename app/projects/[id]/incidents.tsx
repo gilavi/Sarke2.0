@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { FileText, Hourglass, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -15,28 +15,7 @@ import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
 import { INCIDENT_TYPE_LABEL } from '../../../types/models';
 import type { Incident, IncidentStatus, IncidentType } from '../../../types/models';
-
-const INCIDENT_BADGE_COLORS_LIGHT: Record<
-  IncidentType,
-  { bg: string; text: string; border: string }
-> = {
-  minor:    { bg: '#FEF3C7', text: '#92400E', border: '#F59E0B' },
-  severe:   { bg: '#FFEDD5', text: '#9A3412', border: '#F97316' },
-  fatal:    { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  mass:     { bg: '#FEE2E2', text: '#991B1B', border: '#EF4444' },
-  nearmiss: { bg: '#EDE9FE', text: '#5B21B6', border: '#8B5CF6' },
-};
-
-const INCIDENT_BADGE_COLORS_DARK: Record<
-  IncidentType,
-  { bg: string; text: string; border: string }
-> = {
-  minor:    { bg: '#3F2E0F', text: '#FCD34D', border: '#F59E0B' },
-  severe:   { bg: '#3D1F08', text: '#FCA673', border: '#F97316' },
-  fatal:    { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-  mass:     { bg: '#3A1F1F', text: '#FCA5A5', border: '#EF4444' },
-  nearmiss: { bg: '#2D1F4F', text: '#C4B5FD', border: '#8B5CF6' },
-};
+import { incidentColors } from '../../../lib/statusColors';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -51,7 +30,7 @@ function toDateKey(isoDatetime: string): string {
 export default function ProjectIncidentsList() {
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const INCIDENT_BADGE_COLORS = isDark ? INCIDENT_BADGE_COLORS_DARK : INCIDENT_BADGE_COLORS_LIGHT;
+  const INCIDENT_BADGE_COLORS = incidentColors(isDark);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -94,7 +73,7 @@ export default function ProjectIncidentsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
-      
+
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
         }
@@ -120,7 +99,7 @@ export default function ProjectIncidentsList() {
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={40} color={theme.colors.borderStrong} />
+            <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
           </View>
         ) : (
@@ -147,11 +126,19 @@ export default function ProjectIncidentsList() {
                           },
                         ]}
                       >
-                        <Ionicons
-                          name={isCompleted ? 'document-text' : 'hourglass-outline'}
-                          size={14}
-                          color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
-                        />
+                        {isCompleted ? (
+                          <FileText
+                            size={14}
+                            color={theme.colors.semantic.success}
+                            strokeWidth={1.5}
+                          />
+                        ) : (
+                          <Hourglass
+                            size={14}
+                            color={theme.colors.certTint}
+                            strokeWidth={1.5}
+                          />
+                        )}
                       </View>
                       <View style={{ flex: 1 }}>
                         <View style={styles.rowTitleRow}>
@@ -167,13 +154,13 @@ export default function ProjectIncidentsList() {
                           </View>
                         </View>
                         <Text style={styles.listRowTitle} numberOfLines={1}>
-                          {inc.description || inc.location || '—'}
+                          {inc.description || inc.location || '-'}
                         </Text>
                         <Text style={styles.listRowSubtitle}>
                           {formatShortDateTime(inc.date_time)}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
                     </Pressable>
                   );
                 })}

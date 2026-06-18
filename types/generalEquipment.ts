@@ -1,4 +1,4 @@
-// General equipment inspection — ტექნიკური აღჭურვილობის შემოწმების აქტი
+// General equipment inspection - ტექნიკური აღჭურვილობის შემოწმების აქტი
 //
 // Flexible / custom template: no predefined checklist items.
 // The user builds their own equipment list row-by-row.
@@ -31,7 +31,7 @@ export interface GeneralEquipmentInspection {
   userId: string;
   status: 'draft' | 'completed';
 
-  // Section I — general info
+  // Section I - general info
   objectName: string | null;
   address: string | null;
   activityType: string | null;
@@ -40,14 +40,14 @@ export interface GeneralEquipmentInspection {
   inspectionType: GEInspectionType | null;
   inspectorName: string | null;
 
-  // Section II — equipment
+  // Section II - equipment
   equipment: EquipmentItem[];
 
-  // Section III — summary
+  // Section III - summary
   conclusion: string | null;
   summaryPhotos: string[];   // storage paths in answer-photos bucket
 
-  // Section IV — signature
+  // Section IV - signature
   signerName: string | null;
   signerRole: GESignerRole | null;
   signerRoleCustom: string | null;
@@ -118,7 +118,7 @@ export function resolveSignerPosition(
   role: GESignerRole | null,
   custom: string | null,
 ): string {
-  if (!role) return '—';
+  if (!role) return '-';
   if (role === 'other') return custom?.trim() || 'სხვა';
   return SIGNER_ROLE_LABEL_FULL[role];
 }

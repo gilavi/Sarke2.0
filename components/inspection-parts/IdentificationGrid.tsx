@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -27,7 +26,7 @@ export interface IdentificationField {
   // ── Multi-select (type='chips' only) ───────────────────────────────────────
   /** Allow multiple chips to be toggled simultaneously */
   multiSelect?: boolean;
-  /** Currently selected values (multiSelect mode — replaces value/onChange) */
+  /** Currently selected values (multiSelect mode - replaces value/onChange) */
   values?: string[];
   /** Callback when selection changes in multiSelect mode */
   onValuesChange?: (vals: string[]) => void;
@@ -88,11 +87,9 @@ export function IdentificationGrid({
                   }}
                   {...a11y('მონაცემი ვერ დგინდება', undefined, 'checkbox')}
                 >
-                  <Ionicons
-                    name={field.unknown ? 'checkbox' : 'square-outline'}
-                    size={15}
-                    color={field.unknown ? theme.colors.accent : theme.colors.inkSoft}
-                  />
+                  <View style={[styles.checkbox, field.unknown && styles.checkboxActive]}>
+                    {field.unknown && <View style={styles.checkboxInner} />}
+                  </View>
                   <Text style={styles.unknownLabel}>მონაცემი ვერ დგინდება</Text>
                 </Pressable>
               ) : null}
@@ -104,7 +101,7 @@ export function IdentificationGrid({
   );
 }
 
-// ── Single-select "form selector" — full-width selectable list rows ──────────
+// ── Single-select "form selector" - full-width selectable list rows ──────────
 
 function SelectField({ field }: { field: IdentificationField }) {
   const { theme } = useTheme();
@@ -156,31 +153,17 @@ function ChipsField({ field }: { field: IdentificationField }) {
       <View style={styles.chipsRow}>
         {options.map((opt, i) => {
           const active = field.value === opt;
-          const isProb = field.isProblematic && active;
-          const isWarn = !isProb && field.isWarning && active;
           return (
             <Pressable
               key={opt}
-              style={[
-                styles.chip,
-                active && styles.chipActive,
-                isProb && styles.chipProblematic,
-                isWarn && styles.chipWarning,
-              ]}
+              style={[styles.chip, active && styles.chipActive]}
               onPress={() => {
                 haptic.light();
                 field.onChange?.(opt);
               }}
               {...a11y(labels[i] ?? opt, undefined, 'radio')}
             >
-              <Text
-                style={[
-                  styles.chipText,
-                  active && styles.chipTextActive,
-                  isProb && styles.chipTextProblematic,
-                  isWarn && styles.chipTextWarning,
-                ]}
-              >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {labels[i] ?? opt}
               </Text>
             </Pressable>
@@ -231,7 +214,7 @@ function MultiChipsField({ field }: { field: IdentificationField }) {
       </View>
       {otherActive && field.onOtherValueChange ? (
         <FloatingLabelInput
-          label={`${field.otherOptionValue} — კონკრეტული სახელი`}
+          label={`${field.otherOptionValue} - კონკრეტული სახელი`}
           value={field.otherValue ?? ''}
           onChangeText={field.onOtherValueChange}
         />
@@ -251,7 +234,7 @@ function getstyles(theme: Theme) {
     },
     item: {
       paddingHorizontal: 4,
-      marginBottom: 4,
+      marginBottom: 12,
     },
     textFieldWrap: { gap: 2 },
     unknownRow: {
@@ -260,6 +243,26 @@ function getstyles(theme: Theme) {
       gap: 6,
       paddingVertical: 4,
       paddingHorizontal: 2,
+    },
+    checkbox: {
+      width: 15,
+      height: 15,
+      borderRadius: 3,
+      borderWidth: 1.5,
+      borderColor: theme.colors.inkSoft,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxActive: {
+      backgroundColor: theme.colors.accent,
+      borderColor: theme.colors.accent,
+    },
+    checkboxInner: {
+      width: 7,
+      height: 7,
+      borderRadius: 1,
+      backgroundColor: theme.colors.white,
     },
     unknownLabel: { fontSize: 11, color: theme.colors.inkSoft },
     chipsGroup: { gap: 8 },
@@ -278,11 +281,11 @@ function getstyles(theme: Theme) {
       backgroundColor: theme.colors.card,
     },
     selectRowActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
+      borderColor: theme.colors.ink,
+      backgroundColor: theme.colors.subtleSurface,
     },
     selectRowText: { fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
-    selectRowTextActive: { color: theme.colors.accent, fontWeight: '700' },
+    selectRowTextActive: { color: theme.colors.ink, fontWeight: '700' },
     radio: {
       width: 22,
       height: 22,
@@ -292,20 +295,20 @@ function getstyles(theme: Theme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    radioActive: { borderColor: theme.colors.accent },
-    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.accent },
+    radioActive: { borderColor: theme.colors.ink },
+    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.ink },
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: {
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      borderRadius: 12,
       borderWidth: 1.5,
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,
     },
     chipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
+      borderColor: theme.colors.ink,
+      backgroundColor: theme.colors.subtleSurface,
     },
     chipProblematic: {
       borderColor: theme.colors.danger,
@@ -315,8 +318,8 @@ function getstyles(theme: Theme) {
       borderColor: theme.colors.warn,
       backgroundColor: theme.colors.warnSoft,
     },
-    chipText: { fontSize: 12, color: theme.colors.inkSoft },
-    chipTextActive: { color: theme.colors.accent, fontWeight: '700' },
+    chipText: { fontSize: 14, color: theme.colors.inkSoft },
+    chipTextActive: { color: theme.colors.ink, fontWeight: '700' },
     chipTextProblematic: { color: theme.colors.danger, fontWeight: '700' },
     chipTextWarning: { color: theme.colors.warn, fontWeight: '700' },
   });

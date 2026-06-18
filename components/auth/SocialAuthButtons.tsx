@@ -52,7 +52,7 @@ export function SocialAuthButtons({ mode, onError }: Props) {
 
   if (Platform.OS === 'ios') {
     // No Google on iOS. If Apple auth is unavailable (old iOS, Expo Go quirk),
-    // render nothing — email/password auth above remains fully usable.
+    // render nothing - email/password auth above remains fully usable.
     if (!appleAvailable) return null;
     return (
       <View pointerEvents={busy ? 'none' : 'auto'} style={busy ? s.busyDim : null}>

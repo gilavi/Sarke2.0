@@ -98,10 +98,10 @@ describe('errorMap', () => {
     });
   });
 
-  describe('friendlyError — login sentinels', () => {
+  describe('friendlyError - login sentinels', () => {
     it('translates AccountNotFound to a Georgian message', () => {
       expect(friendlyError(new Error('AccountNotFound'))).toBe(
-        'ანგარიში ვერ მოიძებნა — შეამოწმეთ ელ-ფოსტა',
+        'ანგარიში ვერ მოიძებნა - შეამოწმეთ ელ-ფოსტა',
       );
     });
     it('translates WrongPassword to a Georgian message', () => {

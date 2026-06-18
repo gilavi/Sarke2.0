@@ -61,7 +61,7 @@ describe('useAuth guard', () => {
   });
 });
 
-describe('AuthProvider — initial state', () => {
+describe('AuthProvider - initial state', () => {
   it('starts with no session when localStorage is empty and getSession resolves null', async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     expect(result.current.session).toBeNull();
@@ -98,7 +98,7 @@ describe('AuthProvider — initial state', () => {
   });
 });
 
-describe('AuthProvider — actions', () => {
+describe('AuthProvider - actions', () => {
   it('signIn calls supabase.auth.signInWithPassword', async () => {
     signInWithPassword.mockResolvedValue({ error: null });
     const { result } = renderHook(() => useAuth(), { wrapper });

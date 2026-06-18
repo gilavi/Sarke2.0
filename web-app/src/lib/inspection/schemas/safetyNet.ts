@@ -1,13 +1,13 @@
 /**
- * Safety net inspection schema — უსაფრთხოების ბადის შემოწმების აქტი.
+ * Safety net inspection schema - უსაფრთხოების ბადის შემოწმების აქტი.
  *
  * Web-app mirror of the Expo app's `lib/inspection/schemas/safetyNet.ts`
  * (the `@root` import is banned by eslint). Drives the descriptor-driven PDF via
  * `lib/inspection/pdf.ts`. Every body section is a `custom` block (the safety-net
- * layout — №477 badge, param table, load-test weight table, pass/fail matrix —
+ * layout - №477 badge, param table, load-test weight table, pass/fail matrix -
  * diverges from the typed-block shape) for byte-identical output to mobile.
  *
- * Regulatory divergence from mobile: the persisted "VII — ხელმოწერები" signature
+ * Regulatory divergence from mobile: the persisted "VII - ხელმოწერები" signature
  * grid is NOT rendered here. Captured inspection signatures are never persisted
  * on web; they are appended by `buildInspectionPdf` from the in-memory
  * `SignaturesSectionData`. The legal note that lived in Section VII is kept.
@@ -104,15 +104,15 @@ function renderRegulationBadge(): string {
 
 function renderSectionI(insp: SafetyNetInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანიის დასახელება</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">მდებარეობა / მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">შემოწმების ჩამტარებელი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
       </tr>
     </table>
   `;
@@ -120,24 +120,24 @@ function renderSectionI(insp: SafetyNetInspection): string {
 
 function renderSectionII(insp: SafetyNetInspection): string {
   const certPill = (() => {
-    if (!insp.certificate) return '<span class="pill pill-null">—</span>';
+    if (!insp.certificate) return '<span class="pill pill-null">-</span>';
     if (insp.certificate === 'active') return '<span class="pill pill-cert-active">მოქმედი სერტ.</span>';
     if (insp.certificate === 'expired') return '<span class="pill pill-cert-expired">ვადაგასული</span>';
     return '<span class="pill pill-cert-none">სერტ. არ გააჩნია</span>';
   })();
 
   return `
-    <div class="section-title">II — ბადის იდენტიფიკაცია</div>
+    <div class="section-title">II - ბადის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '—'}</td></tr>
-      <tr><td>ბადის ზომა მ×მ</td><td>${escapeHtml(insp.netSize) || '—'}</td></tr>
-      <tr><td>დგარის ზომა</td><td>${escapeHtml(insp.postSize) || '—'}</td></tr>
-      <tr><td>დგარების რაოდენობა</td><td>${insp.postCount ?? '—'}</td></tr>
-      <tr><td>დგარის სამაგრების რ-ბა</td><td>${insp.postAnchorCount ?? '—'}</td></tr>
-      <tr><td>სამაგრი წერტილების რ-ბა</td><td>${insp.anchorPointCount ?? '—'}</td></tr>
-      <tr><td>კიდის ბაგირების რ-ბა</td><td>${insp.edgeRopeCount ?? '—'}</td></tr>
-      <tr><td>უჯრედის მხარე</td><td>${escapeHtml(insp.cellSide) || '—'}</td></tr>
-      <tr><td>სამუშაო მანძილი</td><td>${escapeHtml(insp.workingDistance) || '—'}</td></tr>
+      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
+      <tr><td>ბადის ზომა მ×მ</td><td>${escapeHtml(insp.netSize) || '-'}</td></tr>
+      <tr><td>დგარის ზომა</td><td>${escapeHtml(insp.postSize) || '-'}</td></tr>
+      <tr><td>დგარების რაოდენობა</td><td>${insp.postCount ?? '-'}</td></tr>
+      <tr><td>დგარის სამაგრების რ-ბა</td><td>${insp.postAnchorCount ?? '-'}</td></tr>
+      <tr><td>სამაგრი წერტილების რ-ბა</td><td>${insp.anchorPointCount ?? '-'}</td></tr>
+      <tr><td>კიდის ბაგირების რ-ბა</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
+      <tr><td>უჯრედის მხარე</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
+      <tr><td>სამუშაო მანძილი</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
       <tr><td>სერტიფიკატი</td><td>${certPill}</td></tr>
     </table>
   `;
@@ -153,7 +153,7 @@ function renderSectionIII(insp: SafetyNetInspection, photos: PhotoMap): string {
       if (result === 'good') return '<span class="pill pill-good">კარგი</span>';
       if (result === 'fix') return '<span class="pill pill-fix">გამოსასწ.</span>';
       if (result === 'na') return '<span class="pill pill-na">N/A</span>';
-      return '<span class="pill pill-null">—</span>';
+      return '<span class="pill pill-null">-</span>';
     })();
 
     const photoHtml = (state?.photo_paths ?? [])
@@ -180,7 +180,7 @@ function renderSectionIII(insp: SafetyNetInspection, photos: PhotoMap): string {
   }).join('');
 
   return `
-    <div class="section-title">III — ვიზუალური შემოწმება</div>
+    <div class="section-title">III - ვიზუალური შემოწმება</div>
     <table class="cl-table">
       <thead>
         <tr>
@@ -200,10 +200,10 @@ function renderSectionIV(insp: SafetyNetInspection): string {
       (row, i) => `
     <tr>
       <td class="col-num">${i + 1}</td>
-      <td>${escapeHtml(row.name) || '—'}</td>
-      <td style="text-align:right">${row.unitWeightKg ?? '—'}</td>
-      <td style="text-align:right">${row.quantity ?? '—'}</td>
-      <td style="text-align:right">${row.totalWeightKg ?? '—'}</td>
+      <td>${escapeHtml(row.name) || '-'}</td>
+      <td style="text-align:right">${row.unitWeightKg ?? '-'}</td>
+      <td style="text-align:right">${row.quantity ?? '-'}</td>
+      <td style="text-align:right">${row.totalWeightKg ?? '-'}</td>
       <td>${escapeHtml(row.comment) || ''}</td>
     </tr>
   `,
@@ -213,9 +213,9 @@ function renderSectionIV(insp: SafetyNetInspection): string {
   const totalKg = snTotalWeight(insp.loadTestRows);
 
   return `
-    <div class="section-title">IV — დატვირთვის ტესტი</div>
+    <div class="section-title">IV - დატვირთვის ტესტი</div>
     <div class="load-instruction">
-      180კგ-ის სიმძიმე 1მ სიმაღლიდან — №477 დადგენილება
+      180კგ-ის სიმძიმე 1მ სიმაღლიდან - №477 დადგენილება
     </div>
     <table class="load-table">
       <thead>
@@ -249,7 +249,7 @@ function renderSectionV(insp: SafetyNetInspection): string {
     const pillHtml = (() => {
       if (result === 'pass') return '<span class="pill pill-pass">გამოც. ✓</span>';
       if (result === 'fail') return '<span class="pill pill-fail">პრობლ. ✗</span>';
-      return '<span class="pill pill-null">—</span>';
+      return '<span class="pill pill-null">-</span>';
     })();
 
     return `
@@ -261,7 +261,7 @@ function renderSectionV(insp: SafetyNetInspection): string {
   }).join('');
 
   return `
-    <div class="section-title">V — ტვირთის ჩაგდების შემდეგ შემოწმება</div>
+    <div class="section-title">V - ტვირთის ჩაგდების შემდეგ შემოწმება</div>
     <table class="cl-table">
       <thead>
         <tr>
@@ -291,7 +291,7 @@ function renderSectionVI(insp: SafetyNetInspection): string {
     .join('');
 
   return `
-    <div class="section-title">VI — დასკვნა</div>
+    <div class="section-title">VI - დასკვნა</div>
     <div class="verdict-block">${verdictOptions}</div>
     <div class="comment-block">
       <div class="comment-label">კომენტარი</div>
@@ -314,7 +314,7 @@ function renderSectionVIII(insp: SafetyNetInspection, photos: PhotoMap): string 
   const embed = photos[insp.qualDocPath];
   if (!embed) return '';
   return `
-    <div class="section-title">VIII — კვალიფიკაციის / სერტიფიკატის ფოტო</div>
+    <div class="section-title">VIII - კვალიფიკაციის / სერტიფიკატის ფოტო</div>
     <img class="qual-doc-img" src="${embed}" />
   `;
 }
@@ -336,7 +336,7 @@ function renderSectionIX(insp: SafetyNetInspection, photos: PhotoMap): string {
 
   if (!photoItems) return '';
   return `
-    <div class="section-title">IX — ფოტო / ვიდეო მასალა</div>
+    <div class="section-title">IX - ფოტო / ვიდეო მასალა</div>
     <div class="photo-grid">${photoItems}</div>
   `;
 }
@@ -349,7 +349,7 @@ export const safetyNetSchema: InspectionSchema<SafetyNetInspection> = {
 
   docTitle: 'უსაფრთხოების ბადის შემოწმების აქტი',
   docSubtitle: 'Safety Net Inspection & Acceptance Act',
-  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble - შრომის უსაფრთხოება',
   pdfNameLabel: 'SafetyNetInspection',
   extraCss: EXTRA_CSS,
 

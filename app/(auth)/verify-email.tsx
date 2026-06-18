@@ -9,7 +9,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
-import { Ionicons } from '@expo/vector-icons';
+import { MailWarning, CircleAlert } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSession } from '../../lib/session';
@@ -21,6 +21,7 @@ import { a11y } from '../../lib/accessibility';
 import { Button, Card } from '../../components/ui';
 import { HeaderBackPill } from '../../components/HeaderBackPill';
 import { useTranslation } from 'react-i18next';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN_SEC = 30;
@@ -70,6 +71,9 @@ export default function VerifyEmailScreen() {
   const [resendBusy, setResendBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Enabled verify button + on-press OTP-grid error (see useSubmitGuard).
+  const { guard } = useSubmitGuard();
+  const codeIncomplete = code.length !== CODE_LENGTH;
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 250);
@@ -152,7 +156,7 @@ export default function VerifyEmailScreen() {
 
             <View style={{ alignItems: 'center', gap: 12, marginTop: 24 }}>
               <View style={styles.iconCircle}>
-                <Ionicons name="mail-unread-outline" size={40} color={theme.colors.accent} />
+                <MailWarning size={40} color={theme.colors.accent} strokeWidth={1.5} />
               </View>
               <Text style={styles.title}>{t('auth.checkEmail')}</Text>
               <Text style={styles.subtitle}>
@@ -169,6 +173,7 @@ export default function VerifyEmailScreen() {
                       styles.cell,
                       ch ? styles.cellFilled : null,
                       i === code.length && !busy ? styles.cellActive : null,
+                      error ? styles.cellError : null,
                     ]}
                   >
                     <Text style={styles.cellText}>{ch}</Text>
@@ -192,7 +197,7 @@ export default function VerifyEmailScreen() {
 
               {error ? (
                 <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle-outline" size={15} color={theme.colors.danger} />
+                  <CircleAlert size={15} color={theme.colors.danger} strokeWidth={1.5} />
                   <Text
                     style={{ color: theme.colors.danger, fontSize: 13, flex: 1, lineHeight: 18 }}
                   >
@@ -203,9 +208,14 @@ export default function VerifyEmailScreen() {
 
               <Button
                 title={t('auth.verifyConfirm')}
-                onPress={() => submit()}
+                onPress={() =>
+                  guard(
+                    !codeIncomplete,
+                    () => submit(),
+                    () => setError(`შეიყვანეთ ${CODE_LENGTH}-ნიშნა კოდი`),
+                  )
+                }
                 loading={busy}
-                disabled={code.length !== CODE_LENGTH}
                 style={{ marginTop: 18 }}
               />
 
@@ -277,6 +287,9 @@ function getstyles(theme: any) {
   },
   cellActive: {
     borderColor: theme.colors.accent,
+  },
+  cellError: {
+    borderColor: theme.colors.danger,
   },
   cellText: { fontSize: 24, fontWeight: '700', color: theme.colors.ink },
   hiddenInput: {

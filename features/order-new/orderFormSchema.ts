@@ -1,6 +1,7 @@
-// orderFormSchema.ts — types, initial state, helpers for the order wizard.
+// orderFormSchema.ts - types, initial state, helpers for the order wizard.
 
-import { Ionicons } from '@expo/vector-icons';
+import { ShieldCheck, Ban, Flame, Wrench } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import type {
   AlcoholControlOrderFormData,
   CraneOperatorOrderFormData,
@@ -30,7 +31,7 @@ export function isCraneVariant(docType: OrderDocumentType | null): boolean {
 /** @deprecated Use isCraneVariant */
 export const isCraneOperatorVariant = isCraneVariant;
 
-// Combined form — all fields across all document types; unused ones stay ''
+// Combined form - all fields across all document types; unused ones stay ''
 export interface CombinedForm {
   orderNumber: string;
   city: string;
@@ -120,13 +121,13 @@ export const INITIAL_FORM: CombinedForm = {
   operatorSignedAt: null,
 };
 
-export const DOC_TYPES: { type: OrderDocumentType; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { type: 'labor_safety_specialist',      icon: 'shield-checkmark-outline' },
-  { type: 'alcohol_control',              icon: 'ban-outline' },
-  { type: 'fire_safety_order',            icon: 'flame-outline' },
-  { type: 'fire_safety_order_enterprise', icon: 'flame-outline' },
-  { type: 'crane_operator_order',         icon: 'construct-outline' },
-  { type: 'crane_technical_order',        icon: 'construct-outline' },
+export const DOC_TYPES: { type: OrderDocumentType; Icon: LucideIcon }[] = [
+  { type: 'labor_safety_specialist',      Icon: ShieldCheck },
+  { type: 'alcohol_control',              Icon: Ban },
+  { type: 'fire_safety_order',            Icon: Flame },
+  { type: 'fire_safety_order_enterprise', Icon: Flame },
+  { type: 'crane_operator_order',         Icon: Wrench },
+  { type: 'crane_technical_order',        Icon: Wrench },
 ];
 
 export type AnyOrderFormData =
@@ -328,8 +329,8 @@ export function canAdvanceStep(
       );
     }
   }
-  // step 4 crane: crane specs — no required fields, always can advance
-  // step 5 fire safety / step 6 crane: signature step — check signatures
+  // step 4 crane: crane specs - no required fields, always can advance
+  // step 5 fire safety / step 6 crane: signature step - check signatures
   if (step === 5 && isFireSafetyVariant(docType)) {
     return !!form.directorSignature && !!form.appointedSignature;
   }

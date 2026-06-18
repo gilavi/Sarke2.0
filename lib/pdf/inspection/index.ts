@@ -1,4 +1,4 @@
-// Inspection PDF template — public barrel.
+// Inspection PDF template - public barrel.
 // One source of truth for the generic inspection PDF HTML, called by both
 // the mobile expo-print wrapper (`lib/pdf.ts`) and the web preview pipeline.
 

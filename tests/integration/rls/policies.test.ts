@@ -21,7 +21,7 @@ describe('RLS policy enforcement', () => {
   beforeAll(async () => {
     reachable = await isSupabaseReachable(supabaseUrl);
     if (!reachable) {
-      console.warn(`⚠️  Local Supabase not reachable at ${supabaseUrl} — skipping RLS tests`);
+      console.warn(`⚠️  Local Supabase not reachable at ${supabaseUrl} - skipping RLS tests`);
     }
   });
 
@@ -71,20 +71,20 @@ describe('RLS policy enforcement', () => {
 });
 
 /**
- * Storage owner-scoping — verifies migration 0053_storage_rls_owner_scoping.sql.
+ * Storage owner-scoping - verifies migration 0053_storage_rls_owner_scoping.sql.
  *
  * The four client-written buckets are owner-scoped: any authenticated user may
  * INSERT, but SELECT/UPDATE/DELETE require storage.objects.owner = auth.uid().
  * Paths deliberately mirror the real writers (see lib/inspection/service.ts,
  * lib/signatures.ts, lib/pdfName.ts call sites, lib/services/real/inspections.ts)
- * to prove owner-scoping holds regardless of path shape — path-based policies
+ * to prove owner-scoping holds regardless of path shape - path-based policies
  * are impossible here because three buckets use literal first segments
  * ('incidents/', 'orders/', 'project/', per-type tags like 'bobcat/').
  */
 describe('storage owner-scoping (migration 0053)', () => {
   const supabaseUrl = process.env.SUPABASE_URL || 'http://localhost:54321';
   const anonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0';
-  // Fixed Supabase CLI demo service_role JWT — local only, same keypair family
+  // Fixed Supabase CLI demo service_role JWT - local only, same keypair family
   // as the demo anon key above. Used solely to create the four dashboard-managed
   // buckets that no migration creates.
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
@@ -105,12 +105,12 @@ describe('storage owner-scoping (migration 0053)', () => {
   beforeAll(async () => {
     reachable = await isSupabaseReachable(supabaseUrl);
     if (!reachable) {
-      console.warn(`⚠️  Local Supabase not reachable at ${supabaseUrl} — skipping storage RLS tests`);
+      console.warn(`⚠️  Local Supabase not reachable at ${supabaseUrl} - skipping storage RLS tests`);
       return;
     }
 
     // The four core buckets were created via the hosted dashboard, not in any
-    // migration — create them locally (idempotent) before testing policies.
+    // migration - create them locally (idempotent) before testing policies.
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
@@ -126,7 +126,7 @@ describe('storage owner-scoping (migration 0053)', () => {
       const email = `rls-storage-${crypto.randomUUID()}@test.local`;
       const { data, error } = await client.auth.signUp({ email, password: 'test-password-123' });
       if (error) throw error;
-      if (!data.session) throw new Error('signUp returned no session — is enable_confirmations=false locally?');
+      if (!data.session) throw new Error('signUp returned no session - is enable_confirmations=false locally?');
       return { client, id: data.user!.id };
     };
     const a = await mkUser();
@@ -161,7 +161,7 @@ describe('storage owner-scoping (migration 0053)', () => {
       const theftList = await otherClient.storage.from(bucket).list(folder);
       expect(theftList.data ?? []).toEqual([]);
 
-      // other user's delete is a silent no-op under RLS — object must survive
+      // other user's delete is a silent no-op under RLS - object must survive
       await otherClient.storage.from(bucket).remove([objectPath]);
       const stillThere = await ownerClient.storage.from(bucket).download(objectPath);
       expect(stillThere.error).toBeNull();

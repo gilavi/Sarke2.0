@@ -53,7 +53,7 @@ export default function NewReport() {
     >
       <div className="space-y-5">
         <p className="text-sm text-neutral-500">
-          შექმენით დრაფტი — სლაიდები დაამატეთ რეპორტის გვერდზე.
+          შექმენით დრაფტი - სლაიდები დაამატეთ რეპორტის გვერდზე.
         </p>
 
         {prefilledProjectId ? (

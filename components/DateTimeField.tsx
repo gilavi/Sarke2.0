@@ -1,7 +1,7 @@
 // Unified date / time / datetime field.
 //
 // Renders the trigger chip(s) AND owns the sheet, so every screen gets the same UX.
-// Uses draft state — scrolling the wheel doesn't commit until Confirm. Cancel and
+// Uses draft state - scrolling the wheel doesn't commit until Confirm. Cancel and
 // backdrop-tap discard the draft.
 //
 // Modes:
@@ -24,7 +24,8 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { CalendarDays, Clock } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
@@ -40,6 +41,8 @@ interface Props {
   maxDate?: Date;
   /** Disables the trigger. */
   disabled?: boolean;
+  /** Danger message shown below the chips; also paints the chip borders red. */
+  error?: string;
 }
 
 const KA_MONTHS_SHORT = [
@@ -66,6 +69,7 @@ export function DateTimeField({
   minDate,
   maxDate,
   disabled,
+  error,
 }: Props) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -104,7 +108,7 @@ export function DateTimeField({
     mode === 'datetime' ? activeTab : (mode as 'date' | 'time');
 
   // iOS uses inline calendar for date, spinner wheel for time.
-  // Android uses spinner for both — gives uniform feel inside our modal
+  // Android uses spinner for both - gives uniform feel inside our modal
   // and avoids the platform's default dialog popping a second sheet.
   const display: 'inline' | 'spinner' =
     Platform.OS === 'ios' && sheetPickerMode === 'date' ? 'inline' : 'spinner';
@@ -128,12 +132,13 @@ export function DateTimeField({
             style={({ pressed }) => [
               styles.chip,
               { flex: mode === 'datetime' ? 1.5 : 1 },
+              error ? styles.chipError : null,
               pressed && styles.chipPressed,
               disabled && styles.chipDisabled,
             ]}
             {...a11y(formatDate(value), 'თარიღის არჩევა', 'button')}
           >
-            <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+            <CalendarDays size={18} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={styles.chipText} numberOfLines={1}>
               {formatDate(value)}
             </Text>
@@ -147,18 +152,21 @@ export function DateTimeField({
             style={({ pressed }) => [
               styles.chip,
               { flex: 1 },
+              error ? styles.chipError : null,
               pressed && styles.chipPressed,
               disabled && styles.chipDisabled,
             ]}
             {...a11y(formatTime(value), 'დროის არჩევა', 'button')}
           >
-            <Ionicons name="time-outline" size={18} color={theme.colors.accent} />
+            <Clock size={18} color={theme.colors.accent} strokeWidth={1.5} />
             <Text style={styles.chipText} numberOfLines={1}>
               {formatTime(value)}
             </Text>
           </Pressable>
         )}
       </View>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <Modal
         visible={open}
@@ -177,7 +185,7 @@ export function DateTimeField({
               { backgroundColor: theme.colors.surface, paddingBottom: insets.bottom + 16 },
             ]}
           >
-            {/* Header — Cancel / Title / Confirm */}
+            {/* Header - Cancel / Title / Confirm */}
             <View style={styles.header}>
               <Pressable onPress={cancel} hitSlop={16} {...a11y('გაუქმება', '', 'button')}>
                 <Text style={styles.headerAction}>გაუქმება</Text>
@@ -198,14 +206,14 @@ export function DateTimeField({
                 <TabButton
                   active={activeTab === 'date'}
                   label={formatDate(draft)}
-                  icon="calendar-outline"
+                  icon={CalendarDays}
                   onPress={() => setActiveTab('date')}
                   theme={theme}
                 />
                 <TabButton
                   active={activeTab === 'time'}
                   label={formatTime(draft)}
-                  icon="time-outline"
+                  icon={Clock}
                   onPress={() => setActiveTab('time')}
                   theme={theme}
                 />
@@ -237,11 +245,11 @@ export function DateTimeField({
 }
 
 function TabButton({
-  active, label, icon, onPress, theme,
+  active, label, icon: IconComp, onPress, theme,
 }: {
   active: boolean;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   onPress: () => void;
   theme: any;
 }) {
@@ -256,10 +264,10 @@ function TabButton({
         },
       ]}
     >
-      <Ionicons
-        name={icon}
+      <IconComp
         size={16}
         color={active ? theme.colors.accent : theme.colors.inkSoft}
+        strokeWidth={1.5}
       />
       <Text
         style={{
@@ -314,6 +322,15 @@ function makeStyles(theme: any) {
     },
     chipDisabled: {
       opacity: 0.4,
+    },
+    chipError: {
+      borderColor: theme.colors.danger,
+      borderWidth: 1.5,
+    },
+    errorText: {
+      fontSize: 12,
+      color: theme.colors.danger,
+      marginLeft: 2,
     },
     chipText: {
       flex: 1,

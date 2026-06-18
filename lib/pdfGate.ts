@@ -30,7 +30,7 @@ export class PdfLimitReachedError extends Error {
  * Atomically checks whether the user may generate another PDF and, if so,
  * increments their server-side pdf_count.
  *
- * Runs inside Postgres via supabase.rpc — cannot be bypassed by reinstalling
+ * Runs inside Postgres via supabase.rpc - cannot be bypassed by reinstalling
  * the app or clearing AsyncStorage.
  *
  * @throws {PdfLimitReachedError} if the free-tier cap is hit.

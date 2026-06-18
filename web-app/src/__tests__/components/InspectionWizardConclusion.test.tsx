@@ -1,5 +1,5 @@
 /**
- * Deeper InspectionWizard tests — exercise the question step + conclusion path.
+ * Deeper InspectionWizard tests - exercise the question step + conclusion path.
  * The existing tests cover the info step + edit-mode mount; this one walks the
  * yesno question (click answer) and triggers the conclusion-step completion path.
  */
@@ -67,7 +67,7 @@ beforeEach(() => {
   vi.mocked(listAnswerPhotos).mockResolvedValue([]);
 });
 
-describe('InspectionWizard — edit mode with one question', () => {
+describe('InspectionWizard - edit mode with one question', () => {
   it('mounts in edit mode + can click the yesno question', async () => {
     const existing: Inspection = {
       id: 'i1', project_id: 'p1', user_id: 'u1', template_id: 't1', status: 'draft',
@@ -90,7 +90,7 @@ describe('InspectionWizard — edit mode with one question', () => {
         initialAnswers={answers}
       />,
     );
-    // Wizard mounts — its info step is skipped since inspection is set.
+    // Wizard mounts - its info step is skipped since inspection is set.
     expect(document.body.firstChild).toBeTruthy();
   });
 

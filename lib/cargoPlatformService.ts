@@ -27,7 +27,7 @@ type DbRow = {
   verdict: string | null;
   verdict_comment: string | null;
   summary_photos: string[];
-  // Column dropped by 20260526002032_remove_persisted_inspection_signatures —
+  // Column dropped by 20260526002032_remove_persisted_inspection_signatures -
   // old clients may still see it absent; toModel synthesizes an empty slot.
   signatures?: CPSignatory[];
   completed_at: string | null;
@@ -86,7 +86,7 @@ function toModel(row: DbRow): CargoPlatformInspection {
   };
 }
 
-// signatures are ephemeral (memory-only) — never persisted via patch.
+// signatures are ephemeral (memory-only) - never persisted via patch.
 type CargoPlatformPatch = Partial<{
   company: string;
   address: string;
@@ -138,7 +138,7 @@ const base = makeInspectionService<CargoPlatformInspection, CargoPlatformPatch>(
   inspectionType: 'cargo_platform',
   toModel,
   toDb,
-  // NOTE: no `signatures` here — the column was dropped from
+  // NOTE: no `signatures` here - the column was dropped from
   // cargo_platform_inspections (20260526002032); sending it makes PostgREST
   // reject the whole insert ("could not find the 'signatures' column").
   // Signatures are memory-only (toModel synthesizes an empty slot).

@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ShieldCheck, TriangleAlert, Megaphone, FileText, UserPlus, CloudUpload } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText } from './primitives/A11yText';
-import { useTheme, type Theme } from '../lib/theme';
+import { useTheme, withOpacity, type Theme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 
 export type ActionColorKey =
@@ -13,13 +14,13 @@ export type ActionColorKey =
   | 'participant'
   | 'file';
 
-const ICON_MAP: Record<ActionColorKey, keyof typeof Ionicons.glyphMap> = {
-  inspection: 'shield-checkmark-outline',
-  incident: 'warning-outline',
-  briefing: 'megaphone-outline',
-  report: 'document-text-outline',
-  participant: 'person-add-outline',
-  file: 'cloud-upload-outline',
+const ICON_MAP: Record<ActionColorKey, { icon: LucideIcon; filled: boolean }> = {
+  inspection: { icon: ShieldCheck,    filled: false },
+  incident:   { icon: TriangleAlert,  filled: false },
+  briefing:   { icon: Megaphone,      filled: false },
+  report:     { icon: FileText,       filled: false },
+  participant:{ icon: UserPlus,       filled: false },
+  file:       { icon: CloudUpload,    filled: false },
 };
 
 interface QuickActionButtonProps {
@@ -31,8 +32,8 @@ interface QuickActionButtonProps {
 
 export function QuickActionButton({ label, colorKey, onPress, fixedWidth }: QuickActionButtonProps) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getStyles(theme, colorKey, fixedWidth), [theme, colorKey, fixedWidth]);
-  const iconColor = (theme.colors.actionColors[colorKey] ?? theme.colors.actionColors.inspection).icon;
+  const styles = useMemo(() => getStyles(theme, fixedWidth), [theme, fixedWidth]);
+  const { icon: IconComp, filled } = ICON_MAP[colorKey];
 
   return (
     <Pressable
@@ -41,12 +42,17 @@ export function QuickActionButton({ label, colorKey, onPress, fixedWidth }: Quic
       {...a11y(label, undefined, 'button')}
     >
       <View style={styles.iconCircle}>
-        <Ionicons name={ICON_MAP[colorKey]} size={24} color={iconColor} />
+        <IconComp
+          size={24}
+          color={theme.colors.accent}
+          fill={filled ? theme.colors.accent : 'none'}
+          strokeWidth={filled ? 0 : 1.5}
+        />
       </View>
       <A11yText
         size="xs"
-        weight="medium"
-        color={theme.colors.ink}
+        weight="bold"
+        color={theme.colors.inkSoft}
         style={styles.label}
         numberOfLines={1}
       >
@@ -56,8 +62,7 @@ export function QuickActionButton({ label, colorKey, onPress, fixedWidth }: Quic
   );
 }
 
-function getStyles(theme: Theme, colorKey: ActionColorKey, fixedWidth?: number) {
-  const ac = theme.colors.actionColors[colorKey] ?? theme.colors.actionColors.inspection;
+function getStyles(theme: Theme, fixedWidth?: number) {
   return StyleSheet.create({
     container: {
       ...(fixedWidth ? { width: fixedWidth } : { flex: 1 }),
@@ -72,12 +77,13 @@ function getStyles(theme: Theme, colorKey: ActionColorKey, fixedWidth?: number) 
       width: 56,
       height: 56,
       borderRadius: theme.radius.full,
-      backgroundColor: ac.bg,
+      backgroundColor: withOpacity('#FF6D2E', 0.12),
       alignItems: 'center',
       justifyContent: 'center',
     },
     label: {
       textAlign: 'center',
+      fontWeight: '800',
     },
   });
 }

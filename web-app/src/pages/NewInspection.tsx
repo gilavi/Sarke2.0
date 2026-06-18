@@ -53,7 +53,7 @@ export default function NewInspection() {
     >
       <div className="space-y-5">
         <p className="text-sm text-neutral-500">
-          აირჩიეთ შაბლონი — კითხვები შეივსება აქტის გვერდზე.
+          აირჩიეთ შაბლონი - კითხვები შეივსება აქტის გვერდზე.
         </p>
 
         {prefilledProjectId ? (
@@ -84,7 +84,7 @@ export default function NewInspection() {
                 <span className={selectedTemplate ? 'text-neutral-900' : 'text-neutral-400'}>
                   {selectedTemplate
                     ? `${inspectionDisplayName(selectedTemplate.name)}${selectedTemplate.is_system ? ' (სისტემური)' : ''}`
-                    : '— აირჩიეთ შაბლონი —'}
+                    : '- აირჩიეთ შაბლონი -'}
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
               </button>

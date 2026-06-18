@@ -73,7 +73,7 @@ export default function NotFound() {
         transition={{ delay: 1.2 }}
         className="mb-8 text-sm text-neutral-400 dark:text-neutral-500"
       >
-        This page is under construction — or just doesn't exist.
+        This page is under construction - or just doesn't exist.
       </motion.p>
 
       <motion.div

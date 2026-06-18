@@ -1,4 +1,4 @@
-// Lifting accessories inspection types — ტვირთის გადასატანი თასმების / ჩამჭიდების.
+// Lifting accessories inspection types - ტვირთის გადასატანი თასმების / ჩამჭიდების.
 // DB-backed by `lifting_accessories_inspections` (migration 0049).
 //
 // Web mirror of the Expo app's `types/liftingAccessories.ts` (kept in sync by
@@ -76,8 +76,8 @@ export const LA_CHECKLIST_ITEMS: LAChecklistEntry[] = [
 ];
 
 export const LA_SECTION_LABELS: Record<'A' | 'B', string> = {
-  A: 'A — ვიზუალური შემოწმება',
-  B: 'B — ფუნქციური შემოწმება',
+  A: 'A - ვიზუალური შემოწმება',
+  B: 'B - ფუნქციური შემოწმება',
 };
 
 export const LA_RESULT_TO_CHIP: Record<LAResult, string> = {

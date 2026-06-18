@@ -6,7 +6,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Brand palette — Safety Orange, unified with mobile (lib/theme.ts)
+        // Brand palette - Safety Orange, unified with mobile (lib/theme.ts)
         // and the marketing landing page.
         brand: {
           50: '#FFF3EE',
@@ -22,7 +22,7 @@ export default {
           950: '#421106',
         },
         // ─── Hubble brand board (marketing site) ───────────────────────────
-        // SAFETY ORANGE #FF5A1F — primary action / accent (scale around it).
+        // SAFETY ORANGE #FF5A1F - primary action / accent (scale around it).
         safety: {
           50: '#FFF3EE',
           100: '#FFE3D6',
@@ -36,7 +36,7 @@ export default {
           900: '#7B2913',
           950: '#421106',
         },
-        // HI-VIS YELLOW #E6FF4D — high-energy spotlight (numbers, sticker pills).
+        // HI-VIS YELLOW #E6FF4D - high-energy spotlight (numbers, sticker pills).
         hivis: {
           DEFAULT: '#E6FF4D',
           300: '#EEFF85',
@@ -45,7 +45,7 @@ export default {
           600: '#A8C400',
           700: '#7E9300',
         },
-        // GRAPHITE #1A1A1A — dark sections + ink (warm near-black scale).
+        // GRAPHITE #1A1A1A - dark sections + ink (warm near-black scale).
         graphite: {
           DEFAULT: '#1A1A1A',
           400: '#6E6E66',
@@ -56,8 +56,8 @@ export default {
           900: '#161614',
           950: '#0D0D0C',
         },
-        offwhite: '#F2F1EC', // OFF-WHITE — warm page background
-        concrete: '#D6D6D1', // CONCRETE — borders / muted text on dark
+        offwhite: '#F2F1EC', // OFF-WHITE - warm page background
+        concrete: '#D6D6D1', // CONCRETE - borders / muted text on dark
         neutral: {
           50: '#FAFAF8',
           100: '#F5F5F0',

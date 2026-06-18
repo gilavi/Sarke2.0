@@ -105,7 +105,7 @@ export function SlideCard({
               type="button"
               onClick={onRemove}
               disabled={isRemoving}
-              aria-label={`${label} — სლაიდის წაშლა`}
+              aria-label={`${label} - სლაიდის წაშლა`}
               className="mt-1 text-neutral-400 hover:text-red-500 disabled:opacity-50"
               title="სლაიდის წაშლა"
             >

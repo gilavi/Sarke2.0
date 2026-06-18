@@ -1,5 +1,5 @@
 /**
- * Calendar interactions (44% covered) — prev/next month, "today" button,
+ * Calendar interactions (44% covered) - prev/next month, "today" button,
  * day-overflow modal (when a day has 4+ events).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -62,7 +62,7 @@ beforeEach(() => {
   vi.mocked(listIncidents).mockResolvedValue([]);
 });
 
-describe('Calendar — navigation', () => {
+describe('Calendar - navigation', () => {
   it('clicking the ChevronRight goes to next month', async () => {
     renderPage(<Calendar />);
     const currentHeader = await screen.findByText(
@@ -96,7 +96,7 @@ describe('Calendar — navigation', () => {
   });
 });
 
-describe('Calendar — with events', () => {
+describe('Calendar - with events', () => {
   it('renders events grid + legend', async () => {
     vi.mocked(listIncidents).mockResolvedValue([
       { id: 'inc1', project_id: 'p1', type: 'minor', date_time: todayISO, status: 'completed' } as never,

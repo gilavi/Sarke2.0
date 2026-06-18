@@ -19,7 +19,21 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SkeletonListCard } from '../../../../components/Skeleton';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Plus,
+  X,
+  ChevronLeft,
+  CircleCheck,
+  CircleX,
+  Circle,
+  CircleAlert,
+  BookOpen,
+  Share2,
+  Pencil,
+  Ban,
+  Cpu,
+  CornerDownRight,
+} from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { A11yText as Text } from '../../../../components/primitives/A11yText';
@@ -29,6 +43,7 @@ import { SignatureCanvas } from '../../../../components/SignatureCanvas';
 import { useTheme } from '../../../../lib/theme';
 import { useToast } from '../../../../lib/toast';
 import { a11y } from '../../../../lib/accessibility';
+import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 import { useProject } from '../../../../lib/apiHooks';
 import { qk } from '../../../../lib/apiHooks';
 import {
@@ -116,6 +131,12 @@ export default function BreathalizerJournalScreen() {
   const [addStep, setAddStep] = useState(1);
   const [repeatFor, setRepeatFor] = useState<BLEntry | null>(null);
   const [savingEntry, setSavingEntry] = useState(false);
+  // Enabled Next/Save buttons + on-press field errors for the add-entry modal.
+  const {
+    attempted: entryAttempted,
+    guard: entryGuard,
+    reset: resetEntryAttempted,
+  } = useSubmitGuard();
 
   // Step 1
   const [search, setSearch] = useState('');
@@ -143,6 +164,12 @@ export default function BreathalizerJournalScreen() {
   const [respName, setRespName] = useState('');
   const [respSig, setRespSig] = useState<string | null>(null);
   const [closingShift, setClosingShift] = useState(false);
+  // Enabled close-shift button + on-press field error (separate from add-entry).
+  const {
+    attempted: closeAttempted,
+    guard: closeGuard,
+    reset: resetCloseAttempted,
+  } = useSubmitGuard();
 
   // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -312,7 +339,7 @@ export default function BreathalizerJournalScreen() {
         undefined,
       );
     } catch {
-      toast.error('შეცდომა — გთხოვთ სცადოთ ხელახლა');
+      toast.error('შეცდომა - გთხოვთ სცადოთ ხელახლა');
     } finally {
       setClosingShift(false);
     }
@@ -323,6 +350,11 @@ export default function BreathalizerJournalScreen() {
       queryKey: qk.breathalyzerLog.byProject(projectId),
     });
   }
+
+  // Clear the add-entry error reveal whenever the step changes.
+  useEffect(() => {
+    resetEntryAttempted();
+  }, [addStep, resetEntryAttempted]);
 
   // ── Suggestions for step 1 ────────────────────────────────────────────────
   const crewSuggestions = useMemo<PoolPerson[]>(() => {
@@ -362,10 +394,10 @@ export default function BreathalizerJournalScreen() {
 
   const resultLabel =
     resultStatus === 'safe'
-      ? '✓ SAFE — სამუშაოდ დაშვება დაშვებულია'
+      ? '✓ SAFE - სამუშაოდ დაშვება დაშვებულია'
       : resultStatus === 'warning'
-        ? '⚠ WARNING — საჭიროა ზედამხედველობა'
-        : '✗ FAIL — სამუშაოდ დაშვება აკრძალულია';
+        ? '⚠ WARNING - საჭიროა ზედამხედველობა'
+        : '✗ FAIL - სამუშაოდ დაშვება აკრძალულია';
 
   // ── Entry can be saved ────────────────────────────────────────────────────
   const canSaveEntry =
@@ -412,10 +444,10 @@ export default function BreathalizerJournalScreen() {
       ) : !log ? (
         // ── No log for today ───────────────────────────────────────────────
         <View style={styles.center}>
-          <Ionicons
-            name="journal-outline"
+          <BookOpen
             size={52}
             color={theme.colors.borderStrong}
+            strokeWidth={1.5}
           />
           <Text style={styles.emptyTitle}>
             {isTodayLog
@@ -444,10 +476,10 @@ export default function BreathalizerJournalScreen() {
               </Text>
             </View>
             <View style={styles.snRow}>
-              <Ionicons
-                name="hardware-chip-outline"
+              <Cpu
                 size={13}
                 color={theme.colors.inkSoft}
+                strokeWidth={1.5}
               />
               <TextInput
                 style={styles.snInput}
@@ -497,7 +529,7 @@ export default function BreathalizerJournalScreen() {
             {/* FAIL repeat prompt */}
             {showRepeatPrompt && repeatFor ? (
               <View style={styles.repeatCard}>
-                <Ionicons name="alert-circle" size={20} color={BL_RESULT_COLORS.fail.text} />
+                <CircleAlert size={20} color={BL_RESULT_COLORS.fail.text} strokeWidth={1.5} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.repeatCardTitle, { color: BL_RESULT_COLORS.fail.text }]}>
                     პირი ვერ დაიშვება სამუშაოდ
@@ -533,6 +565,7 @@ export default function BreathalizerJournalScreen() {
                   onPress={() => {
                     setRespName('');
                     setRespSig(null);
+                    resetCloseAttempted();
                     setShowCloseShift(true);
                   }}
                   style={styles.closeShiftBtn}
@@ -548,7 +581,7 @@ export default function BreathalizerJournalScreen() {
                 style={styles.addEntryBtn}
                 {...a11y('ჩანაწერის დამატება', undefined, 'button')}
               >
-                <Ionicons name="add" size={22} color={theme.colors.white} />
+                <Plus size={22} color={theme.colors.white} strokeWidth={1.5} />
                 <Text style={styles.addEntryBtnText}>
                   ჩანაწერის დამატება
                 </Text>
@@ -585,10 +618,10 @@ export default function BreathalizerJournalScreen() {
                 style={styles.addEntryBtn}
                 {...a11y('PDF გაზიარება', undefined, 'button')}
               >
-                <Ionicons
-                  name="share-outline"
+                <Share2
                   size={20}
                   color={theme.colors.white}
+                  strokeWidth={1.5}
                 />
                 <Text style={styles.addEntryBtnText}>PDF გაზიარება</Text>
               </Pressable>
@@ -620,11 +653,19 @@ export default function BreathalizerJournalScreen() {
               style={styles.modalBackBtn}
               {...a11y(addStep > 1 ? 'უკან' : 'გაუქმება', undefined, 'button')}
             >
-              <Ionicons
-                name={addStep > 1 ? 'chevron-back' : 'close'}
-                size={22}
-                color={theme.colors.ink}
-              />
+              {addStep > 1 ? (
+                <ChevronLeft
+                  size={22}
+                  color={theme.colors.ink}
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <X
+                  size={22}
+                  color={theme.colors.ink}
+                  strokeWidth={1.5}
+                />
+              )}
             </Pressable>
             <Text style={styles.modalTitle}>
               {addStep === 1
@@ -703,12 +744,22 @@ export default function BreathalizerJournalScreen() {
                   required
                   value={entryName}
                   onChangeText={setEntryName}
+                  error={
+                    entryAttempted && !entryName.trim()
+                      ? 'სავალდებულო ველი'
+                      : undefined
+                  }
                 />
                 <FloatingLabelInput
                   label="პოზიცია"
                   required
                   value={entryPosition}
                   onChangeText={setEntryPosition}
+                  error={
+                    entryAttempted && !entryPosition.trim()
+                      ? 'სავალდებულო ველი'
+                      : undefined
+                  }
                 />
               </View>
             )}
@@ -718,10 +769,10 @@ export default function BreathalizerJournalScreen() {
               <View style={{ gap: 16 }}>
                 {repeatFor ? (
                   <View style={styles.repeatLabel}>
-                    <Ionicons
-                      name="return-down-forward-outline"
+                    <CornerDownRight
                       size={16}
                       color={theme.colors.accent}
+                      strokeWidth={1.5}
                     />
                     <Text
                       style={[
@@ -809,10 +860,10 @@ export default function BreathalizerJournalScreen() {
 
                 {resultStatus === 'fail' && (
                   <View style={styles.failWarningCard}>
-                    <Ionicons
-                      name="ban"
+                    <Ban
                       size={20}
                       color={BL_RESULT_COLORS.fail.text}
+                      strokeWidth={1.5}
                     />
                     <View style={{ flex: 1 }}>
                       <Text
@@ -828,6 +879,12 @@ export default function BreathalizerJournalScreen() {
                       </Text>
                     </View>
                   </View>
+                )}
+
+                {entryAttempted && parseResult(entryResultRaw) < 0 && (
+                  <Text style={styles.inlineError}>
+                    შეიყვანეთ სწორი მაჩვენებელი
+                  </Text>
                 )}
               </View>
             )}
@@ -854,10 +911,10 @@ export default function BreathalizerJournalScreen() {
                 >
                   {entrySignature ? (
                     <View style={styles.sigDone}>
-                      <Ionicons
-                        name="checkmark-circle"
+                      <CircleCheck
                         size={28}
                         color={theme.colors.accent}
+                        strokeWidth={1.5}
                       />
                       <Text
                         style={{
@@ -871,10 +928,10 @@ export default function BreathalizerJournalScreen() {
                     </View>
                   ) : (
                     <View style={styles.sigDone}>
-                      <Ionicons
-                        name="create-outline"
+                      <Pencil
                         size={28}
                         color={theme.colors.inkSoft}
+                        strokeWidth={1.5}
                       />
                       <Text
                         style={{
@@ -908,13 +965,19 @@ export default function BreathalizerJournalScreen() {
                     ]}
                   >
                     {entryRefusedSig && (
-                      <Ionicons name="close" size={14} color="#fff" />
+                      <X size={14} color="#fff" strokeWidth={1.5} />
                     )}
                   </View>
                   <Text style={styles.refuseText}>
                     ხელმოწერაზე უარი
                   </Text>
                 </Pressable>
+
+                {entryAttempted && !canSaveEntry && (
+                  <Text style={styles.inlineError}>
+                    საჭიროა ხელმოწერა ან უარის მონიშვნა
+                  </Text>
+                )}
               </View>
             )}
           </ScrollView>
@@ -930,20 +993,23 @@ export default function BreathalizerJournalScreen() {
               <Button
                 title="შემდეგი →"
                 size="lg"
-                onPress={() => setAddStep(s => s + 1)}
-                disabled={
-                  (addStep === 1 &&
-                    (!entryName.trim() || !entryPosition.trim())) ||
-                  (addStep === 3 && parseResult(entryResultRaw) < 0)
+                onPress={() =>
+                  entryGuard(
+                    !(
+                      (addStep === 1 &&
+                        (!entryName.trim() || !entryPosition.trim())) ||
+                      (addStep === 3 && parseResult(entryResultRaw) < 0)
+                    ),
+                    () => setAddStep(s => s + 1),
+                  )
                 }
               />
             ) : (
               <Button
                 title="შენახვა"
                 size="lg"
-                onPress={saveEntry}
+                onPress={() => entryGuard(canSaveEntry, saveEntry)}
                 loading={savingEntry}
-                disabled={!canSaveEntry}
               />
             )}
           </View>
@@ -970,7 +1036,7 @@ export default function BreathalizerJournalScreen() {
               style={styles.modalBackBtn}
               {...a11y('გაუქმება', undefined, 'button')}
             >
-              <Ionicons name="close" size={22} color={theme.colors.ink} />
+              <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
             </Pressable>
             <Text style={styles.modalTitle}>ცვლის დასრულება</Text>
             <View style={{ width: 36 }} />
@@ -1030,6 +1096,11 @@ export default function BreathalizerJournalScreen() {
               required
               value={respName}
               onChangeText={setRespName}
+              error={
+                closeAttempted && !respName.trim()
+                  ? 'სავალდებულო ველი'
+                  : undefined
+              }
             />
 
             <Pressable
@@ -1045,10 +1116,10 @@ export default function BreathalizerJournalScreen() {
             >
               {respSig ? (
                 <View style={styles.sigDone}>
-                  <Ionicons
-                    name="checkmark-circle"
+                  <CircleCheck
                     size={28}
                     color={theme.colors.accent}
+                    strokeWidth={1.5}
                   />
                   <Text
                     style={{
@@ -1062,10 +1133,10 @@ export default function BreathalizerJournalScreen() {
                 </View>
               ) : (
                 <View style={styles.sigDone}>
-                  <Ionicons
-                    name="create-outline"
+                  <Pencil
                     size={28}
                     color={theme.colors.inkSoft}
+                    strokeWidth={1.5}
                   />
                   <Text
                     style={{
@@ -1090,9 +1161,8 @@ export default function BreathalizerJournalScreen() {
             <Button
               title="დასრულება და PDF გენერაცია"
               size="lg"
-              onPress={closeShift}
+              onPress={() => closeGuard(!!respName.trim(), closeShift)}
               loading={closingShift}
-              disabled={!respName.trim()}
             />
           </View>
         </KeyboardAvoidingView>
@@ -1174,23 +1244,25 @@ function EntryRow({
       </View>
 
       {/* Sig indicator */}
-      <Ionicons
-        name={
-          entry.refusedSignature
-            ? 'close-circle-outline'
-            : entry.signature
-              ? 'checkmark-circle'
-              : 'ellipse-outline'
-        }
-        size={18}
-        color={
-          entry.refusedSignature
-            ? theme.colors.danger
-            : entry.signature
-              ? theme.colors.accent
-              : theme.colors.inkFaint
-        }
-      />
+      {entry.refusedSignature ? (
+        <CircleX
+          size={18}
+          color={theme.colors.danger}
+          strokeWidth={1.5}
+        />
+      ) : entry.signature ? (
+        <CircleCheck
+          size={18}
+          color={theme.colors.accent}
+          strokeWidth={1.5}
+        />
+      ) : (
+        <Circle
+          size={18}
+          color={theme.colors.inkFaint}
+          strokeWidth={1.5}
+        />
+      )}
     </View>
   );
 }
@@ -1438,7 +1510,7 @@ function getStyles(theme: any) {
       backgroundColor: theme.colors.accent,
     },
 
-    // Step 1 — person
+    // Step 1 - person
     searchInput: {
       backgroundColor: theme.colors.surfaceSecondary,
       borderRadius: 12,
@@ -1491,7 +1563,7 @@ function getStyles(theme: any) {
       color: theme.colors.inkFaint,
     },
 
-    // Step 2 — test type
+    // Step 2 - test type
     repeatLabel: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1529,7 +1601,7 @@ function getStyles(theme: any) {
       color: theme.colors.accent,
     },
 
-    // Step 3 — result
+    // Step 3 - result
     resultInputWrap: {
       borderRadius: 20,
       paddingVertical: 32,
@@ -1571,7 +1643,7 @@ function getStyles(theme: any) {
       marginTop: 2,
     },
 
-    // Step 4 — signature
+    // Step 4 - signature
     sigPrompt: {
       fontSize: 16,
       fontWeight: '600',
@@ -1607,6 +1679,14 @@ function getStyles(theme: any) {
     refuseText: {
       fontSize: 14,
       color: theme.colors.ink,
+    },
+
+    // Inline required-field error for custom controls without an `error` prop.
+    inlineError: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.danger,
+      marginTop: 2,
     },
 
     // Close shift

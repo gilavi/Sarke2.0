@@ -20,6 +20,11 @@ interface Props {
    * offset; now KeyboardAwareScrollView handles keyboard avoidance directly.
    */
   headerHeight?: number;
+  /**
+   * Optional ref to the underlying scroll view, so callers can drive scrolling
+   * (e.g. `useScrollToError` to bring the first invalid field into view).
+   */
+  scrollRef?: React.Ref<any>;
 }
 
 /**
@@ -32,16 +37,18 @@ interface Props {
  *   child naturally pushes to the bottom on short forms.
  * - Tapping outside any input dismisses the keyboard.
  *
- * Place the primary action button as the last element inside `children` —
+ * Place the primary action button as the last element inside `children` -
  * there is no separate footer slot.
  */
 export function KeyboardSafeArea({
   children,
   contentStyle,
   bottomOffset = 80,
+  scrollRef,
 }: Props) {
   return (
     <KeyboardAwareScrollView
+      ref={scrollRef}
       style={styles.scroll}
       contentContainerStyle={[styles.content, contentStyle]}
       keyboardShouldPersistTaps="handled"

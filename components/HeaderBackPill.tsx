@@ -1,6 +1,6 @@
 import { Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
@@ -13,7 +13,7 @@ interface Props {
 
 /**
  * Minimal "< უკან" header-left used across the app. No pill background, no
- * iOS rounded chip — just an accent-tinted chevron + label. Visually matches
+ * iOS rounded chip - just an accent-tinted chevron + label. Visually matches
  * the back button inside FlowHeader so the rest of the app reads the same.
  */
 export function HeaderBackPill({ label = 'უკან', onPress }: Props) {
@@ -36,7 +36,7 @@ export function HeaderBackPill({ label = 'უკან', onPress }: Props) {
       ]}
       {...a11y(label, 'წინა ეკრანზე დაბრუნება', 'button')}
     >
-      <Ionicons name="chevron-back" size={18} color={theme.colors.accent} />
+      <ChevronLeft size={18} color={theme.colors.accent} strokeWidth={1.5} />
       <Text style={{ color: theme.colors.accent, fontSize: 15, fontWeight: '500', marginLeft: 1 }}>
         {label}
       </Text>

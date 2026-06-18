@@ -28,9 +28,9 @@ export interface ScheduleDeleteArgs {
  * (optimistic UI); this helper only manages the timer + toast.
  *
  * Calling scheduleDelete while a previous hold is still live causes the previous
- * operation to execute immediately — we never silently drop the user's intent.
+ * operation to execute immediately - we never silently drop the user's intent.
  * If `unmount` is triggered externally via the returned handle, the pending
- * operation executes (safer than losing it — user already confirmed).
+ * operation executes (safer than losing it - user already confirmed).
  */
 export function scheduleDelete({
   message,

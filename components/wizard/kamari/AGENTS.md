@@ -25,7 +25,7 @@ shape so the results screen and PDF generation keep working unchanged
 - `KamariDetailModal.tsx` — the per-belt accordion modal (Step 3).
 - `KamariPhotoThumb.tsx` — small thumbnail with delete control.
 - `_shared.ts` — types/helpers: `rowKey`, `captionFor`,
-  `componentColsFor`, `maxRowsFor`, `badCountFor`, `BRAND_GREEN`,
+  `componentColsFor`, `maxRowsFor`, `badCountFor`, `BRAND_ACCENT`,
   `COMMENT_PREFIX`.
 - `styles.ts` — `getstyles(theme)` factory.
 - `KamariFlow.tsx` — backwards-compat barrel that re-exports all

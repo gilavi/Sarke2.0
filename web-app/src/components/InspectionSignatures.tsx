@@ -1,5 +1,5 @@
 /**
- * InspectionSignatures — displays the list of signatories for any inspection entity
+ * InspectionSignatures - displays the list of signatories for any inspection entity
  * and (when canEdit) allows adding new ones via a name/role + canvas modal.
  *
  * Props:

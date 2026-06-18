@@ -78,14 +78,14 @@ export default function Qualifications() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
-                  <div>ნომერი: {q.number || '—'}</div>
+                  <div>ნომერი: {q.number || '-'}</div>
                   <div>
-                    გაცემა: {q.issued_at ? new Date(q.issued_at).toLocaleDateString('ka-GE') : '—'}
+                    გაცემა: {q.issued_at ? new Date(q.issued_at).toLocaleDateString('ka-GE') : '-'}
                     {' · '}
                     ვადა:{' '}
                     {q.expires_at
                       ? new Date(q.expires_at).toLocaleDateString('ka-GE')
-                      : '—'}
+                      : '-'}
                   </div>
                   {q.file_url && (
                     <Button

@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 export function getStyles(theme: any) {
   return StyleSheet.create({
-  // ── Sheet — sits flush below the arch ──
+  // ── Sheet - sits flush below the arch ──
   sheet: {
     flex: 1,
     backgroundColor: theme.colors.background,

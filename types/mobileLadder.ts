@@ -23,12 +23,12 @@ export interface MobileLadderInspection {
   templateId: string | null;
   userId: string;
   status: 'draft' | 'completed';
-  // Section 1 — ზოგადი ინფორმაცია
+  // Section 1 - ზოგადი ინფორმაცია
   company: string;
   address: string;
   inspectorName: string;
   inspectionDate: string;
-  // Section 2 — კიბის იდენტიფიკაცია
+  // Section 2 - კიბის იდენტიფიკაცია
   ladderType: string | null;
   ladderTypeUnknown: boolean;
   model: string | null;
@@ -38,12 +38,12 @@ export interface MobileLadderInspection {
   maxLoadKg: number | null;
   maxLoadUnknown: boolean;
   nextInspectionDate: string | null;
-  // Sections 3–4 — შემოწმება (8 items: 5 in A, 3 in B)
+  // Sections 3–4 - შემოწმება (8 items: 5 in A, 3 in B)
   items: MLItemState[];
-  // Section 5 — დასკვნა
+  // Section 5 - დასკვნა
   verdict: MLVerdict | null;
   verdictComment: string;
-  // Section 6 — ხელმოწერა
+  // Section 6 - ხელმოწერა
   signature: MLSignatory;
   completedAt: string | null;
   createdAt: string;
@@ -60,13 +60,13 @@ export interface MLChecklistEntry {
 }
 
 export const ML_CHECKLIST_ITEMS: MLChecklistEntry[] = [
-  // Section A — სტრუქტურული მდგომარეობა
+  // Section A - სტრუქტურული მდგომარეობა
   { id: 1, label: 'კიბის ლიანდაგები', description: 'ხილვადი დეფორმაცია/ბზარი', section: 'A' },
   { id: 2, label: 'საფეხურები', description: 'მყარია, ზედაპირი მთლიანი', section: 'A' },
   { id: 3, label: 'შედუღება/შეერთებები', description: 'ბზარი/კოროზია', section: 'A' },
   { id: 4, label: 'კიბის ელემენტები (ჭანჭიკები, მობრჯენები)', description: 'სრულია', section: 'A' },
   { id: 5, label: 'გახსნის მექანიზმი', description: 'სწორად მუშაობს', section: 'A' },
-  // Section B — სამობილო სისტემა
+  // Section B - სამობილო სისტემა
   { id: 6, label: 'გორგოლაჭის ღერძები', description: 'თავისუფლად მოძრაობს, ჩარჩო მყარი', section: 'B' },
   { id: 7, label: 'სამუხრუჭე სისტემა / ბლოკირება', description: '', section: 'B' },
   { id: 8, label: 'კიბის ფეხები (სტაბილიზატორები)', description: '', section: 'B' },
@@ -88,8 +88,8 @@ export const ML_CHIP_TO_RESULT: Record<string, MLResult> = {
 
 export const ML_VERDICT_LABELS: Record<MLVerdict, string> = {
   safe:   'უსაფრთხოა გამოსაყენებლად',
-  minor:  'მცირე დაზიანება — დასაშვებია',
-  banned: 'დაზიანებულია — აკრძალულია',
+  minor:  'მცირე დაზიანება - დასაშვებია',
+  banned: 'დაზიანებულია - აკრძალულია',
 };
 
 /** Shared ChecklistItemOptions constant for all ML checklist items. */
@@ -153,7 +153,7 @@ export function buildDefaultMLInspection(
 
 /**
  * Derives a verdict suggestion from checklist results.
- * 'minor' is never suggested — only set manually by the inspector.
+ * 'minor' is never suggested - only set manually by the inspector.
  */
 export function computeMLVerdictSuggestion(items: MLItemState[]): MLVerdict | null {
   const filled = items.filter(i => i.result !== null);

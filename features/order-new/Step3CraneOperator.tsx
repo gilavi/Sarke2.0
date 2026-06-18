@@ -7,7 +7,7 @@ import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
 export function Step3CraneOperator({
-  form, setForm, s, onPickPhoto, onDeletePhoto,
+  form, setForm, s, attempted, onPickPhoto, onDeletePhoto,
   positionLabel = 'სამუშაო პოზიცია',
   positionField = 'craneOperatorPosition',
   stepTitle = 'ოპერატორი',
@@ -15,6 +15,7 @@ export function Step3CraneOperator({
   form: CombinedForm;
   setForm: React.Dispatch<React.SetStateAction<CombinedForm>>;
   s: OrderStyles;
+  attempted: boolean;
   onPickPhoto: () => void;
   onDeletePhoto: () => void;
   positionLabel?: string;
@@ -30,6 +31,7 @@ export function Step3CraneOperator({
         required
         value={form.craneOperatorName}
         onChangeText={v => setForm(f => ({ ...f, craneOperatorName: v }))}
+        error={attempted && !form.craneOperatorName.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <FloatingLabelInput
@@ -37,6 +39,7 @@ export function Step3CraneOperator({
         required
         value={form.craneOperatorPersonalId}
         onChangeText={v => setForm(f => ({ ...f, craneOperatorPersonalId: v }))}
+        error={attempted && form.craneOperatorPersonalId.trim().length !== 11 ? 'სავალდებულო ველი' : undefined}
         keyboardType="numeric"
         maxLength={11}
       />
@@ -52,6 +55,7 @@ export function Step3CraneOperator({
         required
         value={form.craneOperatorCertNumber}
         onChangeText={v => setForm(f => ({ ...f, craneOperatorCertNumber: v }))}
+        error={attempted && !form.craneOperatorCertNumber.trim() ? 'სავალდებულო ველი' : undefined}
       />
 
       <DateTimeField

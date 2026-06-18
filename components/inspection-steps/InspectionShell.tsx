@@ -5,14 +5,17 @@
  */
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { Check, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../ui';
 import { FlowHeader } from '../FlowHeader';
 import { WizardStepTransition } from '../wizard/WizardStepTransition';
+import { OfflineBanner } from '../OfflineBanner';
 import { useTheme } from '../../lib/theme';
+import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 
 export interface InspectionShellProps {
@@ -27,17 +30,29 @@ export interface InspectionShellProps {
   direction: 'next' | 'prev';
   animate: boolean;
   canGoNext: boolean;
-  /** When true, renders "შენახვა და დასრულება" instead of "შემდეგი" */
+  /** When true, renders the finish button instead of "შემდეგი" */
   isLastStep?: boolean;
-  saving?: boolean;
+  /** Custom finish-button label (defaults to "შენახვა და დასრულება"). */
+  finishLabel?: string;
+  /**
+   * When true, this step requires `canGoNext` to advance (no skip). The Next
+   * button stays *enabled*; pressing it while invalid fires an error haptic and
+   * calls `onBlockedNext` (so the screen can reveal its red required fields)
+   * instead of advancing.
+   */
+  blockNext?: boolean;
   completing?: boolean;
-  /** Whether to show the PDF icon in the header trailing slot */
-  showPdfIcon?: boolean;
-  generatingPdf?: boolean;
+  /**
+   * Called when the user presses Next/Finish while `canGoNext` is false on a
+   * validated step (`blockNext` or the last step). The screen uses this to flip
+   * its `attempted` flag and light up the empty required fields.
+   */
+  onBlockedNext?: () => void;
+  /** Optional banner rendered between the header and the step content (e.g. PdfLockedBanner). */
+  banner?: ReactNode;
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
-  onPdf?: () => void;
   children: ReactNode;
 }
 
@@ -51,19 +66,32 @@ export function InspectionShell({
   animate,
   canGoNext,
   isLastStep = false,
-  saving = false,
   completing = false,
-  showPdfIcon = false,
-  generatingPdf = false,
+  finishLabel,
+  blockNext = false,
+  onBlockedNext,
+  banner,
   onNext,
   onPrev,
   onClose,
-  onPdf,
   children,
 }: InspectionShellProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(theme, insets.bottom);
+
+  // Enabled button + on-press validation: validated steps (the last step, or any
+  // `blockNext` step) reveal their errors instead of advancing when invalid.
+  const handleNext = () => {
+    if (completing) return;
+    const mustValidate = isLastStep || blockNext;
+    if (mustValidate && !canGoNext) {
+      haptic.validationError();
+      onBlockedNext?.();
+      return;
+    }
+    onNext();
+  };
 
   return (
     <View style={styles.root}>
@@ -78,60 +106,43 @@ export function InspectionShell({
         leading="back"
         trailing="close"
         onClose={onClose}
-        trailingElement={
-          showPdfIcon && onPdf ? (
-            <Pressable
-              onPress={onPdf}
-              disabled={generatingPdf}
-              hitSlop={10}
-              {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-            >
-              <Ionicons
-                name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-                size={22}
-                color={theme.colors.accent}
-              />
-            </Pressable>
-          ) : null
-        }
         onBack={onPrev}
         backDisabled={false}
+        surfaceColor={theme.colors.surface}
       />
 
-      {saving && (
-        <Text style={[styles.savingHint, { color: theme.colors.inkFaint }]}>შენახვა…</Text>
-      )}
+      <OfflineBanner variant="inline" />
+
+      {banner ?? null}
 
       <View style={{ flex: 1 }}>
         <WizardStepTransition stepKey={step} direction={direction} animate={animate}>
           {children}
         </WizardStepTransition>
 
-        <View style={styles.footer}>
-          {isLastStep ? (
-            <Button
-              title="შენახვა და დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={onNext}
-            />
-          ) : (
-            <Button
-              title={canGoNext ? 'შემდეგი' : 'გაგრძელება'}
-              variant={canGoNext ? 'primary' : 'secondary'}
-              size="lg"
-              style={styles.nextBtn}
-              iconRight={
-                canGoNext ? (
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                ) : undefined
-              }
-              onPress={onNext}
-            />
-          )}
-        </View>
+        <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+          <View style={styles.footer}>
+            {isLastStep ? (
+              <Button
+                title={finishLabel ?? 'შენახვა და დასრულება'}
+                style={{ paddingVertical: 14 }}
+                rightIcon={Check}
+                loading={completing}
+                disabled={completing}
+                onPress={handleNext}
+              />
+            ) : (
+              <Button
+                title={!blockNext && !canGoNext ? 'გაგრძელება' : 'შემდეგი'}
+                variant={blockNext || canGoNext ? 'primary' : 'secondary'}
+                size="lg"
+                style={styles.nextBtn}
+                rightIcon={blockNext || canGoNext ? ChevronRight : undefined}
+                onPress={handleNext}
+              />
+            )}
+          </View>
+        </KeyboardStickyView>
       </View>
     </View>
   );
@@ -142,11 +153,6 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme'], bottomInset: num
     root: {
       flex: 1,
       backgroundColor: theme.colors.card,
-    },
-    savingHint: {
-      textAlign: 'center',
-      fontSize: 12,
-      paddingVertical: 2,
     },
     footer: {
       paddingHorizontal: 16,

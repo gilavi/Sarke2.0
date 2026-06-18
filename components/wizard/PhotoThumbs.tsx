@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { RefreshCw, X } from 'lucide-react-native';
 import { useTheme, type Theme } from '../../lib/theme';
 
 import { haptic } from '../../lib/haptics';
@@ -46,7 +46,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
       <PressableScale onPress={() => onView(photo)} hapticOnPress="light" scaleTo={0.95}>
         {loadError ? (
           <Pressable onPress={fetchUri} style={[styles.thumb, { alignItems: 'center', justifyContent: 'center' }]}>
-            <Ionicons name="refresh" size={22} color={theme.colors.inkFaint} />
+            <RefreshCw size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
         ) : uri ? (
           <Image source={{ uri }} style={styles.thumb} contentFit="cover" transition={200} />
@@ -62,7 +62,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
         hitSlop={8}
         {...a11y('ფოტოს წაშლა', 'შეეხეთ ფოტოს წასაშლად', 'button')}
       >
-        <Ionicons name="close" size={12} color="#fff" />
+        <X size={12} color="#fff" strokeWidth={1.5} />
       </Pressable>
     </>
   );

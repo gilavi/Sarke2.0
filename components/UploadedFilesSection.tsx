@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Folder, ChevronUp, ChevronDown, CloudUpload, File, Trash2, Plus } from 'lucide-react-native';
 import { formatShortDateTime } from '../lib/formatDate';
 import { useTheme } from '../lib/ThemeContext';
 import type { ProjectFile } from '../types/models';
@@ -40,7 +40,7 @@ export function UploadedFilesSection({
     <View style={styles.card}>
       <Pressable style={styles.header} onPress={() => setOpen(o => !o)}>
         <View style={styles.iconWrap}>
-          <Ionicons name="folder-outline" size={18} color={theme.colors.semantic.success} />
+          <Folder size={18} color={theme.colors.semantic.success} strokeWidth={1.5} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>ატვირთული ფაილები</Text>
@@ -50,18 +50,17 @@ export function UploadedFilesSection({
               : `${count} ფაილი · ბოლოს ${formatShortDateTime(latest)}`}
           </Text>
         </View>
-        <Ionicons
-          name={open ? 'chevron-up' : 'chevron-down'}
-          size={18}
-          color={theme.colors.inkFaint}
-        />
+        {open
+          ? <ChevronUp size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
+          : <ChevronDown size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
+        }
       </Pressable>
 
       {open ? (
         <View style={styles.body}>
           {count === 0 ? (
             <View style={styles.emptyZone}>
-              <Ionicons name="cloud-upload-outline" size={32} color={theme.colors.semantic.success} />
+              <CloudUpload size={32} color={theme.colors.semantic.success} strokeWidth={1.5} />
               <Text style={styles.emptyTitle}>ფაილები არ არის</Text>
               <Text style={styles.emptyHint}>
                 ატვირთეთ პროექტის დოკუმენტაცია, ფოტოები ან გეგმები.
@@ -75,7 +74,7 @@ export function UploadedFilesSection({
                   onPress={() => onOpen?.(f)}
                   style={styles.fileRow}
                 >
-                  <Ionicons name="document-outline" size={18} color={theme.colors.inkSoft} />
+                  <File size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.fileName} numberOfLines={1}>{f.name}</Text>
                     <Text style={styles.fileMeta}>
@@ -91,7 +90,7 @@ export function UploadedFilesSection({
                       style={styles.deleteBtn}
                       accessibilityLabel="წაშლა"
                     >
-                      <Ionicons name="trash-outline" size={16} color={theme.colors.inkFaint} />
+                      <Trash2 size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
                     </Pressable>
                   ) : null}
                 </Pressable>
@@ -111,7 +110,7 @@ export function UploadedFilesSection({
             {busy ? (
               <ActivityIndicator size="small" color={theme.colors.surface} />
             ) : (
-              <Ionicons name="add" size={18} color={theme.colors.surface} />
+              <Plus size={18} color={theme.colors.surface} strokeWidth={1.5} />
             )}
             <Text style={styles.uploadBtnText}>
               {busy ? 'იტვირთება…' : 'ფაილის ატვირთვა'}

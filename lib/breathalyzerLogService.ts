@@ -189,7 +189,7 @@ export const peoplePoolApi = {
       }
       await AsyncStorage.setItem(poolKey(projectId), JSON.stringify(pool));
     } catch {
-      // Non-fatal — log quietly
+      // Non-fatal - log quietly
     }
   },
 };

@@ -1,9 +1,9 @@
 /**
- * pdf.ts — mobile async wrapper around the shared inspection PDF template.
+ * pdf.ts - mobile async wrapper around the shared inspection PDF template.
  *
  * Callers embed photos as base64 data-URIs (via pdfPhotoEmbed / imageUrl.ts)
  * before passing them here. They also pass the captured signatures snapshot
- * as `signaturesSession` — owned by the inspection result screen's
+ * as `signaturesSession` - owned by the inspection result screen's
  * useSignaturesState hook, lost when the screen unmounts. No persistence path.
  */
 import type {

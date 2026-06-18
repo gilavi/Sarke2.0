@@ -143,7 +143,7 @@ export default function IncidentDetail() {
             {INCIDENT_TYPE_LABEL[item.type] ?? item.type}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
-            {new Date(item.date_time).toLocaleString('ka-GE')} · {item.location || '—'}
+            {new Date(item.date_time).toLocaleString('ka-GE')} · {item.location || '-'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -237,8 +237,8 @@ export default function IncidentDetail() {
           <CardTitle className="text-base">დაზარალებული</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-sm text-neutral-700">
-          <div>სახელი: {item.injured_name || '—'}</div>
-          <div>როლი: {item.injured_role || '—'}</div>
+          <div>სახელი: {item.injured_name || '-'}</div>
+          <div>როლი: {item.injured_role || '-'}</div>
         </CardContent>
       </Card>
 
@@ -249,15 +249,15 @@ export default function IncidentDetail() {
         <CardContent className="space-y-3 text-sm text-neutral-700">
           <section>
             <div className="text-xs font-semibold uppercase text-neutral-500">აღწერა</div>
-            <div>{item.description || '—'}</div>
+            <div>{item.description || '-'}</div>
           </section>
           <section>
             <div className="text-xs font-semibold uppercase text-neutral-500">მიზეზი</div>
-            <div>{item.cause || '—'}</div>
+            <div>{item.cause || '-'}</div>
           </section>
           <section>
             <div className="text-xs font-semibold uppercase text-neutral-500">გატარებული ღონისძიებები</div>
-            <div>{item.actions_taken || '—'}</div>
+            <div>{item.actions_taken || '-'}</div>
           </section>
           {item.witnesses.length > 0 && (
             <section>

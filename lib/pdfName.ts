@@ -5,7 +5,7 @@
  *
  * Rules:
  * - ProjectName: first 10 chars, spaces → underscore
- * - Date: DDmonYYYY (Latin month abbreviations — Supabase Storage requires ASCII keys)
+ * - Date: DDmonYYYY (Latin month abbreviations - Supabase Storage requires ASCII keys)
  * - ShortID: first 4 chars of document ID uppercase
  * - Invalid filename chars replaced with _
  * - Max total length: 60 characters (truncates ProjectName first)
@@ -62,7 +62,7 @@ export function generatePdfName(
 
   let name = `${shortProject}_${sanitizedDocType}_${dateStr}_${shortId}.pdf`;
 
-  // Max total length 60 chars — truncate ProjectName first
+  // Max total length 60 chars - truncate ProjectName first
   if (name.length > 60) {
     const overage = name.length - 60;
     const adjustedProject = shortProject.slice(

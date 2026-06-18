@@ -49,7 +49,7 @@ export function ProjectAvatar({ project, size = 'md', className }: ProjectAvatar
   );
 }
 
-/** Editable variant — shows camera overlay on hover, opens a file picker. */
+/** Editable variant - shows camera overlay on hover, opens a file picker. */
 interface EditableProjectAvatarProps extends ProjectAvatarProps {
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   disabled?: boolean;

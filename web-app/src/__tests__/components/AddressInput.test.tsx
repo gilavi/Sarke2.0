@@ -1,5 +1,5 @@
 /**
- * AddressInput — typing + map-toggle interactions. The leaflet integration
+ * AddressInput - typing + map-toggle interactions. The leaflet integration
  * requires mocking react-leaflet so the map doesn't crash in jsdom.
  */
 import { describe, it, expect, vi } from 'vitest';

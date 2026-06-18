@@ -25,7 +25,7 @@ export interface InfoField {
 }
 
 /**
- * A result vocabulary entry — reused for checklist item results and for verdict
+ * A result vocabulary entry - reused for checklist item results and for verdict
  * options. `mark`/`tone` drive the "checks" checklist layout and pill colors.
  */
 export interface ResultOption {
@@ -117,7 +117,7 @@ export type PdfBlock<T> =
  * the ordered PDF block list.
  */
 export interface InspectionSchema<T = unknown> {
-  /** Dispatch key — matches `template.category` / `inspections.type`. */
+  /** Dispatch key - matches `template.category` / `inspections.type`. */
   category: string;
   /** Postgres table backing this type. */
   table: string;
@@ -132,7 +132,7 @@ export interface InspectionSchema<T = unknown> {
   docSubtitle?: string | ((d: T) => string);
   /** Top-right badge text; defaults to the standard internal-document label. */
   internalBadge?: string | ((d: T) => string);
-  /** Footer left label (e.g. 'Hubble — ექსკავატორის …'). */
+  /** Footer left label (e.g. 'Hubble - ექსკავატორის …'). */
   pdfFooterLabel: string | ((d: T) => string);
   /** Stable label for generatePdfName (ASCII, e.g. 'ExcavatorInspection'). */
   pdfNameLabel: string;
@@ -152,7 +152,7 @@ export interface InspectionSchema<T = unknown> {
 /**
  * A schema of unknown element type, for heterogeneous collections (the registry).
  * The block selectors are contravariant in `T`, so a registry of differently
- * typed schemas can't be expressed without an escape hatch — `any` here mirrors
+ * typed schemas can't be expressed without an escape hatch - `any` here mirrors
  * the Expo app's `schema.ts`. Per-schema code stays fully typed via
  * `InspectionSchema<T>`.
  */

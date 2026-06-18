@@ -10,7 +10,7 @@ import {
   TextInputProps,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 
 export interface FloatingLabelInputProps {
@@ -33,7 +33,7 @@ export interface FloatingLabelInputProps {
   autoComplete?: TextInputProps['autoComplete'];
   blurOnSubmit?: boolean;
   // Extended props for password toggles and other native props
-  rightIcon?: keyof typeof Ionicons.glyphMap;
+  rightIcon?: LucideIcon;
   onRightIconPress?: () => void;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoCorrect?: boolean;
@@ -58,7 +58,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       disabled, multiline, numberOfLines, keyboardType, secureTextEntry,
       onFocus, onBlur, returnKeyType, onSubmitEditing,
       textContentType, autoComplete, blurOnSubmit,
-      rightIcon, onRightIconPress,
+      rightIcon: RightIcon, onRightIconPress,
       autoCapitalize, autoCorrect, autoFocus, maxLength,
       onEndEditing, inputAccessoryViewID, textAlignVertical,
       editable, style,
@@ -127,7 +127,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     const labelColor = error
       ? theme.colors.semantic.danger
       : isFocused
-      ? theme.colors.accent
+      ? theme.colors.inkSoft
       : value
       ? theme.colors.inkSoft
       : theme.colors.inkFaint;
@@ -135,7 +135,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     const borderColor = error
       ? theme.colors.semantic.danger
       : isFocused
-      ? theme.colors.accent
+      ? theme.colors.ink
       : theme.colors.border;
 
     const borderWidth = isFocused || !!error ? 1.5 : 1;
@@ -158,7 +158,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       styles.input,
       {
         paddingTop: floated ? 28 : 16,
-        paddingRight: rightIcon ? 44 : 14,
+        paddingRight: RightIcon ? 44 : 14,
         color: isDisabled ? theme.colors.inkFaint : theme.colors.ink,
         fontFamily: theme.typography.fontFamily.body,
       },
@@ -208,16 +208,16 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
             scrollEnabled={multiline}
           />
 
-          {rightIcon && (
+          {RightIcon && (
             <Pressable
               onPress={onRightIconPress}
               hitSlop={8}
               style={styles.rightIcon}
             >
-              <Ionicons
-                name={rightIcon}
+              <RightIcon
                 size={18}
                 color={theme.colors.inkSoft}
+                strokeWidth={1.5}
               />
             </Pressable>
           )}
@@ -241,7 +241,7 @@ FloatingLabelInput.displayName = 'FloatingLabelInput';
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   container: {
     position: 'relative',
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     padding: 0,
     paddingLeft: 14,
     // Prevent Android from painting its own white background over the themed
-    // container surface — without this, light text is invisible in dark mode.
+    // container surface - without this, light text is invisible in dark mode.
     backgroundColor: 'transparent',
   },
   inputMultiline: {

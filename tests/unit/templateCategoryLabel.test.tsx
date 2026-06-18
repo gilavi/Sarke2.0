@@ -89,7 +89,7 @@ afterEach(() => {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-describe('CATEGORY_LABEL — known categories render Georgian names', () => {
+describe('CATEGORY_LABEL - known categories render Georgian names', () => {
   // The label appears inside "სისტემური · <label>" so we check container.textContent
   // rather than getByText (which requires exact element text).
   it.each([
@@ -111,19 +111,19 @@ describe('CATEGORY_LABEL — known categories render Georgian names', () => {
   });
 });
 
-describe('CATEGORY_LABEL — fallback behaviour', () => {
+describe('CATEGORY_LABEL - fallback behaviour', () => {
   it('renders raw identifier for unknown categories', () => {
     const { container } = renderWithTemplate(makeTemplate('custom_type_xyz'));
     expect(container.textContent).toContain('custom_type_xyz');
   });
 
-  it('renders "—" when category is null', () => {
+  it('renders "-" when category is null', () => {
     const { container } = renderWithTemplate(makeTemplate(null));
-    expect(container.textContent).toContain('—');
+    expect(container.textContent).toContain('-');
   });
 });
 
-describe('CATEGORY_LABEL — system/non-system label', () => {
+describe('CATEGORY_LABEL - system/non-system label', () => {
   it('shows "სისტემური" for system templates', () => {
     mockUseTemplates.mockReturnValue({
       data: [{ ...makeTemplate('bobcat'), is_system: true }],

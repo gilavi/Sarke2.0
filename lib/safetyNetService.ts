@@ -95,7 +95,7 @@ function toModel(row: DbRow): SafetyNetInspection {
   };
 }
 
-// signatures are ephemeral (memory-only) — never persisted via patch.
+// signatures are ephemeral (memory-only) - never persisted via patch.
 type SafetyNetPatch = Partial<{
   company: string;
   address: string;

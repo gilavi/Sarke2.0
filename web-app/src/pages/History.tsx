@@ -220,7 +220,7 @@ export default function History() {
                     <div className="min-w-0">
                       <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
                       <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                        {projects[row.projectId]?.name ?? '—'}
+                        {projects[row.projectId]?.name ?? '-'}
                         {' · '}
                         {new Date(row.date).toLocaleDateString('ka-GE')}
                       </p>

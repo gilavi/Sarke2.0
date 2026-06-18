@@ -1,5 +1,5 @@
 /**
- * InspectionWizard step-advance tests — fire the `createInspection` path from
+ * InspectionWizard step-advance tests - fire the `createInspection` path from
  * the info step (covered by the preset's locked templateId + defaultProjectId)
  * and walk into the conclusion step in edit mode.
  */
@@ -68,7 +68,7 @@ beforeEach(() => {
   vi.mocked(listAnswerPhotos).mockResolvedValue([]);
 });
 
-describe('InspectionWizard — info-step advance', () => {
+describe('InspectionWizard - info-step advance', () => {
   it('clicking Next on the info step triggers createInspection with the preset template + default project', async () => {
     const created: Inspection = {
       id: 'new-i', project_id: 'p1', user_id: 'u1', template_id: 't1', status: 'draft',
@@ -88,7 +88,7 @@ describe('InspectionWizard — info-step advance', () => {
       />,
     );
 
-    // The wizard frame Next button — find by its label.
+    // The wizard frame Next button - find by its label.
     const nextButtons = await screen.findAllByRole('button', { name: /შემდეგი/ });
     fireEvent.click(nextButtons[0]);
 
@@ -101,7 +101,7 @@ describe('InspectionWizard — info-step advance', () => {
   });
 });
 
-describe('InspectionWizard — edit mode mount with conclusion step', () => {
+describe('InspectionWizard - edit mode mount with conclusion step', () => {
   it('mounts in edit mode with no questions → goes straight to the conclusion step', () => {
     const existing: Inspection = {
       id: 'i1', project_id: 'p1', user_id: 'u1', template_id: 't1', status: 'draft',
@@ -120,7 +120,7 @@ describe('InspectionWizard — edit mode mount with conclusion step', () => {
         initialAnswers={[]}
       />,
     );
-    // Conclusion step is the single step in this fixture — wizard frame renders.
+    // Conclusion step is the single step in this fixture - wizard frame renders.
     expect(document.body.firstChild).toBeTruthy();
   });
 });

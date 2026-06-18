@@ -10,7 +10,8 @@
 
 import type { Answer, Question } from '../../../types/models';
 
-export const BRAND_GREEN = '#1D9E75';
+/** Brand accent for the Kamari counter controls (was the retired brand green). */
+export const BRAND_ACCENT = '#FF6D2E';
 export const COMMENT_PREFIX = 'კომენტარი_';
 
 export function rowKey(i: number) {

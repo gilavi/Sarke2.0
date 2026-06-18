@@ -18,42 +18,23 @@ export type InspectionCategory =
   | 'lifting_accessories_inspection'
   | 'forklift_inspection';
 
-const CATEGORY_META_LIGHT: Record<
-  InspectionCategory,
-  { emoji: string; bg: string }
-> = {
-  xaracho:                { emoji: '🏗️', bg: '#F5EDD8' },
-  mobile_scaffold:         { emoji: '🏗️', bg: '#EFF5DD' },
-  mobile_scaffold_n3:      { emoji: '🏗️', bg: '#EFF5DD' },
-  harness:                { emoji: '🦺', bg: '#E8F0F8' },
-  bobcat:                 { emoji: '🚜', bg: '#FEF3C7' },
-  excavator:              { emoji: '🚧', bg: '#FEE9D8' },
-  general_equipment:      { emoji: '⚙️', bg: '#E1F5EE' },
-  cargo_platform:         { emoji: '📦', bg: '#E8F0F8' },
-  safety_net_inspection:  { emoji: '🕸️', bg: '#EEF0F8' },
-  mobile_ladder_inspection:       { emoji: '🪜', bg: '#F0F5FF' },
-  fall_protection_inspection:     { emoji: '🛡️', bg: '#F0F8F0' },
-  lifting_accessories_inspection: { emoji: '🔗', bg: '#FFF3E0' },
-  forklift_inspection:            { emoji: '🏭', bg: '#FEF3C7' },
-};
-
-const CATEGORY_META_DARK: Record<
-  InspectionCategory,
-  { emoji: string; bg: string }
-> = {
-  xaracho:                { emoji: '🏗️', bg: '#2E2418' },
-  mobile_scaffold:         { emoji: '🏗️', bg: '#1E2818' },
-  mobile_scaffold_n3:      { emoji: '🏗️', bg: '#1E2818' },
-  harness:                { emoji: '🦺', bg: '#18202E' },
-  bobcat:                 { emoji: '🚜', bg: '#2E2410' },
-  excavator:              { emoji: '🚧', bg: '#2E1E10' },
-  general_equipment:      { emoji: '⚙️', bg: '#102418' },
-  cargo_platform:         { emoji: '📦', bg: '#18202E' },
-  safety_net_inspection:  { emoji: '🕸️', bg: '#18182E' },
-  mobile_ladder_inspection:       { emoji: '🪜', bg: '#182038' },
-  fall_protection_inspection:     { emoji: '🛡️', bg: '#102018' },
-  lifting_accessories_inspection: { emoji: '🔗', bg: '#2E1A00' },
-  forklift_inspection:            { emoji: '🏭', bg: '#2E2410' },
+// Monochrome: every category shares the primary brand wash as its tile
+// background (the emoji carries the recognition). The old per-type pastel
+// palette mixed greens/blues/ambers that read as off-brand after the rebrand.
+const CATEGORY_EMOJI: Record<InspectionCategory, string> = {
+  xaracho:                '🏗️',
+  mobile_scaffold:         '🏗️',
+  mobile_scaffold_n3:      '🏗️',
+  harness:                '🦺',
+  bobcat:                 '🚜',
+  excavator:              '🚧',
+  general_equipment:      '⚙️',
+  cargo_platform:         '📦',
+  safety_net_inspection:  '🕸️',
+  mobile_ladder_inspection:       '🪜',
+  fall_protection_inspection:     '🛡️',
+  lifting_accessories_inspection: '🔗',
+  forklift_inspection:            '🏭',
 };
 
 interface Props {
@@ -62,6 +43,8 @@ interface Props {
   /** Show a status icon badge in the bottom-right corner */
   status?: InspectionStatus | null;
   style?: ViewStyle;
+  circle?: boolean;
+  muted?: boolean;
 }
 
 export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
@@ -69,14 +52,16 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
   size = 44,
   status,
   style,
+  circle = false,
+  muted = false,
 }: Props) {
-  const { isDark } = useTheme();
-  const CATEGORY_META = isDark ? CATEGORY_META_DARK : CATEGORY_META_LIGHT;
-  const DEFAULT_META = { emoji: '📋', bg: isDark ? '#102418' : '#E1F5EE' };
-  const meta =
-    category && category in CATEGORY_META
-      ? CATEGORY_META[category as InspectionCategory]
-      : DEFAULT_META;
+  const { theme } = useTheme();
+  const emoji =
+    category && category in CATEGORY_EMOJI
+      ? CATEGORY_EMOJI[category as InspectionCategory]
+      : '📋';
+  const bg = muted ? theme.colors.subtleSurface : theme.colors.accentSoft;
+  const radius = circle ? size / 2 : 10;
 
   const fontSize = Math.round(size * 0.48);
 
@@ -88,8 +73,8 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
           {
             width: size,
             height: size,
-            borderRadius: 10,
-            backgroundColor: meta.bg,
+            borderRadius: radius,
+            backgroundColor: bg,
           },
         ]}
       >
@@ -97,7 +82,7 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
           style={{ fontSize, lineHeight: size, textAlign: 'center' }}
           allowFontScaling={false}
         >
-          {meta.emoji}
+          {emoji}
         </Text>
       </View>
 

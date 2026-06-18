@@ -7,14 +7,14 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { CirclePlus, Info, Camera, CircleX, Check, X, TriangleAlert } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
-import { DateTimeField } from '../../../components/DateTimeField';
-import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
-import type { VerdictOption, ChecklistResult } from '../../../components/inspection-steps';
+import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
+import type { VerdictOption } from '../../../components/inspection-steps';
+import { ChecklistItemRow, ChecklistLegend } from '../../../components/inspection-parts';
+import type { ChecklistRowOption } from '../../../components/inspection-parts';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
@@ -28,8 +28,8 @@ import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { CelebrationBurst } from '../../../components/animations';
 import {
@@ -48,6 +48,18 @@ const CHECKLIST_STEP  = 2;
 const CONCLUSION_STEP = 3;
 const TOTAL_STEPS     = 4;
 
+const GE_OPTIONS: ChecklistRowOption[] = [
+  { value: 'good',      icon: Check,         a11yLabel: 'ვარგისია' },
+  { value: 'deficient', icon: TriangleAlert, a11yLabel: 'ხარვეზი' },
+  { value: 'unusable',  icon: X,             a11yLabel: 'გამოუსადეგარია' },
+];
+
+const GE_LEGEND = [
+  { icon: Check,         label: 'ვარგისია' },
+  { icon: TriangleAlert, label: 'ხარვეზი' },
+  { icon: X,             label: 'გამოუსადეგარია' },
+];
+
 export default function GeneralEquipmentScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -60,19 +72,18 @@ export default function GeneralEquipmentScreen() {
   const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
 
   // ── Field suggestion histories ────────────────────────────────────────────
-  const objectNameHistory  = useFieldHistory(userId, 'ge:objectName');
-  const activityTypeHistory = useFieldHistory(userId, 'ge:activityType');
-  const actNumberHistory   = useFieldHistory(userId, 'ge:actNumber');
   const conclusionHistory  = useFieldHistory(userId, 'ge:conclusion');
 
-  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [attachmentCount, setAttachmentCount] = useState(0);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // ── Shared orchestration ──────────────────────────────────────────────────
   const {
     inspection, setInspection, inspectionRef,
     projectName,
-    saving, loading, completing, celebrating, generatingPdf,
+    loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
@@ -125,9 +136,19 @@ export default function GeneralEquipmentScreen() {
           patch.signerName = inspectorName;
         }
       }
-      if (project && !next.address?.trim() && project.address) {
-        next = { ...next, address: project.address };
-        patch.address = project.address;
+      if (project) {
+        // Object name + address are sourced from the project - no manual entry.
+        if (!next.objectName?.trim()) {
+          const v = project.company_name || project.name;
+          if (v) {
+            next = { ...next, objectName: v };
+            patch.objectName = v;
+          }
+        }
+        if (!next.address?.trim() && project.address) {
+          next = { ...next, address: project.address };
+          patch.address = project.address;
+        }
       }
       return { next, patch: Object.keys(patch).length ? patch : null };
     },
@@ -170,7 +191,17 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling — summary ──────────────────────────────────────────────
+  const updateEquipmentName = useCallback((itemId: string, name: string) => {
+    setInspection(prev => {
+      if (!prev) return prev;
+      const equipment = prev.equipment.map(r => r.id === itemId ? { ...r, name } : r);
+      const next = { ...prev, equipment };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave, setInspection]);
+
+  // ── Photo handling - summary ──────────────────────────────────────────────
 
   const handleAddSummaryPhoto = useCallback(async () => {
     const results = await pickPhotosWithAnnotation();
@@ -236,34 +267,18 @@ export default function GeneralEquipmentScreen() {
     }
   }, [step, exit, setStep]);
 
-  // ── Checklist data ────────────────────────────────────────────────────────
-
-  const checklistItems = useMemo(() =>
-    (inspection?.equipment ?? []).map(item => ({
-      id: item.id,
-      description: [item.name, item.model, item.serialNumber].filter(Boolean).join(' · ') || '—',
-    })),
-  [inspection?.equipment]);
-
-  const checklistStates = useMemo(() =>
-    (inspection?.equipment ?? []).map(item => ({
-      id: item.id,
-      result: (item.condition === 'needs_service' ? 'deficient' : item.condition) as ChecklistResult,
-      comment: item.note,
-      photo_paths: item.photo_paths,
-    })),
-  [inspection?.equipment]);
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
   const verdictOptions = useMemo<VerdictOption[]>(() => [], []);
 
-  const handleChecklistStateChange = useCallback((itemId: string, patch: { result?: ChecklistResult }) => {
-    if (patch.result === undefined) return;
+  const handleConditionChange = useCallback((itemId: string, result: string | null) => {
     const conditionMap: Record<string, EquipmentItem['condition']> = {
       good: 'good',
       deficient: 'needs_service',
       unusable: 'unusable',
     };
-    const newCondition = patch.result !== null ? (conditionMap[patch.result] ?? null) : null;
+    const newCondition = result !== null ? (conditionMap[result] ?? null) : null;
     updateCondition(itemId, newCondition);
   }, [updateCondition]);
 
@@ -271,10 +286,19 @@ export default function GeneralEquipmentScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="ტექ. აღჭ."
+        projectName={projectName ?? ''}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={2}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -305,7 +329,6 @@ export default function GeneralEquipmentScreen() {
   }
 
   const filledCount = inspection.equipment.filter(r => r.name.trim()).length;
-  const totalCount  = inspection.equipment.length;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -320,14 +343,11 @@ export default function GeneralEquipmentScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > INFO_STEP}
-        generatingPdf={generatingPdf}
         onNext={handleNext}
         onPrev={handlePrev}
+        onBlockedNext={markAttempted}
         onClose={() => router.back()}
-        onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Inspection details ─────────────────────────────────── */}
         {step === DETAILS_STEP && (
@@ -339,65 +359,6 @@ export default function GeneralEquipmentScreen() {
             showsVerticalScrollIndicator={false}
             bottomOffset={120}
           >
-            <FloatingLabelInput
-              label="ობიექტის დასახელება *"
-              value={inspection.objectName ?? ''}
-              onChangeText={v => update('objectName', v || null)}
-              onFocus={() => setFocusedField('objectName')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (inspection.objectName?.trim()) objectNameHistory.addToHistory(inspection.objectName.trim());
-              }}
-              required
-            />
-            <SuggestionPills
-              suggestions={objectNameHistory.suggestions}
-              onSelect={v => update('objectName', v)}
-              visible={focusedField === 'objectName' || (!inspection.objectName?.trim() && objectNameHistory.suggestions.length > 0)}
-            />
-
-            <FloatingLabelInput
-              label="საქმიანობის სახე"
-              value={inspection.activityType ?? ''}
-              onChangeText={v => update('activityType', v || null)}
-              onFocus={() => setFocusedField('activityType')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (inspection.activityType?.trim()) activityTypeHistory.addToHistory(inspection.activityType.trim());
-              }}
-            />
-            <SuggestionPills
-              suggestions={activityTypeHistory.suggestions}
-              onSelect={v => update('activityType', v)}
-              visible={focusedField === 'activityType' || (!inspection.activityType?.trim() && activityTypeHistory.suggestions.length > 0)}
-            />
-
-            <View style={styles.fieldRow}>
-              <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-              <DateTimeField
-                mode="date"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toLocaleDateString('en-CA'))}
-                maxDate={new Date()}
-              />
-            </View>
-
-            <FloatingLabelInput
-              label="აქტის №"
-              value={inspection.actNumber ?? ''}
-              onChangeText={v => update('actNumber', v || null)}
-              onFocus={() => setFocusedField('actNumber')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (inspection.actNumber?.trim()) actNumberHistory.addToHistory(inspection.actNumber.trim());
-              }}
-            />
-            <SuggestionPills
-              suggestions={actNumberHistory.suggestions}
-              onSelect={v => update('actNumber', v)}
-              visible={focusedField === 'actNumber' || (!inspection.actNumber?.trim() && actNumberHistory.suggestions.length > 0)}
-            />
-
             <IdentificationGrid
               columns={1}
               fields={[
@@ -420,40 +381,51 @@ export default function GeneralEquipmentScreen() {
 
         {/* ── Step 2: Equipment list ─────────────────────────────────────── */}
         {step === CHECKLIST_STEP && (
-          <ChecklistStep
-            items={checklistItems}
-            states={checklistStates}
-            onStateChange={handleChecklistStateChange}
-            showSectionHeaders={false}
-            showCommentButton={false}
-            footer={
-              <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
-                <View style={{ alignItems: 'flex-end', marginBottom: 8 }}>
-                  <View style={styles.progressPill}>
-                    <Text style={styles.progressPillText}>
-                      შევსებულია {filledCount} / {totalCount}
-                    </Text>
-                  </View>
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 24, paddingHorizontal: 16, gap: 8 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            bottomOffset={120}
+          >
+            <View style={{ paddingBottom: 2 }}>
+              <ChecklistLegend items={GE_LEGEND} />
+            </View>
+            {inspection.equipment.map(item => (
+              <ChecklistItemRow
+                key={item.id}
+                label={item.name || '-'}
+                editableLabel={{
+                  value: item.name,
+                  onChange: name => updateEquipmentName(item.id, name),
+                  placeholder: 'დასახელება...',
+                }}
+                options={GE_OPTIONS}
+                value={item.condition === 'needs_service' ? 'deficient' : item.condition}
+                onChange={v => handleConditionChange(item.id, v)}
+                dense
+              />
+            ))}
+            <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
+              <Pressable
+                style={styles.addRowBtn}
+                onPress={addEquipmentRow}
+                {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
+              >
+                <CirclePlus size={18} color={theme.colors.accent} strokeWidth={1.5} />
+                <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
+              </Pressable>
+              {filledCount === 0 && (
+                <View style={styles.emptyHint}>
+                  <Info size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
+                  <Text style={styles.emptyHintText}>
+                    შეავსეთ მინიმუმ ერთი აღჭურვილობის სტრიქონი
+                  </Text>
                 </View>
-                <Pressable
-                  style={styles.addRowBtn}
-                  onPress={addEquipmentRow}
-                  {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
-                >
-                  <Ionicons name="add-circle-outline" size={18} color={theme.colors.accent} />
-                  <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
-                </Pressable>
-                {filledCount === 0 && (
-                  <View style={styles.emptyHint}>
-                    <Ionicons name="information-circle-outline" size={18} color={theme.colors.inkFaint} />
-                    <Text style={styles.emptyHintText}>
-                      შეავსეთ მინიმუმ ერთი აღჭურვილობის სტრიქონი
-                    </Text>
-                  </View>
-                )}
-              </View>
-            }
-          />
+              )}
+            </View>
+          </KeyboardAwareScrollView>
         )}
 
         {/* ── Step 3: Conclusion ─────────────────────────────────────────── */}
@@ -468,7 +440,7 @@ export default function GeneralEquipmentScreen() {
               if (v.trim()) conclusionHistory.addToHistory(v.trim());
             }}
             conclusionHistory={conclusionHistory.suggestions}
-            onConclusionChange={v => update('conclusion', v || null)}
+            notesError={attempted && !inspection.conclusion?.trim()}
             photoSection={
               <View>
                 <Text style={styles.fieldLabel}>ფოტოები (სურვ.)</Text>
@@ -523,7 +495,7 @@ function SummaryPhotoStrip({
         onPress={onAdd}
         {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
       >
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+        <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
         <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
       </Pressable>
     </ScrollView>
@@ -552,7 +524,7 @@ const SummaryThumb = memo(function SummaryThumb({
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
       <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={2} />
       </Pressable>
     </View>
   );
@@ -563,24 +535,9 @@ const SummaryThumb = memo(function SummaryThumb({
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
 
-    fieldRow:   { marginBottom: 4, gap: 6 },
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft, marginBottom: 6 },
 
-    progressPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 12,
-      backgroundColor: theme.colors.subtleSurface,
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-    },
-    progressPillText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: theme.colors.inkSoft,
-    },
     addRowBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       paddingVertical: 14, paddingHorizontal: 12,

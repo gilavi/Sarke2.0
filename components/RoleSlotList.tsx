@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
-import { Ionicons } from '@expo/vector-icons';
+import { ShieldCheck, Lock, Trash2, User, Pencil, UserPlus, Users, ChevronRight } from 'lucide-react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useBottomSheet } from './BottomSheet';
 import { RoleSlotSheet, type RoleSlotDetails } from './RoleSlotSheet';
@@ -138,7 +138,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
   };
 
   // Wait long enough for the bottom sheet's iOS slide-down animation to fully
-  // tear down before mounting the SignatureCanvas Modal — stacking two Modals
+  // tear down before mounting the SignatureCanvas Modal - stacking two Modals
   // in the same frame leaves the second one invisible on iOS.
   const SHEET_DISMISS_MS = 350;
 
@@ -299,7 +299,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
             </View>
           ) : (
             <View style={[styles.avatar, { backgroundColor: theme.colors.accentSoft }]}>
-              <Ionicons name="shield-checkmark" size={18} color={theme.colors.accent} />
+              <ShieldCheck size={18} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
           )}
           <View style={{ flex: 1 }}>
@@ -307,7 +307,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
             <Text style={styles.role}>{inspector.role}</Text>
           </View>
           <View style={styles.lockedChip}>
-            <Ionicons name="lock-closed" size={10} color={theme.colors.inkSoft} />
+            <Lock size={10} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </View>
         </View>
       ) : null}
@@ -324,7 +324,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
                 style={styles.swipeDelete}
                 {...a11y('წაშლა', 'მონაწილის წაშლა', 'button')}
               >
-                <Ionicons name="trash" size={18} color={theme.colors.white} />
+                <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
               </Pressable>
             )}
             overshootRight={false}
@@ -340,7 +340,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
                 </View>
               ) : (
                 <View style={[styles.avatar, { backgroundColor: theme.colors.subtleSurface }]}>
-                  <Ionicons name="person" size={18} color={theme.colors.inkSoft} />
+                  <User size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
                 </View>
               )}
               <View style={{ flex: 1 }}>
@@ -353,7 +353,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
                 style={styles.actionBtn}
                 {...a11y('რედაქტირება', 'მონაწილის რედაქტირება', 'button')}
               >
-                <Ionicons name="pencil" size={16} color={theme.colors.inkSoft} />
+                <Pencil size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
               </Pressable>
               <Pressable
                 onPress={() => removeWithConfirm(member)}
@@ -361,14 +361,14 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
                 style={styles.actionBtn}
                 {...a11y('წაშლა', 'მონაწილის წაშლა', 'button')}
               >
-                <Ionicons name="trash-outline" size={16} color={theme.colors.danger} />
+                <Trash2 size={16} color={theme.colors.danger} strokeWidth={1.5} />
               </Pressable>
             </View>
           </Swipeable>
         );
       })}
 
-      {/* Empty role slots — only roles with no member yet, shown after filled rows. */}
+      {/* Empty role slots - only roles with no member yet, shown after filled rows. */}
       {emptySlice.map(roleKey => {
         const label = CREW_ROLE_LABEL[roleKey];
         return (
@@ -379,13 +379,13 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
             {...a11y(label, 'როლის შემვსების დამატება', 'button')}
           >
             <View style={[styles.avatar, { backgroundColor: theme.colors.subtleSurface }]}>
-              <Ionicons name="person-add" size={18} color={theme.colors.accent} />
+              <UserPlus size={18} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.emptyLabel}>{label}</Text>
               <Text style={styles.emptyHint}>შეეხეთ დასამატებლად</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+            <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
         );
       })}
@@ -397,13 +397,13 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
           {...a11y(`+ ${hiddenRows} მეტი`, 'სრული სიის გახსნა', 'button')}
         >
           <View style={[styles.avatar, { backgroundColor: theme.colors.subtleSurface }]}>
-            <Ionicons name="people" size={18} color={theme.colors.inkSoft} />
+            <Users size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.emptyLabel}>+ {hiddenRows} მეტი</Text>
             <Text style={styles.emptyHint}>სრული სია</Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+          <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </Pressable>
       ) : null}
 
@@ -420,7 +420,7 @@ export function RoleSlotList({ projectId, inspector, crew, onChange, maxVisible,
 function cryptoUuid(): string {
   const g = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
   if (g?.randomUUID) return g.randomUUID();
-  // Fallback should not happen — lib/polyfills.ts wires expo-crypto into globalThis.crypto
+  // Fallback should not happen - lib/polyfills.ts wires expo-crypto into globalThis.crypto
   return `crew_${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${Math.random().toString(36).slice(2, 10)}`;
 }
 

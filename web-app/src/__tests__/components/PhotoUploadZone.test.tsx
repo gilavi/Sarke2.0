@@ -1,5 +1,5 @@
 /**
- * PhotoUploadZone (39% covered) — empty drop zone, drag-over toggle, file
+ * PhotoUploadZone (39% covered) - empty drop zone, drag-over toggle, file
  * upload via input change, remove button.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -80,7 +80,7 @@ describe('PhotoUploadZone', () => {
     );
     const dropZone = screen.getByRole('button');
     fireEvent.dragOver(dropZone, { preventDefault: () => {} });
-    // After dragOver the border color changes — just verify no crash.
+    // After dragOver the border color changes - just verify no crash.
     fireEvent.dragLeave(dropZone);
   });
 

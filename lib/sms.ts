@@ -23,7 +23,7 @@ export function buildSigningUrl(token: string): string {
  * account, where the SMS scheme isn't registered).
  *
  * iOS uses `&body=` after `sms:NUM`, Android uses `?body=`. Both are
- * handled via the conditional separator below — the URI is a valid query
+ * handled via the conditional separator below - the URI is a valid query
  * either way after percent-encoding.
  */
 export async function openSigningSMS({

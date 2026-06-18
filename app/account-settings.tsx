@@ -5,10 +5,11 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { KeyboardSafeArea } from '../components/layout/KeyboardSafeArea';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { X, Eye, EyeOff } from 'lucide-react-native';
 import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { useTheme } from '../lib/theme';
@@ -27,6 +28,7 @@ export default function AccountSettingsScreen() {
   const router = useRouter();
   const toast = useToast();
   const { state } = useSession();
+  const insets = useSafeAreaInsets();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -111,7 +113,7 @@ export default function AccountSettingsScreen() {
           {t('account.changePassword')}
         </A11yText>
         <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Ionicons name="close" size={24} color={theme.colors.ink} />
+          <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
         </Pressable>
       </View>
 
@@ -123,7 +125,7 @@ export default function AccountSettingsScreen() {
           value={currentPassword}
           onChangeText={setCurrentPassword}
           error={errors.currentPassword}
-          rightIcon={showCurrent ? 'eye-off' : 'eye'}
+          rightIcon={showCurrent ? EyeOff : Eye}
           onRightIconPress={() => setShowCurrent(!showCurrent)}
         />
         <FloatingLabelInput
@@ -138,7 +140,7 @@ export default function AccountSettingsScreen() {
               ? t('account.passwordCharCount', { n: newPassword.length, min: MIN_PASSWORD_LENGTH })
               : undefined
           }
-          rightIcon={showNew ? 'eye-off' : 'eye'}
+          rightIcon={showNew ? EyeOff : Eye}
           onRightIconPress={() => setShowNew(!showNew)}
         />
         <FloatingLabelInput
@@ -148,10 +150,12 @@ export default function AccountSettingsScreen() {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           error={errors.confirmPassword}
-          rightIcon={showConfirm ? 'eye-off' : 'eye'}
+          rightIcon={showConfirm ? EyeOff : Eye}
           onRightIconPress={() => setShowConfirm(!showConfirm)}
         />
-        <View style={{ flex: 1 }} />
+      </KeyboardSafeArea>
+
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
         {busy ? (
           <View
             style={[
@@ -175,7 +179,7 @@ export default function AccountSettingsScreen() {
             style={styles.submitButton}
           />
         )}
-      </KeyboardSafeArea>
+      </KeyboardStickyView>
     </SafeAreaView>
   );
 }
@@ -198,6 +202,7 @@ function getstyles(theme: any) {
     content: {
       paddingHorizontal: theme.space(4),
       paddingVertical: theme.space(4),
+      gap: 12,
     },
     footer: {
       borderTopWidth: 1,

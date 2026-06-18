@@ -74,7 +74,7 @@ function filterQuestions(qs: Question[]): Question[] {
   return hasGrid ? qs.filter((q) => q.type !== 'freetext' && q.type !== 'photo_upload') : qs;
 }
 
-/* Categories whose flow is a plain yes/no questionnaire — the repeatable
+/* Categories whose flow is a plain yes/no questionnaire - the repeatable
    `component_grid` step is not part of the act (unlike harness, where the grid IS
    the inspection). The façade-scaffold family inspects via the section questions
    shown on the detail screen, so the grid step is dropped from their wizard. */
@@ -265,7 +265,7 @@ export default function InspectionWizard({
     onError: (e) => toastError(e),
   });
 
-  /* ── Grid summary (ok/bad counts) — shown for any component_grid inspection ── */
+  /* ── Grid summary (ok/bad counts) - shown for any component_grid inspection ── */
   const gridSummary = useMemo(() => {
     const gridQ = questions.find((q) => q.type === 'component_grid');
     if (!gridQ) return null;
@@ -326,11 +326,11 @@ export default function InspectionWizard({
           navigate(preset.successDetailRoute(insId), { state: { inspectionSuccess: successPayload } });
         } else if (mode === 'create') {
           // Generic create: land on the inspection's detail page with the success
-          // modal — uniform with the harness/equipment flows.
+          // modal - uniform with the harness/equipment flows.
           onClose();
           navigate(routes.inspections.detail(insId), { state: { inspectionSuccess: successPayload } });
         } else {
-          // Edit-in-place (detail-page wizard) — show the success modal over the detail.
+          // Edit-in-place (detail-page wizard) - show the success modal over the detail.
           setCompletedId(insId);
           setSuccessData(successPayload);
           setSuccessOpen(true);
@@ -715,7 +715,7 @@ function InfoStep({
         value={templateId}
         onChange={setTemplateId}
         options={templates.map((t) => ({ value: t.id, label: t.name + (t.is_system ? ' (სისტემური)' : '') }))}
-        placeholder="— აირჩიეთ შაბლონი —"
+        placeholder="აირჩიეთ შაბლონი"
       />
 
       <Input
@@ -895,7 +895,7 @@ function ConclusionStepRenderer({
         <p className="text-sm text-neutral-500">მიუთითეთ შემოწმების შედეგი და დასკვნა</p>
       </div>
 
-      {/* 1 — Compact summary line */}
+      {/* 1 - Compact summary line */}
       {summary && (
         <div
           style={{
@@ -919,10 +919,10 @@ function ConclusionStepRenderer({
         </div>
       )}
 
-      {/* 2 — Divider */}
+      {/* 2 - Divider */}
       <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
 
-      {/* 3 — Verdict (hero) */}
+      {/* 3 - Verdict (hero) */}
       <div>
         <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }} className="text-neutral-900 dark:text-neutral-100">
           გამოყენების ვარგისობა
@@ -940,7 +940,7 @@ function ConclusionStepRenderer({
         />
       </div>
 
-      {/* 4 — Textarea (secondary) */}
+      {/* 4 - Textarea (secondary) */}
       <Textarea
         label="კომენტარი / დასკვნა"
         value={conclusion.text}
@@ -949,7 +949,7 @@ function ConclusionStepRenderer({
         rows={4}
       />
 
-      {/* 5 — Photos (tertiary) */}
+      {/* 5 - Photos (tertiary) */}
       <div className="space-y-2">
         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">ფოტოები</p>
         <PhotoUploadZone

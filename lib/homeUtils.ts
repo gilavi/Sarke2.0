@@ -1,6 +1,6 @@
 /**
  * Pure helper utilities for the Home screen.
- * No React imports — safe to import in tests without RN mocks.
+ * No React imports - safe to import in tests without RN mocks.
  */
 
 export const TIP_KEYS = [

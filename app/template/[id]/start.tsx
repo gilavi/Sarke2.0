@@ -12,7 +12,7 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SheetLayout } from '../../../components/SheetLayout';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Plus, ChevronRight, Check } from 'lucide-react-native';
 import { Button, Screen } from '../../../components/ui';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Skeleton } from '../../../components/Skeleton';
@@ -23,6 +23,7 @@ import { routeForInspection } from '../../../lib/inspectionRouting';
 import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
@@ -45,6 +46,8 @@ export default function StartTemplateScreen() {
   const [busy, setBusy] = useState(false);
   const loaded = !templateLoading && !projectsLoading;
   const queryClient = useQueryClient();
+  // Enabled start button + on-press project-selection error.
+  const { attempted, guard } = useSubmitGuard();
 
   useEffect(() => {
     if (projects.length > 0 && !selected) {
@@ -101,7 +104,7 @@ export default function StartTemplateScreen() {
 
           <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}>
             <View style={styles.newIcon}>
-              <Ionicons name="add" size={22} color={theme.colors.accent} />
+              <Plus size={22} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>
@@ -111,7 +114,7 @@ export default function StartTemplateScreen() {
                 შექმნი ახლავე
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
+            <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
 
           {!loaded && projects.length === 0 ? (
@@ -134,12 +137,16 @@ export default function StartTemplateScreen() {
                   <Pressable
                     key={p.id}
                     onPress={() => setSelected(p.id)}
-                    style={[styles.projectRow, isSelected && styles.projectRowSelected]}
+                    style={[
+                      styles.projectRow,
+                      isSelected && styles.projectRowSelected,
+                      attempted && !selected && { borderColor: theme.colors.danger },
+                    ]}
                     {...a11y(p.company_name || p.name, 'პროექტის არჩევა', 'radio')}
                   >
                     <View style={[styles.radio, isSelected && styles.radioOn]}>
                       {isSelected ? (
-                        <Ionicons name="checkmark" size={16} color={theme.colors.white} />
+                        <Check size={16} color={theme.colors.white} strokeWidth={1.5} />
                       ) : null}
                     </View>
                     <View style={{ flex: 1 }}>
@@ -164,14 +171,17 @@ export default function StartTemplateScreen() {
               ჯერ არცერთი პროექტი არ გაქვს.{'\n'}დაიწყე ახლის შექმნით.
             </Text>
           )}
+
+          {attempted && !selected ? (
+            <Text style={styles.selectionError}>აირჩიეთ პროექტი</Text>
+          ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <Button
             title="დაიწყე შემოწმების აქტი"
-            onPress={start}
+            onPress={() => guard(!!selected, start)}
             loading={busy}
-            disabled={!selected}
           />
         </View>
       </SafeAreaView>
@@ -202,6 +212,8 @@ function CreateProjectSheet({
   const [address, setAddress] = useState('');
   const [busy, setBusy] = useState(false);
   const keyboardMargin = useSheetKeyboardMargin();
+  // Enabled save button + on-press company-field error (separate from start).
+  const { attempted, guard } = useSubmitGuard();
 
   const save = async () => {
     if (!company.trim()) return;
@@ -232,7 +244,7 @@ function CreateProjectSheet({
           onPress={onClose}
           {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
         />
-        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        {/* Card - marginBottom rides the iOS keyboard 1:1 */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
         <Pressable style={{ width: '100%' }} onPress={() => {}}>
           <SheetLayout
@@ -242,9 +254,8 @@ function CreateProjectSheet({
             footer={
               <Button
                 title="შენახვა"
-                onPress={save}
+                onPress={() => guard(!!company.trim(), save)}
                 loading={busy}
-                disabled={!company.trim()}
               />
             }
           >
@@ -254,6 +265,7 @@ function CreateProjectSheet({
               value={company}
               onChangeText={setCompany}
               autoFocus
+              error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
             />
             <FloatingLabelInput
               label="მისამართი"
@@ -330,6 +342,12 @@ function getstyles(theme: any) {
     borderTopWidth: 1,
     borderTopColor: theme.colors.hairline,
     backgroundColor: theme.colors.card,
+  },
+  selectionError: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.danger,
+    marginTop: 8,
   },
   modalBackdrop: {
     flex: 1,

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { FlatList } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowRight } from 'lucide-react-native';
 import { QuestionAvatar } from './QuestionAvatar';
 import { SCAFFOLD_HELP, ScaffoldHelpEntry } from '../lib/scaffoldHelp';
 import { useTheme } from '../lib/theme';
@@ -113,7 +113,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
           >
             <Text style={styles.btnText}>{isLast ? 'დაწყება' : 'შემდეგი'}</Text>
             {!isLast ? (
-              <Ionicons name="arrow-forward" size={18} color={theme.colors.white} style={{ marginLeft: 6 }} />
+              <ArrowRight size={18} color={theme.colors.white} strokeWidth={1.5} style={{ marginLeft: 6 }} />
             ) : null}
           </Pressable>
         </View>

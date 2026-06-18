@@ -10,7 +10,7 @@
  *
  * `makeBuilder(result)` returns an object where every chain method is a spy that
  * returns the same builder, `single()`/`maybeSingle()` resolve to `result`, and
- * the builder itself is thenable — so a chain that ends without a terminal
+ * the builder itself is thenable - so a chain that ends without a terminal
  * `single` (just awaited) also resolves to `result`. One builder == one query;
  * for functions that issue several queries, queue builders with
  * `from.mockReturnValueOnce(makeBuilder(a)).mockReturnValueOnce(makeBuilder(b))`.

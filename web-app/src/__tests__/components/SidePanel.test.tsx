@@ -1,5 +1,5 @@
 /**
- * SidePanel (48% covered) — the SafetyGuide side panel. Exercises the open
+ * SidePanel (48% covered) - the SafetyGuide side panel. Exercises the open
  * vs closed states, selected-part rendering, and the "next topic" + clear
  * actions.
  */

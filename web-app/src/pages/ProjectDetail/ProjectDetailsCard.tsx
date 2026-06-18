@@ -137,8 +137,8 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
           </div>
         ) : (
           <div className="space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
-            <div>მისამართი: {project.address || '—'}</div>
-            <div>ტელეფონი: {project.contact_phone || '—'}</div>
+            <div>მისამართი: {project.address || '-'}</div>
+            <div>ტელეფონი: {project.contact_phone || '-'}</div>
             <div>
               GPS:{' '}
               {project.latitude != null && project.longitude != null ? (
@@ -154,7 +154,7 @@ export function ProjectDetailsCard({ project, editing, onCancel, onSaved, onErro
                   </a>
                 </>
               ) : (
-                '—'
+                '-'
               )}
             </div>
             {project.latitude != null && project.longitude != null && (

@@ -79,7 +79,7 @@ export default function Subscribe() {
           access_token: at,
           refresh_token: rt,
         });
-        if (sessErr || !session) throw new Error(`სესია ვადაგასულია — გთხოვთ, სცადოთ ხელახლა. (${sessErr?.message ?? 'no session'})`);
+        if (sessErr || !session) throw new Error(`სესია ვადაგასულია - გთხოვთ, სცადოთ ხელახლა. (${sessErr?.message ?? 'no session'})`);
         sessionToken = session.access_token;
       } else {
         const { data: { session } } = await supabase.auth.getSession();

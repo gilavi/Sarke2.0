@@ -1,55 +1,172 @@
 /**
- * Reusable conclusion step for equipment inspection flows.
- * Renders verdict pill selector + conclusion textarea + optional notes + optional harness name.
+ * Reusable, dynamic conclusion step - the single "last step" shared by every
+ * inspection flow (equipment routes, harness, and the scaffold wizard).
+ *
+ * Renders, in order: a conclusion illustration, an optional summary slot, an
+ * optional harness-name field, an optional verdict-suggestion banner, the shared
+ * icon-card VerdictSelector, a free-text "კომენტარი" box, optional suggestion
+ * pills, and an optional photo strip. The shell/wizard owns the footer CTA.
  */
 import { type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { SuggestionPills } from '../SuggestionPills';
+import { QuestionAvatar } from '../QuestionAvatar';
+import { PhotoSection } from '../inspection-parts/PhotoSection';
 import { useTheme } from '../../lib/theme';
-import { a11y } from '../../lib/accessibility';
+import { VerdictSelector, type VerdictOption } from './VerdictSelector';
+import { VerdictSuggestionBanner } from './VerdictSuggestionBanner';
+import { getConclusionStyles } from './ConclusionStep.styles';
 
-export interface VerdictOption<T extends string = string> {
-  value: T;
-  label: string;
-}
+export type { VerdictOption, VerdictTone } from './VerdictSelector';
 
 export interface ConclusionStepProps<T extends string = string> {
+  // Verdict
   verdict: T | null;
   verdictOptions: VerdictOption<T>[];
-  conclusionText?: string;
   onVerdictChange: (v: T | null) => void;
-  onConclusionChange?: (t: string) => void;
+  verdictError?: boolean;
+  /** Optional auto-computed verdict hint shown above the selector. */
+  suggestion?: { text: string; onApply?: () => void } | null;
+
+  // Free-text comment
   notes?: string;
   onNotesChange?: (t: string) => void;
+  /** Label for the comment field. Defaults to "კომენტარი". */
+  notesLabel?: string;
+  notesRequired?: boolean;
+  notesError?: boolean;
+  conclusionHistory?: string[];
+
+  // Harness name (kamari / harness flows)
   showHarnessName?: boolean;
   harnessName?: string;
   onHarnessNameChange?: (t: string) => void;
-  conclusionHistory?: string[];
-  /** Slot for summary photos strip or other extra content */
+
+  // Photos - first-class string[] strip, or a custom slot (scaffold AttachmentBars)
+  photoPaths?: string[];
+  onAddPhoto?: () => void;
+  onDeletePhoto?: (path: string) => void;
+  /** Label above the photo strip. Defaults to "ფოტოები (სურვ.)". */
+  photoLabel?: string;
   photoSection?: ReactNode;
+
+  // Layout
+  showAvatar?: boolean;
+  summarySection?: ReactNode;
+  /** When false, render a plain View (the host already provides a scroll view). */
+  scroll?: boolean;
   completing?: boolean;
 }
 
 export function ConclusionStep<T extends string = string>({
   verdict,
   verdictOptions,
-  conclusionText,
   onVerdictChange,
-  onConclusionChange,
+  verdictError = false,
+  suggestion,
   notes,
   onNotesChange,
+  notesLabel = 'კომენტარი',
+  notesRequired = false,
+  notesError = false,
+  conclusionHistory,
   showHarnessName = false,
   harnessName,
   onHarnessNameChange,
-  conclusionHistory,
+  photoPaths,
+  onAddPhoto,
+  onDeletePhoto,
+  photoLabel = 'ფოტოები (სურვ.)',
   photoSection,
+  showAvatar = true,
+  summarySection,
+  scroll = true,
   completing = false,
 }: ConclusionStepProps<T>) {
   const { theme } = useTheme();
-  const styles = getStyles(theme);
+  const styles = getConclusionStyles(theme);
+
+  const showNotes = onNotesChange !== undefined;
+  const showPhotos =
+    photoPaths !== undefined && onAddPhoto !== undefined && onDeletePhoto !== undefined;
+
+  const body = (
+    <>
+      {showAvatar ? (
+        <View style={styles.avatar}>
+          <QuestionAvatar illustrationKey="conclusion" />
+        </View>
+      ) : null}
+
+      {summarySection ?? null}
+
+      {showHarnessName ? (
+        <FloatingLabelInput
+          label="ღვედის დასახელება"
+          value={harnessName ?? ''}
+          onChangeText={onHarnessNameChange ?? (() => {})}
+          required
+        />
+      ) : null}
+
+      {suggestion ? (
+        <VerdictSuggestionBanner text={suggestion.text} onApply={suggestion.onApply} />
+      ) : null}
+
+      {verdictOptions.length > 0 ? (
+        <VerdictSelector
+          value={verdict}
+          options={verdictOptions}
+          onChange={onVerdictChange}
+          showError={verdictError}
+        />
+      ) : null}
+
+      {showNotes ? (
+        <>
+          <FloatingLabelInput
+            label={notesLabel}
+            value={notes ?? ''}
+            onChangeText={onNotesChange ?? (() => {})}
+            required={notesRequired}
+            error={notesError ? 'სავალდებულო ველი' : undefined}
+            multiline
+            numberOfLines={4}
+          />
+          {conclusionHistory && conclusionHistory.length > 0 ? (
+            <SuggestionPills
+              suggestions={conclusionHistory}
+              onSelect={onNotesChange ?? (() => {})}
+              visible
+            />
+          ) : null}
+        </>
+      ) : null}
+
+      {showPhotos ? (
+        <View style={styles.photoBlock}>
+          <Text style={styles.photoLabel}>{photoLabel}</Text>
+          <PhotoSection photoPaths={photoPaths!} onAdd={onAddPhoto!} onDelete={onDeletePhoto!} />
+        </View>
+      ) : null}
+
+      {photoSection ?? null}
+
+      {completing ? (
+        <View style={styles.completingRow}>
+          <ActivityIndicator size="small" color={theme.colors.accent} />
+          <Text style={styles.completingText}>მიმდინარეობს…</Text>
+        </View>
+      ) : null}
+    </>
+  );
+
+  if (!scroll) {
+    return <View style={styles.embedded}>{body}</View>;
+  }
 
   return (
     <KeyboardAwareScrollView
@@ -60,109 +177,7 @@ export function ConclusionStep<T extends string = string>({
       showsVerticalScrollIndicator={false}
       bottomOffset={120}
     >
-      {showHarnessName ? (
-        <FloatingLabelInput
-          label="ღვედის დასახელება *"
-          value={harnessName ?? ''}
-          onChangeText={onHarnessNameChange ?? (() => {})}
-          required
-        />
-      ) : null}
-
-      <Text style={[styles.fieldLabel, { color: theme.colors.ink }]}>დასკვნა *</Text>
-      <View style={styles.chipRow}>
-        {verdictOptions.map(opt => {
-          const active = verdict === opt.value;
-          return (
-            <Pressable
-              key={opt.value}
-              style={[
-                styles.chip,
-                { borderColor: theme.colors.hairline, backgroundColor: theme.colors.subtleSurface },
-                active && { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
-              ]}
-              onPress={() => onVerdictChange(active ? null : opt.value)}
-              {...a11y(opt.label, undefined, 'radio')}
-            >
-              <Text style={[
-                styles.chipText,
-                { color: theme.colors.inkSoft },
-                active && { color: theme.colors.accent, fontWeight: '700' },
-              ]}>
-                {opt.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {(onNotesChange !== undefined || onConclusionChange !== undefined) ? (
-        <>
-          <FloatingLabelInput
-            label="შენიშვნები / ხარვეზები"
-            value={notes ?? ''}
-            onChangeText={onNotesChange ?? (() => {})}
-            multiline
-            numberOfLines={4}
-          />
-          {conclusionHistory && conclusionHistory.length > 0 && onConclusionChange ? (
-            <SuggestionPills
-              suggestions={conclusionHistory}
-              onSelect={onConclusionChange}
-              visible
-            />
-          ) : null}
-        </>
-      ) : null}
-
-      {photoSection ?? null}
-
-      {completing ? (
-        <View style={styles.completingRow}>
-          <ActivityIndicator size="small" color={theme.colors.accent} />
-          <Text style={[styles.completingText, { color: theme.colors.inkSoft }]}>მიმდინარეობს…</Text>
-        </View>
-      ) : null}
+      {body}
     </KeyboardAwareScrollView>
   );
-}
-
-function getStyles(theme: ReturnType<typeof useTheme>['theme']) {
-  return StyleSheet.create({
-    container: {
-      flexGrow: 1,
-      paddingHorizontal: 24,
-      paddingTop: 16,
-      paddingBottom: 24,
-      gap: 12,
-    },
-    fieldLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    chipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
-      borderWidth: 1.5,
-    },
-    chipText: {
-      fontSize: 13,
-    },
-    completingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      justifyContent: 'center',
-      paddingTop: 8,
-    },
-    completingText: {
-      fontSize: 14,
-    },
-  });
 }

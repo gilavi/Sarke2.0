@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 
@@ -41,7 +41,7 @@ export function RecentListRow({
         ) : null}
       </View>
       {trailing ? <Text style={styles.trailing}>{trailing}</Text> : null}
-      <Ionicons name="chevron-forward" size={14} color={theme.colors.borderStrong} />
+      <ChevronRight size={14} color={theme.colors.borderStrong} strokeWidth={1.5} />
     </Pressable>
   );
 }

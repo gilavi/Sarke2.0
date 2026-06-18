@@ -1,5 +1,5 @@
 /**
- * FilesSection (ProjectDetail/FilesSection) — currently 22%. Covers:
+ * FilesSection (ProjectDetail/FilesSection) - currently 22%. Covers:
  * empty state, list rendering, upload click, download click, delete click.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';

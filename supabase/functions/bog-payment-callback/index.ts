@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     );
 
     // BOG sends the webhook as { event, zoned_request_time, body: { order_id, ... } }
-    // Older/newer variants put the id at the top level — accept all three.
+    // Older/newer variants put the id at the top level - accept all three.
     const body = await req.json();
     console.log('BOG webhook body:', JSON.stringify(body));
     const orderId: string =
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
       body.id;
     if (!orderId) return json({ error: 'missing order_id' }, 400);
 
-    // Re-verify payment status server-side — never trust the redirect alone
+    // Re-verify payment status server-side - never trust the redirect alone
     const token = await getBogToken();
     const verifyRes = await fetch(
       `${BOG_API_BASE}/payments/v1/receipt/${orderId}`,
@@ -137,12 +137,12 @@ Deno.serve(async (req) => {
       );
 
     if (insertError) {
-      // Log but don't fail the callback — recording history is best-effort.
+      // Log but don't fail the callback - recording history is best-effort.
       console.error('Failed to insert payment_record:', insertError);
     }
 
     if (paymentStatus !== 'completed') {
-      // Not yet paid — BOG may call this webhook multiple times
+      // Not yet paid - BOG may call this webhook multiple times
       return json({ ok: true, status: paymentStatus });
     }
 
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       order.card_token ??
       null;
 
-    // Renewal clears subscription_cancelled_at — user is opting back in.
+    // Renewal clears subscription_cancelled_at - user is opting back in.
     const { error: updateError } = await supabase
       .from('users')
       .update({

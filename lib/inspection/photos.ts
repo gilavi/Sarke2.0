@@ -6,7 +6,7 @@
  *
  * Why it exists: the per-equipment PDF builders each embedded photos *inside*
  * the (async) builder via pdfShared's mobile-only embed helper, which only ever
- * produced mobile base64 data URLs — so equipment PDFs rendered blank images on
+ * produced mobile base64 data URLs - so equipment PDFs rendered blank images on
  * the web dashboard. Resolving here, keyed by platform, fixes that class of bug
  * once for every inspection type.
  *
@@ -44,7 +44,7 @@ export async function resolveInspectionPhotos(paths: string[]): Promise<PhotoMap
                 quality: PDF_ITEM_PHOTO_QUALITY,
               });
       } catch {
-        // Broken/missing photo — skip; the renderer shows a placeholder.
+        // Broken/missing photo - skip; the renderer shows a placeholder.
       }
     }),
   );

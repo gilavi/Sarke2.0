@@ -20,7 +20,7 @@ export type QuestionType =
 /**
  * Inspection lifecycle status.
  *
- * NOTE: still called `questionnaire_status` in Postgres (enum type) — we
+ * NOTE: still called `questionnaire_status` in Postgres (enum type) - we
  * didn't rename the enum in 0006 to avoid a schema-ripple. The TS-side
  * alias is the right abstraction from the app's point of view.
  */
@@ -52,7 +52,7 @@ export interface AppUser {
 /**
  * The expert's professional qualification (e.g. xaracho_inspector certificate
  * with number + issue/expiry + photo). Attached to generated certificates as
- * proof of qualification. This is the row formerly known as `Certificate` —
+ * proof of qualification. This is the row formerly known as `Certificate` -
  * renamed in 0006 to free up that name for the PDF-output concept.
  */
 export interface Qualification {
@@ -68,11 +68,11 @@ export interface Qualification {
 }
 
 /**
- * Project crew (მონაწილეები) — a flat list of people involved on the
+ * Project crew (მონაწილეები) - a flat list of people involved on the
  * project. Editable from both the project screen and the inspection signing
  * flow; both surfaces write back to `projects.crew`.
  *
- * The "inspector" (logged-in expert) is NOT stored here — it's derived from
+ * The "inspector" (logged-in expert) is NOT stored here - it's derived from
  * auth and rendered as the first row in the UI. Only `manual` entries live
  * in this array.
  *
@@ -107,7 +107,7 @@ export interface CrewMember {
   /** Slot identity. `other` rows carry a custom `role` label. */
   roleKey: CrewRoleKey;
   name: string;
-  /** Display label — preset for known keys, custom for `other`. */
+  /** Display label - preset for known keys, custom for `other`. */
   role: string;
   /** Storage path (signatures bucket). Required after save in the slot UX. */
   signature: string | null;
@@ -190,7 +190,7 @@ export interface Question {
 /**
  * Immutable record of what happened on site. The data captured here
  * (answers + photos + conclusion + signatures) is the source of truth.
- * A certificate (PDF) is a derived artefact — see `Certificate`.
+ * A certificate (PDF) is a derived artefact - see `Certificate`.
  */
 export interface Inspection {
   id: string;
@@ -289,12 +289,12 @@ export interface SignatureRecord {
   status: SignatureStatus;
   /** Ad-hoc name for signers not tied to a project_signers row. */
   person_name: string | null;
-  /** Audit trail — SHA256 hash of device identifier. */
+  /** Audit trail - SHA256 hash of device identifier. */
   device_id_hash?: string | null;
-  /** Audit trail — geolocation at time of signing. */
+  /** Audit trail - geolocation at time of signing. */
   latitude?: number | null;
   longitude?: number | null;
-  /** Audit trail — IP address at time of signing. */
+  /** Audit trail - IP address at time of signing. */
   ip_address?: string | null;
 }
 
@@ -373,7 +373,7 @@ export const INCIDENT_TYPE_FULL_LABEL: Record<IncidentType, string> = {
   severe: 'მძიმე უბედური შემთხვევა',
   fatal: 'ფატალური უბედური შემთხვევა',
   mass: 'მასობრივი (3+ დაშავებული)',
-  nearmiss: 'საშიში შემთხვევა (near miss — დაზიანება არ მომხდარა)',
+  nearmiss: 'საშიში შემთხვევა (near miss - დაზიანება არ მომხდარა)',
 };
 
 export interface Incident {
@@ -598,7 +598,7 @@ export interface CraneTechnicalOrderFormData {
   directorName: string;
   craneOperatorName: string;
   craneOperatorPersonalId: string;
-  /** "კვალიფიკაცია / სპეციალობა" — differs from CraneOperatorOrderFormData's craneOperatorPosition */
+  /** "კვალიფიკაცია / სპეციალობა" - differs from CraneOperatorOrderFormData's craneOperatorPosition */
   craneOperatorQualification: string;
   craneOperatorCertNumber: string;
   craneOperatorCertExpiry: string;

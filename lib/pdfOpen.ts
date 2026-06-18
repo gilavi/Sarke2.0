@@ -11,7 +11,7 @@ export type { PdfSecurityOptions } from './pdfSecurity';
 /**
  * Generate a PDF from HTML and open/share it on the current platform.
  *
- * Web: opens the HTML in a new browser tab — the user can use the browser's
+ * Web: opens the HTML in a new browser tab - the user can use the browser's
  *      print-to-PDF function. Storage upload is the caller's responsibility
  *      (impossible on web without a real PDF binary).
  *

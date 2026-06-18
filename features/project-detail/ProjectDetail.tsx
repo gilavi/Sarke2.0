@@ -11,7 +11,7 @@ import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft, Pencil, Plus, UserPlus } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
@@ -62,7 +62,7 @@ export default function ProjectDetail() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  // `useLocalSearchParams<{ id: string }>()` is only a TYPE cast — the runtime
+  // `useLocalSearchParams<{ id: string }>()` is only a TYPE cast - the runtime
   // value of `id` can be `string | string[] | undefined`. Coerce to a single
   // non-empty string here so downstream code (inspection create, navigation)
   // can rely on `id` being a usable project UUID without re-checking.
@@ -132,11 +132,11 @@ export default function ProjectDetail() {
     [t],
   );
 
-  // Data now flows through React Query — cached, deduplicated, and
+  // Data now flows through React Query - cached, deduplicated, and
   // background-refreshed. No more useFocusEffect hammering Supabase
   // on every tab switch.
 
-  // Inspector row (logged-in expert) — derived from auth, never persisted
+  // Inspector row (logged-in expert) - derived from auth, never persisted
   // into projects.crew. The crew list itself is just the manual entries.
   const inspector = useMemo(() => {
     if (session.state.status !== 'signedIn') return null;
@@ -155,7 +155,7 @@ export default function ProjectDetail() {
   const persistCrew = useCallback(
     async (next: CrewMember[]) => {
       if (!project) return;
-      // Optimistic — patch local state, then persist. Roll back on failure
+      // Optimistic - patch local state, then persist. Roll back on failure
       // so the user sees what's actually stored.
       const prev = project;
       setProject({ ...project, crew: next });
@@ -387,14 +387,14 @@ export default function ProjectDetail() {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* ── Floating buttons — always fixed over content ── */}
+      {/* ── Floating buttons - always fixed over content ── */}
       <Pressable
         onPress={() => router.back()}
         hitSlop={13}
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, left: 16, zIndex: 30 }]}
         {...a11y('უკან', 'წინა გვერდზე დაბრუნება', 'button')}
       >
-        <Ionicons name="chevron-back" size={20} color={theme.colors.ink} />
+        <ChevronLeft size={20} color={theme.colors.ink} strokeWidth={1.5} />
       </Pressable>
       <Pressable
         onPress={() => setEditing(true)}
@@ -402,7 +402,7 @@ export default function ProjectDetail() {
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, right: 16, zIndex: 30 }]}
         {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
       >
-        <Ionicons name="pencil-outline" size={18} color={theme.colors.ink} />
+        <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
       </Pressable>
 
       {/* ── Single full-page scroll ── */}
@@ -415,7 +415,7 @@ export default function ProjectDetail() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
 
-        {/* Map hero — no parallax */}
+        {/* Map hero - no parallax */}
         <View ref={heroRef} collapsable={false} style={{ height: 220, overflow: 'hidden' }}>
           <View style={StyleSheet.absoluteFill}>
             {project?.latitude != null && project?.longitude != null ? (
@@ -449,11 +449,11 @@ export default function ProjectDetail() {
             )}
           </View>
 
-          {/* SVG arch — morphs between flat and curved via Reanimated */}
+          {/* SVG arch - morphs between flat and curved via Reanimated */}
           <ProjectArchSvg archProps={archProps} fill={theme.colors.background} />
         </View>
 
-        {/* ── Sheet — sits flush below the arch ── */}
+        {/* ── Sheet - sits flush below the arch ── */}
         <View style={styles.sheet}>
 
           {/* Logo springs in after arch, centered on arch peak */}
@@ -474,14 +474,14 @@ export default function ProjectDetail() {
                 )}
               </View>
               <View style={styles.logoBadge} pointerEvents="none">
-                <Ionicons name="add" size={13} color={theme.colors.white} />
+                <Plus size={13} color={theme.colors.white} strokeWidth={1.5} />
               </View>
             </Pressable>
           </Reanimated.View>
 
 
         <View style={styles.projectInfoCenter}>
-          <Text style={styles.heroName}>{project?.company_name || project?.name || '—'}</Text>
+          <Text style={styles.heroName}>{project?.company_name || project?.name || '-'}</Text>
           {project?.address ? (
             <Text style={styles.heroMetaText} numberOfLines={2}>
               {project.address}
@@ -499,7 +499,7 @@ export default function ProjectDetail() {
           ) : null}
         </View>
 
-        {/* Quick actions — edgeInset matches parent paddingHorizontal to reach screen edges */}
+        {/* Quick actions - edgeInset matches parent paddingHorizontal to reach screen edges */}
         <View style={{ paddingHorizontal: 24, paddingBottom: 4 }}>
           <QuickActions actions={quickActions} scrollable edgeInset={24} />
         </View>
@@ -560,7 +560,7 @@ export default function ProjectDetail() {
           <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
             <View style={styles.sectionHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="person-add-outline" size={16} color={theme.colors.inkSoft} />
+                <UserPlus size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
                 <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
                 <Text style={styles.sectionCount}>{participantCount}</Text>
               </View>

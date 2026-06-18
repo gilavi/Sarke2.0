@@ -23,7 +23,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
   return (
     <div className="flex h-full min-h-screen bg-[var(--bg-body)]">
-      {/* Ambient mesh background — desktop only */}
+      {/* Ambient mesh background - desktop only */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden hidden sm:block">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-brand-500/5 blur-3xl animate-mesh-1" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-brand-400/5 blur-3xl animate-mesh-2" />
@@ -88,7 +88,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
             `mode="wait"` is REQUIRED here. Without it, the previous attempt
             (concurrent crossfade with two ternary branches sharing
             `key={location.pathname}`) caused exit animations to never
-            complete — old pages piled up in the DOM, one per navigation,
+            complete - old pages piled up in the DOM, one per navigation,
             until the app became visually broken (BUG-20). Wait-mode runs the
             outgoing exit before the incoming enter; with the short 0.15s
             duration below the gap is barely perceptible and the DOM stays

@@ -1,6 +1,7 @@
 ﻿import { memo, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleAlert, Clock, CircleCheck } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useAccessibilitySettings } from '../../../lib/accessibility';
@@ -78,12 +79,12 @@ const KamariCard = memo(function KamariCard({
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
-  const palette =
+  const palette: { bg: string; border: string; Icon: LucideIcon; iconColor: string; label: string; labelColor: string } =
     state === 'problems'
       ? {
           bg: theme.colors.dangerSoft,
           border: theme.colors.danger,
-          icon: 'alert-circle' as const,
+          Icon: CircleAlert,
           iconColor: theme.colors.danger,
           label: `${problemCount} პრობლემა`,
           labelColor: theme.colors.danger,
@@ -92,7 +93,7 @@ const KamariCard = memo(function KamariCard({
         ? {
             bg: theme.colors.semantic.warningSoft,
             border: theme.colors.semantic.warning,
-            icon: 'time-outline' as const,
+            Icon: Clock,
             iconColor: theme.colors.semantic.warning,
             label: 'მიმდინარეობს',
             labelColor: theme.colors.semantic.warning,
@@ -100,7 +101,7 @@ const KamariCard = memo(function KamariCard({
         : {
             bg: theme.colors.semantic.successSoft,
             border: theme.colors.semantic.success,
-            icon: 'checkmark-circle' as const,
+            Icon: CircleCheck,
             iconColor: theme.colors.semantic.success,
             label: 'კარგია',
             labelColor: theme.colors.semantic.success,
@@ -120,7 +121,7 @@ const KamariCard = memo(function KamariCard({
       <Text size="lg" weight="bold" style={{ marginBottom: 8 }}>
         ქამარი #{index}
       </Text>
-      <Ionicons name={palette.icon} size={42} color={palette.iconColor} />
+      {(() => { const PaletteIcon = palette.Icon; return <PaletteIcon size={42} color={palette.iconColor} strokeWidth={1.5} />; })()}
       <Text
         size="sm"
         weight="semibold"

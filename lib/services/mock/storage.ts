@@ -27,6 +27,6 @@ export const storageApi = {
   publicUrl: (_bucket: string, _path: string) =>
     MOCK_IMAGE_URI,
   remove: async (_bucket: string, _path: string): Promise<void> => {
-    // No-op in mock — no real blobs to clean up.
+    // No-op in mock - no real blobs to clean up.
   },
 };

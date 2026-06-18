@@ -8,7 +8,7 @@
  * builders (~80% copy-pasted CSS + scaffolding) with shared code + small descriptors.
  *
  * The block list is a discriminated union; the renderer (lib/inspection/pdf.ts)
- * has one function per `kind`. New block kinds are additive — declare the kind
+ * has one function per `kind`. New block kinds are additive - declare the kind
  * here, handle it there. The `custom` kind is the escape hatch for genuinely
  * one-off sections so a type is never un-expressible.
  */
@@ -28,7 +28,7 @@ export interface InfoField {
 }
 
 /**
- * A result vocabulary entry — reused for checklist item results and for verdict
+ * A result vocabulary entry - reused for checklist item results and for verdict
  * options. `mark`/`tone` drive the "checks" checklist layout and pill colors.
  */
 export interface ResultOption {
@@ -122,7 +122,7 @@ export type PdfBlock<T> =
  * and persistence concerns separated within the same descriptor object.)
  */
 export interface InspectionSchema<T = any> {
-  /** Dispatch key — matches `template.category`. */
+  /** Dispatch key - matches `template.category`. */
   category: string;
   /** Postgres table backing this type. */
   table: string;
@@ -137,7 +137,7 @@ export interface InspectionSchema<T = any> {
   docSubtitle?: string | ((d: T) => string);
   /** Top-right badge text; defaults to the standard internal-document label. */
   internalBadge?: string | ((d: T) => string);
-  /** Footer left label (e.g. 'Hubble — ექსკავატორის …'). */
+  /** Footer left label (e.g. 'Hubble - ექსკავატორის …'). */
   pdfFooterLabel: string | ((d: T) => string);
   /** Stable label for generatePdfName (ASCII, e.g. 'ExcavatorInspection'). */
   pdfNameLabel: string;

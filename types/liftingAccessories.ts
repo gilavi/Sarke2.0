@@ -32,12 +32,12 @@ export interface LiftingAccessoriesInspection {
   templateId: string | null;
   userId: string;
   status: 'draft' | 'completed';
-  // Section 1 — ზოგადი ინფო
+  // Section 1 - ზოგადი ინფო
   company: string;
   address: string;
   inspectorName: string;
   inspectionDate: string;
-  // Section 2 — მოწყობილობის იდენტიფიკაცია
+  // Section 2 - მოწყობილობის იდენტიფიკაცია
   equipmentTypes: string[];
   equipmentTypeOther: string;
   serialNumber: string;
@@ -47,14 +47,14 @@ export interface LiftingAccessoriesInspection {
   wllKg: string;
   unitCount: string;
   nextInspectionDate: string | null;
-  // Section 3 — შემოწმება (10 items)
+  // Section 3 - შემოწმება (10 items)
   items: LAItemState[];
-  // Section 4 — ამოღებული მოწყობილობები
+  // Section 4 - ამოღებული მოწყობილობები
   removedRows: LARemovedRow[];
-  // Section 5 — დასკვნა
+  // Section 5 - დასკვნა
   verdict: LAVerdict | null;
   verdictComment: string;
-  // Section 6 — ხელმოწერები
+  // Section 6 - ხელმოწერები
   signatures: LASignatory[];
   summaryPhotos: string[];
   completedAt: string | null;
@@ -93,13 +93,13 @@ export interface LAChecklistEntry {
 }
 
 export const LA_CHECKLIST_ITEMS: LAChecklistEntry[] = [
-  // Section A — ვიზუალური შემოწმება
+  // Section A - ვიზუალური შემოწმება
   { id: 1, label: 'სლინგ./თასმ. სხეული', description: 'ჭრა, გახეთქვა, ცვეთა', section: 'A' },
   { id: 2, label: 'ბოლო ადაპტ./მარყ.', description: 'ფ-ა, სიმჭ., ვ/ო', section: 'A' },
   { id: 3, label: 'ნაკ./შეერთ. (ტექ.)', description: 'ნ/ო ჩ-ა, გქ. ელ.', section: 'A' },
   { id: 4, label: 'კოროზ./ქ-მ./სით.', description: 'ხ/ვ. დაზიანება', section: 'A' },
   { id: 5, label: 'დეფ./კვ./გ-ბ.', description: 'ფ-ის გადახ.', section: 'A' },
-  // Section B — ფუნქციური შემოწმება
+  // Section B - ფუნქციური შემოწმება
   { id: 6, label: 'ჩ-ი/კ-ი ბლოკ.', description: 'gate, pin, auto-lock', section: 'B' },
   { id: 7, label: 'ჯ-ვ. ბმ./ხვ. ც-ა', description: '', section: 'B' },
   { id: 8, label: 'ბ-ვ./ტ-ი ელ-ბ.', description: 'ბ-ბ. წყ., ე-ი დ-ა', section: 'B' },

@@ -23,7 +23,7 @@ export function Select({
   value,
   onChange,
   options,
-  placeholder = '— აირჩიეთ —',
+  placeholder = 'აირჩიეთ',
   size = 'default',
   disabled,
   className,

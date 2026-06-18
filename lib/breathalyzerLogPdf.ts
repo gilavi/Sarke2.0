@@ -230,7 +230,7 @@ export async function buildBreathalizerLogPdfHtml(args: {
   const counts = countsByStatus(log.entries);
   const docDate = fmtDate(log.date);
   const docId = log.id.slice(-8).toUpperCase();
-  const sn = log.deviceSerialNumber ? escHtml(log.deviceSerialNumber) : '—';
+  const sn = log.deviceSerialNumber ? escHtml(log.deviceSerialNumber) : '-';
 
   // ── Header ─────────────────────────────────────────────────────────────────
 
@@ -285,7 +285,7 @@ export async function buildBreathalizerLogPdfHtml(args: {
       ? '<span class="sig-refused">უარი</span>'
       : entry.signature
         ? `<img class="sig-img" src="data:image/png;base64,${entry.signature}" />`
-        : '<span class="sig-refused">—</span>';
+        : '<span class="sig-refused">-</span>';
 
     const nameCellClass = isRepeat ? 'repeat-indent' : '';
     const nameContent = isRepeat
@@ -359,7 +359,7 @@ export async function buildBreathalizerLogPdfHtml(args: {
     <div class="responsible-block">
       <div class="responsible-cell">
         <div class="responsible-lbl">პასუხისმგებელი პირი</div>
-        <div class="responsible-name">${escHtml(rp.name) || '—'}</div>
+        <div class="responsible-name">${escHtml(rp.name) || '-'}</div>
       </div>
       <div class="responsible-cell">
         <div class="responsible-lbl">ხელმოწერა</div>

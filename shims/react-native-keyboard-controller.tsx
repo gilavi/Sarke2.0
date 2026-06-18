@@ -3,7 +3,7 @@
 // react-native-worklets, which throws `createSerializableObject should
 // never be called in JSWorklets` on web because the JS worklets runtime
 // can't clone/serialize objects. On web, the browser handles keyboard
-// natively, so we don't need any of this — replace with no-op pass-throughs.
+// natively, so we don't need any of this - replace with no-op pass-throughs.
 import { ReactNode } from 'react';
 import { ScrollView, ScrollViewProps, View, ViewProps } from 'react-native';
 

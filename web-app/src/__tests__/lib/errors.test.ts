@@ -18,12 +18,12 @@ describe('humanizeError', () => {
   const cases: Array<[string, string]> = [
     ['new row violates row-level security policy', 'ამ მოქმედების ნებართვა არ გაქვთ.'],
     ['permission denied for table reports', 'ამ მოქმედების ნებართვა არ გაქვთ.'],
-    ['არაავტორიზებული', 'სესია ამოიწურა — გთხოვთ, თავიდან შეხვიდეთ.'],
-    ['JWT expired', 'სესია ამოიწურა — გთხოვთ, თავიდან შეხვიდეთ.'],
-    ['Payload too large', 'ფაილი ძალიან დიდია — სცადეთ უფრო პატარა ფაილი.'],
+    ['არაავტორიზებული', 'სესია ამოიწურა - გთხოვთ, თავიდან შეხვიდეთ.'],
+    ['JWT expired', 'სესია ამოიწურა - გთხოვთ, თავიდან შეხვიდეთ.'],
+    ['Payload too large', 'ფაილი ძალიან დიდია - სცადეთ უფრო პატარა ფაილი.'],
     ['Failed to fetch', 'ქსელთან დაკავშირება ვერ მოხერხდა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.'],
     ['duplicate key value violates unique constraint', 'ასეთი ჩანაწერი უკვე არსებობს.'],
-    ['Email rate limit exceeded', 'ძალიან ბევრი მცდელობა — ცადეთ ცოტა ხანში.'],
+    ['Email rate limit exceeded', 'ძალიან ბევრი მცდელობა - ცადეთ ცოტა ხანში.'],
   ];
 
   it.each(cases)('maps %s to localized copy', (raw, expected) => {

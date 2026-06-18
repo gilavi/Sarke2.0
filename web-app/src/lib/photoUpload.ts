@@ -1,5 +1,5 @@
 /**
- * photoUpload.ts — inspection photo helpers for the web dashboard.
+ * photoUpload.ts - inspection photo helpers for the web dashboard.
  *
  * Photos are stored in the `answer-photos` Supabase Storage bucket under the
  * path: `{prefix}/{inspectionId}/{itemId}/{uuid}.{ext}`.
@@ -47,7 +47,7 @@ export function signedInspectionPhotoUrl(path: string): Promise<string> {
 }
 
 /**
- * Remove a photo from storage. Best-effort — does not throw on 404.
+ * Remove a photo from storage. Best-effort - does not throw on 404.
  */
 export async function deleteInspectionPhoto(path: string): Promise<void> {
   await removeObjects(STORAGE_BUCKETS.answerPhotos, [path]);

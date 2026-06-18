@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MapPin } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
 
 
@@ -17,7 +17,7 @@ export function MapPreview({ latitude, longitude, style }: Props) {
 
   return (
     <View style={[style, styles.placeholder]}>
-      <Ionicons name="location" size={20} color={theme.colors.inkFaint} />
+      <MapPin size={20} color={theme.colors.inkFaint} strokeWidth={2} />
       <Text style={styles.coords}>
         {latitude.toFixed(5)}, {longitude.toFixed(5)}
       </Text>

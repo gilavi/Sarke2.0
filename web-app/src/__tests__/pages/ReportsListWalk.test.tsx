@@ -1,5 +1,5 @@
 /**
- * Reports list page (47% covered) — covers row rendering + delete confirm path.
+ * Reports list page (47% covered) - covers row rendering + delete confirm path.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor } from '@/test-utils';

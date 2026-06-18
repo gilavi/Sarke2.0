@@ -4,12 +4,13 @@
 // jumps to it. Originated as the fall-protection device tab strip, extracted so
 // other flows can reuse the same look + behaviour.
 import { ScrollView, Pressable, View, StyleSheet } from 'react-native';
+import { Check } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 
-export type ChipNavState = 'pending' | 'active' | 'done' | 'problem' | 'warning';
+export type ChipNavState = 'pending' | 'active' | 'done' | 'problem' | 'warning' | 'skipped';
 
 export interface ChipNavItem {
   key: string;
@@ -39,15 +40,42 @@ function stateBg(state: ChipNavState, theme: Theme): string {
   }
 }
 
+/**
+ * Monochrome marker used by `dotMode` 'mono'/'check'. Severity is conveyed by
+ * fill/shape, never hue - matching the StatusChip answer language.
+ *   done/active → solid ink dot   pending → hollow ring
+ *   skipped     → muted hollow ring (inkFaint)
+ */
+function monoDot(state: ChipNavState, theme: Theme, isActive: boolean) {
+  if (state === 'done' || state === 'active' || isActive) {
+    return { backgroundColor: theme.colors.ink, borderWidth: 0 } as const;
+  }
+  if (state === 'skipped') {
+    return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: theme.colors.inkFaint } as const;
+  }
+  return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: theme.colors.borderStrong } as const;
+}
+
 export interface ChipNavStripProps {
   items: ChipNavItem[];
   activeIndex: number;
   onSelect: (index: number) => void;
+  /** 'status' (default) colors the active chip by state (accent / green / red).
+   *  'neutral' keeps the active chip ink-gray and conveys state only via the
+   *  small status dot - used where a colored selection competes with the UI. */
+  tone?: 'status' | 'neutral';
+  /** How the per-chip status marker is drawn.
+   *  'color' (default) - colored `stateColor` dot (the original behaviour).
+   *  'mono'  - ink/hollow dot, no hue (severity via fill/shape).
+   *  'check' - checkmark for `done`, otherwise the mono dot.
+   *  Use 'mono'/'check' in monochrome flows that must not show green. */
+  dotMode?: 'color' | 'mono' | 'check';
 }
 
-export function ChipNavStrip({ items, activeIndex, onSelect }: ChipNavStripProps) {
+export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status', dotMode = 'color' }: ChipNavStripProps) {
   const { theme } = useTheme();
   const styles = getStyles(theme);
+  const neutral = tone === 'neutral';
   return (
     <ScrollView
       horizontal
@@ -61,20 +89,40 @@ export function ChipNavStrip({ items, activeIndex, onSelect }: ChipNavStripProps
         // so the user can always see where they are.
         const effective: ChipNavState =
           isActive && item.state === 'pending' ? 'active' : item.state;
-        const color = stateColor(effective, theme);
+        // Dot always reflects real status; in neutral tone an active item never
+        // tints the dot accent (raw state → a clean active chip stays gray).
+        const dotColor = stateColor(neutral ? item.state : effective, theme);
+        const borderColor = neutral
+          ? isActive ? theme.colors.ink : theme.colors.border
+          : stateColor(effective, theme);
+        const activeBg = neutral ? theme.colors.subtleSurface : stateBg(effective, theme);
+        const labelColor = neutral ? theme.colors.ink : stateColor(effective, theme);
+        // Status marker: colored dot (default) or a monochrome dot / checkmark.
+        const showCheck = dotMode === 'check' && item.state === 'done';
         return (
           <Pressable
             key={item.key}
             style={[
               styles.tab,
-              { borderColor: color },
-              isActive && { backgroundColor: stateBg(effective, theme) },
+              { borderColor },
+              isActive && { backgroundColor: activeBg },
             ]}
             onPress={() => { haptic.light(); onSelect(idx); }}
             {...a11y(item.label, item.a11yHint ?? item.label, 'tab')}
           >
-            <View style={[styles.dot, { backgroundColor: color }]} />
-            <Text style={[styles.label, isActive && { color, fontWeight: '800' }]}>
+            {showCheck ? (
+              <Check size={13} color={theme.colors.ink} strokeWidth={1.5} style={styles.check} />
+            ) : (
+              <View
+                style={[
+                  styles.dot,
+                  dotMode === 'color'
+                    ? { backgroundColor: dotColor }
+                    : monoDot(item.state, theme, isActive),
+                ]}
+              />
+            )}
+            <Text style={[styles.label, isActive && { color: labelColor, fontWeight: '800' }]}>
               {item.label}
             </Text>
           </Pressable>
@@ -111,6 +159,7 @@ function getStyles(theme: Theme) {
       backgroundColor: theme.colors.card,
     },
     dot: { width: 7, height: 7, borderRadius: 3.5 },
+    check: { marginRight: -1 },
     label: { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },
   });
 }

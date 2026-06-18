@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
-import { Ionicons } from '@expo/vector-icons';
+import { MailOpen, X, CircleAlert, Key, Globe, Eye, EyeOff } from 'lucide-react-native';
 import { HubbleMark } from '../../components/HubbleMark';
 import { OrbitField } from '../../components/OrbitField';
 import { useSession } from '../../lib/session';
@@ -34,6 +34,7 @@ import {
 import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 const MIN_PASSWORD_LEN = 6;
 
@@ -104,6 +105,8 @@ function ForgotPasswordModal({
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  // Enabled "Send Link" button + on-press field error (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   // Pre-fill the field whenever the modal opens with an email from the login form.
   useEffect(() => {
@@ -141,7 +144,7 @@ function ForgotPasswordModal({
           {sent ? (
             <View style={{ gap: 16, alignItems: 'center', marginTop: 12 }}>
               <View style={styles.iconCircle}>
-                <Ionicons name="mail-open-outline" size={36} color={theme.colors.accent} />
+                <MailOpen size={36} color={theme.colors.accent} strokeWidth={1.5} />
               </View>
               <Text style={[styles.modalBody, { textAlign: 'center' }]}>
                 {t('auth.resetSent', { email })}
@@ -163,9 +166,10 @@ function ForgotPasswordModal({
                 textContentType="emailAddress"
                 autoComplete="email"
                 returnKeyType="go"
-                onSubmitEditing={() => { if (email.trim()) submit(); }}
+                error={attempted && !email.trim() ? 'შეიყვანეთ ელ. ფოსტა' : undefined}
+                onSubmitEditing={() => guard(!!email.trim(), submit)}
               />
-              <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
+              <Button title={t('auth.sendLink')} onPress={() => guard(!!email.trim(), submit)} loading={busy} />
             </View>
           )}
         </Card>
@@ -191,11 +195,14 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
   const [error, setError] = useState<string | null>(null);
   // Counts consecutive wrong-password failures for the CURRENT email. Resets
   // whenever the email changes or a sign-in succeeds. AccountNotFound failures
-  // (typo'd email) do NOT increment — a different problem, different remedy.
+  // (typo'd email) do NOT increment - a different problem, different remedy.
   const [wrongPwCount, setWrongPwCount] = useState(0);
   const passwordRef = useRef<TextInput>(null);
+  // Enabled login button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   const showResetPrompt = wrongPwCount >= RESET_PROMPT_AFTER;
+  const loginValid = isEmail(email.trim()) && password.length >= MIN_PASSWORD_LEN;
 
   const onEmailChange = (next: string) => {
     setEmail(next);
@@ -226,7 +233,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         setWrongPwCount(n => n + 1);
       } else if (isAccountNotFoundError(e)) {
         setError(t('auth.accountNotFound'));
-        // Different problem (wrong email, not wrong password) — don't count
+        // Different problem (wrong email, not wrong password) - don't count
         // toward the reset-password CTA threshold.
       } else {
         setError(friendlyError(e));
@@ -249,6 +256,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         autoComplete="email"
         returnKeyType="next"
         blurOnSubmit={false}
+        error={attempted && !isEmail(email.trim()) ? 'არასწორი ელ. ფოსტა' : undefined}
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
@@ -257,12 +265,13 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
-        rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
+        rightIcon={showPw ? EyeOff : Eye}
         onRightIconPress={() => setShowPw(v => !v)}
         textContentType="password"
         autoComplete="current-password"
         returnKeyType="go"
-        onSubmitEditing={handleSignIn}
+        error={attempted && password.length < MIN_PASSWORD_LEN ? `პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს` : undefined}
+        onSubmitEditing={() => guard(loginValid, handleSignIn)}
       />
       <Pressable
         onPress={() => onForgotPassword(email.trim() || undefined)}
@@ -277,9 +286,8 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
       ) : null}
       <Button
         title={t('auth.login')}
-        onPress={handleSignIn}
+        onPress={() => guard(loginValid, handleSignIn)}
         loading={busy}
-        disabled={!isEmail(email.trim()) || password.length < MIN_PASSWORD_LEN}
       />
       <Divider />
       <SocialAuthButtons mode="login" onError={setError} />
@@ -295,7 +303,7 @@ function ResetPasswordPrompt({ onReset }: { onReset: () => void }) {
   const { t } = useTranslation();
   return (
     <View style={styles.resetPromptBox}>
-      <Ionicons name="key-outline" size={18} color={theme.colors.accent} />
+      <Key size={18} color={theme.colors.accent} strokeWidth={1.5} />
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.ink }}>
           {t('auth.tooManyAttemptsTitle')}
@@ -336,6 +344,8 @@ function RegisterForm({
   const lastNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
+  // Enabled register button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   const canSubmit =
     !!firstName.trim() &&
@@ -387,6 +397,7 @@ function RegisterForm({
             autoComplete="name-given"
             returnKeyType="next"
             blurOnSubmit={false}
+            error={attempted && !firstName.trim() ? 'სავალდებულო ველი' : undefined}
             onSubmitEditing={() => lastNameRef.current?.focus()}
           />
         </View>
@@ -400,6 +411,7 @@ function RegisterForm({
             autoComplete="name-family"
             returnKeyType="next"
             blurOnSubmit={false}
+            error={attempted && !lastName.trim() ? 'სავალდებულო ველი' : undefined}
             onSubmitEditing={() => emailRef.current?.focus()}
           />
         </View>
@@ -416,6 +428,7 @@ function RegisterForm({
         autoComplete="email"
         returnKeyType="next"
         blurOnSubmit={false}
+        error={attempted && !isEmail(email.trim()) ? 'არასწორი ელ. ფოსტა' : undefined}
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
@@ -424,15 +437,16 @@ function RegisterForm({
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPw}
-        rightIcon={showPw ? 'eye-off-outline' : 'eye-outline'}
+        rightIcon={showPw ? EyeOff : Eye}
         onRightIconPress={() => setShowPw(v => !v)}
         textContentType="newPassword"
         autoComplete="new-password"
         returnKeyType="go"
-        onSubmitEditing={() => { if (canSubmit) handleRegister(); }}
+        error={attempted && password.length < MIN_PASSWORD_LEN ? `პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს` : undefined}
+        onSubmitEditing={() => guard(canSubmit, handleRegister)}
       />
       {error ? <InlineError>{error}</InlineError> : null}
-      <Button title={t('auth.register')} onPress={handleRegister} loading={busy} disabled={!canSubmit} />
+      <Button title={t('auth.register')} onPress={() => guard(canSubmit, handleRegister)} loading={busy} />
       <Divider />
       <SocialAuthButtons mode="register" onError={setError} />
     </View>
@@ -448,7 +462,7 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
     <View style={styles.modalHeader}>
       <Text style={{ fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>{title}</Text>
       <Pressable onPress={onClose} hitSlop={12}>
-        <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+        <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
       </Pressable>
     </View>
   );
@@ -460,7 +474,7 @@ function InlineError({ children }: { children: React.ReactNode }) {
 
   return (
     <View style={styles.errorBox}>
-      <Ionicons name="alert-circle-outline" size={15} color={theme.colors.danger} />
+      <CircleAlert size={15} color={theme.colors.danger} strokeWidth={1.5} />
       <Text style={{ color: theme.colors.danger, fontSize: 13, flex: 1, lineHeight: 18 }}>
         {children}
       </Text>
@@ -570,7 +584,7 @@ function LanguageSwitcher() {
           busy && { opacity: 0.6 },
         ]}
       >
-        <Ionicons name="globe" size={16} color={theme.colors.accent} />
+        <Globe size={16} color={theme.colors.accent} strokeWidth={1.5} />
         <Text style={styles.languageSwitcherText}>
           {i18n.language === 'ka' ? 'English' : 'ქართული'}
         </Text>

@@ -1,5 +1,5 @@
 /**
- * Lifting accessories inspection schema — web mirror of the Expo app's
+ * Lifting accessories inspection schema - web mirror of the Expo app's
  * `lib/inspection/schemas/liftingAccessories.ts` (the `@root` import is
  * eslint-banned). Param table + A/B pill checklist + verdict + EN footer (custom
  * blocks). The persisted two-signatory section is omitted (regulatory); the
@@ -45,25 +45,25 @@ const EXTRA_CSS = `
 function checklistPill(result: string | null): string {
   if (result === 'ok') return '<span class="pill pill-ok">✓ გამართულია</span>';
   if (result === 'fail') return '<span class="pill pill-fail">✗ გაუმართავია</span>';
-  return '<span class="pill pill-null">—</span>';
+  return '<span class="pill pill-null">-</span>';
 }
 
 function markingPill(status: string | null): string {
-  if (!status) return '—';
+  if (!status) return '-';
   return `<span class="eq-chip">${escapeHtml(status)}</span>`;
 }
 
 function renderSectionI(insp: LiftingAccessoriesInspection): string {
   return `
-    <div class="section-title">I — ზოგადი ინფორმაცია</div>
+    <div class="section-title">I - ზოგადი ინფორმაცია</div>
     <table class="info-table">
       <tr>
-        <td><span class="lbl">კომპანია</span><span class="val">${escapeHtml(insp.company) || '—'}</span></td>
+        <td><span class="lbl">კომპანია</span><span class="val">${escapeHtml(insp.company) || '-'}</span></td>
         <td><span class="lbl">შემოწმების თარიღი</span><span class="val">${fmtDate(insp.inspectionDate)}</span></td>
       </tr>
       <tr>
-        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '—'}</span></td>
-        <td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '—'}</span></td>
+        <td><span class="lbl">მისამართი</span><span class="val">${escapeHtml(insp.address) || '-'}</span></td>
+        <td><span class="lbl">ინსპექტორი</span><span class="val">${escapeHtml(insp.inspectorName) || '-'}</span></td>
       </tr>
     </table>
   `;
@@ -72,16 +72,16 @@ function renderSectionI(insp: LiftingAccessoriesInspection): string {
 function renderSectionII(insp: LiftingAccessoriesInspection): string {
   const eqChips = insp.equipmentTypes.length > 0
     ? `<div class="eq-chips">${insp.equipmentTypes.map((t) => `<span class="eq-chip">${escapeHtml(t)}</span>`).join('')}</div>`
-    : '—';
+    : '-';
   return `
-    <div class="section-title">II — მოწყობილობის იდენტიფიკაცია</div>
+    <div class="section-title">II - მოწყობილობის იდენტიფიკაცია</div>
     <table class="param-table">
       <tr><td>ტიპი / სახეობა</td><td>${eqChips}</td></tr>
-      <tr><td>სერ. NN / ID</td><td>${escapeHtml(insp.serialNumber) || '—'}</td></tr>
-      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '—'}</td></tr>
-      <tr><td>წ. წარმოება</td><td>${escapeHtml(insp.yearOfManufacture) || '—'}</td></tr>
-      <tr><td>WLL (კგ)</td><td>${escapeHtml(insp.wllKg) || '—'}</td></tr>
-      <tr><td>ერთ. რ-ბა</td><td>${escapeHtml(insp.unitCount) || '—'}</td></tr>
+      <tr><td>სერ. NN / ID</td><td>${escapeHtml(insp.serialNumber) || '-'}</td></tr>
+      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
+      <tr><td>წ. წარმოება</td><td>${escapeHtml(insp.yearOfManufacture) || '-'}</td></tr>
+      <tr><td>WLL (კგ)</td><td>${escapeHtml(insp.wllKg) || '-'}</td></tr>
+      <tr><td>ერთ. რ-ბა</td><td>${escapeHtml(insp.unitCount) || '-'}</td></tr>
       <tr><td>მარკირება</td><td>${markingPill(insp.markingStatus)}</td></tr>
     </table>
   `;
@@ -128,7 +128,7 @@ function renderVerdict(insp: LiftingAccessoriesInspection): string {
     })
     .join('');
   return `
-    <div class="section-title">V — დასკვნა</div>
+    <div class="section-title">V - დასკვნა</div>
     <div class="verdict-block">${options}</div>
     <div class="comment-block"><div class="comment-label">კომენტარი</div>${escapeHtml(insp.verdictComment) || ''}</div>
   `;
@@ -151,7 +151,7 @@ export const liftingAccessoriesSchema: InspectionSchema<LiftingAccessoriesInspec
 
   docTitle: 'ტვირთის გადასატანი თასმების /<br>ჩამჭიდების შემოწმების აქტი',
   docSubtitle: 'Lifting Accessories Inspection Record',
-  pdfFooterLabel: 'Hubble — შრომის უსაფრთხოება',
+  pdfFooterLabel: 'Hubble - შრომის უსაფრთხოება',
   pdfNameLabel: 'LiftingAccessoriesInspection',
   extraCss: EXTRA_CSS,
 
@@ -162,8 +162,8 @@ export const liftingAccessoriesSchema: InspectionSchema<LiftingAccessoriesInspec
   blocks: [
     { kind: 'custom', render: (d) => renderSectionI(d) },
     { kind: 'custom', render: (d) => renderSectionII(d) },
-    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'A', 'III — ვიზუალური შემოწმება') },
-    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'B', 'IV — ფუნქციური შემოწმება') },
+    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'A', 'III - ვიზუალური შემოწმება') },
+    { kind: 'custom', render: (d, photos) => renderChecklist(d, photos, 'B', 'IV - ფუნქციური შემოწმება') },
     { kind: 'custom', render: (d) => renderVerdict(d) },
     { kind: 'custom', render: () => renderFooterNote() },
   ],

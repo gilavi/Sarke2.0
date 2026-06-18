@@ -1,5 +1,5 @@
 /**
- * ProjectFiles page (37% covered) — list, download, delete.
+ * ProjectFiles page (37% covered) - list, download, delete.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Routes, Route } from 'react-router-dom';
@@ -79,7 +79,7 @@ describe('ProjectFiles page', () => {
       '/projects/p1/files',
     );
     await screen.findByText('doc.pdf');
-    // Trash button — find by lucide-trash class.
+    // Trash button - find by lucide-trash class.
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     fireEvent.click(trash[0].closest('button')!);
     // Wait for the AlertDialog to appear, then click the confirm button.

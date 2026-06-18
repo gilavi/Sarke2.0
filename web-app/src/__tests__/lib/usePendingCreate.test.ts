@@ -98,7 +98,7 @@ describe('usePendingCreate', () => {
 
     const createFn = vi.fn().mockResolvedValue({ id: 'new-id' });
     await act(async () => {
-      // Call twice concurrently — second call must be a no-op
+      // Call twice concurrently - second call must be a no-op
       await Promise.all([
         result.current.lazyCreate(createFn),
         result.current.lazyCreate(createFn),

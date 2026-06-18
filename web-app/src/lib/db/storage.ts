@@ -46,7 +46,7 @@ export interface UploadOptions {
 /**
  * Upload a file/blob to `bucket` at `path`. Returns the stored path.
  * If no `contentType` is given, falls back to the File's type when present and
- * otherwise omits it (so Supabase applies its own default) — matching the
+ * otherwise omits it (so Supabase applies its own default) - matching the
  * mix of explicit and implicit content types the data modules relied on.
  */
 export async function upload(

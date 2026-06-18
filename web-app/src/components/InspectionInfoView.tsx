@@ -1,11 +1,11 @@
 /**
- * InspectionInfoView — read-only (+ editable when draft) summary of an inspection.
+ * InspectionInfoView - read-only (+ editable when draft) summary of an inspection.
  *
  * Renders four card sections:
- *   1. ზოგადი ინფო  — key fields, editable via FieldInput when isDraft
- *   2. ქამრების შედეგები — grid answer table (read-only)
- *   3. შეფასება — safety verdict chip + conclusion text (editable when draft)
- *   4. ფოტოები — conclusion photo grid (signed URLs from answer-photos bucket)
+ *   1. ზოგადი ინფო  - key fields, editable via FieldInput when isDraft
+ *   2. ქამრების შედეგები - grid answer table (read-only)
+ *   3. შეფასება - safety verdict chip + conclusion text (editable when draft)
+ *   4. ფოტოები - conclusion photo grid (signed URLs from answer-photos bucket)
  *
  * Props:
  *   inspection   Full inspection row
@@ -76,7 +76,7 @@ export default function InspectionInfoView({
   function statusCell(value: string | undefined) {
     if (value === 'ok')  return <span className="font-semibold text-brand-600 dark:text-brand-400">კი</span>;
     if (value === 'bad') return <span className="font-semibold text-red-500 dark:text-red-400">არა</span>;
-    return <span className="text-neutral-400">—</span>;
+    return <span className="text-neutral-400">-</span>;
   }
 
   const safeChipBase =
@@ -100,7 +100,7 @@ export default function InspectionInfoView({
           ) : (
             <div className="space-y-0.5">
               <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">დასახელება</p>
-              <p className="text-sm text-neutral-800 dark:text-neutral-200">{inspection.harness_name ?? '—'}</p>
+              <p className="text-sm text-neutral-800 dark:text-neutral-200">{inspection.harness_name ?? '-'}</p>
             </div>
           )}
           {isDraft ? (
@@ -113,7 +113,7 @@ export default function InspectionInfoView({
           ) : (
             <div className="space-y-0.5">
               <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">ინსპექტორი</p>
-              <p className="text-sm text-neutral-800 dark:text-neutral-200">{inspection.inspector_name ?? '—'}</p>
+              <p className="text-sm text-neutral-800 dark:text-neutral-200">{inspection.inspector_name ?? '-'}</p>
             </div>
           )}
           {isDraft ? (
@@ -126,7 +126,7 @@ export default function InspectionInfoView({
           ) : (
             <div className="space-y-0.5">
               <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">დეპარტამენტი</p>
-              <p className="text-sm text-neutral-800 dark:text-neutral-200">{inspection.department ?? '—'}</p>
+              <p className="text-sm text-neutral-800 dark:text-neutral-200">{inspection.department ?? '-'}</p>
             </div>
           )}
           <div className="space-y-0.5">
@@ -201,7 +201,7 @@ export default function InspectionInfoView({
                   ? '✓ უსაფრთხოა'
                   : inspection.is_safe_for_use === false
                   ? '✗ არ არის უსაფრთხო'
-                  : '—'}
+                  : '-'}
               </span>
             )}
           </div>
@@ -234,7 +234,7 @@ export default function InspectionInfoView({
               </>
             ) : (
               <p className="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-                {inspection.conclusion_text || <span className="text-neutral-400">—</span>}
+                {inspection.conclusion_text || <span className="text-neutral-400">-</span>}
               </p>
             )}
           </div>

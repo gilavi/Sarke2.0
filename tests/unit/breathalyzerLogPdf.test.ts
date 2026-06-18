@@ -118,6 +118,6 @@ describe('buildBreathalizerLogPdfHtml', () => {
 
   it('renders dash for missing serial number', async () => {
     const html = await buildBreathalizerLogPdfHtml({ log: mockLog({ deviceSerialNumber: null }) });
-    expect(html).toContain('—');
+    expect(html).toContain('-');
   });
 });

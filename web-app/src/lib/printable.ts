@@ -1,5 +1,5 @@
 // Helpers for rendering A4 printable pages and triggering window.print().
-// We don't use a PDF library — the browser's print dialog already produces a
+// We don't use a PDF library - the browser's print dialog already produces a
 // PDF (Save as PDF) and lets users print to paper. Same approach as mobile's
 // expo-print, just executed by the browser instead of a native renderer.
 
@@ -24,7 +24,7 @@ export function printAfterRender(delayMs = 500) {
     try {
       window.print();
     } catch {
-      // user cancelled — no-op
+      // user cancelled - no-op
     }
   }, delayMs);
 }

@@ -1,32 +1,28 @@
-﻿import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { Button } from '../../../components/ui';
 import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import {
   ChecklistSection,
-  VerdictSelector,
   IdentificationGrid,
-  type VerdictOption,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mobileLadderApi } from '../../../lib/mobileLadderService';
 import { mobileLadderSchema } from '../../../lib/inspection/schemas/mobileLadder';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import {
   ML_CHECKLIST_ITEMS,
@@ -48,6 +44,12 @@ const CHECKLIST_STEP      = 2;
 const CONCLUSION_STEP     = 3;
 const TOTAL_STEPS         = 3;
 
+const ML_VERDICT_OPTIONS: VerdictOption<MLVerdict>[] = [
+  { value: 'safe',   label: ML_VERDICT_LABELS.safe,   tone: 'success' },
+  { value: 'minor',  label: ML_VERDICT_LABELS.minor,  tone: 'caution' },
+  { value: 'banned', label: ML_VERDICT_LABELS.banned, tone: 'danger'  },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function MobileLadderInspectionScreen() {
@@ -56,7 +58,6 @@ export default function MobileLadderInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
@@ -124,6 +125,9 @@ export default function MobileLadderInspectionScreen() {
     },
     loadingTitle: 'კიბის შემოწმება',
   });
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // ── Checklist items ─────────────────────────────────────────────────────────
 
@@ -226,14 +230,26 @@ export default function MobileLadderInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Loading & completed ─────────────────────────────────────────────────────
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'კიბის შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="კიბის შემოწმება"
+        projectName={projectName ?? ''}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={4}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -324,40 +340,22 @@ export default function MobileLadderInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="კიბის შემოწმება"
-        project={projectName ? { name: projectName } : null}
-        step={step}
+      <InspectionShell
+        title="კიბის შემოწმება"
+        projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === CONCLUSION_STEP}
+        completing={completing}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={(
-          <Pressable
-            onPress={() => handlePdf()}
-            disabled={generatingPdf}
-            hitSlop={10}
-            {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-          >
-            <Ionicons
-              name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-              size={22}
-              color={theme.colors.accent}
-            />
-          </Pressable>
-        )}
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
-
-      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+      >
 
           {/* ── Step 1: Ladder Identification ───────────────────────────────── */}
           {step === IDENTIFICATION_STEP && (
@@ -405,7 +403,7 @@ export default function MobileLadderInspectionScreen() {
               bottomOffset={120}
             >
               <ChecklistSection
-                title="A — სტრუქტურული მდგომარეობა"
+                title="A - სტრუქტურული მდგომარეობა"
                 items={checklistItemsForSection('A')}
                 onItemChange={handleChecklistChange}
                 onAddPhoto={handleAddItemPhoto}
@@ -413,7 +411,7 @@ export default function MobileLadderInspectionScreen() {
               />
 
               <ChecklistSection
-                title="B — სამობილო სისტემა"
+                title="B - სამობილო სისტემა"
                 items={checklistItemsForSection('B')}
                 onItemChange={handleChecklistChange}
                 onAddPhoto={handleAddItemPhoto}
@@ -424,66 +422,26 @@ export default function MobileLadderInspectionScreen() {
 
           {/* ── Step 3: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
-                  <Text style={styles.suggestText}>
-                    შემოთავაზება: {ML_VERDICT_LABELS[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={([
-                  { value: 'safe',   label: ML_VERDICT_LABELS.safe,   type: 'success' },
-                  { value: 'minor',  label: ML_VERDICT_LABELS.minor,  type: 'warning' },
-                  { value: 'banned', label: ML_VERDICT_LABELS.banned, type: 'danger'  },
-                ] as VerdictOption[])}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as MLVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი"
-              />
-            </KeyboardAwareScrollView>
-          )}
-
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="შენახვა და დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title={step === TOTAL_STEPS - 1 ? 'გაგრძელება' : 'შემდეგი'}
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={20} color={theme.colors.white} />}
-              disabled={!canGoNext}
-              onPress={handleNext}
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={ML_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as MLVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთავაზება: ${ML_VERDICT_LABELS[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
+              }
+              notes={inspection.verdictComment}
+              onNotesChange={v => update('verdictComment', v)}
+              completing={completing}
             />
           )}
-        </View>
-      </View>
+
+        </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
@@ -500,7 +458,6 @@ export default function MobileLadderInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: {
       textAlign: 'center', fontSize: 11,
       color: theme.colors.inkFaint, paddingVertical: 2,
@@ -521,11 +478,5 @@ function getstyles(theme: Theme) {
       color: theme.colors.inkSoft, marginBottom: 4,
     },
     nextDateRow: { gap: 4, marginTop: 8 },
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,
-      borderRadius: 10, padding: 10,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

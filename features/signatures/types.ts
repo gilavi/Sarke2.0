@@ -23,7 +23,7 @@ export interface SignatureData {
  * An empty additional signing slot, rendered as a labeled blank block in the
  * PDF so a second/third/etc. signer can sign the printed page by hand.
  *
- * These rows intentionally hold NO user-entered data — the row only exists
+ * These rows intentionally hold NO user-entered data - the row only exists
  * to tell the PDF generator to render another empty slot. The `id` is a
  * client-side identifier used for React keying and removal.
  */
@@ -36,7 +36,7 @@ export interface AdditionalSignatureRow {
  * (which owns `useSignaturesState`) passes one of these to the parent's
  * download callback so the PDF builder can render the unified signatures
  * section. Per the no-persistence rule, this object lives only in memory
- * — it's constructed at download time and never persisted.
+ * - it's constructed at download time and never persisted.
  */
 export interface SignaturesSnapshot {
   creatorSignature: SignatureData | null;

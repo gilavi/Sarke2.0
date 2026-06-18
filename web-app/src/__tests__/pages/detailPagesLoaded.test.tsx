@@ -19,7 +19,7 @@ vi.mock('@/components/web/SuccessModal', () => ({ default: () => null }));
 vi.mock('@/components/DeleteButton', () => ({ default: () => null }));
 vi.mock('@/components/InspectionSignatures', () => ({ default: () => null }));
 vi.mock('@/components/InspectionInfoView', () => ({ default: () => null }));
-// ProjectDetail sections — mock each to keep the index focused.
+// ProjectDetail sections - mock each to keep the index focused.
 vi.mock('@/pages/ProjectDetail/ProjectHeader', () => ({ ProjectHeader: () => <div data-testid="header" /> }));
 vi.mock('@/pages/ProjectDetail/ProjectDetailsCard', () => ({ ProjectDetailsCard: () => null }));
 vi.mock('@/pages/ProjectDetail/CrewSection', () => ({ CrewSection: () => null }));
@@ -92,7 +92,7 @@ describe('BriefingDetail (loaded)', () => {
       <Routes><Route path="/briefings/:id" element={<BriefingDetail />} /></Routes>,
       '/briefings/b1',
     );
-    expect(await screen.findByRole('heading', { level: 1, name: /ინსტრუქტაჟი —/ })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: /ინსტრუქტაჟი -/ })).toBeInTheDocument();
   });
 });
 

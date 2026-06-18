@@ -213,9 +213,9 @@ export function buildFireSafetyOrderEnterpriseHtml({ formData: f }: FireSafetyOr
 <ol class="decree">
   <li>
     <strong>${escHtml(f.appointedName)}</strong>
-    (თანამდებობა — ${escHtml(f.appointedPosition)}, პირადი №${escHtml(f.appointedIdNumber)}),
+    (თანამდებობა - ${escHtml(f.appointedPosition)}, პირადი №${escHtml(f.appointedIdNumber)}),
     ტელ.: ${escHtml(f.appointedPhone)},
-    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე —
+    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე -
     <strong>„${escHtml(f.objectName)}"</strong>${f.objectAddress ? `, ${escHtml(f.objectAddress)}` : ''}.
   </li>
   <li>
@@ -228,7 +228,7 @@ export function buildFireSafetyOrderEnterpriseHtml({ formData: f }: FireSafetyOr
       <li>სახანძრო უსაფრთხოების ინსტრუქტაჟის ჩატარება, ჟურნალის წარმოება და ხელმოწერების უზრუნველყოფა;</li>
       <li>სახანძრო-ევაკუაციური სავარჯიშოს ჩატარება წელიწადში მინიმუმ ერთხელ, ჩანიშვნა ჟურნალში;</li>
       <li>შეკუმშული გაზების (ჟანგბადი, პროპანი) შენახვისა და გამოყენების სახანძრო უსაფრთხოების წესების კონტროლი;</li>
-      <li>ხანძრის შემთხვევაში — 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
+      <li>ხანძრის შემთხვევაში - 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
     </ol>
   </li>
   <li>ობიექტზე უზრუნველყოფილ იქნეს სახანძრო-ევაკუაციური ნიშნების, განათებული გამოსასვლელების, საევაკუაციო გეგმის, პირველადი ხანძარსაწინააღმდეგო საშუალებებისა და სიგნალიზაციის ყოველდღიური მზადყოფნა.</li>
@@ -265,7 +265,7 @@ export function buildFireSafetyOrderEnterpriseHtml({ formData: f }: FireSafetyOr
 
 <div class="footer">
   <span>გვერდი 1 / 1</span>
-  <span>ბრძანება №${escHtml(f.orderNumber)} — სახანძრო უსაფრთხოება (საწარმო)</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - სახანძრო უსაფრთხოება (საწარმო)</span>
 </div>
 
 </body>

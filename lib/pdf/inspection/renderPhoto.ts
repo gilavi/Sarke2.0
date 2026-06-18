@@ -9,7 +9,7 @@ export function renderPhoto(
 ): string {
   const titlePart = escapeHtml(questionTitle.slice(0, 50));
   const timePart = photo.created_at ? formatDate(photo.created_at) : '';
-  const captionText = timePart ? `${titlePart} — ${timePart}` : titlePart;
+  const captionText = timePart ? `${titlePart} - ${timePart}` : titlePart;
 
   const isRowCaption = photo.caption?.startsWith('row:') ?? false;
   // Prefer the dedicated address column; fall back to legacy addr: caption prefix.

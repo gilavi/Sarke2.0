@@ -1,5 +1,5 @@
 /**
- * InspectionInfoView (35% covered) — covers the editable + readonly branches
+ * InspectionInfoView (35% covered) - covers the editable + readonly branches
  * and the safety chip toggle.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { InputAccessoryView, Platform, Pressable, View } from 'react-native';
+import { InputAccessoryView, Platform, Pressable, TextInput, View } from 'react-native';
 import { KeyboardController } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
@@ -16,10 +16,16 @@ export function DebouncedFreetext({
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
+  const inputRef = useRef<TextInput>(null);
   const [text, setText] = useState(initial);
   const lastCommitted = useRef(initial);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accessoryId = Platform.OS === 'ios' ? 'wizard-freetext-accessory' : undefined;
+
+  useEffect(() => {
+    const t = setTimeout(() => inputRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     // Sync external updates (e.g., first load)
@@ -55,6 +61,7 @@ export function DebouncedFreetext({
   return (
     <>
       <FloatingLabelInput
+        ref={inputRef}
         label="დასკვნა"
         value={text}
         onChangeText={setText}

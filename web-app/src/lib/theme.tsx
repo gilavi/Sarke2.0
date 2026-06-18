@@ -17,7 +17,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Lazy init from localStorage so the chosen mode survives reloads — the
+  // Lazy init from localStorage so the chosen mode survives reloads - the
   // effect below only WRITES the key; without this read, dark mode would
   // silently reset to light on every visit.
   const [mode, setModeState] = useState<ThemeMode>(() =>

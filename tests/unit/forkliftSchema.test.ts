@@ -48,7 +48,7 @@ const PHOTOS = {
   'forklift/x/sum.jpg': 'data:image/jpeg;base64,SUM',
 };
 
-describe('buildInspectionPdf — forklift', () => {
+describe('buildInspectionPdf - forklift', () => {
   const html = buildInspectionPdf(
     forkliftSchema,
     { inspection: buildInspection(), projectName: 'პროექტი' },
@@ -79,7 +79,7 @@ describe('buildInspectionPdf — forklift', () => {
   });
 });
 
-describe('buildInspectionPdf — forklift verdict variants', () => {
+describe('buildInspectionPdf - forklift verdict variants', () => {
   it('renders limited verdict', () => {
     const html = buildInspectionPdf(
       forkliftSchema,

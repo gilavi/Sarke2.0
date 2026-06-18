@@ -1,7 +1,7 @@
 /**
- * Cargo-platform weight table — the act-specific custom step. Lists the cargo
+ * Cargo-platform weight table - the act-specific custom step. Lists the cargo
  * placed on the platform (name · unit kg · total kg) with a grand total, mirroring
- * the mobile "III — ტვირთის იდენტიფიკაცია" section.
+ * the mobile "III - ტვირთის იდენტიფიკაცია" section.
  */
 import { NumberInput } from '@mantine/core';
 import { Plus, Trash2 } from 'lucide-react';

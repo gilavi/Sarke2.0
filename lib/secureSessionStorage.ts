@@ -20,7 +20,7 @@
 //
 // Failure mode:
 //   If SecureStore throws (e.g. user has Keychain access disabled), every
-//   call collapses to the AsyncStorage path so auth still works — at the
+//   call collapses to the AsyncStorage path so auth still works - at the
 //   cost of the persistence improvements we were trying to make.
 
 import * as SecureStore from 'expo-secure-store';
@@ -80,7 +80,7 @@ async function clearChunks(key: string): Promise<void> {
       await SecureStore.deleteItemAsync(key + CHUNK_COUNT_SUFFIX).catch(() => undefined);
     }
   } catch {
-    /* swallow — we're best-effort here */
+    /* swallow - we're best-effort here */
   }
 }
 
@@ -130,7 +130,7 @@ export const secureSessionStorage = {
         return fromAsync;
       }
     } catch {
-      /* ignore — auth will treat as signed-out */
+      /* ignore - auth will treat as signed-out */
     }
     return null;
   },
@@ -140,7 +140,7 @@ export const secureSessionStorage = {
     try {
       await writeChunked(safe, value);
     } catch {
-      // SecureStore unavailable — fall back to AsyncStorage so the session
+      // SecureStore unavailable - fall back to AsyncStorage so the session
       // is still persisted (just not as durably).
       await AsyncStorage.setItem(key, value).catch(() => undefined);
     }
@@ -151,7 +151,7 @@ export const secureSessionStorage = {
     try {
       await clearChunks(safe);
     } catch {
-      /* ignore — fall through to AsyncStorage cleanup */
+      /* ignore - fall through to AsyncStorage cleanup */
     }
     await AsyncStorage.removeItem(key).catch(() => undefined);
   },

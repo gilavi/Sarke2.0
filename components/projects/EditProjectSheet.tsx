@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import { ProjectAvatar } from '../ProjectAvatar';
@@ -18,6 +18,7 @@ import { LocationRow } from '../LocationRow';
 import { MapPickerInline } from '../MapPickerInline';
 import { Button } from '../ui';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
@@ -54,6 +55,7 @@ export function EditProjectSheet({
   const [busy, setBusy]             = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const keyboardMargin              = useSheetKeyboardMargin();
+  const { attempted, guard }        = useSubmitGuard();
 
   // Sync form when modal opens or project changes
   useFocusEffect(
@@ -112,7 +114,7 @@ export function EditProjectSheet({
           onPress={() => (mapVisible ? setMapVisible(false) : onClose())}
           {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
         />
-        {/* Card — marginBottom rides the iOS keyboard 1:1 */}
+        {/* Card - marginBottom rides the iOS keyboard 1:1 */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
           <Pressable onPress={() => {}} style={{ width: '100%' }}>
             <SheetLayout
@@ -123,9 +125,8 @@ export function EditProjectSheet({
                 <Button
                   title={t('common.save')}
                   size="lg"
-                  onPress={save}
+                  onPress={() => guard(!!company.trim(), save)}
                   loading={busy}
-                  disabled={!company.trim()}
                 />
               }
             >
@@ -150,6 +151,7 @@ export function EditProjectSheet({
                 required
                 value={company}
                 onChangeText={setCompany}
+                error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
                 autoFocus
               />
 
@@ -198,7 +200,7 @@ export function EditProjectSheet({
                   hitSlop={10}
                   {...a11y(t('common.close'), 'რუკის დახურვა', 'button')}
                 >
-                  <Ionicons name="close" size={24} color={theme.colors.ink} />
+                  <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
                 </Pressable>
               </View>
               <MapPickerInline

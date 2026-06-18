@@ -4,9 +4,9 @@
 // Called by the mobile app after creating (or resending) a signing request.
 //
 // Required Supabase secrets (set via `supabase secrets set`):
-//   TWILIO_ACCOUNT_SID   — Account SID from twilio.com/console
-//   TWILIO_AUTH_TOKEN    — Auth Token from twilio.com/console
-//   TWILIO_FROM_NUMBER   — Your Twilio phone number, e.g. +12015551234
+//   TWILIO_ACCOUNT_SID   - Account SID from twilio.com/console
+//   TWILIO_AUTH_TOKEN    - Auth Token from twilio.com/console
+//   TWILIO_FROM_NUMBER   - Your Twilio phone number, e.g. +12015551234
 //
 // Request body: { requestId: string }
 // Response:     { ok: true } | { error: string }
@@ -37,7 +37,7 @@ function isE164(phone: string): boolean {
 
 // Tight delays so the function never hangs the caller. Network exceptions
 // retry (likely the request never reached Twilio); 5xx is NOT retried
-// because Twilio may have actually queued the SMS — duplicate-send risk
+// because Twilio may have actually queued the SMS - duplicate-send risk
 // outweighs transient-failure recovery. The client gets `retryable: true`
 // in the response and can re-invoke if it wants.
 const RETRY_DELAYS_MS = [200, 600];

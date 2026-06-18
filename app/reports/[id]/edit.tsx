@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Trash2, Images, Image as ImageIcon, ChevronUp, ChevronDown, CirclePlus } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -175,7 +175,7 @@ export default function ReportSlidesEditor() {
           headerRight: () => (
             <Pressable
               onPress={onComplete}
-              disabled={generating || slides.length === 0}
+              disabled={generating}
               hitSlop={8}
               style={({ pressed }) => [
                 styles.pdfBtn,
@@ -206,7 +206,7 @@ export default function ReportSlidesEditor() {
       >
         {slides.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="albums-outline" size={36} color={theme.colors.borderStrong} />
+            <Images size={36} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyText}>ჯერ სლაიდები არ არის</Text>
             <Text style={styles.emptyHint}>დაამატეთ პირველი სლაიდი ქვემოთ</Text>
           </View>
@@ -232,16 +232,16 @@ export default function ReportSlidesEditor() {
           disabled={busy}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }, busy && { opacity: 0.6 }]}
         >
-          <Ionicons name="add-circle" size={20} color={theme.colors.accent} />
+          <CirclePlus size={20} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={[styles.addBtnText, { color: theme.colors.accent }]}>+ სლაიდის დამატება</Text>
         </Pressable>
       </ScrollView>
 
-      {/* Sticky footer — always visible so the user knows how to finish */}
+      {/* Sticky footer - always visible so the user knows how to finish */}
       <View style={[styles.stickyFooter, { paddingBottom: insets.bottom + 12 }]}>
         <Pressable
           onPress={onComplete}
-          disabled={generating || slides.length === 0}
+          disabled={generating}
           style={({ pressed }) => [
             styles.completeBtn,
             {
@@ -319,7 +319,7 @@ function SlideCard({
           style={styles.swipeDelete}
           {...a11y('წაშლა', 'სლაიდის წაშლა', 'button')}
         >
-          <Ionicons name="trash" size={18} color={theme.colors.white} />
+          <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
         </Pressable>
       )}
       overshootRight={false}
@@ -334,7 +334,7 @@ function SlideCard({
             {thumbUri ? (
               <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
-              <Ionicons name="image-outline" size={20} color={theme.colors.inkFaint} />
+              <ImageIcon size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
             )}
           </View>
 
@@ -364,7 +364,7 @@ function SlideCard({
                 pressed && { opacity: 0.6 },
               ]}
             >
-              <Ionicons name="chevron-up" size={16} color={theme.colors.inkSoft} />
+              <ChevronUp size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
             <Pressable
               onPress={onDown}
@@ -376,7 +376,7 @@ function SlideCard({
                 pressed && { opacity: 0.6 },
               ]}
             >
-              <Ionicons name="chevron-down" size={16} color={theme.colors.inkSoft} />
+              <ChevronDown size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
           </View>
         </View>

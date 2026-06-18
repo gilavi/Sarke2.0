@@ -1,5 +1,5 @@
 /**
- * Interaction tests for ReportDetail — a 392-LOC page at 30% coverage.
+ * Interaction tests for ReportDetail - a 392-LOC page at 30% coverage.
  * Walks the loaded report's draft mode editing affordances: rename slide,
  * edit description, delete slide, add new slide via the form (with photo
  * file selected), and the "გაუქმება" cancel path.
@@ -97,7 +97,7 @@ describe('ReportDetail (draft interactions)', () => {
     fireEvent.change(titleInput, { target: { value: 'ახალი სათაური' } });
     fireEvent.blur(titleInput);
     await waitFor(() => expect(updateReportSlide).toHaveBeenCalled());
-    // updateReportSlide(report, slideId, patch) — positional args.
+    // updateReportSlide(report, slideId, patch) - positional args.
     const [, slideId, patch] = vi.mocked(updateReportSlide).mock.calls[0];
     expect(slideId).toBe('s1');
     expect(patch).toEqual({ title: 'ახალი სათაური' });
@@ -114,7 +114,7 @@ describe('ReportDetail (draft interactions)', () => {
     expect(removeBtns.length).toBe(2);
     fireEvent.click(removeBtns[0]);
     await waitFor(() => expect(removeReportSlide).toHaveBeenCalled());
-    // removeReportSlide(report, slideId) — positional args.
+    // removeReportSlide(report, slideId) - positional args.
     const [, slideId] = vi.mocked(removeReportSlide).mock.calls[0];
     expect(slideId).toBe('s1');
   });
@@ -128,7 +128,7 @@ describe('ReportDetail (draft interactions)', () => {
     // Open add form
     fireEvent.click(screen.getByRole('button', { name: /სლაიდის დამატება/ }));
     // Fill title
-    fireEvent.change(screen.getByPlaceholderText('მაგ: ხარაჩოს ბოძი — დაუცველი'), {
+    fireEvent.change(screen.getByPlaceholderText('მაგ: ხარაჩოს ბოძი - დაუცველი'), {
       target: { value: 'ახალი სლაიდი' },
     });
     // Submit

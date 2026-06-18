@@ -20,7 +20,7 @@ interface PendingSignature {
  * prefix) from SignatureCanvas.
  *
  * Returns `{ base64, fileUri, contentType }`. Callers upload via
- * `storageApi.uploadFromUri(fileUri)` so the bytes stream natively — every
+ * `storageApi.uploadFromUri(fileUri)` so the bytes stream natively - every
  * other upload path (`Blob` body, `ArrayBuffer` body) silently produces
  * 0-byte storage objects on Hermes/SDK 54.
  */
@@ -61,7 +61,7 @@ export async function compressSignature(base64: string): Promise<{
 /**
  * Upload a compressed signature to Supabase storage.
  * On failure, queue the upload in AsyncStorage under `pending-signatures/`
- * so a future attempt can retry — never block the user flow.
+ * so a future attempt can retry - never block the user flow.
  */
 export async function uploadSignature(
   path: string,
@@ -73,7 +73,7 @@ export async function uploadSignature(
     return { path, pending: false };
   } catch (e) {
     // Log the real failure so we can debug in Metro/Sentry instead of
-    // silently queuing forever — this used to mask 0-byte upload bugs.
+    // silently queuing forever - this used to mask 0-byte upload bugs.
     logError(e, 'uploadSignature');
     const list = await readPending();
     list.push({ path, base64, contentType: 'image/png' });
@@ -106,7 +106,7 @@ export async function flushPendingSignatures(): Promise<void> {
  * their expert signature. Returns the storage path.
  *
  * If the upload had to be queued (offline / network error), we throw rather
- * than persist a DB pointer to a storage object that doesn't exist yet —
+ * than persist a DB pointer to a storage object that doesn't exist yet -
  * otherwise thumbnails 404 and PDFs render an empty signature block.
  */
 export async function saveExpertSignature(base64: string): Promise<string> {
@@ -116,7 +116,7 @@ export async function saveExpertSignature(base64: string): Promise<string> {
   const path = `expert/${userId}.png`;
   const { pending } = await uploadSignature(path, base64);
   if (pending) {
-    throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა — შეამოწმეთ ინტერნეტი და სცადეთ თავიდან');
+    throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა - შეამოწმეთ ინტერნეტი და სცადეთ თავიდან');
   }
   const { error } = await supabase
     .from('users')

@@ -45,7 +45,7 @@ export default function ReportDetail() {
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
-  // Photo paths that actually need a signed URL — stable string key so the query
+  // Photo paths that actually need a signed URL - stable string key so the query
   // doesn't re-run (and regenerate 10-min signed URLs) on every refetch just because
   // `item.slides` is a fresh array reference.
   const slidePaths = (item?.slides ?? [])
@@ -117,11 +117,11 @@ export default function ReportDetail() {
       if (photoInputRef.current) photoInputRef.current.value = '';
       setAddingSlide(false);
     },
-    // Form-submission failures surface INLINE (below the form), not as a toast — the
+    // Form-submission failures surface INLINE (below the form), not as a toast - the
     // app-wide rule is inline-for-forms, toast-for-standalone-actions.
   });
 
-  // At least one of {title, photo} must be present — a blank slide is not submittable.
+  // At least one of {title, photo} must be present - a blank slide is not submittable.
   function submitSlide() {
     if (addSlideMutation.isPending) return;
     if (!slideTitle.trim() && !slidePhoto) {
@@ -216,7 +216,7 @@ export default function ReportDetail() {
       setOpening(true);
       const url = await signedReportPdfUrl(item.pdf_url);
       const win = window.open(url, '_blank', 'noopener,noreferrer');
-      if (!win) toast.error('ფანჯრის გახსნა დაიბლოკა — დაუშვით pop-up ფანჯრები.');
+      if (!win) toast.error('ფანჯრის გახსნა დაიბლოკა - დაუშვით pop-up ფანჯრები.');
     } catch (e) {
       toastError(e);
     } finally {
@@ -309,7 +309,7 @@ export default function ReportDetail() {
                     setSlideTitle(e.target.value);
                     if (validationError) setValidationError(null);
                   }}
-                  placeholder="მაგ: ხარაჩოს ბოძი — დაუცველი"
+                  placeholder="მაგ: ხარაჩოს ბოძი - დაუცველი"
                 />
                 <Textarea
                   id="slide-desc"

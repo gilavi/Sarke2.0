@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Keyboard } from 'react-native';
 import { supabase } from '../../lib/supabase';
@@ -13,6 +13,7 @@ import { logError, toErrorMessage } from '../../lib/logError';
 import { useTheme } from '../../lib/theme';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 export default function ResetPasswordScreen() {
   const { theme } = useTheme();
@@ -25,6 +26,8 @@ export default function ResetPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  // Enabled save button + on-press field errors (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   const canSubmit = password.length >= 6 && password === confirm;
 
@@ -70,7 +73,7 @@ export default function ResetPasswordScreen() {
           <Card padding={22} style={{ marginTop: 22 }}>
             {done ? (
               <View style={{ gap: 12, alignItems: 'center' }}>
-                <Ionicons name="checkmark-circle" size={48} color={theme.colors.accent} />
+                <CircleCheck size={48} color={theme.colors.accent} strokeWidth={2} />
                 <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink }}>
                   პაროლი შეცვლილია
                 </Text>
@@ -96,6 +99,7 @@ export default function ResetPasswordScreen() {
                   autoComplete="new-password"
                   returnKeyType="next"
                   blurOnSubmit={false}
+                  error={attempted && password.length < 6 ? 'პაროლი უნდა შეიცავდეს მინიმუმ 6 სიმბოლოს' : undefined}
                   onSubmitEditing={() => confirmRef.current?.focus()}
                 />
                 <FloatingLabelInput
@@ -107,14 +111,14 @@ export default function ResetPasswordScreen() {
                   textContentType="newPassword"
                   autoComplete="new-password"
                   returnKeyType="go"
-                  onSubmitEditing={() => { if (canSubmit) submit(); }}
+                  error={attempted && password !== confirm ? 'პაროლები არ ემთხვევა' : undefined}
+                  onSubmitEditing={() => guard(canSubmit, submit)}
                 />
                 {error ? <ErrorText>{error}</ErrorText> : null}
                 <Button
                   title="შენახვა"
-                  onPress={submit}
+                  onPress={() => guard(canSubmit, submit)}
                   loading={busy}
-                  disabled={!canSubmit}
                 />
               </View>
             )}

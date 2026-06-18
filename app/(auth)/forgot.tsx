@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Mail } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Keyboard } from 'react-native';
 import * as Linking from 'expo-linking';
@@ -17,6 +17,7 @@ import { a11y } from '../../lib/accessibility';
 import { useTranslation } from 'react-i18next';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { isEmail } from '../../lib/validators';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 export default function ForgotPasswordScreen() {
   const { theme } = useTheme();
@@ -26,6 +27,8 @@ export default function ForgotPasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // Enabled "Send Link" button + on-press field error (see useSubmitGuard).
+  const { attempted, guard } = useSubmitGuard();
 
   const submit = async () => {
     Keyboard.dismiss();
@@ -75,7 +78,7 @@ export default function ForgotPasswordScreen() {
             {sent ? (
               <View style={{ gap: 12 }}>
                 <View style={{ alignItems: 'center', gap: 10 }}>
-                  <Ionicons name="mail-outline" size={42} color={theme.colors.accent} />
+                  <Mail size={42} color={theme.colors.accent} strokeWidth={1.5} />
                   <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, textAlign: 'center' }}>
                     {t('auth.linkSent')}
                   </Text>
@@ -97,10 +100,11 @@ export default function ForgotPasswordScreen() {
                   textContentType="emailAddress"
                   autoComplete="email"
                   returnKeyType="go"
-                  onSubmitEditing={() => { if (email.trim()) submit(); }}
+                  error={attempted && !email.trim() ? 'შეიყვანეთ ელ. ფოსტა' : undefined}
+                  onSubmitEditing={() => guard(!!email.trim(), submit)}
                 />
                 {error ? <ErrorText>{error}</ErrorText> : null}
-                <Button title={t('auth.sendLink')} onPress={submit} loading={busy} disabled={!email.trim()} />
+                <Button title={t('auth.sendLink')} onPress={() => guard(!!email.trim(), submit)} loading={busy} />
               </View>
             )}
           </Card>

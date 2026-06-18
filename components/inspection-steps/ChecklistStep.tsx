@@ -1,15 +1,15 @@
 /**
- * Reusable pass/fail checklist step for equipment inspection flows.
- * Renders a scrollable list of checklist items — each row is handled by
- * ChecklistRow, which owns the verdict buttons, comment toggle, and photo
- * badge. This file manages scroll state and section header rendering only.
+ * Reusable checklist step for equipment inspection flows. Renders a monochrome
+ * legend + a scrollable list of items, each handled by ChecklistRow (which now
+ * delegates to the shared ChecklistItemRow). Section headers + scroll only.
  */
-import { type ReactNode, useState } from 'react';
+import { type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
-import { ChecklistRow } from './ChecklistRow';
+import { ChecklistLegend } from '../inspection-parts/ChecklistLegend';
+import { ChecklistRow, CHECKLIST_LEGEND } from './ChecklistRow';
 
 // Re-export item types so existing equipment routes don't need to change imports.
 export type { ChecklistResult, ChecklistItem, ChecklistItemState } from './ChecklistRow';
@@ -18,25 +18,22 @@ export interface ChecklistStepProps {
   items: import('./ChecklistRow').ChecklistItem[];
   states: import('./ChecklistRow').ChecklistItemState[];
   onStateChange: (id: string, patch: Partial<import('./ChecklistRow').ChecklistItemState>) => void;
-  onPhotoPress?: (id: string) => void;
   showSectionHeaders?: boolean;
-  /** Whether to show the per-item comment expand button (default true) */
-  showCommentButton?: boolean;
   /** Slot for additional content rendered below the list */
   footer?: ReactNode;
+  // ── Legacy props (per-row notes/photos removed app-wide). Accepted but ignored. ──
+  onPhotoPress?: (id: string) => void;
+  showCommentButton?: boolean;
 }
 
 export function ChecklistStep({
   items,
   states,
   onStateChange,
-  onPhotoPress,
   showSectionHeaders = false,
-  showCommentButton = true,
   footer,
 }: ChecklistStepProps) {
   const { theme } = useTheme();
-  const [expandedComment, setExpandedComment] = useState<string | null>(null);
 
   function getState(id: string) {
     return states.find(s => s.id === id) ?? { id, result: null, comment: null, photo_paths: [] };
@@ -53,6 +50,9 @@ export function ChecklistStep({
       showsVerticalScrollIndicator={false}
       bottomOffset={120}
     >
+      <View style={styles.legendWrap}>
+        <ChecklistLegend items={CHECKLIST_LEGEND} />
+      </View>
       {items.map(item => {
         const showHeader = showSectionHeaders && item.section && item.section !== lastSection;
         if (showHeader) lastSection = item.section;
@@ -67,12 +67,6 @@ export function ChecklistStep({
               item={item}
               state={getState(item.id)}
               onStateChange={patch => onStateChange(item.id, patch)}
-              onPhotoPress={onPhotoPress ? () => onPhotoPress(item.id) : undefined}
-              showCommentButton={showCommentButton}
-              isCommentExpanded={expandedComment === item.id}
-              onCommentToggle={() =>
-                setExpandedComment(prev => (prev === item.id ? null : item.id))
-              }
             />
           </View>
         );
@@ -83,6 +77,7 @@ export function ChecklistStep({
 }
 
 const styles = StyleSheet.create({
-  container:     { flexGrow: 1, paddingTop: 8, paddingBottom: 24 },
-  sectionHeader: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6, borderBottomWidth: StyleSheet.hairlineWidth },
+  container:     { flexGrow: 1, paddingTop: 8, paddingBottom: 24, paddingHorizontal: 16, gap: 8 },
+  legendWrap:    { paddingBottom: 2 },
+  sectionHeader: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, paddingTop: 14, paddingBottom: 6, borderBottomWidth: StyleSheet.hairlineWidth },
 });

@@ -7,7 +7,7 @@ import type {
 } from '../types/models';
 
 // Lightweight runtime guards for the Supabase boundary. We deliberately keep
-// these structural and forgiving — the goal is to detect schema drift (missing
+// these structural and forgiving - the goal is to detect schema drift (missing
 // required column, wrong type for a key field) before it corrupts UI state,
 // not to reproduce the full DB schema in TS. Add fields as bugs surface.
 

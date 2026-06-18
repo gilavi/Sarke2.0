@@ -18,7 +18,7 @@ import en from '../../locales/en.json';
 
 const TEST_DATE = new Date('2026-09-15');
 
-describe('common.localeTag — i18n key', () => {
+describe('common.localeTag - i18n key', () => {
   it('exists in the Georgian locale file', () => {
     expect((ka as any).common?.localeTag).toBeDefined();
   });
@@ -39,7 +39,7 @@ describe('common.localeTag — i18n key', () => {
 describe('date formatting with localeTag values', () => {
   it('en-US formatted date contains "Sep" or "9" (English month)', () => {
     const formatted = TEST_DATE.toLocaleDateString((en as any).common.localeTag);
-    // en-US: "9/15/2026" — contains "9" at minimum
+    // en-US: "9/15/2026" - contains "9" at minimum
     expect(formatted).toMatch(/9/);
   });
 
@@ -48,7 +48,7 @@ describe('date formatting with localeTag values', () => {
     // regardless of the UI language, while t('common.localeTag') varies.
     const withEnLocale = TEST_DATE.toLocaleDateString('en-US');
     const withKaLocale = TEST_DATE.toLocaleDateString((ka as any).common.localeTag);
-    // Both are valid — the key is they can differ (en-US vs ka-GE formatting).
+    // Both are valid - the key is they can differ (en-US vs ka-GE formatting).
     // This test simply confirms each is a non-empty string (locale API is available).
     expect(withEnLocale.length).toBeGreaterThan(0);
     expect(withKaLocale.length).toBeGreaterThan(0);

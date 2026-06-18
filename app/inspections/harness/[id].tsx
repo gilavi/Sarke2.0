@@ -1,24 +1,22 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { Button, Screen } from '../../../components/ui';
-import { InspectionShell, ConclusionStep } from '../../../components/inspection-steps';
+import { Button } from '../../../components/ui';
+import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import { useTheme } from '../../../lib/theme';
-import { SkeletonWizard } from '../../../components/Skeleton';
 import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { useOffline } from '../../../lib/offline';
@@ -35,6 +33,7 @@ import {
 import { friendlyError } from '../../../lib/errorMap';
 import { logError, toErrorMessage } from '../../../lib/logError';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../../lib/apiHooks';
@@ -102,12 +101,16 @@ export default function HarnessInspectionScreen() {
 
   const [step, setStep] = useState(INFO_STEP);
   const prevStepRef = useRef(INFO_STEP);
+  const harnessNameRef = useRef<TextInput>(null);
   const [animateSteps, setAnimateSteps] = useState(false);
 
   const [harnessRowCount, setHarnessRowCount] = useState(5);
   const [harnessName, setHarnessName] = useState('');
   const [verdict, setVerdict] = useState<HarnessVerdict | null>(null);
   const [conclusion, setConclusion] = useState('');
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   const direction: 'next' | 'prev' = step >= prevStepRef.current ? 'next' : 'prev';
   useEffect(() => { prevStepRef.current = step; }, [step]);
@@ -218,6 +221,13 @@ export default function HarnessInspectionScreen() {
   useEffect(() => {
     if (!loading) setAnimateSteps(true);
   }, [loading]);
+
+  // Auto-focus harness name input when landing on INFO_STEP
+  useEffect(() => {
+    if (step !== INFO_STEP || loading) return;
+    const t = setTimeout(() => harnessNameRef.current?.focus(), 300);
+    return () => clearTimeout(t);
+  }, [step, loading]);
 
   // ── Persist mid-session state ──────────────────────────────────────────────
   useEffect(() => {
@@ -332,7 +342,7 @@ export default function HarnessInspectionScreen() {
           address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
-        toast.success('ფოტო შენახულია — აიტვირთება ქსელის დაბრუნებისას');
+        toast.success('ფოტო შენახულია - აიტვირთება ქსელის დაბრუნებისას');
         return;
       }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, uri, 'image/jpeg', 'inspection');
@@ -397,7 +407,7 @@ export default function HarnessInspectionScreen() {
       return;
     }
     if (!conclusion.trim()) {
-      toast.error('შეავსეთ: შენიშვნები / დასკვნა');
+      toast.error('შეავსეთ: კომენტარი');
       return;
     }
     setCompleting(true);
@@ -454,25 +464,34 @@ export default function HarnessInspectionScreen() {
     }
   }, [step, handleComplete]);
 
-  const handlePrev = useCallback(async () => {
+  const handlePrev = useCallback(() => {
     if (step === INFO_STEP) {
-      Alert.alert('გასვლა', 'მიმდინარე შემოწმება შენახული იქნება.', [
-        { text: 'გაუქმება', style: 'cancel' },
-        { text: 'გასვლა', style: 'destructive', onPress: () => router.back() },
-      ]);
+      router.back();
     } else {
       haptic.light();
       setStep(s => s - 1);
     }
   }, [step, router]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <SkeletonWizard />
-      </Screen>
+      <InspectionShellSkeleton
+        title="დამცავი ქამრები"
+        projectName={project?.company_name || project?.name || ''}
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        variant={
+          step === CONCLUSION_STEP ? 'conclusion'
+            : step === HARNESS_STEP ? 'checklist'
+            : 'form'
+        }
+        fields={1}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -520,15 +539,16 @@ export default function HarnessInspectionScreen() {
         )}
         <HarnessListFlow
           inspectionId={id}
-          template={{ category: 'harness' } as any}
+          template={{ category: 'harness', name: 'დამცავი ქამრები' } as any}
+          project={{ name: project?.company_name || project?.name || '' }}
           questions={questions}
           answers={answers}
-          photos={photos}
           harnessRowCount={harnessRowCount}
           setHarnessRowCount={setHarnessRowCount}
+          stepIndex={step}
+          totalSteps={TOTAL_STEPS}
           onPatchAnswer={patchAnswer}
-          onPickItemPhoto={pickItemPhoto}
-          onDeletePhoto={deletePhoto}
+          onBack={() => setStep(INFO_STEP)}
           onClose={() => setStep(INFO_STEP)}
           onConclude={() => setStep(CONCLUSION_STEP)}
         />
@@ -550,6 +570,7 @@ export default function HarnessInspectionScreen() {
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
       completing={completing}
+      onBlockedNext={markAttempted}
       onNext={handleNext}
       onPrev={handlePrev}
       onClose={() => router.back()}
@@ -565,6 +586,7 @@ export default function HarnessInspectionScreen() {
           bottomOffset={120}
         >
           <FloatingLabelInput
+            ref={harnessNameRef}
             label="ღვედის სახელი / N *"
             value={harnessName}
             onChangeText={setHarnessName}
@@ -581,9 +603,11 @@ export default function HarnessInspectionScreen() {
         <ConclusionStep
           verdict={verdict}
           verdictOptions={VERDICT_OPTIONS}
+          verdictError={attempted && verdict === null}
           onVerdictChange={setVerdict}
           notes={conclusion}
           onNotesChange={setConclusion}
+          notesError={attempted && !conclusion.trim()}
           completing={completing}
         />
       )}

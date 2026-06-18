@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft, ChevronRight, CirclePlus, FolderOpen, Pencil, Plus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { InspectionTypeAvatar } from '../InspectionTypeAvatar';
@@ -20,6 +20,7 @@ import { LocationRow } from '../LocationRow';
 import { MapPickerInline } from '../MapPickerInline';
 import { Button } from '../ui';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import {
   questionnairesApi,
@@ -118,6 +119,7 @@ export function ProjectPickerSheet({
   const [busy, setBusy]           = useState(false);
   const [mapVisible, setMapVisible] = useState(false);
   const keyboardMargin            = useSheetKeyboardMargin();
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
 
   // Reset form + view every time the sheet opens or props change
   useEffect(() => {
@@ -131,8 +133,9 @@ export function ProjectPickerSheet({
       setLogo(null);
       setBusy(false);
       setMapVisible(false);
+      resetAttempted();
     }
-  }, [visible, initialView, preselectedTemplateId]);
+  }, [visible, initialView, preselectedTemplateId, resetAttempted]);
 
   const onPickLogo = async () => {
     const next = await pickProjectLogo();
@@ -275,7 +278,7 @@ export function ProjectPickerSheet({
                     {t('home.startInspectionSheetTitle')}
                   </Text>
                   <Pressable onPress={onClose} hitSlop={12}>
-                    <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+                    <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
                   </Pressable>
                 </View>
 
@@ -283,13 +286,13 @@ export function ProjectPickerSheet({
                   <>
                     <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow}>
                       <View style={pickerStyles.addNewIcon}>
-                        <Ionicons name="add" size={18} color={theme.colors.accent} />
+                        <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
                       </View>
                       <Text style={pickerStyles.addNewText}>{t('home.addNewProjectSheet')}</Text>
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                      <ChevronRight size={16} color={theme.colors.accent} strokeWidth={1.5} />
                     </Pressable>
                     <View style={pickerStyles.emptyState}>
-                      <Ionicons name="folder-open-outline" size={36} color={theme.colors.inkFaint} />
+                      <FolderOpen size={36} color={theme.colors.inkFaint} strokeWidth={1.5} />
                       <Text style={pickerStyles.emptyText}>{t('home.noProjectsYet')}</Text>
                       <Text style={pickerStyles.emptySubText}>{t('home.noProjectsHint')}</Text>
                     </View>
@@ -302,10 +305,10 @@ export function ProjectPickerSheet({
                   >
                     <Pressable onPress={() => setView('new')} style={pickerStyles.addNewRow}>
                       <View style={pickerStyles.addNewIcon}>
-                        <Ionicons name="add" size={18} color={theme.colors.accent} />
+                        <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
                       </View>
                       <Text style={pickerStyles.addNewText}>{t('home.addNewProjectSheet')}</Text>
-                      <Ionicons name="chevron-forward" size={16} color={theme.colors.accent} />
+                      <ChevronRight size={16} color={theme.colors.accent} strokeWidth={1.5} />
                     </Pressable>
                     {projects.slice(0, 20).map(p => (
                       <Pressable
@@ -319,7 +322,7 @@ export function ProjectPickerSheet({
                             {p.company_name || p.name}
                           </Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                        <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
                       </Pressable>
                     ))}
                   </ScrollView>
@@ -334,13 +337,13 @@ export function ProjectPickerSheet({
                     hitSlop={12}
                     style={{ marginRight: 10 }}
                   >
-                    <Ionicons name="arrow-back" size={22} color={theme.colors.accent} />
+                    <ArrowLeft size={22} color={theme.colors.accent} strokeWidth={1.5} />
                   </Pressable>
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>
                     {t('home.newProjectFormTitle')}
                   </Text>
                   <Pressable onPress={onClose} hitSlop={12}>
-                    <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+                    <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
                   </Pressable>
                 </View>
 
@@ -353,7 +356,7 @@ export function ProjectPickerSheet({
                 >
                   <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <ProjectAvatar
-                      project={{ name: company || '—', logo }}
+                      project={{ name: company || '-', logo }}
                       size={88}
                       editable
                       onEdit={onPickLogo}
@@ -363,11 +366,11 @@ export function ProjectPickerSheet({
                       hitSlop={13}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
                     >
-                      <Ionicons
-                        name={logo ? 'pencil' : 'add-circle-outline'}
-                        size={15}
-                        color={theme.colors.accent}
-                      />
+                      {logo ? (
+                        <Pencil size={15} color={theme.colors.accent} strokeWidth={1.5} />
+                      ) : (
+                        <CirclePlus size={15} color={theme.colors.accent} strokeWidth={1.5} />
+                      )}
                       <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
                         {logo ? t('projects.changePhoto') : t('a11y.addPhoto')}
                       </Text>
@@ -378,6 +381,7 @@ export function ProjectPickerSheet({
                     required
                     value={company}
                     onChangeText={setCompany}
+                    error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
                     autoFocus
                   />
                   <FloatingLabelInput
@@ -397,12 +401,14 @@ export function ProjectPickerSheet({
                       setPhone(formatted);
                     }}
                     keyboardType="phone-pad"
+                    error={attempted && !phone.trim() ? 'სავალდებულო ველი' : undefined}
                   />
                   <FloatingLabelInput
                     label={t('common.address')}
                     required
                     value={address}
                     onChangeText={setAddress}
+                    error={attempted && !address.trim() ? 'სავალდებულო ველი' : undefined}
                     {...a11y(t('common.address'), 'შეიყვანეთ მისამართი', 'text')}
                   />
                   <LocationRow
@@ -415,9 +421,13 @@ export function ProjectPickerSheet({
                 <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
                   <Button
                     title={t('projects.createButton')}
-                    onPress={createProject}
+                    onPress={() =>
+                      guard(
+                        !!company.trim() && !!phone.trim() && !!address.trim(),
+                        createProject,
+                      )
+                    }
                     loading={busy}
-                    disabled={!company.trim() || !phone.trim() || !address.trim()}
                     {...a11y(t('projects.createButton'), 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
                   />
                 </View>
@@ -445,7 +455,7 @@ export function ProjectPickerSheet({
                 hitSlop={12}
                 {...a11y('დახურვა', 'რუკის დახურვა', 'button')}
               >
-                <Ionicons name="close" size={24} color={theme.colors.ink} />
+                <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
               </Pressable>
             </View>
             <MapPickerInline

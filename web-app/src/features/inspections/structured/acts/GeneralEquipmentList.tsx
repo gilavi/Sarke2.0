@@ -1,7 +1,7 @@
 /**
- * General-equipment free-form list — the act-specific custom step. The inspector
+ * General-equipment free-form list - the act-specific custom step. The inspector
  * builds the equipment list row-by-row (name · model · serial · condition · note),
- * mirroring the mobile "II — აღჭურვილობის სია" section. Also carries the summary
+ * mirroring the mobile "II - აღჭურვილობის სია" section. Also carries the summary
  * conclusion textarea (this act has no verdict).
  */
 import { Plus, Trash2 } from 'lucide-react';

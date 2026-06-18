@@ -208,12 +208,12 @@ export function buildCraneOperatorOrderHtml({ formData: f }: CraneOperatorOrderP
   <li>
     <strong>${escHtml(f.craneOperatorName)}</strong>, პ/ნ ${escHtml(f.craneOperatorPersonalId)},
     სერტ. №${escHtml(f.craneOperatorCertNumber)} (ვადა: ${certExpiry}),
-    დაინიშნოს კოშკურა ამწის ოპერატორად ობიექტზე —
+    დაინიშნოს კოშკურა ამწის ოპერატორად ობიექტზე -
     <strong>„${escHtml(f.objectAddress)}"</strong>${f.craneModel ? `, ამწეზე: ${escHtml(f.craneModel)}` : ''}${f.craneNumber ? ` №${escHtml(f.craneNumber)}` : ''}.
     <br/>დაევალოს შემდეგი ვალდებულებები:
     <ol class="duties">
-      <li>ა) ამწის ექსპლუატაციის წინ ყოველდღიური ვიზუალური შემოწმება — კაბელები, ბოლნები, სამუხრუჭე სისტემა, საბაჟო კონტroლები;</li>
-      <li>ბ) ამწის მაქსიმალური ასაწევი ტვირთის (${escHtml(f.craneMaxLoad) || '—'} ტ.) ნორმების გათვალისწინება და ჭარბი დატვირთვის გამორიცხვა;</li>
+      <li>ა) ამწის ექსპლუატაციის წინ ყოველდღიური ვიზუალური შემოწმება - კაბელები, ბოლნები, სამუხრუჭე სისტემა, საბაჟო კონტroლები;</li>
+      <li>ბ) ამწის მაქსიმალური ასაწევი ტვირთის (${escHtml(f.craneMaxLoad) || '-'} ტ.) ნორმების გათვალისწინება და ჭარბი დატვირთვის გამორიცხვა;</li>
       <li>გ) ამწის ოპერაციის განხორციელება მხოლოდ სათანადო სიგნალებისა და ბრიგადირის ნებართვის საფუძველზე;</li>
       <li>დ) ობიექტის სამუშაო ზონაში პერსონალის უსაფრთხო განლაგების უზრუნველყოფა ტვირთის ასაწევ/ჩამოსაწევ მომენტში;</li>
       <li>ე) ამინდის არასახარბიელო პირობებისას (ქარი &gt;15 მ/წმ, ელჭექი, მხედველობის მოკლება) სამუშაოს შეჩერება;</li>
@@ -258,7 +258,7 @@ export function buildCraneOperatorOrderHtml({ formData: f }: CraneOperatorOrderP
 
 <div class="footer">
   <span>გვერდი 1 / 1</span>
-  <span>ბრძანება №${escHtml(f.orderNumber)} — ამწის ოპერატორის დანიშვნა</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - ამწის ოპერატორის დანიშვნა</span>
 </div>
 
 </body>

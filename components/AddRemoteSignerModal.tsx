@@ -4,12 +4,13 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Check } from 'lucide-react-native';
 import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
 import { FloatingLabelInput } from './inputs/FloatingLabelInput';
 import { useTheme } from '../lib/theme';
+import { haptic } from '../lib/haptics';
 import { SheetLayout } from './SheetLayout';
 import { BottomSheetScrollView } from './BottomSheet';
 
@@ -66,12 +67,19 @@ export function AddRemoteSignerSheet({
   };
 
   const handleSubmit = () => {
-    setNameTouched(true);
-    setPhoneTouched(true);
-    if (!name.trim()) return;
-    if (!phone.trim() || !isGeorgianPhone(phone)) return;
+    if (!name.trim() || !phone.trim() || !isGeorgianPhone(phone)) {
+      setNameTouched(true);
+      setPhoneTouched(true);
+      haptic.validationError();
+      return;
+    }
     const normalized = normalizePhone(phone);
-    if (!normalized) return;
+    if (!normalized) {
+      setNameTouched(true);
+      setPhoneTouched(true);
+      haptic.validationError();
+      return;
+    }
     onSubmit({ signerName: name.trim(), signerPhone: normalized, signerRole: role });
     reset();
   };
@@ -123,7 +131,7 @@ export function AddRemoteSignerSheet({
               >
                 <View style={[styles.radio, role === r && styles.radioOn]}>
                   {role === r ? (
-                    <Ionicons name="checkmark" size={14} color={theme.colors.white} />
+                    <Check size={14} color={theme.colors.white} strokeWidth={1.5} />
                   ) : null}
                 </View>
                 <A11yText size="base" weight="medium" color={theme.colors.ink}>

@@ -16,7 +16,11 @@ import Animated from 'react-native-reanimated';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  CloudOff, CloudUpload, TriangleAlert, ChevronRight,
+  Plus, CirclePlus, Trash2, EllipsisVertical,
+  Play, Eye, ShieldCheck,
+} from 'lucide-react-native';
 import { useSession } from '../../lib/session';
 import { isExpiringSoon, questionnairesApi } from '../../lib/services';
 import { deleteInspectionBySource } from '../../lib/inspectionDelete';
@@ -27,7 +31,7 @@ import {
   useQualifications,
   useTemplates,
 } from '../../lib/apiHooks';
-// shareStoredPdf import removed — PDF sharing now lives on the inspection
+// shareStoredPdf import removed - PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
 import { useTheme, withOpacity, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -42,6 +46,7 @@ import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Template } from '../../types/models';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
+import { InspectionListAvatar } from '../../components/InspectionListAvatar';
 import { RecordTypePill } from '../../components/RecordTypePill';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { ProjectCard } from '../../components/home/ProjectCard';
@@ -57,7 +62,7 @@ import {
 } from '../../lib/homeUtils';
 
 // Equipment flows where project selection is the first in-flow step (created
-// lazily once a project is chosen — see app/inspections/new.tsx). Starting these
+// lazily once a project is chosen - see app/inspections/new.tsx). Starting these
 // from Home routes into that screen instead of the project-picker sheet.
 // All template categories now defer project selection to the first step of the
 // inspection wizard (see `app/inspections/new.tsx`). Kept as a list-less marker
@@ -85,10 +90,13 @@ const STEP_TOTALS: Record<string, number> = {
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
-  projectRowWrap: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 10, gap: 12, marginBottom: 24 },
-  emptyProjectWrap: { paddingHorizontal: 20, marginTop: 10, marginBottom: 24 },
+  // Each major section owns its TOP gap (~28); bottoms stay 0 so the rhythm
+  // between sections is uniform regardless of which optional blocks render.
+  projectRowWrap: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 28, gap: 12 },
+  emptyProjectWrap: { paddingHorizontal: 20, marginTop: 28 },
   sectionHeaderMargin: { marginTop: 28 },
-  recentListMargin: { marginTop: 8 },
+  recentListMargin: { marginTop: 4 },
+  tipMargin: { marginTop: 16 },
   flex: { flex: 1 },
   bannerTitleRow: { flexDirection: 'row', alignItems: 'baseline' },
   recentSkeletonMeta: { flex: 1, gap: 6 },
@@ -117,7 +125,7 @@ export default function HomeScreen() {
 
   // Per-section "show skeleton" flags. We can't rely on `isLoading` alone:
   // it only flips true on the very first fetch and stays false during background
-  // refetches — including the post-login refetch triggered after a stale empty
+  // refetches - including the post-login refetch triggered after a stale empty
   // result. Use `isFetching && data.length === 0` so we keep showing the
   // skeleton until the in-flight fetch actually returns rows (or settles empty),
   // instead of flashing the empty state in between. The `!isFetched` arm covers
@@ -132,7 +140,6 @@ export default function HomeScreen() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
-  const [pickerAction, setPickerAction] = useState<'inspection' | 'incident' | 'briefing' | 'report'>('inspection');
   const [tplPickerVisible, setTplPickerVisible] = useState(false);
   const [tplPickerTemplates, setTplPickerTemplates] = useState<Template[]>([]);
 
@@ -145,7 +152,7 @@ export default function HomeScreen() {
       ? screenWidth - HPAD * 2
       : projects.length === 2
       ? (screenWidth - HPAD * 2 - GAP) / 2
-      : Math.round(screenWidth * 0.42);
+      : Math.round(screenWidth * 0.55);
   const isProjectsCarousel = projects.length > 2;
 
   const user = state.status === 'signedIn' ? state.user : null;
@@ -252,7 +259,7 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Scroll-driven shrinking header (Airbnb-style) — sits OVER the status bar
+      {/* Scroll-driven shrinking header (Airbnb-style) - sits OVER the status bar
           area; content is offset by insets.top so it never crashes into the clock. */}
       <Animated.View style={[styles.scrollHeader, containerStyle]} pointerEvents="box-none">
         <Animated.View style={[StyleSheet.absoluteFillObject, backdropStyle]} pointerEvents="none">
@@ -281,112 +288,13 @@ export default function HomeScreen() {
         onScrollBeginDrag={() => { if (openMenuId) setOpenMenuId(null); }}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={[staticStyles.scrollContent, { paddingTop: HEADER_FULL + 8 }]}
+        contentContainerStyle={[staticStyles.scrollContent, { paddingTop: HEADER_FULL }]}
       >
         {/* ───────── FETCH ERROR BANNER ───────── */}
         {loaded && loadError ? (
           <View style={styles.fetchErrorBanner}>
-            <Ionicons name="cloud-offline-outline" size={16} color={theme.colors.warn} />
+            <CloudOff size={16} color={theme.colors.warn} strokeWidth={1.5} />
             <Text style={styles.fetchErrorText}>{t('home.fetchError')}</Text>
-          </View>
-        ) : null}
-
-        {/* ───────── CONTINUE DRAFTS ───────── */}
-        {allDrafts.length > 0 ? (
-          <View style={{ paddingHorizontal: 20, paddingBottom: 4 }}>
-            <View style={styles.draftSectionRow}>
-              <Text style={styles.draftSectionTitle}>გაგრძელება</Text>
-            </View>
-            {allDrafts.slice(0, 1).map((draft, index) => {
-              const tpl = templates.find(t => t.id === draft.template_id);
-              const step = draftSteps[draft.id] ?? 0;
-              const totalSteps = STEP_TOTALS[tpl?.category ?? ''] ?? 0;
-              const showProgress = totalSteps > 0 && step > 0;
-
-              if (index === 0) {
-                return (
-                  <RNAnimated.View
-                    key={draft.id}
-                    style={{ opacity: deleteOpacity, transform: [{ scale: deleteScale }] }}
-                  >
-                    <Swipeable
-                      ref={swipeableRef}
-                      friction={2}
-                      rightThreshold={40}
-                      overshootRight={false}
-                      renderRightActions={() => (
-                        <Pressable
-                          onPress={() => handleDraftDelete(draft.id)}
-                          style={styles.deleteAction}
-                        >
-                          <Ionicons name="trash-outline" size={22} color={theme.colors.white} />
-                          <Text style={styles.deleteActionText}>წაშლა</Text>
-                        </Pressable>
-                      )}
-                    >
-                      <Card
-                        onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as any)}
-                        a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
-                        style={styles.resumeCard}
-                      >
-                        <View style={styles.resumeIcon}>
-                          <Ionicons name="hourglass-outline" size={16} color={theme.colors.warn} />
-                        </View>
-                        <View style={staticStyles.flex}>
-                          <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
-                          <Text style={styles.resumeTitle} numberOfLines={1}>
-                            {templateName(draft.template_id)}
-                          </Text>
-                          {step > 0 ? (
-                            <Text style={styles.resumeStepLabel}>ნაბიჯი {step}</Text>
-                          ) : null}
-                          {showProgress ? (
-                            <View style={styles.progressTrack}>
-                              <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as any }]} />
-                            </View>
-                          ) : null}
-                          <Text style={styles.resumeMeta} numberOfLines={1}>
-                            {relativeTime(draft.created_at, t, i18n.language)}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-                      </Card>
-                    </Swipeable>
-                  </RNAnimated.View>
-                );
-              }
-
-              return (
-                <Card
-                  key={draft.id}
-                  onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as any)}
-                  a11y={a11y('შევსების გაგრძელება', 'შეეხეთ მონახაზის გასაგრძელებლად', 'button')}
-                  style={[styles.resumeCard, { marginTop: 8 }]}
-                >
-                  <View style={styles.resumeIcon}>
-                    <Ionicons name="hourglass-outline" size={16} color={theme.colors.warn} />
-                  </View>
-                  <View style={staticStyles.flex}>
-                    <Text style={styles.resumeEyebrow}>{t('home.resumeDraft')}</Text>
-                    <Text style={styles.resumeTitle} numberOfLines={1}>
-                      {templateName(draft.template_id)}
-                    </Text>
-                    {step > 0 ? (
-                      <Text style={styles.resumeStepLabel}>ნაბიჯი {step}</Text>
-                    ) : null}
-                    {showProgress ? (
-                      <View style={styles.progressTrack}>
-                        <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as any }]} />
-                      </View>
-                    ) : null}
-                    <Text style={styles.resumeMeta} numberOfLines={1}>
-                      {relativeTime(draft.created_at, t, i18n.language)}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.inkFaint} />
-                </Card>
-              );
-            })}
           </View>
         ) : null}
 
@@ -398,7 +306,9 @@ export default function HomeScreen() {
             style={styles.certBanner}
           >
               <View style={styles.bannerIcon}>
-                <Ionicons name={certs.length === 0 ? 'cloud-upload-outline' : 'warning'} size={18} color={theme.colors.warn} />
+                {certs.length === 0
+                  ? <CloudUpload size={18} color={theme.colors.warn} strokeWidth={1.5} />
+                  : <TriangleAlert size={18} color={theme.colors.warn} strokeWidth={1.5} />}
               </View>
               <View style={staticStyles.flex}>
                 {certs.length === 0 ? (
@@ -415,12 +325,81 @@ export default function HomeScreen() {
                   {certs.length === 0 ? t('home.pdfIncluded') : t('home.checkDeadlines')}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.warn} />
+              <ChevronRight size={16} color={theme.colors.warn} strokeWidth={1.5} />
           </Card>
         ) : null}
 
+        {/* ───────── PROJECTS ───────── */}
+
+        {projectsLoading ? (
+          <View style={staticStyles.projectRowWrap}>
+            {PROJECT_SKELETONS.map((i) => (
+              <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
+                <Skeleton width={48} height={48} radius={12} />
+                <Skeleton width={'80%'} height={14} />
+                <Skeleton width={'50%'} height={11} />
+              </View>
+            ))}
+          </View>
+        ) : projects.length === 0 ? (
+          <Pressable
+            onPress={() => setPickerVisible(true)}
+            style={staticStyles.emptyProjectWrap}
+            {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
+          >
+            <View style={styles.emptyProjects}>
+              <View style={styles.emptyPlusIcon}>
+                <Plus size={24} color={theme.colors.accent} strokeWidth={2} />
+              </View>
+              <Text style={styles.emptyProjectsCta}>{t('home.newProject')}</Text>
+              <Text style={styles.emptyProjectsText}>{t('home.createFirst')}</Text>
+            </View>
+          </Pressable>
+        ) : isProjectsCarousel ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            directionalLockEnabled
+            contentContainerStyle={{ paddingHorizontal: HPAD, paddingTop: 28, paddingBottom: 0, gap: GAP }}
+          >
+            {projects.slice(0, 8).map(p => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                width={projectCardWidth}
+                onPress={() => router.push(`/projects/${p.id}` as any)}
+              />
+            ))}
+            {/* New project card always at the end of the scroll */}
+            <Pressable
+              onPress={() => {
+                setPickerInitialView('new');
+                setPickerVisible(true);
+              }}
+              style={{ width: projectCardWidth }}
+              {...a11y('ახალი პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
+            >
+              <View style={styles.newProjectCard}>
+                <CirclePlus size={28} color={theme.colors.ink} strokeWidth={1.5} />
+                <Text style={styles.newProjectCardText}>ახალი</Text>
+              </View>
+            </Pressable>
+          </ScrollView>
+        ) : (
+          <View style={staticStyles.projectRowWrap}>
+            {projects.slice(0, 20).map(p => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                width={projectCardWidth}
+                onPress={() => router.push(`/projects/${p.id}` as any)}
+              />
+            ))}
+          </View>
+        )}
+
         {/* ───────── QUICK ACTIONS ───────── */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 0 }}>
           <QuickActions
             actions={[
               {
@@ -447,115 +426,26 @@ export default function HomeScreen() {
               {
                 label: 'ინციდენტი',
                 colorKey: 'incident',
-                onPress: () => {
-                  setPickerAction('incident');
-                  setPickerInitialView('list');
-                  setPickerVisible(true);
-                },
+                onPress: () => router.push('/incidents/new' as any),
               },
               {
                 label: 'ინსტრუქტაჟი',
                 colorKey: 'briefing',
-                onPress: () => {
-                  setPickerAction('briefing');
-                  setPickerInitialView('list');
-                  setPickerVisible(true);
-                },
+                onPress: () => router.push('/briefings/new' as any),
               },
               {
                 label: 'რეპორტი',
                 colorKey: 'report',
-                onPress: () => {
-                  setPickerAction('report');
-                  setPickerInitialView('list');
-                  setPickerVisible(true);
-                },
+                onPress: () => router.push('/reports/new' as any),
               },
             ]}
           />
         </View>
 
-        {/* ───────── PROJECTS ───────── */}
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="folder-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
-          <Text style={styles.sectionHeader}>{t('home.sectionProjects')}</Text>
-          <Pressable onPress={() => router.push('/(tabs)/projects' as any)} hitSlop={16}>
-            <Text style={styles.sectionLink}>{t('home.allProjects')}</Text>
-          </Pressable>
-        </View>
-
-        {projectsLoading ? (
-          <View style={staticStyles.projectRowWrap}>
-            {PROJECT_SKELETONS.map((i) => (
-              <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
-                <Skeleton width={48} height={48} radius={12} />
-                <Skeleton width={'80%'} height={14} />
-                <Skeleton width={'50%'} height={11} />
-              </View>
-            ))}
-          </View>
-        ) : projects.length === 0 ? (
-          <Pressable
-            onPress={() => setPickerVisible(true)}
-            style={staticStyles.emptyProjectWrap}
-            {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
-          >
-            <View style={styles.emptyProjects}>
-              <View style={styles.emptyPlusIcon}>
-                <Ionicons name="add" size={24} color={theme.colors.accent} />
-              </View>
-              <Text style={styles.emptyProjectsCta}>{t('home.newProject')}</Text>
-              <Text style={styles.emptyProjectsText}>{t('home.createFirst')}</Text>
-            </View>
-          </Pressable>
-        ) : isProjectsCarousel ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            directionalLockEnabled
-            contentContainerStyle={{ paddingHorizontal: HPAD, paddingTop: 10, paddingBottom: 24, gap: GAP }}
-          >
-            {projects.slice(0, 8).map(p => (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                width={projectCardWidth}
-                onPress={() => router.push(`/projects/${p.id}` as any)}
-              />
-            ))}
-            {/* New project card always at the end of the scroll */}
-            <Pressable
-              onPress={() => {
-                setPickerInitialView('new');
-                setPickerVisible(true);
-              }}
-              style={{ width: projectCardWidth }}
-              {...a11y('ახალი პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
-            >
-              <View style={styles.newProjectCard}>
-                <Ionicons name="add-circle-outline" size={28} color={theme.colors.accent} />
-                <Text style={styles.newProjectCardText}>ახალი</Text>
-              </View>
-            </Pressable>
-          </ScrollView>
-        ) : (
-          <View style={staticStyles.projectRowWrap}>
-            {projects.slice(0, 20).map(p => (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                width={projectCardWidth}
-                onPress={() => router.push(`/projects/${p.id}` as any)}
-              />
-            ))}
-          </View>
-        )}
-
         {/* ───────── RECENT ACTIVITY ───────── */}
         {recentLoading ? (
           <>
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
-              <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
             </View>
             <View style={staticStyles.recentListMargin}>
@@ -573,20 +463,65 @@ export default function HomeScreen() {
         ) : recent.length > 0 ? (
           <>
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
-              <Ionicons name="time-outline" size={14} color={theme.colors.inkSoft} style={{ marginRight: 5 }} />
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
               <Pressable onPress={() => router.push('/history' as any)} hitSlop={16} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
                 <Text style={styles.sectionLink}>ყველა</Text>
               </Pressable>
             </View>
+            {allDrafts.length > 0 && (() => {
+              const draft = allDrafts[0];
+              const tpl = templates.find(t => t.id === draft.template_id);
+              const step = draftSteps[draft.id] ?? 0;
+              const totalSteps = STEP_TOTALS[tpl?.category ?? ''] ?? 0;
+              const showProgress = totalSteps > 0 && step > 0;
+              return (
+                <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+                  <RNAnimated.View style={{ opacity: deleteOpacity, transform: [{ scale: deleteScale }] }}>
+                    <Swipeable
+                      ref={swipeableRef}
+                      friction={2}
+                      rightThreshold={40}
+                      overshootRight={false}
+                      renderRightActions={() => (
+                        <Pressable onPress={() => handleDraftDelete(draft.id)} style={styles.deleteAction}>
+                          <Trash2 size={22} color={theme.colors.white} strokeWidth={1.5} />
+                          <Text style={styles.deleteActionText}>წაშლა</Text>
+                        </Pressable>
+                      )}
+                    >
+                      <Card
+                        onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as any)}
+                        a11y={a11y('შევსების გაგრძელება', 'შეეხეთ დრაფტის გასაგრძელებლად', 'button')}
+                        style={styles.resumeCard}
+                        padding="none"
+                      >
+                        <View style={styles.resumeAccent} />
+                        <View style={styles.resumeContent}>
+                          <View style={styles.resumeTopRow}>
+                            <Text style={styles.resumeTitle} numberOfLines={1}>{templateName(draft.template_id)}</Text>
+                            <View style={styles.resumePill}><Text style={styles.resumePillText}>დრაფტი</Text></View>
+                          </View>
+                          {showProgress ? (
+                            <View style={styles.progressTrack}>
+                              <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as any }]} />
+                            </View>
+                          ) : null}
+                          <View style={styles.resumeBottomRow}>
+                            {step > 0 ? <Text style={styles.resumeStepLabel}>ნაბიჯი {step}</Text> : <View />}
+                            <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
+                          </View>
+                        </View>
+                      </Card>
+                    </Swipeable>
+                  </RNAnimated.View>
+                </View>
+              );
+            })()}
             <View style={staticStyles.recentListMargin}>
               {recentGrouped.map((group, gi) => {
                 const isLastGroup = gi === recentGrouped.length - 1;
                 return (
                   <View key={group.label}>
-                    <View style={styles.dateSeparator}>
-                      <Text style={styles.dateSeparatorText}>{group.label}</Text>
-                    </View>
                     {group.items.map((q, i) => {
                       const tpl = templates.find(t => t.id === q.template_id);
                       const isLast = isLastGroup && i === group.items.length - 1;
@@ -598,7 +533,7 @@ export default function HomeScreen() {
                             onPress={() => router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any)}
                             style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
                           >
-                            <InspectionTypeAvatar
+                            <InspectionListAvatar
                               category={tpl?.category}
                               size={48}
                               status={isDraft ? 'draft' : 'completed'}
@@ -621,7 +556,7 @@ export default function HomeScreen() {
                               onPress={() => setOpenMenuId(menuOpen ? null : q.id)}
                               style={styles.kebabBtn}
                             >
-                              <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.inkSoft} />
+                              <EllipsisVertical size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
                             </Pressable>
                             {menuOpen && (
                               <>
@@ -637,7 +572,9 @@ export default function HomeScreen() {
                                       router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any);
                                     }}
                                   >
-                                    <Ionicons name={isDraft ? 'play-outline' : 'eye-outline'} size={15} color={theme.colors.ink} />
+                                    {isDraft
+                                      ? <Play size={15} color={theme.colors.ink} strokeWidth={1.5} />
+                                      : <Eye size={15} color={theme.colors.ink} strokeWidth={1.5} />}
                                     <Text style={[styles.rowMenuLabel, { color: theme.colors.ink }]}>
                                       {isDraft ? 'გაგრძელება' : 'ნახვა'}
                                     </Text>
@@ -653,7 +590,7 @@ export default function HomeScreen() {
                                       ]);
                                     }}
                                   >
-                                    <Ionicons name="trash-outline" size={15} color={theme.colors.danger} />
+                                    <Trash2 size={15} color={theme.colors.danger} strokeWidth={1.5} />
                                     <Text style={[styles.rowMenuLabel, { color: theme.colors.danger }]}>წაშლა</Text>
                                   </Pressable>
                                 </View>
@@ -662,7 +599,9 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       );
-                      return q.status === 'draft' ? (
+                      // Don't wrap in Swipeable when the menu is open — Swipeable
+                      // clips absolutely-positioned children, hiding the dropdown.
+                      return q.status === 'draft' && !menuOpen ? (
                         <Swipeable
                           key={q.id}
                           friction={2}
@@ -673,7 +612,7 @@ export default function HomeScreen() {
                               onPress={() => deleteRecentDraft(q.id, tpl?.category ?? undefined)}
                               style={styles.deleteAction}
                             >
-                              <Ionicons name="trash-outline" size={22} color={theme.colors.white} />
+                              <Trash2 size={22} color={theme.colors.white} strokeWidth={1.5} />
                               <Text style={styles.deleteActionText}>წაშლა</Text>
                             </Pressable>
                           )}
@@ -692,10 +631,10 @@ export default function HomeScreen() {
         ) : null}
 
         {/* ───────── TIP OF THE DAY ───────── */}
-        <View style={[styles.sectionWrap, staticStyles.sectionHeaderMargin]}>
+        <View style={[styles.sectionWrap, staticStyles.tipMargin]}>
           <Card style={styles.tipCard}>
             <View style={styles.tipIcon}>
-              <Ionicons name="shield-checkmark" size={20} color={theme.colors.accent} />
+              <ShieldCheck size={20} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
             <View style={staticStyles.flex}>
               <Text style={styles.tipLabel}>რჩევა დღისთვის</Text>
@@ -708,7 +647,7 @@ export default function HomeScreen() {
       <CustomDropdown
         label={t('home.chooseTemplate')}
         options={tplPickerTemplates.map(tpl => ({
-          label: tpl.name,
+          label: inspectionDisplayName(tpl.name),
           value: tpl.id,
           icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
         }))}
@@ -729,7 +668,7 @@ export default function HomeScreen() {
       <ProjectPickerSheet
         visible={pickerVisible}
         initialView={pickerInitialView}
-        action={pickerAction}
+        action="inspection"
         projects={projects}
         templates={templates}
         preselectedTemplateId={null}
@@ -751,7 +690,7 @@ export default function HomeScreen() {
 // ──────────── STYLES ────────────
 
 
-const PROJECT_CARD_HEIGHT = 120;
+const PROJECT_CARD_HEIGHT = 155;
 
 function getStyles(theme: Theme) {
   return StyleSheet.create({
@@ -793,7 +732,7 @@ function getStyles(theme: Theme) {
     color: theme.colors.ink,
   },
 
-  // HERO (legacy — kept for non-scroll callers if any reuse)
+  // HERO (legacy - kept for non-scroll callers if any reuse)
   hero: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -807,11 +746,10 @@ function getStyles(theme: Theme) {
     marginBottom: 4,
   },
   greeting: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '900',
-    fontFamily: theme.typography.fontFamily.display,
     color: theme.colors.ink,
-    lineHeight: 36,
+    lineHeight: 32,
   },
 
   // FETCH ERROR BANNER
@@ -842,10 +780,10 @@ function getStyles(theme: Theme) {
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 4,
-    marginTop: 28,
+    paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 10,
+    // marginTop comes from staticStyles.sectionHeaderMargin (applied at usage).
   },
   sectionHeader: {
     flex: 1,
@@ -864,70 +802,66 @@ function getStyles(theme: Theme) {
   // RESUME CARD
   resumeCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.cardInner,
-    padding: 14,
-    borderWidth: 1,
+    backgroundColor: theme.colors.surface,
     borderColor: theme.colors.hairline,
+    overflow: 'hidden',
   },
-  resumeIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.warnSoft,
+  resumeAccent: {
+    width: 4,
+    backgroundColor: '#FF6D2E',
+  },
+  resumeContent: {
+    flex: 1,
+    padding: 14,
+    gap: 8,
+  },
+  resumeTopRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resumeEyebrow: {
-    color: theme.colors.warn,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: 2,
+    gap: 8,
   },
   resumeTitle: {
+    flex: 1,
     color: theme.colors.ink,
     fontSize: 15,
+    fontWeight: '800',
+  },
+  resumePill: {
+    backgroundColor: theme.colors.neutral[900],
+    borderRadius: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  resumePillText: {
+    color: theme.colors.highlight,
+    fontSize: 10,
     fontWeight: '700',
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  resumeBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  resumeStepLabel: {
+    color: theme.colors.inkSoft,
+    fontSize: 11,
+    fontWeight: '600',
   },
   resumeMeta: {
     color: theme.colors.inkSoft,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  resumeStepLabel: {
-    color: theme.colors.warn,
     fontSize: 11,
-    fontWeight: '600',
-    marginTop: 3,
   },
   progressTrack: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: theme.colors.hairline,
-    marginTop: 5,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: withOpacity(theme.colors.ink, 0.1),
     overflow: 'hidden',
   },
   progressFill: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: theme.colors.warn,
-  },
-  draftSectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  draftSectionTitle: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.colors.inkFaint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: withOpacity(theme.colors.ink, 0.35),
   },
   draftBadge: {
     minWidth: 20,
@@ -980,7 +914,7 @@ function getStyles(theme: Theme) {
     alignItems: 'center',
     gap: 12,
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 12,
     padding: 14,
     backgroundColor: theme.colors.warnSoft,
     borderRadius: theme.radius.cardInner,
@@ -1015,10 +949,10 @@ function getStyles(theme: Theme) {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: theme.colors.accentSoft,
+    backgroundColor: theme.colors.highlightSoft,
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: withOpacity(theme.colors.accent, 0.2),
+    borderWidth: 2,
+    borderColor: theme.colors.highlight,
     borderStyle: 'dashed',
     height: PROJECT_CARD_HEIGHT,
   },
@@ -1041,10 +975,10 @@ function getStyles(theme: Theme) {
     color: theme.colors.ink,
   },
   newProjectCard: {
-    backgroundColor: theme.colors.accentSoft,
+    backgroundColor: theme.colors.highlightSoft,
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: withOpacity(theme.colors.accent, 0.2),
+    borderWidth: 2,
+    borderColor: theme.colors.highlight,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1054,14 +988,14 @@ function getStyles(theme: Theme) {
   newProjectCardText: {
     fontSize: 13,
     fontWeight: '700',
-    color: theme.colors.accent,
+    color: theme.colors.ink,
   },
 
-  // RECENT — flat list, no card wrapper
+  // RECENT - flat list, no card wrapper
   recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 14,
     backgroundColor: 'transparent',
   },
@@ -1088,8 +1022,8 @@ function getStyles(theme: Theme) {
     marginRight: 4,
   },
   dateSeparator: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingTop: 14,
     paddingBottom: 10,
   },
   dateSeparatorText: {

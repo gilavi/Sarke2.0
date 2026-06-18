@@ -1,5 +1,5 @@
 /**
- * ProjectModal — create + edit flows. Currently 34% covered; this exercises:
+ * ProjectModal - create + edit flows. Currently 34% covered; this exercises:
  * - mounting in create mode (no projectId)
  * - mounting in edit mode (pre-fills from getProject)
  * - validation: empty name shows error

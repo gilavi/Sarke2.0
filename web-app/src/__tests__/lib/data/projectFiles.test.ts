@@ -100,8 +100,8 @@ describe('deleteProjectFile', () => {
 
 describe('formatSize', () => {
   it('formats bytes / KB / MB and a dash for empty', () => {
-    expect(formatSize(null)).toBe('—');
-    expect(formatSize(0)).toBe('—');
+    expect(formatSize(null)).toBe('-');
+    expect(formatSize(0)).toBe('-');
     expect(formatSize(512)).toBe('512 B');
     expect(formatSize(2048)).toBe('2.0 KB');
     expect(formatSize(5 * 1024 * 1024)).toBe('5.0 MB');

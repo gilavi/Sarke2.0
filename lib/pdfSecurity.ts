@@ -121,7 +121,7 @@ function escHtml(s: string): string {
  * Read the PDF at `uri`, stamp document metadata via pdf-lib, then overwrite
  * the same file. Returns `uri` unchanged for chaining convenience.
  *
- * Runs on native only — safe to call on the raw temp URI returned by
+ * Runs on native only - safe to call on the raw temp URI returned by
  * `printToFileAsync` before the pretty-name copy is made.
  */
 export async function lockPdf(

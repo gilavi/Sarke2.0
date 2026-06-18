@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
+import { MapPin } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
 import { A11yText as Text } from './primitives/A11yText';
 
-// Dark blueprint background — intentional non-theme value for this design.
-const BLUEPRINT_BG = '#1A2E24';
+// Dark blueprint background - near-black graphite (was a green tint pre-rebrand).
+const BLUEPRINT_BG = '#1A1A1A';
 
 interface SkeletonMapProps {
   onAddLocation?: () => void;
-  /** Suppress the pin, label, and CTA — use when rendering as a card background. */
+  /** Suppress the pin, label, and CTA - use when rendering as a card background. */
   hideContent?: boolean;
 }
 
@@ -78,7 +78,7 @@ export function SkeletonMap({ onAddLocation, hideContent }: SkeletonMapProps) {
           <Animated.View
             style={[styles.pulseRing, { transform: [{ scale: pulse }] }]}
           />
-          <Ionicons name="location" size={36} color={accent} />
+          <MapPin size={36} color={accent} strokeWidth={1.5} />
           <Text style={styles.noLocText}>{t('components.skeletonMapNoLocation')}</Text>
           {onAddLocation ? (
             <Pressable onPress={onAddLocation} hitSlop={8}>
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(29,158,117,0.18)',
+    backgroundColor: 'rgba(255,109,46,0.18)',
     top: -14,
     alignSelf: 'center',
   },

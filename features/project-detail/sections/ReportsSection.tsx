@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
@@ -38,7 +38,7 @@ export function ReportsSection({
     <>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Ionicons name="document-text-outline" size={16} color={theme.colors.inkSoft} />
+          <FileText size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>რეპორტები</Text>
           <Text style={styles.sectionCount}>{reports.length}</Text>
         </View>
@@ -75,10 +75,10 @@ export function ReportsSection({
                 {...a11y('რეპორტი', 'დეტალების სანახავად დააჭირეთ', 'button')}
               >
                 <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                  <Ionicons
-                    name={isCompleted ? 'document-text' : 'hourglass-outline'}
+                  <FileText
                     size={14}
                     color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
+                    strokeWidth={1.5}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -87,13 +87,13 @@ export function ReportsSection({
                     {r.slides.length} სლაიდი · {formatShortDateTime(r.created_at)}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.borderStrong} />
+                <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
               </Pressable>
             );
           })}
           {overflow.length > 0 ? (
             <ViewMoreRow
-              items={overflow.map(() => ({ ionicon: 'document-text-outline' }))}
+              items={overflow.map(() => ({ category: null }))}
               total={overflow.length}
               onPress={() => router.push(`/projects/${id}/reports` as any)}
             />

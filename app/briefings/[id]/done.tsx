@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { CircleCheck, FileText, Share2 } from 'lucide-react-native';
 import { Button } from '../../../components/ui';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { useSession } from '../../../lib/session';
@@ -86,7 +86,7 @@ export default function BriefingDoneScreen() {
         {/* Success icon */}
         <View style={styles.iconWrap}>
           <View style={styles.iconCircle}>
-            <Ionicons name="checkmark-circle" size={72} color={theme.colors.accent} />
+            <CircleCheck size={72} color={theme.colors.accent} strokeWidth={1.5} />
           </View>
         </View>
 
@@ -130,7 +130,7 @@ export default function BriefingDoneScreen() {
         <Button
           title={sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
           size="lg"
-          leftIcon="share-outline"
+          leftIcon={Share2}
           onPress={sharePdf}
           loading={sharing}
           disabled={!briefing || !project || sharing}
@@ -141,7 +141,7 @@ export default function BriefingDoneScreen() {
           style={styles.secondaryBtn}
           {...a11y('ოქმის ნახვა', 'ინსტრუქტაჟის დეტალების ნახვა', 'button')}
         >
-          <Ionicons name="document-text-outline" size={18} color={theme.colors.accent} />
+          <FileText size={18} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={styles.secondaryBtnText}>ოქმის ნახვა</Text>
         </Pressable>
         <Pressable

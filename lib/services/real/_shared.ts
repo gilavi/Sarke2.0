@@ -1,5 +1,5 @@
 // Shared internals for the real (Supabase-backed) services.
-// Kept private to this folder — callers should depend on the per-domain APIs.
+// Kept private to this folder - callers should depend on the per-domain APIs.
 
 import { logError } from '../../logError';
 import type { CrewMember, CrewRoleKey, Project } from '../../../types/models';
@@ -52,7 +52,7 @@ export function listOrThrow<T>(res: SupabaseRes, opts?: GuardOpts<T>): T[] {
  * Coerce stored crew rows into the current shape. Legacy rows (pre role-slot
  * UX) lack a `roleKey`; we route them into the `other` slot rather than
  * dropping them, and reuse their stored `role` string as the display label.
- * After coercion, callers must dedupe by `roleKey` themselves — the slot UI
+ * After coercion, callers must dedupe by `roleKey` themselves - the slot UI
  * keeps only the first match per slot.
  */
 export function mapCrew(rows: unknown): CrewMember[] {
@@ -89,6 +89,6 @@ const MAX_LOGO_BYTES = 1_000_000; // ~1 MB base64; over this slows down every pr
 export function assertLogoSize(logo: string | null | undefined): void {
   if (typeof logo !== 'string') return;
   if (logo.length > MAX_LOGO_BYTES) {
-    throw new Error('ლოგო ძალიან დიდია — გთხოვთ აირჩიოთ უფრო მცირე სურათი');
+    throw new Error('ლოგო ძალიან დიდია - გთხოვთ აირჩიოთ უფრო მცირე სურათი');
   }
 }

@@ -1,5 +1,5 @@
 /**
- * History page (40% covered) — list aggregation + delete walk.
+ * History page (40% covered) - list aggregation + delete walk.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';

@@ -1,15 +1,15 @@
-// InspectionWizard.tsx — top-level orchestrator for the multi-step inspection
+// InspectionWizard.tsx - top-level orchestrator for the multi-step inspection
 // questionnaire flow. All non-render logic lives in useWizardState; the
 // individual step renderers live in sibling files.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { KeyboardAwareScrollView, KeyboardStickyView } from 'react-native-keyboard-controller';
+import { KeyboardAwareScrollView, KeyboardStickyView, KeyboardController, useKeyboardState } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Check, ChevronRight, FileText } from 'lucide-react-native';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -20,7 +20,8 @@ import { TOUR_SEEN_KEY } from '../../lib/scaffoldHelp';
 import { WizardStepTransition, AnswerButtons } from '../../components/wizard';
 import { HarnessListFlow } from '../../components/HarnessListFlow';
 import { useTheme } from '../../lib/theme';
-import { SkeletonWizard } from '../../components/Skeleton';
+import { InspectionShellSkeleton } from '../../components/inspection-steps';
+import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { haptic } from '../../lib/haptics';
 import { isOscillating } from '../../lib/navigationGuard';
 import { useToast } from '../../lib/toast';
@@ -40,6 +41,7 @@ import { ScaffoldFooterButtons } from './ScaffoldFooterButtons';
 import { CompletedRedirect } from './CompletedRedirect';
 import { NavigationRecovery } from './NavigationRecovery';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const { theme } = useTheme();
@@ -47,6 +49,9 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  // Drives the compact footer while typing. Must run unconditionally (before
+  // the early returns below) to satisfy the Rules of Hooks.
+  const keyboardOpen = useKeyboardState(s => s.isVisible);
 
   const ws = useWizardState(inspectionId);
 
@@ -99,7 +104,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
-    // Tour shows facade scaffold component illustrations — only relevant for
+    // Tour shows facade scaffold component illustrations - only relevant for
     // the xaracho template. Skip for mobile_scaffold and all other categories.
     if (!template || template.category !== 'xaracho') return;
     let cancelled = false;
@@ -118,6 +123,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     AsyncStorage.setItem(TOUR_SEEN_KEY, '1').catch(() => {});
   }, []);
 
+  // Enabled forward button + on-press field errors (see useSubmitGuard). Reveals
+  // the yes/no answer buttons in red when a required (photo-gated) question is
+  // submitted unanswered, instead of leaving a dead disabled button.
+  const { attempted, guard, reset: resetAttempted } = useSubmitGuard();
+  useEffect(() => { resetAttempted(); }, [stepIndex, resetAttempted]);
+
   // Step transition direction. Forward navigation slides the new step in
   // from the right and the old one out to the left; back nav reverses both.
   const prevStepIndexRef = useRef(stepIndex);
@@ -127,7 +138,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     prevStepIndexRef.current = stepIndex;
   }, [stepIndex]);
 
-  // First-render fade out of the skeleton — kicks in once data is ready.
+  // First-render fade out of the skeleton - kicks in once data is ready.
   const enterAnim = useRef(new Animated.Value(0)).current;
   const enteredRef = useRef(false);
 
@@ -176,8 +187,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
 
   const goBack = useCallback(() => {
     haptic.light();
-    setStepIndex(i => Math.max(0, i - 1));
-  }, [setStepIndex]);
+    if (stepIndex === 0) {
+      router.back();
+    } else {
+      setStepIndex(i => i - 1);
+    }
+  }, [stepIndex, setStepIndex, router]);
 
   // Hold the loading screen until EVERYTHING we need is ready.
   const ready = !loading && !!questionnaire && !!template;
@@ -194,10 +209,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
       return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
-      <Screen edgeToEdge edges={['top']} style={{ backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-        <SkeletonWizard />
-      </Screen>
+      <InspectionShellSkeleton
+        title={template?.name ? inspectionDisplayName(template.name) : 'კითხვარი'}
+        projectName={project?.name ?? ''}
+        variant="question"
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -217,6 +234,12 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   const isYesNo = step.kind === 'question' && step.question.type === 'yesno';
   const isLast = stepIndex === steps.length - 1;
   const isScaffoldRow = step.kind === 'gridRow' && (step.question.grid_rows?.[0] ?? '') !== 'N1';
+  // A yes/no question with a photo or note attached but no კი/არა chosen must
+  // not be skippable - the user clearly engaged, so make them answer.
+  const curAnswer = step.kind === 'question' ? answers[step.question.id] : undefined;
+  const photoCount = curAnswer?.id ? photos[curAnswer.id]?.length ?? 0 : 0;
+  const hasAttachment = photoCount > 0 || !!curAnswer?.notes?.trim();
+  const lockUnanswered = isYesNo && hasAttachment && !stepAnswered;
 
   if (step.kind === 'empty') {
     return (
@@ -236,7 +259,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           <ErrorState
             title="შაბლონს კითხვები არ აქვს"
             message="ამ შაბლონზე კითხვები არ არის კონფიგურირებული. გთხოვთ მიმართოთ ადმინისტრატორს."
-            icon="document-text-outline"
+            icon={FileText}
           />
         </View>
       </Screen>
@@ -246,19 +269,20 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   // HarnessListFlow: full-screen takeover for harness templates.
   if (step.kind === 'harnessFlow') {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         <HarnessListFlow
           inspectionId={questionnaire!.id}
           template={template!}
+          project={project}
           questions={questions}
           answers={answers}
-          photos={photos}
           harnessRowCount={harnessRowCount}
           setHarnessRowCount={setHarnessRowCount}
+          stepIndex={stepIndex}
+          totalSteps={steps.length}
           onPatchAnswer={patchAnswer}
-          onPickItemPhoto={(q, row, col) => pickPhoto(q, `${row}:col:${col}`)}
-          onDeletePhoto={deletePhoto}
+          onBack={goBack}
           onClose={() => router.back()}
           onConclude={goNext}
         />
@@ -295,7 +319,6 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
             total={steps.length}
             project={project}
             template={template}
-            hasProgress={hasAnyProgress}
             onBack={goBack}
             onClose={() => router.back()}
           />
@@ -367,18 +390,23 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           </WizardStepTransition>
 
           <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-          <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
+          <View style={[styles.footer, keyboardOpen ? { paddingTop: 6, gap: 8, paddingBottom: 8 } : { paddingBottom: 16 + insets.bottom }]}>
             {isYesNo && step.kind === 'question' ? (
               <AnswerButtons
+                compact={keyboardOpen}
+                error={attempted}
                 value={answers[step.question.id]?.value_bool ?? null}
-                onChange={(v) => patchAnswer(step.question, a => ({ ...a, value_bool: v }))}
+                onChange={(v) => {
+                  patchAnswer(step.question, a => ({ ...a, value_bool: v }));
+                  if (keyboardOpen) KeyboardController.dismiss();
+                }}
               />
             ) : null}
             {isLast ? (
               <Button
                 title="დასრულება"
                 style={{ paddingVertical: 14 }}
-                iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
+                rightIcon={Check}
                 loading={finishing}
                 disabled={finishing}
                 onPress={() => {
@@ -395,18 +423,14 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                 onAnswer={patchAnswer}
                 onAdvance={goNext}
               />
-            ) : (
+            ) : keyboardOpen ? null : (
               <Button
-                title={stepAnswered ? 'შემდეგი' : 'გამოტოვება'}
-                variant={stepAnswered ? 'primary' : 'secondary'}
+                title={stepAnswered || lockUnanswered ? 'შემდეგი' : 'გამოტოვება'}
+                variant={stepAnswered || lockUnanswered ? 'primary' : 'secondary'}
                 size="lg"
                 style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                iconRight={
-                  stepAnswered ? (
-                    <Ionicons name="chevron-forward" size={18} color={theme.colors.white} />
-                  ) : undefined
-                }
-                onPress={goNext}
+                rightIcon={stepAnswered ? ChevronRight : undefined}
+                onPress={() => guard(!lockUnanswered, goNext)}
               />
             )}
           </View>

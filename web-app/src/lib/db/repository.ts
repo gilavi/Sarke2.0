@@ -2,7 +2,7 @@
  * Generic CRUD repository factory.
  *
  * The five equipment-inspection data modules (bobcat, excavator,
- * generalEquipment, cargoPlatform) — and most other domain modules — share an
+ * generalEquipment, cargoPlatform) - and most other domain modules - share an
  * identical shape: `list(projectId?)` ordered by created_at with a limit,
  * `get(id)` via maybeSingle, an auth-guarded `create`, an `update` that maps a
  * partial patch to snake_case columns, and a `remove`. Only the table name,
@@ -21,7 +21,7 @@ import type { Database } from '@/types/database';
 export const NOT_AUTHENTICATED = 'არაავტორიზებული';
 
 // makeRepository operates on dynamic (runtime-string) table names, so it talks
-// to Supabase through the schema-less client view — the table-literal typing the
+// to Supabase through the schema-less client view - the table-literal typing the
 // rest of the data layer relies on can't apply to a `string` table. Per-entity
 // type safety here comes from cfg.toModel / toInsert / toUpdate.
 const db = supabase as unknown as SupabaseClient;

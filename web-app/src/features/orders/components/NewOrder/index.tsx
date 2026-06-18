@@ -52,7 +52,7 @@ export default function NewOrder() {
   const [signingDirector, setSigningDirector] = useState(false);
   const [signingAppointed, setSigningAppointed] = useState(false);
 
-  // Pre-opened window ref — opened synchronously on user click to avoid popup blocker
+  // Pre-opened window ref - opened synchronously on user click to avoid popup blocker
   const pdfWinRef = useRef<Window | null>(null);
 
   // Auto-fill from project

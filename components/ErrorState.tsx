@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CloudOff, RefreshCw } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
 
 import { friendlyError } from '../lib/errorMap';
@@ -11,7 +12,7 @@ export interface ErrorStateProps {
   error?: unknown;
   onRetry?: () => void;
   retrying?: boolean;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: LucideIcon;
   compact?: boolean;
 }
 
@@ -21,7 +22,7 @@ export function ErrorState({
   error,
   onRetry,
   retrying,
-  icon = 'cloud-offline-outline',
+  icon: IconComp = CloudOff,
   compact,
 }: ErrorStateProps) {
   const { theme } = useTheme();
@@ -35,7 +36,7 @@ export function ErrorState({
       style={[styles.wrap, compact && styles.wrapCompact]}
     >
       <View style={styles.iconCircle}>
-        <Ionicons name={icon} size={compact ? 24 : 32} color={theme.colors.danger} />
+        <IconComp size={compact ? 24 : 32} color={theme.colors.danger} strokeWidth={1.5} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
@@ -53,7 +54,7 @@ export function ErrorState({
             retrying && { opacity: 0.6 },
           ]}
         >
-          <Ionicons name="refresh" size={16} color={theme.colors.accent} />
+          <RefreshCw size={16} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={styles.retryText}>{retrying ? 'იტვირთება…' : 'ხელახლა ცდა'}</Text>
         </Pressable>
       ) : null}

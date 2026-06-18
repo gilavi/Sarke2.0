@@ -16,7 +16,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme, type Theme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
@@ -124,7 +124,7 @@ function renderHeader(header: SheetLayoutProps['header'], theme: Theme) {
             hitSlop={12}
             {...a11y('დახურვა', 'ფანჯრის დახურვა', 'button')}
           >
-            <Ionicons name="close" size={22} color={theme.colors.inkSoft} />
+            <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </Pressable>
         ) : null}
       </View>
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 12,
-    gap: 10,
+    gap: 12,
   },
   footerWrap: {
     paddingHorizontal: 20,

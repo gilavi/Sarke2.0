@@ -7,8 +7,14 @@ The Kamari (harness) flow lives in the nested `kamari/` subfolder
 which has its own AGENTS.md.
 
 ## Public API (from index.ts)
-- `AnswerButtons` — large yes/no answer buttons rendered in the
-  wizard's global footer for `yesno` question steps.
+- `StatusChip` — monochrome single-select answer control (icon +
+  label). The shared building block for every inspection answer
+  surface (yes/no, 3-state good/deficient/unusable, verdict pills);
+  `AnswerButtons` and the equipment checklist chips use it or its
+  ink+neutral token treatment. No semantic colors — `✓/⚠/✗` icons
+  carry severity.
+- `AnswerButtons` — binary yes/no rendered in the wizard's global
+  footer for `yesno` question steps; two `StatusChip` pills.
 - `QuestionCard` — generic step container with title + body.
 - `ChecklistItemStep` — single yes/no row used inside step bodies.
 - `ExitModal` — confirmation modal when the user backs out with

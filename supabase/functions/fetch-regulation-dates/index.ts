@@ -5,7 +5,7 @@
 // (no CORS headers on that site). The mobile app fetches natively via React
 // Native; this bridges the gap for the web dashboard.
 //
-// Request body: { urls: string[] }  — must all be https://matsne.gov.ge/
+// Request body: { urls: string[] }  - must all be https://matsne.gov.ge/
 // Response:     { dates: (string | null)[] }
 
 const corsHeaders = {

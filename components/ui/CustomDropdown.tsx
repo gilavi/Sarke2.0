@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Check, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 import { useBottomSheet, BottomSheetScrollView } from '../BottomSheet';
 import { haptic } from '../../lib/haptics';
@@ -151,7 +151,7 @@ export const CustomDropdown = memo(function CustomDropdown({
                           )}
                         </View>
                         {isSelected && (
-                          <Ionicons name="checkmark" size={18} color={c.accent} style={styles.checkmark} />
+                          <Check size={18} color={c.accent} strokeWidth={1.5} style={styles.checkmark} />
                         )}
                       </Pressable>
                       {!isLast && (
@@ -207,7 +207,7 @@ export const CustomDropdown = memo(function CustomDropdown({
   }, [disabled, setOpen]);
 
   if (isControlled) {
-    // Controlled mode: render only the bridge — no trigger button.
+    // Controlled mode: render only the bridge - no trigger button.
     return null;
   }
 
@@ -246,7 +246,7 @@ export const CustomDropdown = memo(function CustomDropdown({
         >
           {selectedOption?.label ?? placeholder}
         </Text>
-        <Ionicons name="chevron-down" size={16} color={disabled ? c.inkFaint : c.inkSoft} />
+        <ChevronDown size={16} color={disabled ? c.inkFaint : c.inkSoft} strokeWidth={1.5} />
       </Pressable>
       {error != null && (
         <Text style={[styles.errorText, { fontFamily: ty.fontFamily.body, color: c.danger }]}>

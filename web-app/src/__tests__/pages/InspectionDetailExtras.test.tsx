@@ -80,7 +80,7 @@ beforeEach(() => {
   });
 });
 
-describe('InspectionDetail — PDF list', () => {
+describe('InspectionDetail - PDF list', () => {
   it('renders a list of generated PDFs with "PDF-ის ნახვა" buttons', async () => {
     vi.mocked(getInspection).mockResolvedValue({
       ...baseInspection, status: 'completed', conclusion_text: 'OK', is_safe_for_use: true,
@@ -103,7 +103,7 @@ describe('InspectionDetail — PDF list', () => {
   });
 });
 
-describe('InspectionDetail — QuestionRow comment', () => {
+describe('InspectionDetail - QuestionRow comment', () => {
   it('typing in the comment field + answering fires upsertAnswer with comment', async () => {
     const questions: Question[] = [
       { id: 'q1', template_id: 't1', section: 1, order: 1, type: 'yesno', title: 'Q',
@@ -131,7 +131,7 @@ describe('InspectionDetail — QuestionRow comment', () => {
   });
 });
 
-describe('InspectionDetail — pending mode', () => {
+describe('InspectionDetail - pending mode', () => {
   it('mounts in pending (draft id) mode without crashing', async () => {
     // When URL id is 'draft', isPending=true, and the page renders a synthetic inspection.
     renderPage(

@@ -1,34 +1,29 @@
-﻿import { useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+﻿import { useCallback, useEffect, useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { Button } from '../../../components/ui';
-import { DateTimeField } from '../../../components/DateTimeField';
-import { WizardStepTransition } from '../../../components/wizard/WizardStepTransition';
-import { FlowHeader } from '../../../components/FlowHeader';
 import { InspectionResultView } from '../../../components/InspectionResultView';
+import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
+import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import {
   ChecklistSection,
   DynamicTable,
-  VerdictSelector,
   PhotoSection,
   SlingsIdentificationStep,
-  type VerdictOption,
 } from '../../../components/inspection-parts';
+import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { liftingAccessoriesApi } from '../../../lib/liftingAccessoriesService';
 import { liftingAccessoriesSchema } from '../../../lib/inspection/schemas/liftingAccessories';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import {
   LA_CHECKLIST_ITEMS,
@@ -53,6 +48,12 @@ const REMOVED_STEP        = 3;
 const CONCLUSION_STEP     = 4;
 const TOTAL_STEPS         = 4;
 
+const LA_VERDICT_OPTIONS: VerdictOption<LAVerdict>[] = [
+  { value: 'pass',   label: LA_VERDICT_LABELS.pass,   tone: 'success' },
+  { value: 'repair', label: LA_VERDICT_LABELS.repair, tone: 'caution' },
+  { value: 'fail',   label: LA_VERDICT_LABELS.fail,   tone: 'danger'  },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function LiftingAccessoriesInspectionScreen() {
@@ -61,8 +62,10 @@ export default function LiftingAccessoriesInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so
@@ -287,6 +290,9 @@ export default function LiftingAccessoriesInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── Checklist items builder ─────────────────────────────────────────────────
 
   const checklistItemsForSection = (sectionKey: 'A' | 'B') =>
@@ -309,10 +315,20 @@ export default function LiftingAccessoriesInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'სლინგის შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="სლინგ. / ჩამჭ. შემოწ."
+        projectName={projectName ?? ''}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === REMOVED_STEP ? 'table'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={3}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -340,40 +356,22 @@ export default function LiftingAccessoriesInspectionScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-
-      <FlowHeader
-        flowTitle="სლინგ. / ჩამჭ. შემოწ."
-        project={projectName ? { name: projectName } : null}
-        step={step}
+      <InspectionShell
+        title="სლინგ. / ჩამჭ. შემოწ."
+        projectName={projectName ?? ''}
+        step={step - 1}
         totalSteps={TOTAL_STEPS}
-        leading="back"
-        trailing="close"
+        direction={direction}
+        animate={animateSteps}
+        canGoNext={canGoNext}
+        isLastStep={step === CONCLUSION_STEP}
+        completing={completing}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
+        onBlockedNext={markAttempted}
+        onNext={handleNext}
+        onPrev={handlePrev}
         onClose={() => router.back()}
-        trailingElement={(
-          <Pressable
-            onPress={() => handlePdf()}
-            disabled={generatingPdf}
-            hitSlop={10}
-            {...a11y('PDF', 'PDF დოკუმენტის გენერირება', 'button')}
-          >
-            <Ionicons
-              name={generatingPdf ? 'hourglass-outline' : 'document-text-outline'}
-              size={22}
-              color={theme.colors.accent}
-            />
-          </Pressable>
-        )}
-        onBack={handlePrev}
-        backDisabled={false}
-      />
-
-      {saving && <Text style={styles.savingHint}>შენახვა…</Text>}
-
-      {pdfLocked && <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} />}
-
-      <View style={{ flex: 1 }}>
-        <WizardStepTransition stepKey={step} direction={direction} animate={animateSteps}>
+      >
 
           {/* ── Step 1: Equipment Identification ────────────────────────────── */}
           {step === IDENTIFICATION_STEP && (
@@ -405,7 +403,7 @@ export default function LiftingAccessoriesInspectionScreen() {
               bottomOffset={120}
             >
               <ChecklistSection
-                title="A — ვიზუალური შემოწმება"
+                title="A - ვიზუალური შემოწმება"
                 items={checklistItemsForSection('A')}
                 onItemChange={handleChecklistChange}
                 onAddPhoto={handleAddItemPhoto}
@@ -413,7 +411,7 @@ export default function LiftingAccessoriesInspectionScreen() {
               />
 
               <ChecklistSection
-                title="B — ფუნქციური შემოწმება"
+                title="B - ფუნქციური შემოწმება"
                 items={checklistItemsForSection('B')}
                 onItemChange={handleChecklistChange}
                 onAddPhoto={handleAddItemPhoto}
@@ -456,66 +454,26 @@ export default function LiftingAccessoriesInspectionScreen() {
 
           {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              {suggestedVerdict && inspection.verdict !== suggestedVerdict && (
-                <Pressable
-                  style={styles.suggestBanner}
-                  onPress={() => update('verdict', suggestedVerdict)}
-                >
-                  <Ionicons name="bulb-outline" size={16} color={theme.colors.warn} />
-                  <Text style={styles.suggestText}>
-                    შემოთ.: {LA_VERDICT_LABELS[suggestedVerdict]}
-                  </Text>
-                </Pressable>
-              )}
-
-              <Text style={styles.fieldLabel}>დასკვნა *</Text>
-              <VerdictSelector
-                options={([
-                  { value: 'pass',   label: LA_VERDICT_LABELS.pass,   type: 'success' },
-                  { value: 'repair', label: LA_VERDICT_LABELS.repair,  type: 'warning' },
-                  { value: 'fail',   label: LA_VERDICT_LABELS.fail,    type: 'danger'  },
-                ] as VerdictOption[])}
-                value={inspection.verdict}
-                onChange={v => update('verdict', v as LAVerdict)}
-                note={inspection.verdictComment}
-                onNoteChange={v => update('verdictComment', v)}
-                notePlaceholder="კომენტარი"
-              />
-            </KeyboardAwareScrollView>
-          )}
-
-        </WizardStepTransition>
-
-        {/* Footer */}
-        <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
-          {step === CONCLUSION_STEP ? (
-            <Button
-              title="შენახვა და დასრულება"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="checkmark" size={20} color={theme.colors.white} />}
-              loading={completing}
-              disabled={!canGoNext || completing}
-              onPress={handleNext}
-            />
-          ) : (
-            <Button
-              title="შემდეგი"
-              style={{ paddingVertical: 14 }}
-              iconRight={<Ionicons name="chevron-forward" size={20} color={theme.colors.white} />}
-              disabled={!canGoNext}
-              onPress={handleNext}
+            <ConclusionStep
+              verdict={inspection.verdict}
+              verdictOptions={LA_VERDICT_OPTIONS}
+              verdictError={attempted && !inspection.verdict}
+              onVerdictChange={v => update('verdict', v as LAVerdict)}
+              suggestion={
+                suggestedVerdict && inspection.verdict !== suggestedVerdict
+                  ? {
+                      text: `შემოთ.: ${LA_VERDICT_LABELS[suggestedVerdict]}`,
+                      onApply: () => update('verdict', suggestedVerdict),
+                    }
+                  : null
+              }
+              notes={inspection.verdictComment ?? ''}
+              onNotesChange={v => update('verdictComment', v)}
+              completing={completing}
             />
           )}
-        </View>
-      </View>
+
+      </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
@@ -532,7 +490,6 @@ export default function LiftingAccessoriesInspectionScreen() {
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: {
       textAlign: 'center', fontSize: 11,
       color: theme.colors.inkFaint, paddingVertical: 2,
@@ -548,19 +505,9 @@ function getstyles(theme: Theme) {
     },
     twoCol:   { flexDirection: 'row', gap: 8 },
     colHalf:  { flex: 1, gap: 4 },
-    fieldLabel: {
-      fontSize: 12, fontWeight: '600',
-      color: theme.colors.inkSoft, marginBottom: 4,
-    },
     sectionLabel: {
       fontSize: 13, fontWeight: '700',
       color: theme.colors.ink, marginBottom: 4,
     },
-    suggestBanner: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      backgroundColor: theme.colors.warnSoft ?? theme.colors.accentSoft,
-      borderRadius: 10, padding: 10,
-    },
-    suggestText: { fontSize: 12, color: theme.colors.inkSoft, flex: 1 },
   });
 }

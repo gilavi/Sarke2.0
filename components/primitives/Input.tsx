@@ -13,7 +13,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useTheme, type Theme } from '../../lib/theme';
 
@@ -22,8 +22,8 @@ interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   helper?: string;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
+  leftIcon?: LucideIcon;
+  rightIcon?: LucideIcon;
   onRightIconPress?: () => void;
 }
 
@@ -31,8 +31,8 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
   label,
   error,
   helper,
-  leftIcon,
-  rightIcon,
+  leftIcon: LeftIcon,
+  rightIcon: RightIcon,
   onRightIconPress,
   style,
   onFocus,
@@ -55,7 +55,7 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
 
   const handleFocus = (e: any) => {
     setIsFocused(true);
-    borderColor.value = withTiming(theme.colors.accent, { duration: 150 });
+    borderColor.value = withTiming(theme.colors.ink, { duration: 150 });
     onFocus?.(e);
   };
 
@@ -103,11 +103,11 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
           style,
         ]}
       >
-        {leftIcon && (
-          <Ionicons
-            name={leftIcon}
+        {LeftIcon && (
+          <LeftIcon
             size={18}
-            color={isFocused ? theme.colors.accent : theme.colors.inkFaint}
+            color={isFocused ? theme.colors.ink : theme.colors.inkFaint}
+            strokeWidth={1.5}
             style={{ marginRight: 10 }}
           />
         )}
@@ -120,12 +120,12 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
           value={value}
           {...rest}
         />
-        {rightIcon && (
+        {RightIcon && (
           <Pressable onPress={onRightIconPress} hitSlop={13}>
-            <Ionicons
-              name={rightIcon}
+            <RightIcon
               size={18}
               color={theme.colors.inkSoft}
+              strokeWidth={1.5}
               style={{ marginLeft: 10 }}
             />
           </Pressable>

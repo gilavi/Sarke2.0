@@ -46,7 +46,7 @@ describe('REGULATIONS constant', () => {
 
   // Guards the bug fix in more.tsx where the count was hardcoded as "3".
   // String(REGULATIONS.length) is what the More tab now renders.
-  it('has 5 entries — matches the count shown in the More tab', () => {
+  it('has 5 entries - matches the count shown in the More tab', () => {
     expect(REGULATIONS.length).toBe(5);
   });
 

@@ -3,13 +3,13 @@
 //
 // Why local state mirrors at all: the mutation paths (crew edit, file
 // upload/delete) update the local copies directly while React Query refetches
-// in the background — the mirror keeps the UI responsive. Removing the mirror
+// in the background - the mirror keeps the UI responsive. Removing the mirror
 // means refactoring every mutation site too; that's a separate change.
 //
 // `loaded` flips true as soon as the project itself resolves so the hero
 // + arch entrance animate immediately. Each section consumes its own
 // `pending.<section>` flag from the returned object and renders its own
-// skeleton until that specific query lands — so slow sections never block
+// skeleton until that specific query lands - so slow sections never block
 // fast ones from painting.
 //
 // Inspections used to fire 10 parallel per-type queries (generic + 9
@@ -17,7 +17,7 @@
 // unification, every equipment row has a parent row in public.inspections
 // tagged with `type`, so a single RPC (get_project_inspections_unified)
 // returns the full preview list. The mirrored local arrays and per-type
-// setters are gone — swipe-delete now mutates the unified-query cache via
+// setters are gone - swipe-delete now mutates the unified-query cache via
 // queryClient.setQueryData.
 
 import { useEffect, useState } from 'react';
@@ -88,7 +88,7 @@ export function useProjectDetailData(id: string | undefined) {
   }, [filesQ.data]);
 
   // `loaded` flips true as soon as the project itself resolves. Hero/arch
-  // entrance animation depends on this so it fires fast — slow side queries
+  // entrance animation depends on this so it fires fast - slow side queries
   // don't gate the screen render.
   const loaded = projectQ.data !== undefined || projectQ.isError;
 

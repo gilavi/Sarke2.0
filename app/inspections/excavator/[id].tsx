@@ -7,15 +7,15 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Camera, CircleX } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
-import { InspectionShell, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
+import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -28,6 +28,7 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
 import { excavatorSchema } from '../../../lib/inspection/schemas/excavator';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
@@ -115,6 +116,9 @@ export default function ExcavatorInspectionScreen() {
 
   const [attachmentCount, setAttachmentCount] = useState(0);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  // Enabled finish button + on-press field errors (see useSubmitGuard).
+  const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
   // Plate-input step state (reuses SerialKeypad like bobcat)
   const plateRef = useRef<PlateInputHandle>(null);
@@ -382,6 +386,9 @@ export default function ExcavatorInspectionScreen() {
     }
   }, [step, exit, setStep]);
 
+  // Clear the "attempted" error reveal whenever the step changes.
+  useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
+
   // ── List item update helper ────────────────────────────────────────────────
 
   const updateItem = useCallback((itemId: number, result: 'good' | 'deficient' | 'unusable') => {
@@ -425,10 +432,20 @@ export default function ExcavatorInspectionScreen() {
 
   if (loading || !inspection) {
     return (
-      <View style={[styles.root, styles.centred]}>
-        <Stack.Screen options={{ headerShown: true, title: 'ექსკავატორის შემოწმება' }} />
-        <Text style={{ color: theme.colors.inkSoft }}>იტვირთება…</Text>
-      </View>
+      <InspectionShellSkeleton
+        title="ექსკავატორი"
+        projectName={projectName ?? ''}
+        step={step - 1}
+        totalSteps={TOTAL_STEPS - 1}
+        variant={
+          step === PLATE_STEP ? 'keypad'
+            : step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : 'form'
+        }
+        fields={1}
+        onClose={() => router.back()}
+      />
     );
   }
 
@@ -468,14 +485,11 @@ export default function ExcavatorInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
-        saving={saving}
         completing={completing}
-        showPdfIcon={step > INFO_STEP}
-        generatingPdf={generatingPdf}
+        onBlockedNext={markAttempted}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
-        onPdf={() => handlePdf()}
       >
         {/* ── Step 1: Plate / registration number (custom keypad) ─────── */}
         {step === PLATE_STEP && (
@@ -575,6 +589,7 @@ export default function ExcavatorInspectionScreen() {
           <ConclusionStep
             verdict={inspection.verdict}
             verdictOptions={excavatorVerdictOptions}
+            verdictError={attempted && !inspection.verdict}
             notes={inspection.notes ?? ''}
             onVerdictChange={v => update('verdict', v)}
             onNotesChange={v => update('notes', v || null)}
@@ -684,7 +699,7 @@ function SummaryPhotoStrip({
         onPress={onAdd}
         accessible accessibilityLabel="ფოტოს დამატება" accessibilityRole="button"
       >
-        <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+        <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
         <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
       </Pressable>
     </ScrollView>
@@ -713,7 +728,7 @@ const SummaryThumb = memo(function SummaryThumb({
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} resizeMode="cover" />
       <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} accessible accessibilityLabel="ფოტოს წაშლა" accessibilityRole="button">
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={2} />
       </Pressable>
     </View>
   );
@@ -724,7 +739,6 @@ const SummaryThumb = memo(function SummaryThumb({
 function getstyles(theme: Theme) {
   return StyleSheet.create({
     root:    { flex: 1, backgroundColor: theme.colors.background },
-    centred: { alignItems: 'center', justifyContent: 'center' },
     savingHint: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', paddingHorizontal: 24, paddingTop: 4 },
     stepBody: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 16, gap: 12 },
     footer: {

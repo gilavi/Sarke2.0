@@ -62,7 +62,7 @@ export function SubscriptionCard() {
     return (
       <>
         <Paper withBorder radius="md" className="flex items-center gap-4 border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-800/40 dark:bg-amber-950/20">
-          {/* Badge — grayed out when cancelled */}
+          {/* Badge - grayed out when cancelled */}
           <span className={cn(
             'shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide',
             cancelled
@@ -72,7 +72,7 @@ export function SubscriptionCard() {
             PRO{!cancelled && ' ✓'}
           </span>
 
-          {/* Info — stacked vertically */}
+          {/* Info - stacked vertically */}
           <div className="flex flex-1 flex-col gap-0.5 min-w-0">
             <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Hubble Pro</span>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">

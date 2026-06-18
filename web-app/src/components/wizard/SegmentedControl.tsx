@@ -1,7 +1,7 @@
 /**
  * Shared segmented control used by the checklist rows (3 options) and the
  * conclusion verdict (2 options). All options render identically when
- * unselected (#F5F4F1 / #6B7280) — none ever looks "default selected".
+ * unselected (#F5F4F1 / #6B7280) - none ever looks "default selected".
  */
 export interface SegOption {
   label: string;
@@ -23,7 +23,7 @@ export function SegmentedControl({
   onSelect: (value: string) => void;
   /** When true, options stretch to fill the row (used for the verdict). */
   fullWidth?: boolean;
-  /** Control height — defaults to the 34px checklist size. */
+  /** Control height - defaults to the 34px checklist size. */
   height?: number;
   fontSize?: number;
 }) {

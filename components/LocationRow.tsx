@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MapPin } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
 import { A11yText as Text } from './primitives/A11yText';
 import { MapPreview } from './MapPreview';
@@ -26,7 +26,7 @@ export function LocationRow({ pin, address, onPress }: LocationRowProps) {
           },
         ]}
       >
-        <Ionicons name="location-outline" size={20} color={theme.colors.accent} />
+        <MapPin size={20} color={theme.colors.accent} strokeWidth={1.5} />
         <Text style={[styles.emptyText, { color: theme.colors.inkSoft }]}>
           დააჭირეთ მდებარეობის ასარჩევად
         </Text>

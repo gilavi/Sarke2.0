@@ -40,7 +40,7 @@ function readPersistedSession(): Session | null {
       if (parsed?.access_token && parsed.user) return parsed;
     }
   } catch {
-    // Corrupt entry — ignore, the async getSession() will sort it out.
+    // Corrupt entry - ignore, the async getSession() will sort it out.
   }
   return null;
 }
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    // Revalidate in the background — does NOT block render. Updates state
+    // Revalidate in the background - does NOT block render. Updates state
     // only if Supabase returns a different session (e.g. after a refresh).
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Pull profile row when we have a session. The mobile app stores user
   // metadata in the `users` table (mirrors auth.users via trigger); the
-  // dashboard uses the same source. Best-effort — UI falls back to email
+  // dashboard uses the same source. Best-effort - UI falls back to email
   // if the row isn't there yet.
   useEffect(() => {
     const userId = session?.user.id;

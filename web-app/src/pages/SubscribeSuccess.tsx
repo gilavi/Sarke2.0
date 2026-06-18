@@ -21,7 +21,7 @@ export default function SubscribeSuccess() {
     // Only trigger the custom scheme redirect when coming from the mobile app's
     // WebView (SFAuthenticationSession). The mobile Subscribe page appends
     // ?mobile=1 to the success URL so we can detect this context. On desktop
-    // browsers we must NOT navigate to the custom scheme — it causes
+    // browsers we must NOT navigate to the custom scheme - it causes
     // ERR_UNKNOWN_URL_SCHEME and navigates the user away from the app.
     if (params.get('mobile') === '1') {
       window.location.href = 'sarke2://payment/success';

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { valueProps } from './marketing-data';
 
 /**
- * Alternating image/text rows — the "deep dive" feature section. The visual
+ * Alternating image/text rows - the "deep dive" feature section. The visual
  * side is a branded illustrative panel (no stock photos), keeping the custom feel.
  */
 export function ValueShowcase() {

@@ -129,7 +129,7 @@ export async function deleteProject(id: string): Promise<void> {
   // Storage objects are not auto-removed when the project_files rows
   // cascade-delete, so clean them up first to avoid orphans in the
   // `project-files` bucket. Other photo buckets (incident-photos,
-  // report-photos) are left as-is — those are smaller and we can add a
+  // report-photos) are left as-is - those are smaller and we can add a
   // sweeper later.
   const { data: files } = await supabase
     .from('project_files')

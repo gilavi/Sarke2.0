@@ -72,7 +72,7 @@ describe('cargoPlatformService config', () => {
     expect((cols.cargo as any[]).length).toBe(3);
   });
 
-  it('createColumns never sends signatures (column dropped 20260526002032 — sending it breaks the INSERT)', () => {
+  it('createColumns never sends signatures (column dropped 20260526002032 - sending it breaks the INSERT)', () => {
     const cols = captured!.createColumns({ inspectorName: 'Gio' });
     expect('signatures' in cols).toBe(false);
   });

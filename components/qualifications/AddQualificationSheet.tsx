@@ -1,5 +1,5 @@
 // Bottom-sheet form for adding a qualification. Replaces the previous
-// /qualifications/new route — opens in-place from the qualifications list.
+// /qualifications/new route - opens in-place from the qualifications list.
 import { useEffect, useState , useMemo} from 'react';
 import {
   Alert,
@@ -11,7 +11,7 @@ import {
 import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Ionicons } from '@expo/vector-icons';
+import { Calendar, Check, ChevronRight } from 'lucide-react-native';
 import { Button, Field } from '../ui';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { qualificationsApi, storageApi } from '../../lib/services';
@@ -77,7 +77,7 @@ export default function AddQualificationSheet({
   }, [visible, initialType]);
 
   const pickPhoto = async () => {
-    // Must use pickPhoto (ImagePicker directly) — this component is a Modal and
+    // Must use pickPhoto (ImagePicker directly) - this component is a Modal and
     // router.push navigates behind it, freezing the picker callback forever.
     const result = await pickPhotoFromLibrary();
     if (!result) return;
@@ -122,7 +122,7 @@ export default function AddQualificationSheet({
             footer={
               <View style={{ gap: 10 }}>
                 <Button
-                  title={photoUri ? '✓ ფოტო არჩეულია — შეცვლა' : 'სერტიფიკატის ფოტო'}
+                  title={photoUri ? '✓ ფოტო არჩეულია - შეცვლა' : 'სერტიფიკატის ფოტო'}
                   variant="secondary"
                   onPress={pickPhoto}
                 />
@@ -140,7 +140,7 @@ export default function AddQualificationSheet({
                     {...a11y(t.label, 'სერტიფიკატის ტიპის არჩევა', 'radio')}
                   >
                     <View style={[styles.radio, type === t.value && styles.radioActive]}>
-                      {type === t.value && <Ionicons name="checkmark" size={13} color={theme.colors.white} />}
+                      {type === t.value && <Check size={13} color={theme.colors.white} strokeWidth={2} />}
                     </View>
                     <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{t.label}</Text>
                   </Pressable>
@@ -156,17 +156,17 @@ export default function AddQualificationSheet({
 
             <Field label="გაცემის თარიღი">
               <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y('გაცემის თარიღი', 'გაცემის თარიღის არჩევა', 'button')}>
-                <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+                <Calendar size={18} color={theme.colors.accent} strokeWidth={1.5} />
                 <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>
             </Field>
 
             <Field label="ვადის გასვლის თარიღი">
               <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn} {...a11y('ვადის გასვლის თარიღი', 'ვადის გასვლის თარიღის არჩევა', 'button')}>
-                <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
+                <Calendar size={18} color={theme.colors.accent} strokeWidth={1.5} />
                 <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.inkFaint} />
+                <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>
               <View style={styles.chips}>
                 {[{ label: '+1 წელი', months: 12 }, { label: '+3 წელი', months: 36 }, { label: '+5 წელი', months: 60 }].map(c => (

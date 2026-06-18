@@ -1,5 +1,5 @@
 /**
- * Extra renders for the high-yield pages — Calendar with a real event,
+ * Extra renders for the high-yield pages - Calendar with a real event,
  * ProjectActivityWidget with inspection data, ProjectDetailsCard in edit mode.
  * Each exercises the data-mapping + JSX paths that the empty-state tests don't reach.
  */

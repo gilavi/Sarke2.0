@@ -1,6 +1,6 @@
 ﻿// Generated inspection PDF stylesheet. Extracted from template.ts so the
 // HTML structure file is readable. The only dynamic value referenced inside
-// the CSS is `isPdf` — when `mode === 'pdf'` we widen body padding and add
+// the CSS is `isPdf` - when `mode === 'pdf'` we widen body padding and add
 // `page-break-inside: avoid` to the structural cards.
 
 export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
@@ -32,7 +32,7 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
       font-size: 11px;
     }
 
-    /* @page margins removed — caused hangs on iOS WKWebView print renderer.
+    /* @page margins removed - caused hangs on iOS WKWebView print renderer.
        Body padding (20px) provides sufficient margin instead. */
 
     /* Watermark */

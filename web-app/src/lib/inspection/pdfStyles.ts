@@ -101,7 +101,7 @@ export const BASE_PDF_CSS = `
   .dot-def  { background: var(--amber); }
   .dot-bad  { background: var(--red); }
 
-  /* Checklist table (base — result columns are type-specific, see extraCss) */
+  /* Checklist table (base - result columns are type-specific, see extraCss) */
   .cl-table { width: 100%; border-collapse: collapse; }
   .cl-table th, .cl-table td {
     border: 0.5px solid var(--hairline); padding: 5px 7px; font-size: 11px; vertical-align: top;

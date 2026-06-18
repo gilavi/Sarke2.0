@@ -1,4 +1,4 @@
-// styles.ts — shared StyleSheets for the inspection wizard.
+// styles.ts - shared StyleSheets for the inspection wizard.
 
 import { StyleSheet } from 'react-native';
 
@@ -180,34 +180,6 @@ export function getstyles(theme: any) {
     borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
-  },
-  decisionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: theme.colors.inkSoft,
-  },
-  decisionButton: {
-    flex: 1,
-    minHeight: 92,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  decisionLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  fieldError: {
-    fontSize: 12,
-    color: theme.colors.danger,
-    marginTop: 4,
   },
   photoThumb: {
     width: 80,

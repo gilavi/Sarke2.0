@@ -132,7 +132,7 @@ function renderBlock<T>(block: PdfBlock<T>, d: T, photos: PhotoMap): string {
     case 'custom':
       return block.render(d, photos);
     default: {
-      // Exhaustiveness guard — adding a block kind without a renderer is a compile error.
+      // Exhaustiveness guard - adding a block kind without a renderer is a compile error.
       const _never: never = block;
       return _never;
     }
@@ -147,7 +147,7 @@ function sectionTitle(title: string): string {
 
 function renderMachineSpecs(title: string, specs: InfoField[]): string {
   const head = specs.map((s) => `<th>${escapeHtml(s.label)}</th>`).join('');
-  const body = specs.map((s) => `<td>${escapeHtml(s.value) || '—'}</td>`).join('');
+  const body = specs.map((s) => `<td>${escapeHtml(s.value) || '-'}</td>`).join('');
   return `
     ${sectionTitle(title)}
     <table class="specs-table">
@@ -160,7 +160,7 @@ function renderMachineSpecs(title: string, specs: InfoField[]): string {
 function infoCell(f: InfoField): string {
   // A field with no label and no value is a layout spacer → empty cell.
   if (!f.label && !f.value) return '';
-  return `<span class="lbl">${escapeHtml(f.label)}</span><span class="val">${escapeHtml(f.value) || '—'}</span>`;
+  return `<span class="lbl">${escapeHtml(f.label)}</span><span class="val">${escapeHtml(f.value) || '-'}</span>`;
 }
 
 function renderInfoFields(title: string, fields: InfoField[]): string {
@@ -281,7 +281,7 @@ function renderChecklist<T>(
 
 function resultPill(opts: ResultOption[], result: string | null): string {
   const o = opts.find((x) => x.value === result);
-  if (!o) return '<span class="pill pill-null">—</span>';
+  if (!o) return '<span class="pill pill-null">-</span>';
   const tone = o.tone ?? 'neutral';
   const cls = tone === 'good' ? 'pill-good' : tone === 'warn' ? 'pill-def' : tone === 'bad' ? 'pill-bad' : 'pill-null';
   return `<span class="pill ${cls}">${o.mark ? `${o.mark} ` : ''}${escapeHtml(o.label)}</span>`;

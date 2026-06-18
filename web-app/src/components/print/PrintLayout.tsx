@@ -4,10 +4,10 @@
  * copy-pasted into all 8 print pages.
  *
  * Two modes:
- *   - standalone (default): the print route opened in its own tab/window —
+ *   - standalone (default): the print route opened in its own tab/window -
  *     shows the toolbar and auto-fires the browser print dialog.
  *   - preview: the route embedded in a detail page's `<iframe srcDoc/?preview>`
- *     overlay — hides the toolbar and does NOT auto-print, because the overlay
+ *     overlay - hides the toolbar and does NOT auto-print, because the overlay
  *     supplies its own print button driving `iframe.contentWindow.print()`.
  */
 import { useEffect, type ReactNode } from 'react';

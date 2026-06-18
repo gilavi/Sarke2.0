@@ -7,7 +7,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import type { LucideIcon } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 
@@ -21,11 +21,11 @@ interface ButtonProps extends Omit<PressableProps, 'children'> {
   size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
-  /** @deprecated Use leftIcon (string) instead */
+  leftIcon?: LucideIcon;
+  rightIcon?: LucideIcon;
+  /** @deprecated Use leftIcon instead */
   iconLeft?: React.ReactNode;
-  /** @deprecated Use rightIcon (string) instead */
+  /** @deprecated Use rightIcon instead */
   iconRight?: React.ReactNode;
   onPress?: () => void;
   style?: any;
@@ -37,8 +37,8 @@ export function Button({
   size = 'md',
   loading,
   disabled,
-  leftIcon,
-  rightIcon,
+  leftIcon: LeftIcon,
+  rightIcon: RightIcon,
   iconLeft,
   iconRight,
   onPress,
@@ -105,10 +105,10 @@ export function Button({
   };
 
   const sizeStyles = {
-    sm: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: theme.radius.sm },
-    md: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: theme.radius.md },
-    lg: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: theme.radius.lg },
-    xl: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: theme.radius.xl },
+    sm: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 1000 },
+    md: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 1000 },
+    lg: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 1000 },
+    xl: { paddingVertical: 16, paddingHorizontal: 24, borderRadius: 1000 },
   };
 
   const textSizes = {
@@ -121,7 +121,7 @@ export function Button({
   const variantStyles = {
     primary: {
       backgroundColor: theme.colors.accent,
-      color: '#FFFFFF',
+      color: '#000000',
       shadow: theme.shadows.glow,
       borderColor: undefined as string | undefined,
       borderWidth: undefined as number | undefined,
@@ -232,23 +232,23 @@ export function Button({
                 borderRadius: rippleRadius,
                 left: ripplePos.x - rippleRadius,
                 top: ripplePos.y - rippleRadius,
-                backgroundColor: variant === 'primary' || variant === 'danger' ? '#FFFFFF' : v.color,
+                backgroundColor: variant === 'danger' ? '#FFFFFF' : variant === 'primary' ? 'rgba(0,0,0,0.12)' : v.color,
               },
               rippleAnimatedStyle,
             ]}
           />
         )}
-        {(leftIcon || iconLeft) && (
+        {iconLeft ? (
+          <View style={{ marginRight: 8 }}>{iconLeft}</View>
+        ) : LeftIcon ? (
           <View style={{ marginRight: 8 }}>
-            {iconLeft ?? (
-              <Ionicons
-                name={leftIcon}
-                size={textSizes[size].fontSize + 2}
-                color={v.color}
-              />
-            )}
+            <LeftIcon
+              size={textSizes[size].fontSize + 2}
+              color={v.color}
+              strokeWidth={1.5}
+            />
           </View>
-        )}
+        ) : null}
         <Text
           style={[
             styles.text,
@@ -259,17 +259,17 @@ export function Button({
         >
           {title}
         </Text>
-        {(rightIcon || iconRight) && (
+        {iconRight ? (
+          <View style={{ marginLeft: 8 }}>{iconRight}</View>
+        ) : RightIcon ? (
           <View style={{ marginLeft: 8 }}>
-            {iconRight ?? (
-              <Ionicons
-                name={rightIcon}
-                size={textSizes[size].fontSize + 2}
-                color={v.color}
-              />
-            )}
+            <RightIcon
+              size={textSizes[size].fontSize + 2}
+              color={v.color}
+              strokeWidth={1.5}
+            />
           </View>
-        )}
+        ) : null}
       </Pressable>
     </Animated.View>
   );

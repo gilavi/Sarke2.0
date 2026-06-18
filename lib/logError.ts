@@ -11,8 +11,8 @@ export type LoggedError = {
 };
 
 /**
- * Convert anything thrown — Error, Supabase PostgrestError, OAuth error,
- * nested wrapper, plain string, unknown — into a stable message string.
+ * Convert anything thrown - Error, Supabase PostgrestError, OAuth error,
+ * nested wrapper, plain string, unknown - into a stable message string.
  * Pass `fallback` to override the default Georgian "unknown error" string.
  */
 export function toErrorMessage(e: unknown, fallback = 'უცნობი შეცდომა', _depth = 0): string {
@@ -63,7 +63,7 @@ async function appendToRing(entry: LoggedError): Promise<void> {
       while (list.length > MAX_ENTRIES) list.shift();
       await AsyncStorage.setItem(BUFFER_KEY, JSON.stringify(list));
     } catch {
-      // Storage failure is itself non-fatal — don't recurse.
+      // Storage failure is itself non-fatal - don't recurse.
     }
   });
   return ringChain;

@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import { Camera, CircleX } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -48,7 +48,7 @@ export function PhotoSection({
             onPress={onAdd}
             {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
           >
-            <Ionicons name="camera-outline" size={20} color={theme.colors.inkSoft} />
+            <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.addLabel}>+ ფოტო</Text>
           </Pressable>
         )}
@@ -87,7 +87,7 @@ const PhotoThumb = memo(function PhotoThumb({
         hitSlop={8}
         {...a11y('ფოტოს წაშლა', undefined, 'button')}
       >
-        <Ionicons name="close-circle" size={18} color={theme.colors.white} />
+        <CircleX size={18} color={theme.colors.white} strokeWidth={1.5} />
       </Pressable>
     </View>
   );
