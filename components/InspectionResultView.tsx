@@ -2,9 +2,9 @@
 //
 // Renders a full-screen WebView PDF preview plus a bottom bar with two
 // outline buttons (Certificates · Signatures) side by side above the
-// full-width green Download button. The caller is responsible for building
-// the preview HTML (each flow has its own PDF builder) and for the actual
-// download action - this component only owns the UI shell, navigating to the
+// full-width accent (orange) Share button. The caller is responsible for
+// building the preview HTML (each flow has its own PDF builder) and for the
+// actual share action - this component only owns the UI shell, navigating to the
 // certificates screen, the signatures modal + state, and the limit-notice
 // modal.
 //
@@ -33,6 +33,7 @@ import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
 import { consumeCertsDirty } from '../lib/certDirty';
 import { SubscriptionNotice } from './SubscriptionNotice';
+import { HeaderBackButton } from './HeaderBackButton';
 import { useTheme } from '../lib/theme';
 import { SkeletonPreview } from './Skeleton';
 import {
@@ -66,7 +67,7 @@ type Props = {
    *  parent. Shown above the signature canvas; never editable here. */
   creatorName: string;
   onLimitNoticeClose: () => void;
-  /** Tap handler for the green download button. Receives the current
+  /** Tap handler for the accent (orange) share button. Receives the current
    *  signatures snapshot; the parent passes it into its PDF builder. */
   onDownloadPdf: (signatures: SignaturesSnapshot) => void;
   /** Called after the certificates sheet saves a change so the caller can
@@ -133,7 +134,11 @@ export function InspectionResultView(props: Props) {
         options={{
           headerShown: true,
           title: templateName ?? 'შემოწმების აქტი',
-          headerBackTitle: 'უკან',
+          headerBackVisible: false,
+          headerLeft: () => <HeaderBackButton />,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTitleStyle: { color: theme.colors.ink },
         }}
       />
       <View style={styles.previewWrap}>
@@ -207,7 +212,7 @@ export function InspectionResultView(props: Props) {
               <>
                 {pdfLocked ? <Lock size={18} color={theme.colors.white} strokeWidth={1.5} /> : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />}
                 <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
-                  {pdfLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
+                  {pdfLocked ? '🔒 გაზიარება' : 'გაზიარება'}
                 </Text>
               </>
             )}

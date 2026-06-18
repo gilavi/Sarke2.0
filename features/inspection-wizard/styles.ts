@@ -147,6 +147,23 @@ export function getstyles(theme: any) {
     borderRadius: theme.radius.lg,
     minHeight: 54,
   },
+  // Compact (keyboard-open) form of statusOption: half-width chips side by
+  // side, mirroring the yes/no AnswerButtons chip layout.
+  statusChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    minHeight: 44,
+  },
+  statusRow: { flexDirection: 'row', gap: 12 },
   harnessRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,6 +269,7 @@ export function getstyles(theme: any) {
 
 export const staticStyles = StyleSheet.create({
   statusOptionText: { fontSize: 15, fontWeight: '700' },
+  statusChipText: { fontSize: 14, fontWeight: '600' },
   harnessColLabel: { flex: 1, fontSize: 13 },
   harnessChipRow: { flexDirection: 'row', gap: 6 },
   gap8: { gap: 8 },

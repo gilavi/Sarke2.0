@@ -25,9 +25,16 @@ of the above so existing callers don't need to change paths.
   lines, almost entirely HTML structure since the stylesheet moved
   to `template.css.ts`).
 - `template.css.ts` — `getInspectionPdfCss({ isPdf })`. Holds the
-  ~550-line stylesheet as a tagged template literal. The only
-  dynamic value is `isPdf` (widens body padding + enables
-  `page-break-inside: avoid` for the structural cards).
+  stylesheet as a tagged template literal (it prepends the tokens
+  from `tokens.css.ts`). The only dynamic value is `isPdf` (widens
+  body padding + enables `page-break-inside: avoid` for the
+  structural cards).
+- `tokens.css.ts` — `getInspectionPdfTokens()`: the `:root { … }`
+  colour/scale block. Brand/structure is monochrome ink + a single
+  orange accent (`#FF6D2E`); the `--green*`/`--red*`/`--amber*`
+  semantic tokens are reserved for the verdict + pass/fail answers
+  only. Copied (not imported) from `lib/theme.ts` — keep in sync by
+  hand on a rebrand.
 - `_shared.ts` — `tPdf` (Georgian-locked translator against
   `locales/ka.json`), `formatDate`, `pad2`, `escapeHtml`.
 - `renderQuestion.ts` — `renderQuestion` + private `isProblemValue` /
@@ -55,6 +62,13 @@ of the above so existing callers don't need to change paths.
   template into the CSS (via the function argument); any other
   dynamic CSS values should land in the structure file as inline
   styles, not new args to `getInspectionPdfCss`.
+- The verdict glyph (`✓ / ✗ / ⚠ / ●`) lives inside the `pdf.status*`
+  locale strings, **not** the HTML. The hero summary prints
+  `t('pdf.status*')` as-is — never emit a second standalone glyph
+  span (that was the pre-redesign double-glyph bug).
+- Brand colours are monochrome ink + one orange accent; semantic
+  green/red/amber are verdict/answer-only. Don't reintroduce a brand
+  green (`#1D9E75`) — see `tokens.css.ts`.
 
 ## Canonical helpers used
 - `locales/ka.json` — strings.

@@ -28,7 +28,7 @@ export function AnswerButtons({ value, onChange, compact, error }: AnswerButtons
   const showError = !!error && value === null;
   return (
     <Animated.View
-      layout={reduceMotion ? undefined : LinearTransition.duration(200)}
+      layout={reduceMotion ? undefined : LinearTransition.duration(220)}
       style={{ flexDirection: 'row', gap: 12 }}
     >
       <StatusChip

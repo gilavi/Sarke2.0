@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-06-18 — Inspection PDF: rebrand off green + structural redesign
+
+The generic inspection PDF/act template ([lib/pdf/inspection/](../lib/pdf/inspection/)) was never updated for the orange rebrand — it still used an off-brand teal-green (`#1D9E75`) for the avatar, divider, status banner, TOC numbers, and section accents, which is what showed through the WebView preview on the result screen. It's now on the app's design language:
+
+- **Monochrome ink + single orange accent.** Brand/structure (avatar, section numerals, dividers, TOC) is ink (`#1A1A1A`) on warm neutrals; orange (`#FF6D2E`) is the one accent (header rule tick, section/TOC accent bars, conclusion label). Semantic green/red/amber are now reserved **only** for the verdict and pass/fail answers — the "safe" state stays a clean semantic green (`#10B981`).
+- **New header lockup.** Ink circular avatar + a title/company stack on the left, a monospace ID pill on the right, an ink rule carrying a short orange tick (a real `<span>`, not a `::before` — reliable in the WKWebView print path).
+- **Hero summary card.** The top verdict banner and the bottom conclusion card are folded into one card at the top: a verdict-coloured left border + verdict value, with the conclusion below an orange label. This also fixed a double-glyph bug (the `✓/✗/⚠` lived both in a standalone icon span **and** in the `pdf.status*` locale string).
+- **TOC + sections redesigned.** Ink boxed section numerals, orange accent bars, the `|` pipe dropped.
+- **Token owner.** The palette moved to a new [lib/pdf/inspection/tokens.css.ts](../lib/pdf/inspection/tokens.css.ts) (`getInspectionPdfTokens`) — copied (not imported) from `lib/theme.ts`, since the builder is platform-free.
+- **Three surfaces.** The same `buildInspectionPdfTemplate` feeds the mobile preview, the shared PDF, and the web dashboard print page (`web-app/src/pages/print/InspectionPrint.tsx` via `@root`), so all three update together. Note: `web-app/src/lib/inspection/pdfStyles.ts` is a **separate, non-shared** stylesheet for the equipment engine and is not auto-updated by this.
+
+Plus two result-screen fixes ([app/inspections/[id].tsx](../app/inspections/[id].tsx), [components/InspectionResultView.tsx](../components/InspectionResultView.tsx)): the native "‹ უკან" back is replaced with the shared circular `HeaderBackButton` used by flow headers, and the share button is relabelled **გადმოწერა → გაზიარება** (the action is a native share, not a download — the icon was already `Share2`).
+
 ## 2026-06-18 — Project card: radial gradient map mask
 
 The `ProjectCard` map thumbnail no longer sits under a flat 82% white wash. The overlay is now a `react-native-svg` **radial gradient** centered on the top-right corner — the map reads strongest there and fades into the card surface toward the bottom/left, keeping the name/address legible. The mask colour is `theme.colors.surface` (was hardcoded white), so it also behaves in dark mode. See [components/home/ProjectCard.tsx](../components/home/ProjectCard.tsx).

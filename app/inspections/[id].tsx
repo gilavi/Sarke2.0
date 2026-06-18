@@ -3,7 +3,7 @@
 // Live PDF preview as the main content (full-screen WebView). Two buttons in
 // the bottom bar:
 //   - სერტიფიკატები: pushes the /inspections/[id]/certificates screen
-//   - გადმოწერა:    renders the same HTML through expo-print and shares
+//   - გაზიარება:     renders the same HTML through expo-print and shares
 //
 // Signatures are captured on this screen via features/signatures/SignaturesScreen
 // and flow into the PDF builder as a local snapshot - no global state hop.
@@ -25,6 +25,7 @@ import WebView from 'react-native-webview';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
+import { HeaderBackButton } from '../../components/HeaderBackButton';
 import { consumeCertsDirty } from '../../lib/certDirty';
 import {
   SignaturesScreen,
@@ -463,7 +464,17 @@ export default function InspectionResultScreen() {
   if (!loading && (notFound || loadError)) {
     return (
       <Screen>
-        <Stack.Screen options={{ headerShown: true, title: 'შემოწმების აქტი' }} />
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: 'შემოწმების აქტი',
+            headerBackVisible: false,
+            headerLeft: () => <HeaderBackButton />,
+            headerShadowVisible: false,
+            headerStyle: { backgroundColor: theme.colors.background },
+            headerTitleStyle: { color: theme.colors.ink },
+          }}
+        />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ErrorState
             title={notFound ? 'შემოწმების აქტი ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
@@ -493,7 +504,11 @@ export default function InspectionResultScreen() {
         options={{
           headerShown: true,
           title: inspectionDisplayName(template?.name),
-          headerBackTitle: 'უკან',
+          headerBackVisible: false,
+          headerLeft: () => <HeaderBackButton />,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTitleStyle: { color: theme.colors.ink },
         }}
       />
       <View style={styles.previewWrap}>
@@ -568,7 +583,7 @@ export default function InspectionResultScreen() {
                   : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />
                 }
                 <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
-                  {pdfUsage?.isLocked ? '🔒 გადმოწერა' : 'გადმოწერა'}
+                  {pdfUsage?.isLocked ? '🔒 გაზიარება' : 'გაზიარება'}
                 </Text>
               </>
             )}

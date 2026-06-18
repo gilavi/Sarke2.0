@@ -1,17 +1,18 @@
 import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import { Pressable } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { KeyboardController } from 'react-native-keyboard-controller';
 import { ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
-import { StatusChip } from '../../components/wizard/StatusChip';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
 import type { Answer, GridValues, Question } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { scaffoldColStyle } from './wizardSchema';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // Renders the bottom action bar for scaffold grid rows: 3 status buttons by
 // default, or 2 detail buttons + a "შემდეგი" Button when option 1 or 2 is
@@ -61,21 +62,29 @@ export function ScaffoldFooterButtons({
     });
   };
 
-  const renderStatusButton = (col: string) => {
+  // One persistent button instance per status. `compact` (keyboard open) flips
+  // it between the big stacked option and the side-by-side chip; the shared
+  // `layout` transition morphs each button's frame instead of hard-swapping
+  // between two trees. Icons fade out in compact form (chips are label-only).
+  const layoutAnim = reduceMotion ? undefined : LinearTransition.duration(220);
+
+  const renderDetail = (col: string) => {
     const isSelected = selectedStatus === col;
     const isNone = col === noneCol;
     const label = col.replace('აღენიშნება ', '');
     const { icon: IconComp } = scaffoldColStyle(col, theme);
     return (
-      <Pressable
+      <AnimatedPressable
         key={col}
+        layout={layoutAnim}
         onPress={() => {
           haptic.light();
           setStatus(col);
           if (isNone) onAdvance();
+          else if (compact) KeyboardController.dismiss();
         }}
         style={[
-          styles.statusOption,
+          compact ? styles.statusChip : styles.statusOption,
           isSelected && {
             backgroundColor: theme.colors.inverse.background,
             borderColor: theme.colors.inverse.background,
@@ -83,69 +92,56 @@ export function ScaffoldFooterButtons({
         ]}
         {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
       >
-        <IconComp
-          size={22}
-          color={isSelected ? theme.colors.inverse.background : theme.colors.inkSoft}
-          fill={isSelected ? theme.colors.inverse.ink : 'transparent'}
-          strokeWidth={1.5}
-        />
+        {!compact ? (
+          <Animated.View
+            entering={reduceMotion ? undefined : FadeIn.duration(150)}
+            exiting={reduceMotion ? undefined : FadeOut.duration(120)}
+          >
+            <IconComp
+              size={22}
+              color={isSelected ? theme.colors.inverse.background : theme.colors.inkSoft}
+              fill={isSelected ? theme.colors.inverse.ink : 'transparent'}
+              strokeWidth={1.5}
+            />
+          </Animated.View>
+        ) : null}
         <Text
           style={[
-            staticStyles.statusOptionText,
+            compact ? staticStyles.statusChipText : staticStyles.statusOptionText,
             { color: isSelected ? theme.colors.inverse.ink : theme.colors.inkSoft },
           ]}
         >
           {label}
         </Text>
-      </Pressable>
+      </AnimatedPressable>
     );
   };
 
-  // Keyboard-open: mini chips for the two detail statuses, side by side, like
-  // the yes/no AnswerButtons. "არ გააჩნია" is dropped (no comment is written
-  // for a missing part). Picking a status dismisses the keyboard so the full
-  // footer (and "შემდეგი") comes back.
-  if (compact) {
-    return (
-      <Animated.View
-        layout={reduceMotion ? undefined : LinearTransition.duration(200)}
-        style={{ flexDirection: 'row', gap: 12 }}
-      >
-        {detailCols.map(col => (
-          <StatusChip
-            key={col}
-            layout="chip"
-            selected={selectedStatus === col}
-            label={col.replace('აღენიშნება ', '')}
-            onPress={() => {
-              haptic.light();
-              setStatus(col);
-              KeyboardController.dismiss();
-            }}
-            a11yLabel={'სტატუსი: ' + col}
-            a11yHint="შეეხეთ ამ სტატუსის ასარჩევად"
-          />
-        ))}
-      </Animated.View>
-    );
-  }
-
   return (
-    <View style={staticStyles.gap8}>
-      {detailCols.map(renderStatusButton)}
-      {showDetails ? (
-        <Button
-          title="შემდეგი"
-          style={{ paddingVertical: 14 }}
-          rightIcon={ChevronRight}
-          onPress={() => {
-            haptic.light();
-            onAdvance();
-          }}
-        />
-      ) : noneCol ? (
-        renderStatusButton(noneCol)
+    <Animated.View layout={layoutAnim} style={compact ? styles.statusRow : staticStyles.gap8}>
+      {detailCols.map(renderDetail)}
+      {!compact ? (
+        showDetails ? (
+          <Animated.View
+            key="next"
+            layout={layoutAnim}
+            entering={reduceMotion ? undefined : FadeIn.duration(150)}
+            exiting={reduceMotion ? undefined : FadeOut.duration(120)}
+          >
+            <Button
+              title="შემდეგი"
+              style={{ paddingVertical: 14 }}
+              rightIcon={ChevronRight}
+              onPress={() => {
+                haptic.light();
+                onAdvance();
+              }}
+            />
+          </Animated.View>
+        ) : noneCol ? (
+          renderDetail(noneCol)
+        ) : null
       ) : null}
-    </View>
+    </Animated.View>
   );
 }

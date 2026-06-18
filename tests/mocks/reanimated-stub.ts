@@ -29,6 +29,21 @@ export const withSequence = (...steps: unknown[]) => steps[steps.length - 1];
 export const withRepeat = <T,>(value: T) => value;
 export const runOnJS = <A extends unknown[]>(fn: (...args: A) => unknown) => fn;
 export const cancelAnimation = () => {};
+// Layout-animation builders (LinearTransition / FadeIn / FadeOut). Real ones
+// expose chainable static configurators (`.duration()`, `.springify()`, …); the
+// stub returns a self-referential chain so any call sequence resolves to an
+// inert object that the pass-through Animated.View simply ignores.
+const layoutBuilder = () => {
+  const chain: Record<string, unknown> = {};
+  const ret = () => chain;
+  for (const m of ['duration', 'delay', 'springify', 'damping', 'stiffness', 'easing', 'withInitialValues', 'build']) {
+    chain[m] = ret;
+  }
+  return chain;
+};
+export const LinearTransition = layoutBuilder();
+export const FadeIn = layoutBuilder();
+export const FadeOut = layoutBuilder();
 export const Easing = {
   inOut: () => () => 0,
   out: () => () => 0,
