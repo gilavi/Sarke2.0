@@ -2,24 +2,16 @@ import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { View } from 'react-native';
 import { CircleCheck, CircleX } from 'lucide-react-native';
-import { StepBar } from '@root/components/wizard/StepBar';
 import { AnswerButtons } from '@root/components/wizard/AnswerButtons';
-import { WizardNav } from '@root/components/wizard/WizardNav';
 import { StatusChip } from '@root/components/wizard/StatusChip';
+
+// NOTE: the real wizard step indicator is FlowHeader's progress bar (see
+// "Components/Navigation → Flow Header"). components/wizard/StepBar.tsx and
+// WizardNav.tsx are legacy/unused, so they are intentionally NOT showcased.
 
 const meta: Meta = { title: 'Components/Wizard' };
 export default meta;
 type Story = StoryObj;
-
-export const Steps: Story = {
-  name: 'Step Bar',
-  render: () => (
-    <View style={{ width: 460, gap: 24 }}>
-      <StepBar step={0} stepLabels={['Project', 'Checklist', 'Photos', 'Verdict']} />
-      <StepBar step={2} stepLabels={['Project', 'Checklist', 'Photos', 'Verdict']} />
-    </View>
-  ),
-};
 
 export const Answers: Story = {
   name: 'Answer Buttons',
@@ -35,19 +27,13 @@ export const Answers: Story = {
 
 export const Chips: Story = {
   name: 'Status Chip',
-  render: () => (
-    <View style={{ flexDirection: 'row', gap: 12 }}>
-      <StatusChip selected label="Pass" icon={CircleCheck} onPress={() => {}} fillSelectedIcon />
-      <StatusChip selected={false} label="Fail" icon={CircleX} onPress={() => {}} />
-    </View>
-  ),
-};
-
-export const Nav: Story = {
-  name: 'Wizard Nav',
-  render: () => (
-    <View style={{ width: 460 }}>
-      <WizardNav isLast={false} canGoNext canGoPrev onNext={() => {}} onPrev={() => {}} />
-    </View>
-  ),
+  render: () => {
+    const [sel, setSel] = useState<'pass' | 'fail' | null>(null);
+    return (
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <StatusChip selected={sel === 'pass'} label="Pass" icon={CircleCheck} onPress={() => setSel('pass')} fillSelectedIcon />
+        <StatusChip selected={sel === 'fail'} label="Fail" icon={CircleX} onPress={() => setSel('fail')} />
+      </View>
+    );
+  },
 };
