@@ -54,7 +54,6 @@ export const BASE_PDF_CSS = `
     width: 44px; height: 44px; border-radius: 10px; background: var(--accent);
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
-  .logo-text { color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 0.5px; }
   .project-name { font-size: 12px; font-weight: 600; color: var(--inkSoft); max-width: 160px; }
   .header-center { text-align: center; }
   .doc-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.3; }

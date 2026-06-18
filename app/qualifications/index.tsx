@@ -1,9 +1,11 @@
 // Qualifications list - the expert's professional credentials
 // (xaracho_inspector etc.). Reached from the More tab.
 //
-// Layout: a fixed "Required" section with one slot per REQUIRED_TYPES entry
-// (empty slots act as upload affordances) and an "Additional" section for
-// any qualifications whose type isn't in the required set.
+// Layout: a "სხვა" (custom) row on top that opens the add sheet for an
+// arbitrary certificate, then a 2-column thumbnail grid with one card per
+// REQUIRED_TYPES entry (empty cards are dashed upload affordances, filled
+// cards show the document thumbnail with edit/delete actions). Any
+// qualification whose type isn't in the required set is appended to the grid.
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   Alert,
@@ -20,9 +22,10 @@ import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
-import { Plus, Trash2, CloudUpload, CirclePlus, ImageIcon } from 'lucide-react-native';
-import { Button, Card, Screen } from '../../components/ui';
+import { Trash2, CloudUpload, Pencil, ChevronRight, FileText, Plus } from 'lucide-react-native';
+import { Button } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import { HeaderBackButton } from '../../components/HeaderBackButton';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi, storageApi } from '../../lib/services';
 import { qk, useQualifications } from '../../lib/apiHooks';
@@ -35,7 +38,6 @@ import { a11y } from '../../lib/accessibility';
 import type { Qualification } from '../../types/models';
 import { REQUIRED_TYPES, REQUIRED_TYPE_VALUES, labelForType } from '../../lib/qualificationTypes';
 import AddQualificationSheet from '../../components/qualifications/AddQualificationSheet';
-import { useTranslation } from 'react-i18next';
 
 type QualWithThumb = Qualification & { thumbUrl?: string | null };
 
@@ -55,6 +57,7 @@ export default function QualificationsScreen() {
   const [deleteTarget, setDeleteTarget] = useState<Qualification | null>(null);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
   const [addInitialType, setAddInitialType] = useState<string | undefined>(undefined);
+  const [editTarget, setEditTarget] = useState<Qualification | null>(null);
 
   // Derive thumbs from the React Query cached list.
   const [quals, setQuals] = useState<QualWithThumb[]>([]);
@@ -104,63 +107,84 @@ export default function QualificationsScreen() {
 
   const goAdd = (typeValue?: string) => {
     haptic.light?.();
+    setEditTarget(null);
     setAddInitialType(typeValue);
+    setAddSheetVisible(true);
+  };
+
+  const goEdit = (q: Qualification) => {
+    haptic.light?.();
+    setAddInitialType(undefined);
+    setEditTarget(q);
     setAddSheetVisible(true);
   };
 
   const additional = quals.filter(q => !REQUIRED_TYPE_VALUES.has(q.type));
 
   return (
-    <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'სერტიფიკატები' }} />
-      <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 100, gap: 20 }}
-          contentInsetAdjustmentBehavior="automatic"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-          }
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.background }}>
+        <View style={qStyles.header}>
+          <HeaderBackButton />
+          <Text style={qStyles.headerTitle} numberOfLines={1}>სერტიფიკატები</Text>
+          <View style={qStyles.headerSpacer} />
+        </View>
+      </SafeAreaView>
+
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 12 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+        }
+      >
+        {/* Custom certificate entry */}
+        <Pressable
+          onPress={() => goAdd('general')}
+          style={qStyles.customRow}
+          {...a11y('სხვა ნებისმიერი სერტიფიკატი', 'მორგებული სერტიფიკატის დამატება', 'button')}
         >
-          {/* Required section */}
-          <View style={{ gap: 10 }}>
-            <SectionHeader title="სავალდებულო სერტიფიკატები" />
-            {!loaded ? (
-              <View style={{ gap: 12 }}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <SkeletonRow key={`sk-${i}`} />
-                ))}
-              </View>
-            ) : (
-              REQUIRED_TYPES.map(rt => {
+          <View style={qStyles.customIcon}>
+            <Plus size={18} color={theme.colors.inkSoft} strokeWidth={2} />
+          </View>
+          <Text style={qStyles.customText}>სხვა ნებისმიერი სერტიფიკატი</Text>
+          <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
+        </Pressable>
+
+        {/* Thumbnail grid */}
+        <View style={qStyles.grid}>
+          {!loaded ? (
+            Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={`sk-${i}`} />)
+          ) : (
+            <>
+              {REQUIRED_TYPES.map(rt => {
                 const match = quals.find(q => q.type === rt.value);
                 return match ? (
                   <FilledCard
                     key={rt.value}
                     qual={match}
+                    label={rt.label}
+                    onEdit={() => goEdit(match)}
                     onDelete={() => confirmRemove(match)}
                   />
                 ) : (
-                  <EmptySlot
-                    key={rt.value}
-                    label={rt.label}
-                    onPress={() => goAdd(rt.value)}
-                  />
+                  <EmptyCard key={rt.value} label={rt.label} onPress={() => goAdd(rt.value)} />
                 );
-              })
-            )}
-          </View>
-
-          {/* Additional section */}
-          {additional.length > 0 && (
-            <View style={{ gap: 10 }}>
-              <SectionHeader title="დამატებითი სერტიფიკატები" />
+              })}
               {additional.map(q => (
-                <FilledCard key={q.id} qual={q} onDelete={() => confirmRemove(q)} />
+                <FilledCard
+                  key={q.id}
+                  qual={q}
+                  label={labelForType(q.type)}
+                  onEdit={() => goEdit(q)}
+                  onDelete={() => confirmRemove(q)}
+                />
               ))}
-            </View>
+            </>
           )}
-        </ScrollView>
-      </SafeAreaView>
+        </View>
+      </ScrollView>
 
       <DeleteModal
         visible={deleteModalVisible}
@@ -172,129 +196,114 @@ export default function QualificationsScreen() {
       <AddQualificationSheet
         visible={addSheetVisible}
         initialType={addInitialType}
-        onClose={() => setAddSheetVisible(false)}
-        onSaved={() => { setAddSheetVisible(false); qc.invalidateQueries({ queryKey: qk.qualifications.list }); }}
+        existing={editTarget}
+        onClose={() => { setAddSheetVisible(false); setEditTarget(null); }}
+        onSaved={() => {
+          setAddSheetVisible(false);
+          setEditTarget(null);
+          qc.invalidateQueries({ queryKey: qk.qualifications.list });
+        }}
       />
-
-      <Pressable
-        onPress={() => goAdd()}
-        style={[qStyles.fab, theme.shadow.button]}
-        {...a11y('ახალი სერტიფიკატი', 'სერტიფიკატის დამატება', 'button')}
-      >
-        <Plus size={28} color={theme.colors.white} strokeWidth={1.5} />
-      </Pressable>
-    </Screen>
+    </View>
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function StatusPill({ status }: { status: 'expired' | 'expiring' | 'ok' }) {
+  const { theme } = useTheme();
+  if (status === 'ok') return null;
+  const label = status === 'expired' ? 'ვადა გასულია' : 'იწურება';
+  const bg = status === 'expired' ? theme.colors.dangerSoft : theme.colors.warnSoft;
+  const fg = status === 'expired' ? theme.colors.danger : theme.colors.warn;
+  return (
+    <View style={[badgeStyle(bg), { position: 'absolute', top: 6, left: 6 }]}>
+      <Text style={{ fontSize: 10, fontWeight: '700', color: fg }}>{label}</Text>
+    </View>
+  );
+}
+
+function FilledCard({
+  qual,
+  label,
+  onEdit,
+  onDelete,
+}: {
+  qual: QualWithThumb;
+  label: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
-  return (
-    <Text style={qStyles.sectionHeader}>{title}</Text>
-  );
-}
-
-function SkeletonRow() {
-  return (
-    <Card padding={14}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Skeleton width={56} height={56} radius={10} />
-        <View style={{ flex: 1, gap: 8 }}>
-          <Skeleton width={'55%'} height={14} />
-          <Skeleton width={'35%'} height={11} />
-          <Skeleton width={'45%'} height={11} />
-        </View>
-        <Skeleton width={70} height={22} radius={999} />
-      </View>
-    </Card>
-  );
-}
-
-function QualThumb({ uri }: { uri?: string | null }) {
-  const { theme } = useTheme();
-  const qStyles = useMemo(() => getqStyles(theme), [theme]);
-  const [errored, setErrored] = useState(false);
-
-  if (!uri || errored) {
-    return (
-      <View style={qStyles.thumbEmpty}>
-        <ImageIcon size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri }}
-      style={qStyles.thumb}
-      contentFit="cover"
-      transition={150}
-      onError={(e) => {
-        console.warn('[qualifications] thumb image render failed', { uri, err: e });
-        setErrored(true);
-      }}
-    />
-  );
-}
-
-function FilledCard({ qual, onDelete }: { qual: QualWithThumb; onDelete: () => void }) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const qStyles = useMemo(() => getqStyles(theme), [theme]);
-
   const status = statusOf(qual);
+
   return (
-    <Card padding={14}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <QualThumb uri={qual.thumbUrl} />
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: '600', color: theme.colors.ink }}>
-            {labelForType(qual.type)}
-          </Text>
-          {qual.number ? (
-            <Text style={{ color: theme.colors.inkSoft, fontSize: 13 }}>№ {qual.number}</Text>
-          ) : null}
-          {qual.expires_at ? (
-            <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-              ვადა: {new Date(qual.expires_at).toLocaleDateString(t('common.localeTag'))}
-            </Text>
-          ) : null}
+    <View style={qStyles.card}>
+      <View style={qStyles.thumb}>
+        {qual.thumbUrl ? (
+          <Image source={{ uri: qual.thumbUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+        ) : (
+          <View style={qStyles.thumbPlaceholder}>
+            <FileText size={28} color={theme.colors.inkFaint} strokeWidth={1.5} />
+          </View>
+        )}
+        <StatusPill status={status} />
+        <View style={qStyles.actions}>
+          <Pressable
+            onPress={onEdit}
+            hitSlop={8}
+            style={qStyles.actionBtn}
+            {...a11y('რედაქტირება', 'სერტიფიკატის რედაქტირება', 'button')}
+          >
+            <Pencil size={15} color={theme.colors.ink} strokeWidth={1.6} />
+          </Pressable>
+          <Pressable
+            onPress={onDelete}
+            hitSlop={8}
+            style={qStyles.actionBtn}
+            {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
+          >
+            <Trash2 size={15} color={theme.colors.danger} strokeWidth={1.6} />
+          </Pressable>
         </View>
-        <StatusBadge status={status} />
-        <Pressable
-          onPress={onDelete}
-          hitSlop={12}
-          style={{ padding: 6 }}
-          {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
-        >
-          <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
-        </Pressable>
       </View>
-    </Card>
+      <View style={qStyles.footer}>
+        <Text style={qStyles.cardName} numberOfLines={1}>{label}</Text>
+      </View>
+    </View>
   );
 }
 
-function EmptySlot({ label, onPress }: { label: string; onPress: () => void }) {
+function EmptyCard({ label, onPress }: { label: string; onPress: () => void }) {
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
 
   return (
     <Pressable
       onPress={onPress}
-      style={qStyles.emptySlot}
+      style={qStyles.cardEmpty}
       {...a11y(label, 'სერტიფიკატის ატვირთვა', 'button')}
     >
-      <View style={qStyles.thumbEmptyDashed}>
-        <CloudUpload size={22} color={theme.colors.accent} strokeWidth={1.5} />
+      <View style={qStyles.thumbEmpty}>
+        <CloudUpload size={24} color={theme.colors.inkFaint} strokeWidth={1.5} />
+        <Text style={qStyles.uploadHint}>ატვირთვა</Text>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{label}</Text>
-        <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-          ატვირთვა
-        </Text>
+      <View style={qStyles.footer}>
+        <Text style={qStyles.cardNameEmpty} numberOfLines={1}>{label}</Text>
       </View>
-      <CirclePlus size={22} color={theme.colors.accent} strokeWidth={1.5} />
     </Pressable>
+  );
+}
+
+function SkeletonCard() {
+  const { theme } = useTheme();
+  const qStyles = useMemo(() => getqStyles(theme), [theme]);
+  return (
+    <View style={qStyles.card}>
+      <Skeleton width={'100%'} height={120} radius={0} />
+      <View style={qStyles.footer}>
+        <Skeleton width={'70%'} height={13} />
+      </View>
+    </View>
   );
 }
 
@@ -304,21 +313,6 @@ function statusOf(q: Qualification): 'expired' | 'expiring' | 'ok' {
   if (exp < Date.now()) return 'expired';
   if (isExpiringSoon(q)) return 'expiring';
   return 'ok';
-}
-
-function StatusBadge({ status }: { status: 'expired' | 'expiring' | 'ok' }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getqStyles(theme), [theme]);
-
-  if (status === 'ok') return null;
-  const label = status === 'expired' ? 'ვადა გასულია' : 'იწურება';
-  const bg = status === 'expired' ? theme.colors.dangerSoft : theme.colors.warnSoft;
-  const fg = status === 'expired' ? theme.colors.danger : theme.colors.warn;
-  return (
-    <View style={badgeStyle(bg)}>
-      <Text style={{ fontSize: 11, fontWeight: '700', color: fg }}>{label}</Text>
-    </View>
-  );
 }
 
 function DeleteModal({
@@ -378,98 +372,159 @@ function DeleteModal({
   );
 }
 
+const CARD_RADIUS = 16;
+
 function getqStyles(theme: any) {
   return StyleSheet.create({
-  sectionHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.colors.inkSoft,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    paddingHorizontal: 4,
-  },
-  thumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: theme.colors.subtleSurface,
-  },
-  thumbEmpty: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: theme.colors.subtleSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  thumbEmptyDashed: {
-    width: 56,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: theme.colors.accentSoft,
-    borderWidth: 1.5,
-    borderColor: theme.colors.accent,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptySlot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1.5,
-    borderColor: theme.colors.hairline,
-    borderStyle: 'dashed',
-  },
-  modalWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-    gap: 4,
-    ...theme.shadow.card,
-  },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.dangerSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  modalBody: {
-    fontSize: 14,
-    color: theme.colors.inkSoft,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    headerTitle: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 17,
+      fontWeight: '700',
+      color: theme.colors.ink,
+    },
+    headerSpacer: { width: 38 },
+    customRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 11,
+      padding: 12,
+      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+    },
+    customIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: theme.radius.sm,
+      backgroundColor: theme.colors.subtleSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    customText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.colors.inkSoft,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 12,
+    },
+    card: {
+      width: '48%',
+      borderRadius: CARD_RADIUS,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+      overflow: 'hidden',
+    },
+    cardEmpty: {
+      width: '48%',
+      borderRadius: CARD_RADIUS,
+      backgroundColor: theme.colors.card,
+      borderWidth: 1.5,
+      borderColor: theme.colors.border,
+      borderStyle: 'dashed',
+      overflow: 'hidden',
+    },
+    thumb: {
+      height: 120,
+      backgroundColor: theme.colors.subtleSurface,
+    },
+    thumbPlaceholder: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    thumbEmpty: {
+      height: 120,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    uploadHint: {
+      fontSize: 11,
+      color: theme.colors.inkFaint,
+    },
+    actions: {
+      position: 'absolute',
+      bottom: 6,
+      right: 6,
+      flexDirection: 'row',
+      gap: 6,
+    },
+    actionBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.hairline,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    footer: {
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.subtleSurface,
+    },
+    cardName: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.ink,
+    },
+    cardNameEmpty: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.colors.inkSoft,
+    },
+    modalWrap: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    modalCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 20,
+      padding: 20,
+      width: '100%',
+      maxWidth: 320,
+      gap: 4,
+      ...theme.shadow.card,
+    },
+    iconCircle: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: theme.colors.dangerSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.colors.ink,
+    },
+    modalBody: {
+      fontSize: 14,
+      color: theme.colors.inkSoft,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+  });
 }
 
 const badgeStyle = (bg: string) => ({

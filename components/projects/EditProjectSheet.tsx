@@ -9,11 +9,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
+import { GeocodingAddressInput } from '../inputs/GeocodingAddressInput';
+import { HeaderCloseButton } from '../HeaderCloseButton';
 import { LocationRow } from '../LocationRow';
 import { MapPickerInline } from '../MapPickerInline';
 import { Button } from '../ui';
@@ -155,10 +156,11 @@ export function EditProjectSheet({
                 autoFocus
               />
 
-              <FloatingLabelInput
+              <GeocodingAddressInput
                 label={t('common.address')}
                 value={address}
                 onChangeText={setAddress}
+                onPin={setPin}
               />
 
               <FloatingLabelInput
@@ -188,20 +190,14 @@ export function EditProjectSheet({
                 paddingTop: insets.top + 12,
                 paddingVertical: 12,
               }}>
-                <View style={{ width: 24 }} />
+                <View style={{ width: 38 }} />
                 <Text style={{
                   flex: 1, textAlign: 'center',
                   fontSize: 17, fontWeight: '700', color: theme.colors.ink,
                 }}>
                   მდებარეობის არჩევა
                 </Text>
-                <Pressable
-                  onPress={() => setMapVisible(false)}
-                  hitSlop={10}
-                  {...a11y(t('common.close'), 'რუკის დახურვა', 'button')}
-                >
-                  <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
-                </Pressable>
+                <HeaderCloseButton onPress={() => setMapVisible(false)} />
               </View>
               <MapPickerInline
                 initialPin={pin}

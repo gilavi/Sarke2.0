@@ -7,7 +7,6 @@
 import { ReactNode } from 'react';
 import {
   Dimensions,
-  Pressable,
   ScrollView,
   ScrollViewProps,
   StyleProp,
@@ -16,10 +15,9 @@ import {
   ViewStyle,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { X } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
-import { useTheme, type Theme } from '../lib/theme';
-import { a11y } from '../lib/accessibility';
+import { useTheme } from '../lib/theme';
+import { HeaderCloseButton } from './HeaderCloseButton';
 
 export interface SheetLayoutProps {
   /** Pinned-top region. Pass a node, or `{ title, onClose }` for the standard pattern. */
@@ -73,7 +71,7 @@ export function SheetLayout({
   const screenH = Dimensions.get('window').height;
 
   const Body = ScrollComponent ?? (insideBottomSheet ? ScrollView : KeyboardAwareScrollView);
-  const headerNode = renderHeader(header, theme);
+  const headerNode = renderHeader(header);
 
   return (
     <View style={[styles.container, { maxHeight: screenH * maxHeightRatio, backgroundColor: theme.colors.surface }, style]}>
@@ -109,7 +107,7 @@ export function SheetLayout({
   );
 }
 
-function renderHeader(header: SheetLayoutProps['header'], theme: Theme) {
+function renderHeader(header: SheetLayoutProps['header']) {
   if (!header) return null;
   if (typeof header === 'object' && header !== null && 'title' in header) {
     const { title, onClose } = header;
@@ -118,15 +116,7 @@ function renderHeader(header: SheetLayoutProps['header'], theme: Theme) {
         <Text size="xl" weight="bold" style={{ flex: 1 }} numberOfLines={1}>
           {title}
         </Text>
-        {onClose ? (
-          <Pressable
-            onPress={onClose}
-            hitSlop={12}
-            {...a11y('დახურვა', 'ფანჯრის დახურვა', 'button')}
-          >
-            <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          </Pressable>
-        ) : null}
+        {onClose ? <HeaderCloseButton onPress={onClose} /> : null}
       </View>
     );
   }

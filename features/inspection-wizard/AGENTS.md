@@ -50,7 +50,13 @@ queue.
 - `MeasureInput.tsx`, `DebouncedFreetext.tsx`, `DebouncedNotes.tsx` —
   debounced text/number inputs that commit through `patchAnswer`.
 - `ScaffoldFooterButtons.tsx` — the action bar rendered in the global
-  wizard footer when a scaffold grid row is the current step.
+  wizard footer when a scaffold grid row is the current step. Takes a
+  `compact` prop (= `keyboardOpen`): while the row comment is being
+  typed it collapses the two detail statuses (დაზიანება / გამართულია)
+  into mini `StatusChip`s side by side — mirroring the yes/no
+  `AnswerButtons` — and hides the "არ გააჩნია" option (you don't write
+  a comment for a part you don't have). Picking a status dismisses the
+  keyboard so the full footer returns.
 - `WizardHeader.tsx` — wraps `FlowHeader` with wizard-specific defaults.
 - `PhotoThumb.tsx`, `PhotoPreviewModal.tsx` — image rendering with the
   shared `photoUrlCache` (defined in `wizardSchema.ts`).

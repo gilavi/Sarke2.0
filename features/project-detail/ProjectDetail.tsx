@@ -98,8 +98,8 @@ export default function ProjectDetail() {
 
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
+  const quickActionsRef = useRef<View>(null);
   const participantsRef = useRef<View>(null);
-  const filesRef = useRef<View>(null);
   const questionnairesRef = useRef<View>(null);
   const deletingFileIdsRef = useRef<Set<string>>(new Set());
   const tourSteps: TourStep[] = useMemo(
@@ -111,21 +111,21 @@ export default function ProjectDetail() {
         position: 'bottom',
       },
       {
-        targetRef: participantsRef,
-        title: t('projects.tourCrew'),
-        body: t('projects.tourCrewBody'),
-        position: 'bottom',
-      },
-      {
-        targetRef: filesRef,
-        title: t('projects.tourFiles'),
-        body: t('projects.tourFilesBody'),
+        targetRef: quickActionsRef,
+        title: t('projects.tourActions'),
+        body: t('projects.tourActionsBody'),
         position: 'bottom',
       },
       {
         targetRef: questionnairesRef,
         title: t('projects.tourHistory'),
         body: t('projects.tourHistoryBody'),
+        position: 'bottom',
+      },
+      {
+        targetRef: participantsRef,
+        title: t('projects.tourCrew'),
+        body: t('projects.tourCrewBody'),
         position: 'top',
       },
     ],
@@ -383,7 +383,7 @@ export default function ProjectDetail() {
   const participantCount = (project?.crew?.length ?? 0) + (inspector ? 1 : 0);
 
   return (
-    <TourGuide tourId="project_screen_v1" steps={tourSteps}>
+    <TourGuide tourId="project_screen_v2" steps={tourSteps}>
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
 
@@ -500,7 +500,7 @@ export default function ProjectDetail() {
         </View>
 
         {/* Quick actions - edgeInset matches parent paddingHorizontal to reach screen edges */}
-        <View style={{ paddingHorizontal: 24, paddingBottom: 4 }}>
+        <View ref={quickActionsRef} collapsable={false} style={{ paddingHorizontal: 24, paddingBottom: 4 }}>
           <QuickActions actions={quickActions} scrollable edgeInset={24} />
         </View>
 
@@ -538,7 +538,7 @@ export default function ProjectDetail() {
           </View>
 
           {/* ── ბრძანებები ── */}
-          <View ref={filesRef} collapsable={false} style={styles.sectionCard}>
+          <View style={styles.sectionCard}>
             <FilesAndOrdersSection
               id={id}
               files={files}

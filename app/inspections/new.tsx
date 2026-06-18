@@ -7,7 +7,7 @@
 // Handles every template category uniformly: equipment categories dispatch via
 // `inspectionRegistry`; anything else (xaracho, mobile_scaffold, harness, …)
 // falls back to the generic `questionnairesApi.create`.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Plus, ChevronRight } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -38,7 +38,7 @@ export default function NewInspectionProjectStep() {
   const router = useRouter();
   const toast = useToast();
   const { category, templateId } = useLocalSearchParams<{ category?: string; templateId: string }>();
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [], isFetched: projectsFetched } = useProjects();
   const { data: templates = [] } = useTemplates();
 
   const [selected, setSelected] = useState<Project | null>(null);
@@ -63,24 +63,41 @@ export default function NewInspectionProjectStep() {
     if (!templateId) router.back();
   }, [templateId, router]);
 
+  const startForProject = async (project: Project) => {
+    setCreating(true);
+    try {
+      const created = registryEntry
+        ? await registryEntry.create({ projectId: project.id, templateId })
+        : await questionnairesApi.create({ projectId: project.id, templateId });
+      router.replace(routeForInspection(resolvedCategory, created.id, false) as any);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ვერ შეიქმნა'));
+      setCreating(false);
+    }
+  };
+
+  // With a single project there's nothing to choose - skip this step entirely
+  // and create the inspection straight away. Guarded by a ref so it fires once
+  // (and only once the query has settled, never on a racy empty/stale result).
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !projectsFetched || !templateId) return;
+    if (projects.length === 1) {
+      autoStarted.current = true;
+      void startForProject(projects[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectsFetched, projects, templateId]);
+
   if (!templateId) return null;
 
   const title = template?.name
     ? inspectionDisplayName(template.name)
     : 'შემოწმება';
 
-  const onNext = async () => {
+  const onNext = () => {
     if (!selected || creating) return;
-    setCreating(true);
-    try {
-      const created = registryEntry
-        ? await registryEntry.create({ projectId: selected.id, templateId })
-        : await questionnairesApi.create({ projectId: selected.id, templateId });
-      router.replace(routeForInspection(resolvedCategory, created.id, false) as any);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ვერ შეიქმნა'));
-      setCreating(false);
-    }
+    void startForProject(selected);
   };
 
   return (

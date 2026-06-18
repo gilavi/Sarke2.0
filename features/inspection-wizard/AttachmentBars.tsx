@@ -43,7 +43,11 @@ export function AttachmentBars({
     <View style={{ gap: 10 }}>
       <Pressable
         onPress={onPickPhoto}
-        style={[styles.bar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+        style={({ pressed }) => [
+          styles.bar,
+          { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+          pressed && styles.barPressed,
+        ]}
         {...a11y('ფოტოს დამატება', 'შეეხეთ ფოტოს ასატვირთად', 'button')}
       >
         <View style={styles.barLabel}>
@@ -83,7 +87,11 @@ export function AttachmentBars({
         ) : (
           <Pressable
             onPress={() => setNoteOpen(true)}
-            style={[styles.bar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}
+            style={({ pressed }) => [
+              styles.bar,
+              { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+              pressed && styles.barPressed,
+            ]}
             {...a11y('შენიშვნის დამატება', 'შეეხეთ შენიშვნის დასაწერად', 'button')}
           >
             <View style={styles.barLabel}>
@@ -109,6 +117,10 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderRadius: 14,
       borderWidth: 1.5,
       borderStyle: 'dashed',
+    },
+    barPressed: {
+      backgroundColor: theme.colors.subtleSurface,
+      borderColor: theme.colors.inkSoft,
     },
     barLabel: { flexDirection: 'row', alignItems: 'center', gap: 11 },
     barText: { fontSize: 15, fontWeight: '500' },

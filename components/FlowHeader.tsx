@@ -1,10 +1,11 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
+import { HeaderBackButton } from './HeaderBackButton';
+import { HeaderCloseButton } from './HeaderCloseButton';
 import { ExitConfirmationModal } from './wizard/ExitModal';
 
 type LeadingControl = 'back' | 'none';
@@ -95,24 +96,7 @@ export function FlowHeader({
     >
       <View style={styles.row}>
         {leading === 'back' ? (
-          <Pressable
-            hitSlop={11}
-            disabled={backDisabled}
-            onPress={onBack}
-            style={({ pressed }) => [
-              styles.circleBtn,
-              { borderWidth: 1.5, borderColor: theme.colors.border },
-              backDisabled && { opacity: 0.35 },
-              pressed && !backDisabled && { opacity: 0.6 },
-            ]}
-            {...a11y('უკან', 'წინა ეკრანზე დაბრუნება', 'button')}
-          >
-            <ChevronLeft
-              size={22}
-              color={backDisabled ? theme.colors.inkFaint : theme.colors.ink}
-              strokeWidth={1.5}
-            />
-          </Pressable>
+          <HeaderBackButton onPress={onBack} disabled={backDisabled} />
         ) : null}
 
         <View style={styles.titleBlock}>
@@ -150,18 +134,7 @@ export function FlowHeader({
             <>
               {trailingElement ?? null}
               {trailing === 'close' ? (
-                <Pressable
-                  hitSlop={4}
-                  onPress={wrapExit(onClose)}
-                  style={({ pressed }) => [
-                    styles.closeBtn,
-                    { borderWidth: 1.5, borderColor: theme.colors.border },
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
-                >
-                  <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
-                </Pressable>
+                <HeaderCloseButton hitSlop={4} onPress={wrapExit(onClose)} />
               ) : null}
             </>
           )}
@@ -285,13 +258,6 @@ const styles = StyleSheet.create({
     gap: 6,
     zIndex: 1,
   },
-  circleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   titleBlock: {
     flex: 1,
     minWidth: 0,
@@ -309,13 +275,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   helpText: { fontSize: 13, fontWeight: '800', lineHeight: 15 },
-  closeBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',

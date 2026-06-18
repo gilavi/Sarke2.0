@@ -125,8 +125,8 @@ function makeStyles(theme: any) {
       justifyContent: 'center',
     },
     chipActive: {
-      backgroundColor: theme.colors.accent,
-      borderColor: theme.colors.accent,
+      backgroundColor: theme.colors.ink,
+      borderColor: theme.colors.ink,
     },
     chipText: { fontSize: 20, fontWeight: '700', color: theme.colors.ink },
     chipTextActive: { color: theme.colors.white },

@@ -12,13 +12,5 @@ export function gets(theme: Theme) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.colors.hairline,
     },
-    bigCta: {
-      minHeight: 64,
-      backgroundColor: theme.colors.accent,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    bigCtaText: { fontSize: 18, fontWeight: '800', color: theme.colors.white },
   });
 }

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../primitives/A11yText';
+import { Button } from '../ui';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import type { Answer, GridValues, Question, Template } from '../../types/models';
@@ -202,15 +203,16 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
         </View>
 
         <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
-          <Pressable
+          <Button
+            title="დაწყება →"
+            variant="primary"
+            size="lg"
+            style={{ alignSelf: 'stretch' }}
             onPress={() => {
               setCurrentRowIdx(0);
               setStep('list');
             }}
-            style={({ pressed }) => [s.bigCta, pressed && { opacity: 0.88 }]}
-          >
-            <Text style={s.bigCtaText}>დაწყება →</Text>
-          </Pressable>
+          />
         </View>
       </View>
     );
@@ -303,15 +305,14 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
       </ScrollView>
 
       <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
-        <Pressable
+        <Button
+          title={`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} - დადასტურება →`}
+          variant="primary"
+          size="lg"
+          style={{ alignSelf: 'stretch' }}
           onPress={confirmCurrentRow}
-          style={({ pressed }) => [s.bigCta, pressed && { opacity: 0.88 }]}
           accessibilityLabel={`ქამარი ${safeRowIdx + 1} დადასტურება`}
-        >
-          <Text style={s.bigCtaText}>
-            {`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} - დადასტურება →`}
-          </Text>
-        </Pressable>
+        />
       </View>
     </View>
   );

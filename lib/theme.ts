@@ -278,7 +278,7 @@ export const darkTheme = {
     ...lightTheme.colors,
     primary,
     neutral,
-    background: '#0F0F0F',
+    background: '#000000',
     surface: '#1A1A1A',
     surfaceElevated: '#242424',
     surfaceSecondary: '#1F1F1F',

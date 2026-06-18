@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -46,13 +46,25 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [], isFetched } = useProjects();
   const { data: templates = [] } = useTemplates();
 
   const [selected, setSelected] = useState<Project | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
   // Enabled "გაგრძელება" button + on-press error when no project is picked.
   const [attempted, setAttempted] = useState(false);
+
+  // With a single project there's nothing to choose - skip this step entirely
+  // and drop the user straight into the flow. Guarded by a ref so it fires once
+  // (and only once the query has settled, never on a racy empty/stale result).
+  const autoPicked = useRef(false);
+  useEffect(() => {
+    if (autoPicked.current || !isFetched) return;
+    if (projects.length === 1) {
+      autoPicked.current = true;
+      onPicked(projects[0]);
+    }
+  }, [isFetched, projects, onPicked]);
 
   const handleContinue = () => {
     if (!selected) {

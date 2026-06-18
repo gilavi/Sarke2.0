@@ -1,5 +1,5 @@
 import Animated, { LinearTransition } from 'react-native-reanimated';
-import { Check, X } from 'lucide-react-native';
+import { CircleCheck, CircleX } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 import { useAccessibilitySettings } from '../../lib/accessibility';
 import { StatusChip } from './StatusChip';
@@ -36,7 +36,8 @@ export function AnswerButtons({ value, onChange, compact, error }: AnswerButtons
         selected={value === true}
         error={showError}
         label="კი"
-        icon={Check}
+        icon={CircleCheck}
+        fillSelectedIcon
         onPress={() => {
           haptic.answerYes();
           onChange(true);
@@ -49,7 +50,8 @@ export function AnswerButtons({ value, onChange, compact, error }: AnswerButtons
         selected={value === false}
         error={showError}
         label="არა"
-        icon={X}
+        icon={CircleX}
+        fillSelectedIcon
         onPress={() => {
           haptic.answerNo();
           onChange(false);

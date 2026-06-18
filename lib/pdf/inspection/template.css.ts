@@ -2,25 +2,18 @@
 // HTML structure file is readable. The only dynamic value referenced inside
 // the CSS is `isPdf` - when `mode === 'pdf'` we widen body padding and add
 // `page-break-inside: avoid` to the structural cards.
+//
+// Colour/scale tokens live in tokens.css.ts (getInspectionPdfTokens) so the
+// brand palette has one greppable owner. Brand/structure is monochrome ink +
+// a single orange accent; semantic green/red/amber are reserved for the
+// verdict and pass/fail answers.
+
+import { getInspectionPdfTokens } from './tokens.css';
 
 export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
   const { isPdf } = opts;
   return `
-    :root {
-      --green: #1D9E75;
-      --green-dark: #147A4F;
-      --green-tint: #E8F5F0;
-      --red: #DC2626;
-      --red-tint: #FCEBEB;
-      --amber: #B45309;
-      --amber-bg: #FEF3C7;
-      --ink: #111827;
-      --ink-soft: #4B5563;
-      --gray: #9CA3AF;
-      --line: #E5E7EB;
-      --bg-soft: #FAFAFA;
-      --radius: 8px;
-    }
+    ${getInspectionPdfTokens()}
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -52,78 +45,73 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
     /* ── Header ── */
     .report-header {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 16px;
-      padding-bottom: 16px;
-      margin-bottom: 0;
+      padding-bottom: 12px;
       position: relative;
       z-index: 1;
     }
-    .header-left { display: flex; align-items: center; gap: 14px; flex: 1; }
-    .header-center {
-      flex: 2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 0 8px;
-    }
+    .header-brand { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+    .header-titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .report-title {
       font-size: 18px;
       font-weight: 800;
       color: var(--ink);
-      line-height: 1.3;
+      line-height: 1.25;
     }
-    .project-brand-logo {
-      width: 60px; height: 60px;
-      border-radius: 50%;
-      object-fit: cover;
-      display: block;
+    .report-company {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
+    .project-brand-logo,
     .project-brand-initials {
-      width: 60px; height: 60px;
+      width: 56px; height: 56px;
       border-radius: 50%;
-      background: var(--green);
+      display: block;
+      flex-shrink: 0;
+    }
+    .project-brand-logo { object-fit: cover; }
+    .project-brand-initials {
+      background: var(--ink);
       color: #fff;
       font-weight: 700;
-      font-size: 22px;
+      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .brand-name {
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--green);
-      letter-spacing: 1px;
-      line-height: 1.1;
-    }
-    .brand-sub {
-      font-size: 9px;
-      color: var(--gray);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .header-right {
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 6px;
-    }
-    .report-id {
-      font-family: monospace;
-      font-size: 10px;
-      color: var(--gray);
+    .header-right { flex-shrink: 0; }
+    .report-id-chip {
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 11px;
+      font-weight: 700;
       letter-spacing: 0.5px;
+      color: var(--ink-soft);
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 12px;
+      white-space: nowrap;
     }
+    /* Ink rule carrying a single orange accent tick at its left edge. The tick
+       is a real inline element (.header-rule-tick), not a ::before pseudo —
+       the WKWebView print path renders real elements far more reliably. */
     .header-rule {
+      position: relative;
+      height: 2px;
+      background: var(--ink);
       border: none;
-      border-top: 3px solid var(--green);
       margin: 0 0 20px;
+    }
+    .header-rule-tick {
+      position: absolute;
+      top: 0; left: 0;
+      width: 48px; height: 2px;
+      background: var(--accent);
     }
 
     /* ── Info block ── */
@@ -152,50 +140,78 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
       font-weight: 600;
     }
 
-    /* ── Status Hero ── */
-    .status-hero {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      width: 100%;
-      padding: 16px 20px;
-      border-radius: var(--radius);
-      color: #fff;
+    /* ── Hero summary (verdict + conclusion, top of report) ──
+       Replaces the old full-bleed .status-hero banner AND the bottom
+       .conclusion-card. Neutral card; semantic colour is confined to the
+       verdict-coloured left border + verdict value. The single orange accent
+       is the conclusion label. border-left (not a flex bar) is used so the
+       accent survives the WKWebView print path — same technique the old
+       .conclusion-card relied on. */
+    .hero-summary {
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--gray);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
       margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
-    .hero-pass { background: var(--green); }
-    .hero-fail { background: var(--red); }
-    .hero-pending { background: var(--amber); }
-    .status-hero-icon {
-      font-size: 30px;
-      font-weight: 700;
-      line-height: 1;
-    }
-    .status-hero-text {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
+    .hero-summary.is-safe       { border-left-color: var(--green); }
+    .hero-summary.is-unsafe     { border-left-color: var(--red); }
+    .hero-summary.is-caution    { border-left-color: var(--amber); }
+    .hero-summary.is-incomplete { border-left-color: var(--gray); }
 
-    /* Inline status badge (used inside conclusion card) */
-    .status-badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-weight: 700;
-      font-size: 12px;
-      letter-spacing: 0.3px;
+    .hero-summary-verdict {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
     }
-    .status-pass { background: var(--green-tint); color: var(--green-dark); }
-    .status-fail { background: var(--red-tint); color: var(--red); }
-    .status-pending { background: var(--amber-bg); color: var(--amber); }
+    .hero-verdict-label {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gray);
+    }
+    .hero-verdict-value {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+    .hero-summary.is-safe       .hero-verdict-value { color: var(--green-dark); }
+    .hero-summary.is-unsafe     .hero-verdict-value { color: var(--red); }
+    .hero-summary.is-caution    .hero-verdict-value { color: var(--amber); }
+    .hero-summary.is-incomplete .hero-verdict-value { color: var(--ink-soft); }
+
+    .hero-summary-conclusion {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .hero-conclusion-label {
+      display: block;
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .hero-conclusion-text {
+      font-size: 13px;
+      color: var(--ink);
+      line-height: 1.65;
+      margin: 0;
+    }
 
     /* ── TOC ── */
     .toc-box {
       border: 1px solid var(--line);
       border-radius: var(--radius);
+      background: var(--bg-soft);
       padding: 16px;
       margin-bottom: 16px;
       position: relative;
@@ -203,28 +219,30 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
     }
     .toc-heading {
       font-size: 10px;
-      font-weight: 700;
-      color: var(--gray);
+      font-weight: 800;
+      color: var(--ink);
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 10px;
+      padding-left: 10px;
+      border-left: 3px solid var(--accent);
+      margin-bottom: 12px;
     }
     .toc-item {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 6px 0;
-      border-bottom: 1px solid #F3F4F6;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line);
     }
     .toc-item:last-child { border-bottom: none; }
     .toc-num {
-      font-family: monospace;
+      font-family: 'SF Mono', 'Menlo', monospace;
       font-size: 12px;
       font-weight: 700;
-      color: var(--green);
-      min-width: 24px;
+      color: var(--ink);
+      min-width: 22px;
     }
-    .toc-name { flex: 1; font-size: 12px; color: var(--ink); font-weight: 500; }
+    .toc-name { flex: 1; font-size: 12px; color: var(--ink); font-weight: 600; }
     .toc-count { font-size: 10px; color: var(--gray); font-weight: 600; }
 
     /* ── Section ── */
@@ -233,30 +251,35 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
       position: relative;
       z-index: 1;
     }
-    .section-header { margin-bottom: 4px; margin-top: 8px; }
+    .section-header { margin: 8px 0; }
     .section-title {
       font-size: 14px;
       font-weight: 700;
       color: var(--ink);
-      border-left: 3px solid var(--green);
+      border-left: 3px solid var(--accent);
       padding-left: 10px;
       display: flex;
-      align-items: baseline;
-      gap: 6px;
+      align-items: center;
+      gap: 10px;
     }
     .section-num {
-      color: var(--green);
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 11px;
       font-weight: 800;
+      color: #fff;
+      background: var(--ink);
+      border-radius: 6px;
+      padding: 2px 7px;
+      line-height: 1.4;
     }
-    .section-pipe { color: var(--green); font-weight: 700; margin: 0 2px; }
     .section-name { color: var(--ink); }
 
     /* ── Question card ── */
     .question-card {
       background: #fff;
-      border: 1px solid #E8E6E0;
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 12px;
+      padding: 12px 14px;
       margin-bottom: 8px;
       ${isPdf ? 'page-break-inside: avoid;' : ''}
     }
@@ -275,7 +298,7 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
       align-items: center;
       gap: 4px;
       padding: 4px 12px;
-      border-radius: 16px;
+      border-radius: 999px;
       font-weight: 700;
       font-size: 11px;
       letter-spacing: 0.3px;
@@ -371,7 +394,7 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
       border-collapse: collapse;
       font-size: 11px;
     }
-    .data-table thead th { background: #F5F3EE; color: var(--ink); }
+    .data-table thead th { background: var(--bg-subtle); color: var(--ink); }
     .data-table th {
       padding: 8px 10px;
       text-align: left;
@@ -385,11 +408,11 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
     }
     .data-table td {
       padding: 8px 10px;
-      border-top: 1px solid #F3F4F6;
+      border-top: 1px solid var(--line);
       color: var(--ink);
     }
     .data-table tbody tr:nth-child(even) td,
-    .data-table tbody tr:nth-child(even) th { background: #FAFAFA; }
+    .data-table tbody tr:nth-child(even) th { background: var(--bg-soft); }
     .data-table tbody tr.is-problem td,
     .data-table tbody tr.is-problem th {
       background: var(--red-tint);
@@ -399,33 +422,6 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
     .cell-status--pass { color: var(--green-dark); }
     .cell-status--fail { color: var(--red); }
     .cell-status--neutral { color: var(--gray); }
-
-    /* ── Conclusion ── */
-    .conclusion-card {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-left: 4px solid var(--green);
-      border-radius: var(--radius);
-      padding: 18px 20px;
-      margin: 16px 0;
-      ${isPdf ? 'page-break-inside: avoid;' : ''}
-      position: relative;
-      z-index: 1;
-    }
-    .conclusion-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--green);
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .conclusion-text {
-      font-size: 14px;
-      color: var(--ink);
-      line-height: 1.7;
-      margin-bottom: 12px;
-    }
 
     /* ── Signatures section (creator capture + empty hand-sign slots) ── */
     .signatures-section {
@@ -583,7 +579,7 @@ export function getInspectionPdfCss(opts: { isPdf: boolean }): string {
 
     @media print {
       .question-card, .photo-item, .section, .signatures-section,
-      .conclusion-card, .cert-card, .status-hero {
+      .hero-summary, .cert-card {
         page-break-inside: avoid;
       }
     }

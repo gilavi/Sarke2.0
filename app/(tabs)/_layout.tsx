@@ -4,13 +4,14 @@ import { Tabs } from 'expo-router';
 import { House, Folder, BookOpen, CalendarDays } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, withOpacity } from '../../lib/theme';
 import { useTranslation } from 'react-i18next';
 import { useOverdueCount, qk } from '../../lib/apiHooks';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { useSession } from '../../lib/session';
+import { useOffline } from '../../lib/offline';
 
 // ─── Tab Configuration ──────────────────────────────────────────
 type TabConfig = {
@@ -136,6 +137,9 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 8);
   const { theme, isDark } = useTheme();
+  const { isOnline, netReady } = useOffline();
+  const bannerVisible = netReady && !isOnline;
+  const adjustedInsets = bannerVisible ? { ...insets, top: 0 } : insets;
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const overdueCount = useOverdueCount();
@@ -156,6 +160,7 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <OfflineBanner />
+      <SafeAreaInsetsContext.Provider value={adjustedInsets}>
       <Tabs
         screenOptions={({ route }) => {
           const config = TAB_CONFIG[route.name as keyof typeof TAB_CONFIG];
@@ -251,6 +256,7 @@ export default function TabsLayout() {
         {/* Hidden routes */}
         <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       </Tabs>
+      </SafeAreaInsetsContext.Provider>
     </View>
   );
 }

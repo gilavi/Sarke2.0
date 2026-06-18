@@ -123,7 +123,6 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
           <div class="section-header">
             <h2 class="section-title">
               <span class="section-num">${pad2(sectionIdx + 1)}</span>
-              <span class="section-pipe">|</span>
               <span class="section-name">${escapeHtml(String(section))}</span>
             </h2>
           </div>
@@ -144,7 +143,6 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
           <div class="section-header">
             <h2 class="section-title">
               <span class="section-num">${pad2(sections.length + 1)}</span>
-              <span class="section-pipe">|</span>
               <span class="section-name">${t('pdf.attachedCerts')}</span>
             </h2>
           </div>
@@ -170,14 +168,18 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
       `
       : '';
 
-  // ── Status hero (full-width banner) ──
+  // ── Hero summary (verdict + conclusion, top of report) ──
   // Use safety_verdict (3-state) when present; fall back to is_safe_for_use bool.
   const verdict = questionnaire.safety_verdict
     ?? (questionnaire.is_safe_for_use === true ? 'safe'
       : questionnaire.is_safe_for_use === false ? 'unsafe'
       : null);
-  const heroClass = verdict === 'safe' ? 'hero-pass' : verdict === 'unsafe' ? 'hero-fail' : 'hero-pending';
-  const heroIcon = verdict === 'safe' ? '✓' : verdict === 'unsafe' ? '✗' : verdict === 'caution' ? '⚠' : '…';
+  const verdictMod = verdict === 'safe' ? 'is-safe'
+    : verdict === 'unsafe' ? 'is-unsafe'
+    : verdict === 'caution' ? 'is-caution'
+    : 'is-incomplete';
+  // heroLabel already carries the glyph (✓/✗/⚠/●) from the locale string, so
+  // we must NOT emit a second standalone icon span (that was the old double-glyph).
   const heroLabel = verdict === 'safe'
     ? t('pdf.statusSafe')
     : verdict === 'caution'
@@ -185,21 +187,18 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
       : verdict === 'unsafe'
         ? t('pdf.statusNotSafe')
         : t('pdf.statusIncomplete');
-  const statusHero = `
-    <div class="status-hero ${heroClass}">
-      <span class="status-hero-icon">${heroIcon}</span>
-      <span class="status-hero-text">${heroLabel}</span>
+  const heroSummary = `
+    <div class="hero-summary ${verdictMod}">
+      <div class="hero-summary-verdict">
+        <span class="hero-verdict-label">${t('pdf.verdictLabel')}</span>
+        <span class="hero-verdict-value">${heroLabel}</span>
+      </div>
+      <div class="hero-summary-conclusion">
+        <span class="hero-conclusion-label">${t('pdf.conclusionTitle')}</span>
+        <p class="hero-conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '-')}</p>
+      </div>
     </div>
   `;
-
-  // Small badge reused inside conclusion card.
-  const statusBadge = verdict === 'unsafe'
-    ? `<span class="status-badge status-fail">${t('pdf.statusNotSafe')}</span>`
-    : verdict === 'caution'
-      ? `<span class="status-badge status-pending">${t('pdf.statusCaution')}</span>`
-      : verdict === 'safe'
-        ? `<span class="status-badge status-pass">${t('pdf.statusSafe')}</span>`
-        : `<span class="status-badge status-pending">${t('pdf.statusIncomplete')}</span>`;
 
   // ── Watermark ──
   const watermark = isDraft
@@ -218,17 +217,18 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
   ${watermark}
 
   <div class="report-header">
-    <div class="header-left">
+    <div class="header-brand">
       ${renderProjectBrand(project)}
-    </div>
-    <div class="header-center">
-      <div class="report-title">${escapeHtml(template.name)}</div>
+      <div class="header-titles">
+        <div class="report-title">${escapeHtml(template.name)}</div>
+        <div class="report-company">${escapeHtml(project.company_name)}</div>
+      </div>
     </div>
     <div class="header-right">
-      <div class="report-id">${reportId}</div>
+      <span class="report-id-chip">${reportId}</span>
     </div>
   </div>
-  <hr class="header-rule" />
+  <div class="header-rule"><span class="header-rule-tick"></span></div>
 
   <div class="info-card">
     <div class="info-row">
@@ -259,7 +259,7 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
     </div>` : ''}
   </div>
 
-  ${statusHero}
+  ${heroSummary}
 
   <div class="toc-box">
     <div class="toc-heading">${t('pdf.tocTitle')}</div>
@@ -273,12 +273,6 @@ export function buildInspectionPdfTemplate(args: PdfTemplateArgs): string {
   </div>
 
   ${body}
-
-  <div class="conclusion-card">
-    <div class="conclusion-label">${t('pdf.conclusionTitle')}</div>
-    <div class="conclusion-text">${escapeHtml(questionnaire.conclusion_text ?? '-')}</div>
-    ${statusBadge}
-  </div>
 
   ${signaturesHtml}
 

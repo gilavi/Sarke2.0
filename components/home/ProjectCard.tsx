@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { useTheme, withOpacity } from '../../lib/theme';
@@ -58,7 +59,33 @@ export const ProjectCard = memo(function ProjectCard({
               liteMode
               pointerEvents="none"
             />
-            <View style={styles.mapOverlay} />
+            <Svg
+              width={width}
+              height={PROJECT_CARD_HEIGHT}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            >
+              <Defs>
+                <RadialGradient
+                  id={`mapMask-${project.id}`}
+                  cx={width}
+                  cy={0}
+                  r={Math.hypot(width, PROJECT_CARD_HEIGHT)}
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <Stop offset="0" stopColor={theme.colors.surface} stopOpacity={0.08} />
+                  <Stop offset="0.55" stopColor={theme.colors.surface} stopOpacity={0.6} />
+                  <Stop offset="1" stopColor={theme.colors.surface} stopOpacity={1} />
+                </RadialGradient>
+              </Defs>
+              <Rect
+                x={0}
+                y={0}
+                width={width}
+                height={PROJECT_CARD_HEIGHT}
+                fill={`url(#mapMask-${project.id})`}
+              />
+            </Svg>
           </>
         )}
 
@@ -96,10 +123,6 @@ function getStyles(theme: any) {
       height: PROJECT_CARD_HEIGHT,
       overflow: 'hidden',
       position: 'relative',
-    },
-    mapOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: withOpacity('#FFFFFF', 0.82),
     },
     projectName: {
       fontSize: 18,

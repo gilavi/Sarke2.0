@@ -11,11 +11,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, CirclePlus, FolderOpen, Pencil, Plus, X } from 'lucide-react-native';
+import { ChevronRight, FolderOpen, Plus } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { InspectionTypeAvatar } from '../InspectionTypeAvatar';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
+import { GeocodingAddressInput } from '../inputs/GeocodingAddressInput';
+import { HeaderBackButton } from '../HeaderBackButton';
+import { HeaderCloseButton } from '../HeaderCloseButton';
 import { LocationRow } from '../LocationRow';
 import { MapPickerInline } from '../MapPickerInline';
 import { Button } from '../ui';
@@ -256,12 +259,20 @@ export function ProjectPickerSheet({
         <Animated.View
           style={{
             width: '100%',
-            height: screenH * 0.55,
+            height: screenH * (view === 'new' ? 0.62 : 0.55),
             marginBottom: view === 'new' ? keyboardMargin : 0,
             flexDirection: 'column',
           }}
         >
-          <Pressable style={[pickerStyles.card, { flex: 1, paddingBottom: Math.max(insets.bottom, 16) + 16 }]} onPress={() => {}}>
+          {/* In the `new` view the pinned footer owns the bottom safe-area inset,
+              so the card itself doesn't add a second gap below the button. */}
+          <Pressable
+            style={[
+              pickerStyles.card,
+              { flex: 1, paddingBottom: view === 'new' ? 0 : Math.max(insets.bottom, 16) + 16 },
+            ]}
+            onPress={() => {}}
+          >
             <View style={pickerStyles.handle} />
 
             {view === 'list' ? (
@@ -277,9 +288,7 @@ export function ProjectPickerSheet({
                   <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>
                     {t('home.startInspectionSheetTitle')}
                   </Text>
-                  <Pressable onPress={onClose} hitSlop={12}>
-                    <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
-                  </Pressable>
+                  <HeaderCloseButton onPress={onClose} />
                 </View>
 
                 {projects.length === 0 ? (
@@ -332,19 +341,11 @@ export function ProjectPickerSheet({
               <>
                 {/* New project form */}
                 <View style={pickerStyles.sheetHeader}>
-                  <Pressable
-                    onPress={() => { Keyboard.dismiss(); setView('list'); }}
-                    hitSlop={12}
-                    style={{ marginRight: 10 }}
-                  >
-                    <ArrowLeft size={22} color={theme.colors.accent} strokeWidth={1.5} />
-                  </Pressable>
-                  <Text style={[pickerStyles.sheetTitle, { flex: 1 }]}>
+                  <HeaderBackButton onPress={() => { Keyboard.dismiss(); setView('list'); }} />
+                  <Text style={[pickerStyles.sheetTitle, { flex: 1, marginLeft: 10 }]}>
                     {t('home.newProjectFormTitle')}
                   </Text>
-                  <Pressable onPress={onClose} hitSlop={12}>
-                    <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
-                  </Pressable>
+                  <HeaderCloseButton onPress={onClose} />
                 </View>
 
                 <ScrollView
@@ -357,21 +358,12 @@ export function ProjectPickerSheet({
                   <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <ProjectAvatar
                       project={{ name: company || '-', logo }}
-                      size={88}
+                      size={76}
                       editable
                       onEdit={onPickLogo}
                     />
-                    <Pressable
-                      onPress={onPickLogo}
-                      hitSlop={13}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                    >
-                      {logo ? (
-                        <Pencil size={15} color={theme.colors.accent} strokeWidth={1.5} />
-                      ) : (
-                        <CirclePlus size={15} color={theme.colors.accent} strokeWidth={1.5} />
-                      )}
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
+                    <Pressable onPress={onPickLogo} hitSlop={13}>
+                      <Text style={{ fontSize: 13, fontWeight: '500', color: theme.colors.ink }}>
                         {logo ? t('projects.changePhoto') : t('a11y.addPhoto')}
                       </Text>
                     </Pressable>
@@ -403,13 +395,13 @@ export function ProjectPickerSheet({
                     keyboardType="phone-pad"
                     error={attempted && !phone.trim() ? 'სავალდებულო ველი' : undefined}
                   />
-                  <FloatingLabelInput
+                  <GeocodingAddressInput
                     label={t('common.address')}
                     required
                     value={address}
                     onChangeText={setAddress}
+                    onPin={setPin}
                     error={attempted && !address.trim() ? 'სავალდებულო ველი' : undefined}
-                    {...a11y(t('common.address'), 'შეიყვანეთ მისამართი', 'text')}
                   />
                   <LocationRow
                     pin={pin}
@@ -418,7 +410,7 @@ export function ProjectPickerSheet({
                   />
                 </ScrollView>
 
-                <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: insets.bottom || 16 }}>
+                <View style={{ paddingTop: 8, paddingBottom: Math.max(insets.bottom, 12) }}>
                   <Button
                     title={t('projects.createButton')}
                     onPress={() =>
@@ -446,17 +438,11 @@ export function ProjectPickerSheet({
               paddingTop: insets.top + 12,
               paddingVertical: 12,
             }}>
-              <View style={{ width: 24 }} />
+              <View style={{ width: 38 }} />
               <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                 მდებარეობის არჩევა
               </Text>
-              <Pressable
-                onPress={() => setMapVisible(false)}
-                hitSlop={12}
-                {...a11y('დახურვა', 'რუკის დახურვა', 'button')}
-              >
-                <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
-              </Pressable>
+              <HeaderCloseButton onPress={() => setMapVisible(false)} />
             </View>
             <MapPickerInline
               initialPin={pin}

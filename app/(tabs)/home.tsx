@@ -175,7 +175,7 @@ export default function HomeScreen() {
     );
     setDraftSteps(Object.fromEntries(pairs));
   }, [recent, templates]);
-  const showCertBanner = certs.length === 0 || expiringCount > 0;
+  const showCertBanner = projects.length > 0 && (certs.length === 0 || expiringCount > 0);
   const tip = tipOfTheDay(t);
 
   const recentGrouped = useMemo(
@@ -349,7 +349,7 @@ export default function HomeScreen() {
           >
             <View style={styles.emptyProjects}>
               <View style={styles.emptyPlusIcon}>
-                <Plus size={24} color={theme.colors.accent} strokeWidth={2} />
+                <Plus size={24} color={theme.colors.ink} strokeWidth={2.5} />
               </View>
               <Text style={styles.emptyProjectsCta}>{t('home.newProject')}</Text>
               <Text style={styles.emptyProjectsText}>{t('home.createFirst')}</Text>
@@ -628,7 +628,24 @@ export default function HomeScreen() {
               })}
             </View>
           </>
-        ) : null}
+        ) : (
+          <>
+            <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
+              <Text style={[styles.sectionHeader, { opacity: 0.3 }]}>{t('home.recentActs')}</Text>
+            </View>
+            <View style={[staticStyles.recentListMargin, { opacity: 0.25 }]} pointerEvents="none">
+              {[0, 1, 2].map(i => (
+                <View key={i} style={[styles.recentRow, i < 2 && styles.recentRowBorder]}>
+                  <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: theme.colors.hairline, marginRight: 14 }} />
+                  <View style={{ flex: 1, gap: 7 }}>
+                    <View style={{ width: i === 0 ? '70%' : i === 1 ? '55%' : '62%', height: 13, borderRadius: 6, backgroundColor: theme.colors.hairline }} />
+                    <View style={{ width: i === 0 ? '38%' : i === 1 ? '45%' : '30%', height: 10, borderRadius: 5, backgroundColor: theme.colors.hairline }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* ───────── TIP OF THE DAY ───────── */}
         <View style={[styles.sectionWrap, staticStyles.tipMargin]}>
@@ -949,30 +966,27 @@ function getStyles(theme: Theme) {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: theme.colors.highlightSoft,
+    backgroundColor: theme.colors.ink,
     borderRadius: 16,
-    borderWidth: 2,
-    borderColor: theme.colors.highlight,
-    borderStyle: 'dashed',
     height: PROJECT_CARD_HEIGHT,
   },
   emptyPlusIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.white,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   emptyProjectsText: {
     fontSize: 11,
-    color: theme.colors.inkSoft,
+    color: withOpacity(theme.colors.surface, 0.5),
   },
   emptyProjectsCta: {
     fontSize: 15,
     fontWeight: '700',
-    color: theme.colors.ink,
+    color: theme.colors.surface,
   },
   newProjectCard: {
     backgroundColor: theme.colors.highlightSoft,

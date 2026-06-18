@@ -28,6 +28,12 @@ export interface StatusChipProps {
    * `selected` (a chosen chip is never "in error").
    */
   error?: boolean;
+  /**
+   * When selected, paint the icon as a solid (filled) glyph instead of an
+   * outline. Only meaningful for fillable icons (e.g. CircleCheck / CircleX);
+   * line glyphs are unaffected. Used by the binary yes/no answer buttons.
+   */
+  fillSelectedIcon?: boolean;
   /** Overrides the accessible label (defaults to `label`). */
   a11yLabel?: string;
   a11yHint?: string;
@@ -51,6 +57,7 @@ export function StatusChip({
   layout = 'chip',
   disabled = false,
   error = false,
+  fillSelectedIcon = false,
   a11yLabel,
   a11yHint,
   style,
@@ -116,7 +123,21 @@ export function StatusChip({
       ]}
       {...a11y(a11yLabel ?? label, a11yHint, 'button', { selected })}
     >
-      {icon ? (() => { const Icon = icon; return <Icon size={layout === 'pill' ? 20 : 18} color={iconColor} strokeWidth={1.5} style={layout === 'pill' ? styles.pillIcon : undefined} />; })() : null}
+      {icon ? (() => {
+        const Icon = icon;
+        // Filled-selected: light circle (fill) with a dark mark (stroke) so the
+        // glyph reads as solid against the dark selected background.
+        const filled = fillSelectedIcon && selected;
+        return (
+          <Icon
+            size={layout === 'pill' ? 20 : 18}
+            color={filled ? theme.colors.inverse.background : iconColor}
+            fill={filled ? theme.colors.inverse.ink : 'transparent'}
+            strokeWidth={1.5}
+            style={layout === 'pill' ? styles.pillIcon : undefined}
+          />
+        );
+      })() : null}
       {label ? (
         <Text style={[layout === 'pill' ? styles.pillLabel : styles.chipLabel, { color: contentColor }]}>
           {label}

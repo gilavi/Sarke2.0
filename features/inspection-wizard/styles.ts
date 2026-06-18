@@ -137,12 +137,15 @@ export function getstyles(theme: any) {
   statusOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
-    padding: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    minHeight: 54,
   },
   harnessRow: {
     flexDirection: 'row',
@@ -248,7 +251,7 @@ export function getstyles(theme: any) {
 }
 
 export const staticStyles = StyleSheet.create({
-  statusOptionText: { flex: 1, fontSize: 15, fontWeight: '600' },
+  statusOptionText: { fontSize: 15, fontWeight: '700' },
   harnessColLabel: { flex: 1, fontSize: 13 },
   harnessChipRow: { flexDirection: 'row', gap: 6 },
   gap8: { gap: 8 },

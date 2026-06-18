@@ -1,6 +1,74 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-18 | Branch: `gio-design-update`
+**Updated:** 2026-06-18 | Branch: `gio-design-update-2.0`
+
+---
+
+## 2026-06-18 — Project card: radial gradient map mask
+
+The `ProjectCard` map thumbnail no longer sits under a flat 82% white wash. The overlay is now a `react-native-svg` **radial gradient** centered on the top-right corner — the map reads strongest there and fades into the card surface toward the bottom/left, keeping the name/address legible. The mask colour is `theme.colors.surface` (was hardcoded white), so it also behaves in dark mode. See [components/home/ProjectCard.tsx](../components/home/ProjectCard.tsx).
+
+## 2026-06-18 — Single project: skip the project-picker step
+
+When a user has exactly one project, the "pick a project" first step is now skipped automatically for every from-Home flow — inspections, incidents, briefings, and reports drop the user straight into the flow against that sole project. The picker only renders when there's a real choice (0 projects → still shows so they can create one; 2+ → shows the list). Implemented in [components/FlowProjectPicker.tsx](../components/FlowProjectPicker.tsx) (incident/briefing/report) and [app/inspections/new.tsx](../app/inspections/new.tsx) (inspection), each guarded by a once-only ref and the React Query `isFetched` flag so it never fires on a racy empty/stale cache result.
+
+## 2026-06-18 — Equipment certificates: modal sheet → real screen
+
+The certificate add/edit UI (the type chips + №number + 16:9 photo) was a form crammed into the `CertificatesActionSheet` bottom-sheet modal, which felt out-of-app and was broken in three ways: the native photo picker silently failed (a native picker presented over an already-presented RN Modal), the `number-pad` keyboard hid the **შენახვა** button, and it used a one-off back chevron. It's now a proper pushed route at `app/inspections/[id]/certificates.tsx`:
+
+- **Real screen.** Standard app header with the shared circular `HeaderBackButton`, `KeyboardAwareScrollView` so Save stays above the keyboard, and a pinned footer CTA.
+- **Photo upload works.** Uses the canonical `/photo-picker` route flow (`pickPhotoWithAnnotation({ skipAnnotate })`) instead of calling `ImagePicker` directly inside a modal.
+- **Preview stays in sync.** Saving/deleting marks the inspection dirty via new [lib/certDirty.ts](../lib/certDirty.ts); `InspectionResultView` and `app/inspections/[id].tsx` consume it in a `useFocusEffect` and rebuild the live PDF preview on return.
+- New module under [components/certificates/](../components/certificates/) (`CertificatesManager` + `CertEditForm`); `CertificatesActionSheet.tsx` removed.
+
+## 2026-06-18 — Scaffold help tour: clearer "optional guide" framing + real header
+
+The one-time scaffold (`xaracho`) intro carousel (`ScaffoldTour`) was hard to read as the **optional help feature** it is, and its top area collided with the status bar. Redesign:
+
+- **Real header.** Replaced the cramped "1/9 · გამოტოვება (underlined)" row with a proper header: a centered **"გზამკვლევი" pill** (book icon) that names it as a guide, the shared circular **✕ close** (`HeaderCloseButton`) on the right, and a circular **back** (`HeaderBackButton`) on the left that returns to the previous slide (hidden on the first). Fixes "no back button, can't see X".
+- **Optional framing.** New intro block — title **ხარაჩოს კომპონენტები** + copy "გაიცანით კომპონენტები შემოწმებამდე — არასავალდებულოა, შეგიძლიათ გამოტოვოთ." — so it's obvious this is skippable help, not a required step.
+- **Balanced card.** Card content is now vertically centered (was top-aligned, leaving a big empty box). Progress counter moved into the CTA (**შემდეგი · 2/9**); last slide reads **შემოწმების დაწყება**.
+- **Top spacing fixed.** Header padding no longer clashes with the status bar.
+
+---
+
+## 2026-06-18 — New-project forms: address ↔ map sync + header/spacing cleanup
+
+The project create/edit forms (`ProjectPickerSheet`, the Projects-tab create modal, `EditProjectSheet`) now keep the **address text and the map pin in sync** again — native geocoding was lost in 2026-06 when `expo-location` was dropped. We reuse the public OpenStreetMap **Nominatim** HTTP API over plain `fetch` (no native dependency, no permission prompt) via a new canonical [lib/geocode.ts](../lib/geocode.ts):
+
+- **Type → pin.** The address field is now `GeocodingAddressInput` — a focused, debounced forward-geocode that drops the pin (`onPin`) as you type and shows "ვეძებ მისამართს… / მისამართი ვერ მოიძებნა" status. The focus guard stops it fighting a pin the map just set.
+- **Pin → address.** In the map overlay, `MapPicker` reverse-geocodes a tapped/dragged pin into the address field, and its search box forward-geocodes to drop the pin (falls back to a `lat, lng` label).
+- **Shared header buttons.** Extracted `HeaderCloseButton` (the sibling of `HeaderBackButton`); `FlowHeader`, `SheetLayout`, the project sheets, and the map overlays now all use the same 38px bordered circular back/✕ controls instead of drifting raw icons.
+- **Visual polish (ProjectPickerSheet).** Footer button now aligns with the inputs, the doubled bottom inset is gone (smaller footer, button lower), the sheet is a touch taller so the location row is reachable with the keyboard up, the avatar "+" badge is now a **black circle with a white +**, and the "ფოტოს დამატება" label lost its icon and is black/medium.
+
+Best-effort throughout — a geocoding miss never blocks creating/saving a project. Rate-limit caveat in [README Known Issues](../README.md#known-issues).
+
+---
+
+## 2026-06-18 — Scaffold row footer: keyboard-aware status chips
+
+The scaffold grid-row step (`ScaffoldFooterButtons`) now mirrors the yes/no answer buttons when the row comment is being typed. While the keyboard is open the two detail statuses (**აღენიშნება დაზიანება** / **გამართულია**) collapse into mini chips side by side, and the **არ გააჩნია** option is hidden — there is no reason to write a comment for a part you don't have. Tapping a status dismisses the keyboard, restoring the full-size footer (and the **შემდეგი** button). Driven by a new `compact={keyboardOpen}` prop wired from `InspectionWizard.tsx`.
+
+---
+
+## 2026-06-18 — Project-screen onboarding tour rewritten for the new layout
+
+The project-detail coachmark tour (`project_screen_v1`) still pointed at the old layout and read thin — its second step ("ბრძანებები / ფაილები") and the "tap card to edit" hint no longer matched the redesigned screen, and it never mentioned the new **QuickActions** row that is now the main hub.
+
+- **Re-pointed steps.** The tour now walks: **project card** → **სწრაფი ქმედებები** (QuickActions row, new) → **ჩანაწერების ისტორია** (section cards) → **გუნდი** (participants). The files-section step was dropped; a `quickActionsRef` was added to the QuickActions wrapper.
+- **Better copy.** Each step body now describes what the area actually does (e.g. edit via the top-right pencil, one-tap creation of inspection/incident/briefing/report/file, auto-fill of crew into acts). Strings live under `projects.tour*` in `locales/ka.json`.
+- **Tour bumped to `project_screen_v2`** so users who dismissed the old tour see the refreshed one once.
+
+---
+
+## 2026-06-18 — Qualifications screen redesign: thumbnail grid
+
+The qualifications/certificates screen (`app/qualifications/index.tsx`) was reworked to match the rest of the app and surface the uploaded documents themselves.
+
+- **Thumbnail grid instead of a list.** Required certificate types now render as a 2-column grid of cards. A filled card shows the document **thumbnail** with edit + delete actions overlaid; an empty slot is a single dashed upload card (`ატვირთვა`) — the only dashed element left on the screen (was: every row dashed).
+- **Custom-cert entry on top.** A "სხვა ნებისმიერი სერტიფიკატი" row opens the add sheet for an arbitrary cert (`general` type).
+- **Edit support.** `AddQualificationSheet` gained an `existing` prop — tapping edit reopens it prefilled and upserts in place (reusing the row id + keeping the photo if none is re-picked).
+- **Consistent chrome.** The native `Stack` header is hidden in favour of a custom header using the new shared [`HeaderBackButton`](../components/HeaderBackButton.tsx) (the 38px circular back button extracted from `FlowHeader`, now reused instead of re-inlined). The "სავალდებულო სერტიფიკატები" section title and the floating `+` button were removed.
 
 ---
 

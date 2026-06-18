@@ -10,7 +10,7 @@ import Svg, { Path } from 'react-native-svg';
  * @param color  fill color. Default graphite `#1A1A1A`; pass white on the orange badge.
  * @returns a react-native-svg element (no side effects).
  */
-export function HubbleMark({ size = 28, color = '#1A1A1A' }: { size?: number; color?: string }) {
+export function HubbleMark({ size = 28, color = '#E6FF4D' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 250 250">
       <Path

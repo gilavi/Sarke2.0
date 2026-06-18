@@ -146,8 +146,8 @@ export default function MoreScreen() {
           <HubTile
             title={t('more.history')}
             icon={Clock}
-            tint={theme.colors.inkSoft}
-            bg={theme.colors.subtleSurface}
+            tint={theme.colors.accent}
+            bg={theme.colors.accentSoft}
             primary={loaded ? `${counts.total}` : null}
             secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t, i18n.language) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
@@ -155,8 +155,8 @@ export default function MoreScreen() {
           <HubTile
             title={t('more.qualifications')}
             icon={Award}
-            tint={theme.colors.inkSoft}
-            bg={theme.colors.subtleSurface}
+            tint={theme.colors.certTint}
+            bg={theme.colors.certSoft}
             primary={loaded ? `${certs.length}` : null}
             secondary={loaded ? (expiring > 0 ? t('more.expiringCount', { count: expiring }) : certs.length === 0 ? t('more.uploadPrompt') : t('more.allActive')) : null}
             badge={loaded && expiring > 0 ? t('more.expiringCount', { count: expiring }) : undefined}
@@ -165,8 +165,8 @@ export default function MoreScreen() {
           <HubTile
             title={t('more.templates')}
             icon={FileText}
-            tint={theme.colors.inkSoft}
-            bg={theme.colors.subtleSurface}
+            tint={theme.colors.harnessTint}
+            bg={theme.colors.harnessSoft}
             primary={loaded ? `${templates.length}` : null}
             secondary={loaded ? (systemTpl === templates.length ? t('more.system') : `${systemTpl} ${t('more.system')}`) : null}
             onPress={() => router.push('/templates')}
@@ -174,8 +174,8 @@ export default function MoreScreen() {
           <HubTile
             title={t('more.regulations')}
             icon={BookOpen}
-            tint={theme.colors.inkSoft}
-            bg={theme.colors.subtleSurface}
+            tint={theme.colors.regsTint}
+            bg={theme.colors.regsSoft}
             primary={String(REGULATIONS.length)}
             secondary={t('more.document')}
             onPress={() => router.push('/(tabs)/regulations')}
@@ -183,16 +183,15 @@ export default function MoreScreen() {
         </View>
 
         {/* Settings */}
+        <Text style={styles.settingsSectionTitle}>{t('more.settings')}</Text>
         <Card style={[styles.settingsCard, { marginHorizontal: 16 }]}>
-          <Text style={styles.settingsHeader}>{t('more.settings')}</Text>
-
           <View style={styles.settingsRow}>
             <Moon size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>{t('more.darkMode')}</Text>
             <Switch
               value={isDark}
               onValueChange={onToggleDark}
-              trackColor={{ false: theme.colors.hairline, true: theme.colors.accent }}
+              trackColor={{ false: theme.colors.inkFaint, true: theme.colors.accent }}
               thumbColor={theme.colors.white}
             />
           </View>
@@ -226,6 +225,7 @@ export default function MoreScreen() {
           <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y('ხარაჩო 3D გიდი', undefined, 'button')}>
             <Box size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>ხარაჩო 3D გიდი</Text>
+            <Badge variant="default" size="sm">BETA</Badge>
             <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <View style={styles.divider} />
@@ -236,6 +236,7 @@ export default function MoreScreen() {
           >
             <Box size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.settingsLabel}>3D Safety Guide / 3D უსაფრთხოების გიდი</Text>
+            <Badge variant="default" size="sm">BETA</Badge>
             <ExternalLink size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <View style={styles.divider} />
@@ -545,12 +546,20 @@ function getStyles(theme: Theme) {
       paddingTop: 8,
       paddingBottom: 4,
     },
+    settingsSectionTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      fontFamily: theme.typography.fontFamily.display,
+      color: theme.colors.ink,
+      paddingHorizontal: 16,
+      marginBottom: 10,
+    },
     settingsRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
       paddingHorizontal: 16,
-      paddingVertical: 14,
+      paddingVertical: 18,
     },
     settingsLabel: {
       flex: 1,

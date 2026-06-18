@@ -4,8 +4,8 @@
 // outline buttons (Certificates · Signatures) side by side above the
 // full-width green Download button. The caller is responsible for building
 // the preview HTML (each flow has its own PDF builder) and for the actual
-// download action - this component only owns the UI shell, the
-// certificates action sheet, the signatures modal + state, and the limit-notice
+// download action - this component only owns the UI shell, navigating to the
+// certificates screen, the signatures modal + state, and the limit-notice
 // modal.
 //
 // Signatures are owned here, not by the wizard. `useSignaturesState` lives
@@ -18,7 +18,7 @@
 // component state only. No persistence path lives in this file. See
 // features/signatures/AGENTS.md.
 
-import { createElement, useCallback, useMemo, useState } from 'react';
+import { createElement, useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -26,13 +26,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { CircleAlert, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
-import { CertificatesActionSheet } from './CertificatesActionSheet';
-import { useBottomSheet } from './BottomSheet';
+import { consumeCertsDirty } from '../lib/certDirty';
 import { SubscriptionNotice } from './SubscriptionNotice';
 import { useTheme } from '../lib/theme';
 import { SkeletonPreview } from './Skeleton';
@@ -95,7 +94,7 @@ export function InspectionResultView(props: Props) {
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const showSheet = useBottomSheet();
+  const router = useRouter();
 
   // Signatures state - local to this result view. Lost when it unmounts.
   const signatures = useSignaturesState();
@@ -110,16 +109,21 @@ export function InspectionResultView(props: Props) {
   );
 
   const openCertificatesSheet = () => {
-    showSheet({
-      content: ({ dismiss }) => (
-        <CertificatesActionSheet
-          inspectionId={inspectionId}
-          onClose={dismiss}
-          onChanged={onSheetSaved}
-        />
-      ),
-    });
+    router.push(`/inspections/${inspectionId}/certificates` as never);
   };
+
+  // Certificates is now a pushed screen. On return, rebuild the preview only if
+  // a cert was actually saved/deleted (skips the first focus on mount).
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      if (consumeCertsDirty(inspectionId)) onSheetSaved();
+    }, [inspectionId, onSheetSaved]),
+  );
 
   const certBadge = attachmentCount > 0 ? `(${attachmentCount})` : '';
 

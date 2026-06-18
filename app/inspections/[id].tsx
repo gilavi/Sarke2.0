@@ -2,7 +2,7 @@
 //
 // Live PDF preview as the main content (full-screen WebView). Two buttons in
 // the bottom bar:
-//   - სერტიფიკატები: opens CertificatesActionSheet
+//   - სერტიფიკატები: pushes the /inspections/[id]/certificates screen
 //   - გადმოწერა:    renders the same HTML through expo-print and shares
 //
 // Signatures are captured on this screen via features/signatures/SignaturesScreen
@@ -19,14 +19,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CircleAlert, CloudOff, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
-import { CertificatesActionSheet } from '../../components/CertificatesActionSheet';
-import { useBottomSheet } from '../../components/BottomSheet';
+import { consumeCertsDirty } from '../../lib/certDirty';
 import {
   SignaturesScreen,
   useSignaturesState,
@@ -82,7 +81,6 @@ export default function InspectionResultScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const showSheet = useBottomSheet();
 
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -332,16 +330,21 @@ export default function InspectionResultScreen() {
 
   const openCertificatesSheet = useCallback(() => {
     if (!inspection) return;
-    showSheet({
-      content: ({ dismiss }) => (
-        <CertificatesActionSheet
-          inspectionId={inspection.id}
-          onClose={dismiss}
-          onChanged={() => void refreshAfterSheetSave()}
-        />
-      ),
-    });
-  }, [inspection, showSheet, refreshAfterSheetSave]);
+    router.push(`/inspections/${inspection.id}/certificates` as never);
+  }, [inspection, router]);
+
+  // Certificates is now a pushed screen. On return, refetch attachments and
+  // rebuild the preview only if a cert was actually saved/deleted.
+  const certFirstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (certFirstFocus.current) {
+        certFirstFocus.current = false;
+        return;
+      }
+      if (inspection && consumeCertsDirty(inspection.id)) void refreshAfterSheetSave();
+    }, [inspection, refreshAfterSheetSave]),
+  );
 
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;

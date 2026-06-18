@@ -7,8 +7,8 @@ import {
 
 describe('qualificationTypes', () => {
   describe('REQUIRED_TYPES', () => {
-    it('contains the expected 5 entries', () => {
-      expect(REQUIRED_TYPES).toHaveLength(5);
+    it('contains the expected 4 entries', () => {
+      expect(REQUIRED_TYPES).toHaveLength(4);
     });
 
     it('each entry has a non-empty value and label', () => {
@@ -28,11 +28,10 @@ describe('qualificationTypes', () => {
     });
 
     it('contains every known value', () => {
-      expect(REQUIRED_TYPE_VALUES.has('xaracho_inspector')).toBe(true);
-      expect(REQUIRED_TYPE_VALUES.has('harness_inspector')).toBe(true);
-      expect(REQUIRED_TYPE_VALUES.has('tbd_3')).toBe(true);
-      expect(REQUIRED_TYPE_VALUES.has('tbd_4')).toBe(true);
-      expect(REQUIRED_TYPE_VALUES.has('tbd_5')).toBe(true);
+      expect(REQUIRED_TYPE_VALUES.has('xaracho_specialist')).toBe(true);
+      expect(REQUIRED_TYPE_VALUES.has('labor_safety_specialist')).toBe(true);
+      expect(REQUIRED_TYPE_VALUES.has('electrician')).toBe(true);
+      expect(REQUIRED_TYPE_VALUES.has('rigger')).toBe(true);
     });
 
     it('does not contain unknown values', () => {
@@ -42,11 +41,10 @@ describe('qualificationTypes', () => {
 
   describe('labelForType', () => {
     it('returns the Georgian label for known values', () => {
-      expect(labelForType('xaracho_inspector')).toBe('ხარაჩოს ინსპექტორი');
-      expect(labelForType('harness_inspector')).toBe('ქამრების ინსპექტორი');
-      expect(labelForType('tbd_3')).toBe('TBD 3');
-      expect(labelForType('tbd_4')).toBe('TBD 4');
-      expect(labelForType('tbd_5')).toBe('TBD 5');
+      expect(labelForType('xaracho_specialist')).toBe('ხარაჩოს სპეციალისტის სერტიფიკატი');
+      expect(labelForType('labor_safety_specialist')).toBe('შრომის უსაფრთხოების სპეციალისტის სერტიფიკატი');
+      expect(labelForType('electrician')).toBe('ელექტრიკის სერტიფიკატი');
+      expect(labelForType('rigger')).toBe('მეჯამბარის სერტიფიკატი');
     });
 
     it('falls through to the raw value for unknown types', () => {

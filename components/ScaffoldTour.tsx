@@ -11,13 +11,21 @@ import {
 } from 'react-native';
 import { FlatList } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowRight } from 'lucide-react-native';
+import { ArrowRight, BookOpen } from 'lucide-react-native';
 import { QuestionAvatar } from './QuestionAvatar';
+import { HeaderBackButton } from './HeaderBackButton';
+import { HeaderCloseButton } from './HeaderCloseButton';
 import { SCAFFOLD_HELP, ScaffoldHelpEntry } from '../lib/scaffoldHelp';
 import { useTheme } from '../lib/theme';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
+/**
+ * One-time, **optional** intro carousel shown before the first xaracho
+ * (scaffold) inspection. It is a help guide, not a required step — the user
+ * can dismiss it any time via the ✕ in the header. `onClose` both closes the
+ * modal and is what the wizard uses to mark the tour seen.
+ */
 export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<ScaffoldHelpEntry>>(null);
@@ -46,6 +54,10 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
     }
   };
 
+  const goPrev = () => {
+    if (index > 0) listRef.current?.scrollToIndex({ index: index - 1, animated: true });
+  };
+
   const isLast = index === SCAFFOLD_HELP.length - 1;
   const total = SCAFFOLD_HELP.length;
 
@@ -58,23 +70,29 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
     >
       <View style={styles.root}>
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          {/* Header: back (hidden on first slide) · "guide" pill · close (✕) */}
           <View style={styles.header}>
-            <Text style={styles.stepCounter}>
-              {index + 1} / {total}
-            </Text>
-            <Pressable
-              onPress={onClose}
-              hitSlop={12}
-              style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.7 }]}
-              accessibilityLabel="გამოტოვება"
-            >
-              <Text style={styles.skipText}>გამოტოვება</Text>
-            </Pressable>
+            <View style={styles.headerSide}>
+              {index > 0 ? <HeaderBackButton onPress={goPrev} /> : null}
+            </View>
+
+            <View style={styles.guidePill}>
+              <BookOpen size={14} color={theme.colors.accent} strokeWidth={2} />
+              <Text style={styles.guidePillText}>გზამკვლევი</Text>
+            </View>
+
+            <View style={[styles.headerSide, styles.headerSideRight]}>
+              <HeaderCloseButton onPress={onClose} />
+            </View>
           </View>
 
-          <Text style={styles.intro}>
-            გაიცანით ხარაჩოს კომპონენტები შემოწმების აქტამდე
-          </Text>
+          {/* Framing: makes clear this is optional help, not a required step. */}
+          <View style={styles.intro}>
+            <Text style={styles.introTitle}>ხარაჩოს კომპონენტები</Text>
+            <Text style={styles.introCopy}>
+              გაიცანით კომპონენტები შემოწმებამდე — არასავალდებულოა, შეგიძლიათ გამოტოვოთ.
+            </Text>
+          </View>
 
           <FlatList
             ref={listRef}
@@ -111,9 +129,11 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
             onPress={goNext}
             style={({ pressed }) => [styles.btn, pressed && { opacity: 0.85 }]}
           >
-            <Text style={styles.btnText}>{isLast ? 'დაწყება' : 'შემდეგი'}</Text>
+            <Text style={styles.btnText}>
+              {isLast ? 'შემოწმების დაწყება' : `შემდეგი · ${index + 1}/${total}`}
+            </Text>
             {!isLast ? (
-              <ArrowRight size={18} color={theme.colors.white} strokeWidth={1.5} style={{ marginLeft: 6 }} />
+              <ArrowRight size={18} color={theme.colors.white} strokeWidth={2} style={{ marginLeft: 6 }} />
             ) : null}
           </Pressable>
         </View>
@@ -132,33 +152,49 @@ function makeStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingTop: 8,
-      paddingBottom: 4,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 8,
     },
-    stepCounter: {
+    headerSide: {
+      width: 38,
+      alignItems: 'flex-start',
+    },
+    headerSideRight: {
+      alignItems: 'flex-end',
+    },
+    guidePill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accentSoft,
+    },
+    guidePillText: {
       fontSize: 13,
       fontWeight: '700',
       color: theme.colors.accent,
     },
-    skipBtn: {
-      paddingVertical: 4,
-      paddingHorizontal: 4,
-    },
-    skipText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.inkSoft,
-      textDecorationLine: 'underline',
-    },
     intro: {
-      fontSize: 13,
-      color: theme.colors.accent,
+      paddingHorizontal: 28,
+      paddingTop: 8,
+      paddingBottom: 16,
+      alignItems: 'center',
+      gap: 6,
+    },
+    introTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: theme.colors.ink,
       textAlign: 'center',
-      paddingHorizontal: 24,
-      paddingTop: 6,
-      paddingBottom: 12,
-      fontWeight: '600',
+    },
+    introCopy: {
+      fontSize: 13,
+      lineHeight: 19,
+      color: theme.colors.inkSoft,
+      textAlign: 'center',
     },
     page: {
       paddingHorizontal: 20,
@@ -172,12 +208,13 @@ function makeStyles(theme: any) {
       paddingVertical: 28,
       paddingHorizontal: 22,
       alignItems: 'center',
-      gap: 16,
+      justifyContent: 'center',
+      gap: 18,
       borderWidth: 1,
       borderColor: theme.colors.border,
     },
     illustrationWrap: {
-      marginTop: 4,
+      marginBottom: 4,
     },
     name: {
       fontSize: 22,
@@ -205,7 +242,7 @@ function makeStyles(theme: any) {
       justifyContent: 'center',
       alignItems: 'center',
       gap: 8,
-      paddingVertical: 14,
+      paddingVertical: 16,
     },
     dot: {
       width: 7,

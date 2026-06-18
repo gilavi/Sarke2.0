@@ -30,7 +30,7 @@ const STORAGE_KEY = 'theme_dark';
 function resolveMode(stored: string | null): ThemeMode {
   if (stored === 'true') return 'dark';
   if (stored === 'false') return 'light';
-  return 'system';
+  return 'dark';
 }
 
 function resolveIsDark(mode: ThemeMode): boolean {
@@ -40,7 +40,7 @@ function resolveIsDark(mode: ThemeMode): boolean {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('dark');
   const [loaded, setLoaded] = useState(false);
   // Bumped by the OS appearance listener so `isDark` recomputes when the
   // system flips light/dark while the app is open. Plain `setModeState((m) => m)`

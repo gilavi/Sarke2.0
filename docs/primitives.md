@@ -126,7 +126,9 @@ Shared step-flow chrome lives in [`components/wizard/`](../components/wizard/). 
 
 | Component | Export | Purpose |
 |---|---|---|
-| [components/FlowHeader.tsx](../components/FlowHeader.tsx) | `FlowHeader` | Header for all inspection / briefing / incident flows: project name subtitle, circular back + circular close buttons, thin **ink (monochrome)** progress bar + `step / total` counter. `trailingElement` renders alongside the close ✕ when `trailing="close"` (e.g. a PDF icon next to the X), or on its own with `trailing="none"`. |
+| [components/FlowHeader.tsx](../components/FlowHeader.tsx) | `FlowHeader` | Header for all inspection / briefing / incident flows: project name subtitle, circular back + circular close buttons, thin **ink (monochrome)** progress bar + `step / total` counter. `trailingElement` renders alongside the close ✕ when `trailing="close"` (e.g. a PDF icon next to the X), or on its own with `trailing="none"`. The circular back button itself is `HeaderBackButton` (see below). |
+| [components/HeaderBackButton.tsx](../components/HeaderBackButton.tsx) | `HeaderBackButton` | The 38px circular, icon-only `ChevronLeft` back button — extracted from `FlowHeader` so non-flow stacked screens that render their own header (e.g. `app/qualifications`) reuse the exact circle/border/icon treatment instead of re-inlining it. Defaults `onPress` to `router.back()`; accepts `disabled`. **Don't** hand-roll another `circleBtn` Pressable for a back affordance. (Note: `HeaderBackPill` is the separate **text** "‹ უკან" pill — different control.) |
+| [components/HeaderCloseButton.tsx](../components/HeaderCloseButton.tsx) | `HeaderCloseButton` | The 38px circular, icon-only `X` close button — the sibling of `HeaderBackButton`. The single owner of the flow/sheet close affordance: used by `FlowHeader` (`trailing="close"`), `SheetLayout`'s `{ title, onClose }` header, and the map-picker overlays. **Don't** inline a raw `<Pressable><X/></Pressable>` for a dismiss control — the bordered-circle treatment had already drifted (inkSoft vs ink, 22 vs 24px, with/without border) across the project sheets this consolidated. |
 | [components/wizard/StatusChip.tsx](../components/wizard/StatusChip.tsx) | `StatusChip` | **Monochrome** single-select answer control — the shared building block for every inspection answer surface (yes/no, 3-state good/deficient/unusable, harness chips, verdict pills). Selected = **solid ink fill** (`inverse.background`) + inverted light content; unselected = hairline outline + `surface` + muted content. Built on the theme `inverse` palette so the fill stays legible in dark mode. Severity is carried by the icon (`✓/⚠/✗`) + label, never color. `layout="pill"` (stacked, big yes/no) or `"chip"` (compact row). |
 | [components/inspection-parts/ChecklistItemRow.tsx](../components/inspection-parts/ChecklistItemRow.tsx) | `ChecklistItemRow` | **Canonical "one item in a several-items-on-one-page checklist" row.** Label + inline `HelpIcon` on the left, a cluster of `StatusChip`s on the right (2 = harness ✓/✗; 3–4 = equipment ratings incl. N/A). Neutral (no chip filled) by default; tapping the selected chip clears to null. `dense` for 3–4 options. No per-row note/photo — problem detail lives on the conclusion step. Harness `ChipRow`, equipment `ChecklistRow`, and `ChecklistItem` are all thin adapters over this. |
 | [components/inspection-parts/ChecklistLegend.tsx](../components/inspection-parts/ChecklistLegend.tsx) | `ChecklistLegend` | Quiet monochrome key pairing each answer chip's glyph (shown filled) with its Georgian label. Render above a `ChecklistItemRow` list. |
@@ -296,6 +298,21 @@ Field error support already exists on the primitives — wire them, don't rebuil
 **Keep `disabled` only for non-input reasons:** in-flight guards (`loading`/`saving`/`busy`/`completing`/`generating`/`sharing` — double-submit protection) and data-not-loaded guards (`!briefing || !project`, reorder `index === 0`, OTP-resend cooldown). Never re-add `disabled={!isValid}` for a missing-input gate.
 
 Optional companion for long forms: [`hooks/useScrollToError.ts`](../hooks/useScrollToError.ts) — attach `scrollRef` to a `ScrollView`, `registerField('key')` on each field's wrapper, and pass `scrollToFirstError(keys)` as `guard`'s `onInvalid` to bring the first red field into view. Best-effort; short single-column forms don't need it.
+
+## Geocoding (address ↔ map pin)
+
+One file: [lib/geocode.ts](../lib/geocode.ts). Exports `forwardGeocode(query, signal?)` (address → coordinate), `reverseGeocode(lat, lng, signal?)` (coordinate → address string), and `coordsLabel(loc)` (the "lat, lng" fallback). Both geocoders go through the public **OpenStreetMap Nominatim** HTTP API (Georgia-biased, single result), accept an `AbortSignal`, and return `null` on miss/error — never throw, so geocoding is always best-effort.
+
+Native geocoding via `expo-location` was deliberately dropped in 2026-06 (to remove the location-permission prompt). **Don't** re-add `expo-location` or call `fetch('https://nominatim…')` inline — use these helpers (the web dashboard's `AddressInput.tsx` is a parallel HTML/Leaflet implementation that predates this and stays separate). Nominatim is rate-limited; callers debounce + abort, and there's a production-scale caveat in [README.md](../README.md#known-issues).
+
+Two consumers keep the address text and the map pin in sync:
+
+| Use case | Owner |
+|---|---|
+| Address field that moves the pin as you type | [`components/inputs/GeocodingAddressInput.tsx`](../components/inputs/GeocodingAddressInput.tsx) — `FloatingLabelInput` + a **focused**, debounced `forwardGeocode`; calls `onPin(loc)` on a match, surfaces "searching/not found" via `helper`. The focus guard stops it fighting a pin the map just reverse-geocoded back into `value`. |
+| Map overlay search + tap-to-fill-address | [`components/MapPicker.tsx`](../components/MapPicker.tsx) — search box forward-geocodes (drops the pin), tapping/dragging the pin reverse-geocodes into the address field. |
+
+Used by all three project forms (`components/home/ProjectPickerSheet.tsx`, `app/(tabs)/projects.tsx`, `components/projects/EditProjectSheet.tsx`). **Don't** add a second debounced-geocode hook in a screen — render `GeocodingAddressInput` for the address field and let `MapPicker` own the in-map sync.
 
 ## Adding a new primitive
 

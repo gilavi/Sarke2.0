@@ -14,8 +14,8 @@ import { a11y } from '../lib/accessibility';
  */
 export const PROJECT_AVATAR_BG = '#ECFA44';
 export const PROJECT_AVATAR_FG = '#000000';
-/** Primary orange - used only for the editable-overlay action badge. */
-const PROJECT_AVATAR_BADGE = '#FF6D2E';
+/** Editable-overlay action badge: black circle + white +/pencil, white ring. */
+const PROJECT_AVATAR_BADGE = '#000000';
 
 /**
  * First two characters of the project name, uppercased with the Georgian

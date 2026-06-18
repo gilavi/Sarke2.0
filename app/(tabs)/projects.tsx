@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { List, LayoutGrid, MapPin, X, Trash2, ChevronRight, Building2 } from 'lucide-react-native';
+import { List, LayoutGrid, MapPin, Trash2, ChevronRight, Building2 } from 'lucide-react-native';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -22,6 +22,8 @@ import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { pickProjectLogo } from '../../lib/projectLogo';
 import { Button, Card } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
+import { GeocodingAddressInput } from '../../components/inputs/GeocodingAddressInput';
+import { HeaderCloseButton } from '../../components/HeaderCloseButton';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
@@ -420,7 +422,7 @@ function CreateProjectSheet({
                   />
                   {logo ? (
                     <Pressable onPress={onPickLogo} hitSlop={13} {...a11y(t('projects.changePhoto'), 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
-                      <A11yText size="sm" weight="semibold" color={theme.colors.accent}>
+                      <A11yText size="sm" weight="medium" color={theme.colors.ink}>
                         {t('projects.changePhoto')}
                       </A11yText>
                     </Pressable>
@@ -436,10 +438,11 @@ function CreateProjectSheet({
                   autoFocus
                 />
 
-                <FloatingLabelInput
+                <GeocodingAddressInput
                   label={t('common.address')}
                   value={address}
                   onChangeText={setAddress}
+                  onPin={setPin}
                   rightIcon={MapPin}
                   onRightIconPress={() => { Keyboard.dismiss(); setMapVisible(true); }}
                 />
@@ -459,13 +462,11 @@ function CreateProjectSheet({
           <View style={StyleSheet.absoluteFillObject}>
             <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingVertical: 12 }}>
-                <View style={{ width: 24 }} />
+                <View style={{ width: 38 }} />
                 <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
                   მდებარეობის არჩევა
                 </Text>
-                <Pressable onPress={() => setMapVisible(false)} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
-                  <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
-                </Pressable>
+                <HeaderCloseButton onPress={() => setMapVisible(false)} />
               </View>
               <MapPickerInline
                 initialPin={pin}

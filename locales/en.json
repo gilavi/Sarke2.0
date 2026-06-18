@@ -1,4 +1,8 @@
 {
+  "geocode": {
+    "searching": "Searching for address…",
+    "notFound": "Address not found on the map"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -589,6 +593,7 @@
     "infoObject": "Object",
     "infoHarness": "Harness name",
     "infoStatus": "Status",
+    "verdictLabel": "Assessment",
     "conclusionTitle": "Conclusion",
     "signaturesTitle": "Signatures",
     "commentLabel": "Comment",

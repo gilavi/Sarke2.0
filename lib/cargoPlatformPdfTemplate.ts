@@ -92,7 +92,6 @@ const CSS = `
     background: var(--accent); display: flex; align-items: center;
     justify-content: center; flex-shrink: 0;
   }
-  .logo-text { color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 0.5px; }
   .project-name { font-size: 12px; font-weight: 600; color: var(--inkSoft); max-width: 160px; }
   .header-center { text-align: center; }
   .doc-title { font-size: 14px; font-weight: 800; color: var(--ink); line-height: 1.3; }
@@ -251,7 +250,7 @@ export function buildCargoPlatformPdfTemplate(args: {
   const headerHtml = `
     <div class="header">
       <div class="header-left">
-        <div class="logo-box"><span class="logo-text">SR</span></div>
+        <div class="logo-box"><svg viewBox="0 0 250 250" width="28" height="28" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M247.544 81.6992C246.188 81.6992 245.088 82.7986 245.088 84.155C245.088 92.1243 243.912 99.9743 241.592 107.489C233.871 132.582 214.282 152.172 189.189 159.892L189.187 159.893C181.675 162.213 173.822 163.389 165.845 163.389H43.3007C19.4248 163.389 0 182.818 0 206.699C0 230.581 19.4248 250 43.3007 250C67.1766 250 86.611 230.575 86.611 206.699C86.611 185.526 103.832 168.3 125 168.3C146.168 168.3 163.389 185.526 163.389 206.699C163.389 230.575 182.818 250 206.699 250C230.581 250 250 230.575 250 206.699V84.1551C250 82.7987 248.901 81.6992 247.544 81.6992Z"/><path d="M2.4558 168.3C3.8122 168.3 4.9116 167.201 4.9116 165.844C4.9116 157.872 6.0877 150.022 8.4082 142.509C12.1706 130.258 18.9873 118.955 28.1208 109.821C37.2264 100.715 48.4953 93.9112 60.7167 90.1392C60.756 90.1291 60.7934 90.1186 60.8318 90.1066C68.344 87.787 76.1911 86.6109 84.1551 86.6109H206.699C230.575 86.6109 250 67.1818 250 43.3002C250 19.4186 230.575 0 206.699 0C182.823 0 163.389 19.4243 163.389 43.3002C163.389 64.4738 146.168 81.6993 125 81.6993C103.832 81.6993 86.6108 64.4737 86.6108 43.3002C86.6109 19.4243 67.1823 0 43.3007 0C19.4191 0 0 19.4243 0 43.3002V165.844C0 167.201 1.0994 168.3 2.4558 168.3Z"/></svg></div>
         <div class="project-name">${escHtml(projectName)}</div>
       </div>
       <div class="header-center">

@@ -22,6 +22,7 @@ import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { REQUIRED_TYPES } from '../../lib/qualificationTypes';
+import type { Qualification } from '../../types/models';
 
 const TYPES: { value: string; label: string }[] = [
   ...REQUIRED_TYPES,
@@ -38,11 +39,14 @@ function toISO(d: Date) {
 export default function AddQualificationSheet({
   visible,
   initialType,
+  existing,
   onClose,
   onSaved,
 }: {
   visible: boolean;
   initialType?: string;
+  /** When set, the sheet edits this qualification in place (reuses its id). */
+  existing?: Qualification | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -50,7 +54,7 @@ export default function AddQualificationSheet({
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { pickPhoto: pickPhotoFromLibrary } = usePhotoPicker();
 
-  const [type, setType] = useState(initialType ?? 'xaracho_inspector');
+  const [type, setType] = useState(initialType ?? 'xaracho_specialist');
   const [number, setNumber] = useState('');
   const [issued, setIssued] = useState(new Date());
   const [expires, setExpires] = useState(() => {
@@ -62,19 +66,32 @@ export default function AddQualificationSheet({
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState<'issued' | 'expires' | null>(null);
 
-  // Reset form whenever the sheet (re-)opens.
+  // Reset form whenever the sheet (re-)opens. When `existing` is passed we
+  // prefill from it and edit in place; otherwise it's a fresh add.
   useEffect(() => {
-    if (visible) {
-      setType(initialType && TYPES.some(t => t.value === initialType) ? initialType : 'xaracho_inspector');
+    if (!visible) return;
+    if (existing) {
+      setType(existing.type);
+      setNumber(existing.number ?? '');
+      setIssued(existing.issued_at ? new Date(existing.issued_at) : new Date());
+      if (existing.expires_at) {
+        setExpires(new Date(existing.expires_at));
+      } else {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() + 1);
+        setExpires(d);
+      }
+    } else {
+      setType(initialType && TYPES.some(t => t.value === initialType) ? initialType : 'xaracho_specialist');
       setNumber('');
       setIssued(new Date());
       const d = new Date();
       d.setFullYear(d.getFullYear() + 1);
       setExpires(d);
-      setPhotoUri(null);
-      setPicker(null);
     }
-  }, [visible, initialType]);
+    setPhotoUri(null);
+    setPicker(null);
+  }, [visible, initialType, existing]);
 
   const pickPhoto = async () => {
     // Must use pickPhoto (ImagePicker directly) - this component is a Modal and
@@ -89,14 +106,15 @@ export default function AddQualificationSheet({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('არ ხართ შესული');
-      let filePath: string | null = null;
+      // Keep the existing photo when editing without picking a new one.
+      let filePath: string | null = existing?.file_url ?? null;
       if (photoUri) {
         const path = `${user.id}/${Date.now()}.jpg`;
         await storageApi.uploadFromUri(STORAGE_BUCKETS.certificates, path, photoUri, 'image/jpeg', 'qualification');
         filePath = path;
       }
       await qualificationsApi.upsert({
-        id: crypto.randomUUID(),
+        id: existing?.id ?? crypto.randomUUID(),
         user_id: user.id,
         type,
         number: number || null,
@@ -118,11 +136,17 @@ export default function AddQualificationSheet({
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.handle} />
           <SheetLayout
-            header={{ title: 'ახალი სერტიფიკატი', onClose }}
+            header={{ title: existing ? 'სერტიფიკატის რედაქტირება' : 'ახალი სერტიფიკატი', onClose }}
             footer={
               <View style={{ gap: 10 }}>
                 <Button
-                  title={photoUri ? '✓ ფოტო არჩეულია - შეცვლა' : 'სერტიფიკატის ფოტო'}
+                  title={
+                    photoUri
+                      ? '✓ ფოტო არჩეულია - შეცვლა'
+                      : existing?.file_url
+                        ? 'ფოტოს შეცვლა'
+                        : 'სერტიფიკატის ფოტო'
+                  }
                   variant="secondary"
                   onPress={pickPhoto}
                 />

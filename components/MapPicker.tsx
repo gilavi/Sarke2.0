@@ -1,5 +1,6 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   TextInput,
@@ -8,8 +9,9 @@ import {
 import { A11yText as Text } from './primitives/A11yText';
 import MapView, { Marker, type Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import { MapPin, Hand, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
-
+import { forwardGeocode, reverseGeocode, coordsLabel } from '../lib/geocode';
 import { a11y } from '../lib/accessibility';
 
 export type LatLng = { latitude: number; longitude: number };
@@ -41,9 +43,18 @@ const PIN_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
 
 export function MapPicker({ value, onChange, address, onAddressChange, height = 220 }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const mapRef = useRef<MapView | null>(null);
+  // Geocoding runs over the public Nominatim HTTP API (lib/geocode.ts) — the
+  // pin and the address text stay in sync without re-adding expo-location.
+  const [searching, setSearching] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const fwdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fwdAbort = useRef<AbortController | null>(null);
+  const revAbort = useRef<AbortController | null>(null);
+  const focusedRef = useRef(false);
 
   // When `value` changes from outside, animate the map to it.
   useEffect(() => {
@@ -52,15 +63,66 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
     }
   }, [value]);
 
-  // Geocoding was removed with the expo-location dependency (2026-06 -
-  // location permission dropped app-wide). The address field is plain text;
-  // the pin is set by tapping/dragging the map.
+  // Cancel any in-flight geocode + timer on unmount.
+  useEffect(() => () => {
+    if (fwdTimer.current) clearTimeout(fwdTimer.current);
+    fwdAbort.current?.abort();
+    revAbort.current?.abort();
+  }, []);
+
+  // Reverse sync (pin → address): tapping/dragging the pin reverse-geocodes the
+  // coordinate into the address field. Falls back to a "lat, lng" label.
+  const reverseFill = (coord: LatLng) => {
+    revAbort.current?.abort();
+    const ac = new AbortController();
+    revAbort.current = ac;
+    setNotFound(false);
+    setSearching(true);
+    reverseGeocode(coord.latitude, coord.longitude, ac.signal).then((name) => {
+      if (ac.signal.aborted) return;
+      setSearching(false);
+      onAddressChange(name ?? coordsLabel(coord));
+    });
+  };
+
   const handleMapPress = (e: { nativeEvent: { coordinate: LatLng } }) => {
-    onChange(e.nativeEvent.coordinate);
+    const coord = e.nativeEvent.coordinate;
+    onChange(coord);
+    reverseFill(coord);
   };
 
   const handleDragEnd = (e: { nativeEvent: { coordinate: LatLng } }) => {
-    onChange(e.nativeEvent.coordinate);
+    const coord = e.nativeEvent.coordinate;
+    onChange(coord);
+    reverseFill(coord);
+  };
+
+  // Forward sync (address → pin): the search box geocodes the typed text and
+  // drops the pin there. Debounced while focused so reverse-written text (the
+  // pin path above, which lands while the box is blurred) never fights back.
+  const runForward = (text: string) => {
+    const q = text.trim();
+    if (q.length < 5) return;
+    fwdAbort.current?.abort();
+    const ac = new AbortController();
+    fwdAbort.current = ac;
+    setNotFound(false);
+    setSearching(true);
+    forwardGeocode(q, ac.signal).then((hit) => {
+      if (ac.signal.aborted) return;
+      setSearching(false);
+      if (hit) onChange({ latitude: hit.latitude, longitude: hit.longitude });
+      else setNotFound(true);
+    });
+  };
+
+  const handleSearchChange = (text: string) => {
+    onAddressChange(text);
+    setNotFound(false);
+    if (fwdTimer.current) clearTimeout(fwdTimer.current);
+    fwdTimer.current = setTimeout(() => {
+      if (focusedRef.current) runForward(text);
+    }, 800);
   };
 
   const initialRegion: Region = value
@@ -73,12 +135,22 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
         <MapPin size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
         <TextInput
           value={address}
-          onChangeText={onAddressChange}
+          onChangeText={handleSearchChange}
+          onFocus={() => { focusedRef.current = true; }}
+          onBlur={() => { focusedRef.current = false; }}
+          onSubmitEditing={() => runForward(address)}
+          returnKeyType="search"
           placeholder="მისამართი"
           placeholderTextColor={theme.colors.inkFaint}
           style={styles.searchInput}
         />
+        {searching ? <ActivityIndicator size="small" color={theme.colors.inkFaint} /> : null}
       </View>
+      {notFound ? (
+        <Text style={styles.searchErr}>{t('geocode.notFound')}</Text>
+      ) : searching ? (
+        <Text style={[styles.searchErr, { color: theme.colors.inkFaint }]}>{t('geocode.searching')}</Text>
+      ) : null}
       <View style={[styles.mapWrap, { height }]} collapsable={false}>
         <MapView
           ref={mapRef}

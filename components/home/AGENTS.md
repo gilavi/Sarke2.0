@@ -26,8 +26,16 @@ navigating into a project detail screen.
   a racy pre-JWT call) and the empty-state card flashes in place of
   the skeleton until pull-to-refresh. See CLAUDE.md "Loading states"
   and docs/reports/BUG_REPORT.md "Home shows empty projects after first login".
+- `ProjectPickerSheet`'s new-project form keeps the address text and
+  the map pin in sync: the address field is `GeocodingAddressInput`
+  (type → pin) and the map overlay's `MapPicker` reverse-geocodes a
+  tapped pin → address. Don't reach for `expo-location` (removed
+  2026-06) — geocoding is the Nominatim HTTP path in `lib/geocode.ts`.
+  The header back/✕ are the shared `HeaderBackButton` /
+  `HeaderCloseButton`, not raw icons.
 
 ## Canonical helpers used
-- `lib/theme`, `lib/services`.
+- `lib/theme`, `lib/services`, `lib/geocode`.
 - `components/BottomSheet`, `components/primitives/A11yText`,
-  `components/ProjectAvatar`.
+  `components/ProjectAvatar`, `components/HeaderBackButton`,
+  `components/HeaderCloseButton`, `components/inputs/GeocodingAddressInput`.

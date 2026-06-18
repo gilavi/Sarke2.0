@@ -26,10 +26,17 @@ lives in `components/` root; project-detail-only views live here.
 - `EditProjectSheet` calls `pickProjectLogo` from `lib/projectLogo`
   (the canonical project logo pipeline) — don't reach for
   `expo-image-picker` directly.
+- `EditProjectSheet`'s address field is `GeocodingAddressInput`
+  (type → pin) and its map overlay's `MapPicker` reverse-geocodes a
+  tapped pin → address. Geocoding is the Nominatim HTTP path in
+  `lib/geocode.ts` (no `expo-location`). Header ✕ comes from
+  `SheetLayout` (now the shared `HeaderCloseButton`).
 
 ## Canonical helpers used
 - `lib/services` — `projectsApi`.
 - `lib/projectLogo` — `pickProjectLogo`.
+- `lib/geocode` — forward/reverse geocoding.
 - `lib/theme`, `lib/toast`, `lib/errorMap`, `lib/accessibility`.
 - `components/BottomSheet`, `components/MapPicker`,
+  `components/inputs/GeocodingAddressInput`,
   `components/primitives/A11yText`.

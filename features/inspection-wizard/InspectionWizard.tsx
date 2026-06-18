@@ -422,14 +422,14 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                 answer={answers[step.question.id]}
                 onAnswer={patchAnswer}
                 onAdvance={goNext}
+                compact={keyboardOpen}
               />
             ) : keyboardOpen ? null : (
               <Button
-                title={stepAnswered || lockUnanswered ? 'შემდეგი' : 'გამოტოვება'}
-                variant={stepAnswered || lockUnanswered ? 'primary' : 'secondary'}
+                title="გაგრძელება"
+                variant="primary"
                 size="lg"
                 style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}
-                rightIcon={stepAnswered ? ChevronRight : undefined}
                 onPress={() => guard(!lockUnanswered, goNext)}
               />
             )}
