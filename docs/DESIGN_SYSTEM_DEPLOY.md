@@ -1,48 +1,54 @@
-# Design System Deploy — `ds.hubble.ge`
+# Design System Deploy
 
-The design-system Storybook ([design-system/](../design-system/)) is built and
-deployed by [.github/workflows/deploy-design-system.yml](../.github/workflows/deploy-design-system.yml)
-on every push to `main` that touches `design-system/`, `components/primitives/`,
-or `lib/`.
+The design-system Storybook ([design-system/](../design-system/)) is published to
+a **separate repo, `gilavi/hubble-ds`**, via GitHub Pages.
 
-**Why Cloudflare Pages (not GitHub Pages):** GitHub Pages allows only one custom
-domain per repo, and that's already `hubble.ge` (the `web/` signing app on the
-`gh-pages` branch). `ds.hubble.ge` is a separate subdomain, so it needs a
-separate host. Cloudflare Pages is free and makes custom subdomains trivial.
+**Live now:** https://gilavi.github.io/hubble-ds/ (no DNS needed).
+**Target vanity URL:** https://ds.hubble.ge (needs one DNS record — see below).
 
-Until the steps below are done, the workflow still runs as a **build check** — it
-compiles the Storybook on every relevant push but skips the upload (the deploy
-step is gated on the `CLOUDFLARE_API_TOKEN` secret).
+## Why a separate repo
 
-## External steps (Luka — one time)
+GitHub Pages allows only one custom domain per repo, and this repo's Pages
+already serves `hubble.ge` (the `web/` signing app) plus `/app/` and `/docs/`.
+A subdomain needs its own Pages site, so the design system lives in its own repo.
+This also isolates it from the live dashboard's `gh-pages` branch — deploying the
+design system can never affect hubble.ge.
 
-1. **Create a Cloudflare Pages project**
-   - Cloudflare dashboard → Workers & Pages → Create → Pages → *Direct Upload* (CI
-     uploads the build; no Git connection needed).
-   - Project name: **`hubble-ds`** (must match `--project-name=hubble-ds` in the workflow).
+## Auto-deploy (already wired)
 
-2. **Create an API token** (Cloudflare → My Profile → API Tokens → Create Token)
-   - Template: *Edit Cloudflare Workers* — or a custom token with permission
-     **Account → Cloudflare Pages → Edit**.
-   - Copy the token value, and note your **Account ID** (Workers & Pages → right sidebar).
+[.github/workflows/deploy-design-system.yml](../.github/workflows/deploy-design-system.yml)
+runs on every push to **`develop`** that touches `design-system/`, `components/`,
+or `lib/`. It builds the Storybook and publishes the static export to
+`gilavi/hubble-ds`'s `gh-pages` branch using the `HUBBLE_DS_DEPLOY_KEY` secret
+(an SSH deploy key with write access to that repo — already configured).
 
-3. **Add the two GitHub repo secrets** (repo → Settings → Secrets and variables → Actions)
-   - `CLOUDFLARE_API_TOKEN` = the token from step 2
-   - `CLOUDFLARE_ACCOUNT_ID` = your account ID
+No Cloudflare account, API token, or manual steps are needed for ongoing updates.
 
-4. **Point the subdomain at the project**
-   - First deploy: re-run the workflow (Actions → *Deploy design system* →
-     *Run workflow*) or push any change under the watched paths. It publishes to
-     `https://hubble-ds.pages.dev`.
-   - Cloudflare → the `hubble-ds` project → *Custom domains* → add **`ds.hubble.ge`**.
-   - DNS: if `hubble.ge` is on Cloudflare DNS, the custom-domain flow adds the
-     `CNAME ds → hubble-ds.pages.dev` automatically. If DNS is elsewhere (e.g. the
-     same registrar serving the GitHub Pages `hubble.ge`), add a `CNAME` record:
-     `ds` → `hubble-ds.pages.dev`.
+## Turning on ds.hubble.ge (one-time, needs YOU)
 
-That's it — subsequent pushes auto-deploy. The existing `hubble.ge`,
-`hubble.ge/app/`, and `hubble.ge/docs/` on GitHub Pages are untouched (this is a
-different host and a different subdomain).
+The site already works at the github.io URL. To serve it at `ds.hubble.ge`:
+
+1. **Add a DNS record** wherever `hubble.ge`'s DNS is managed (registrar or
+   Cloudflare DNS):
+
+   ```
+   CNAME   ds   gilavi.github.io
+   ```
+
+   (This is the only step that can't be automated — it's domain config, not code.)
+
+2. **Set the custom domain on the Pages site.** Either:
+   - Repo `gilavi/hubble-ds` → Settings → Pages → Custom domain → `ds.hubble.ge` → Save; or
+   - run: `gh api -X PUT repos/gilavi/hubble-ds/pages -f cname=ds.hubble.ge -F https_enforced=true`
+
+   GitHub writes a `CNAME` file and auto-provisions HTTPS once DNS resolves.
+
+3. **(Optional) make CI keep the CNAME.** In the workflow's publish step, add
+   `cname: ds.hubble.ge` so re-deploys preserve the custom domain. The Storybook
+   build uses relative asset paths, so it works at both the github.io subpath and
+   the domain root with no rebuild.
+
+Until step 1 propagates, keep using https://gilavi.github.io/hubble-ds/.
 
 ## Local preview
 

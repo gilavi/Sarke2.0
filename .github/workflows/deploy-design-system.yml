@@ -1,24 +1,29 @@
 name: Deploy design system
 
 # Builds the design-system/ Storybook (which renders the real RN primitives via
-# react-native-web) and deploys the static export to Cloudflare Pages, served at
-# ds.hubble.ge.
+# react-native-web) and publishes the static export to the SEPARATE repo
+# gilavi/hubble-ds (its gh-pages branch), served at https://gilavi.github.io/hubble-ds/
+# and — once DNS is added — https://ds.hubble.ge.
 #
-# Why Cloudflare Pages and not gh-pages: GitHub Pages allows only ONE custom
-# domain per repo, already used by hubble.ge (the web/ signing app). ds.hubble.ge
-# is a separate subdomain, so it lives on a separate host.
+# Why a separate repo: GitHub Pages allows only one custom domain per repo, and
+# this repo's Pages already serves hubble.ge. Keeping the design system in its
+# own repo also isolates it from the live dashboard's gh-pages branch.
 #
-# The deploy step is gated on the CLOUDFLARE_API_TOKEN secret, so until Luka
-# completes the external setup (see docs/DESIGN_SYSTEM_DEPLOY.md) this workflow
-# still runs as a BUILD CHECK on every relevant push, it just skips the upload.
+# Cross-repo publish uses the HUBBLE_DS_DEPLOY_KEY secret (an SSH deploy key with
+# write access to gilavi/hubble-ds). The deploy step is gated on that secret, so
+# the workflow still runs as a BUILD CHECK if the key is ever absent.
+#
+# Triggers on develop (the design system lives on develop and is NOT merged to
+# main per the project's branching choice).
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - 'design-system/**'
       - 'components/primitives/**'
-      - 'lib/**' # token source + theme + the helpers the primitives import
+      - 'components/**'
+      - 'lib/**'
       - '.github/workflows/deploy-design-system.yml'
   workflow_dispatch: {}
 
@@ -33,8 +38,7 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     env:
-      # Secrets can't be referenced directly in step `if:`; surface as env first.
-      HAS_CF: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      HAS_KEY: ${{ secrets.HUBBLE_DS_DEPLOY_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,10 +47,9 @@ jobs:
           node-version: '20'
           cache: npm
 
-      # The universal primitives import react-native / reanimated / svg from the
-      # ROOT node_modules (the design-system resolves them by walking up), so the
-      # Storybook build needs both installs. This keeps the showcase pinned to the
-      # exact same dependency versions the Expo app ships.
+      # The universal components import react-native / reanimated / svg from the
+      # ROOT node_modules (resolved by walking up), so the build needs both
+      # installs — this pins the showcase to the exact versions the app ships.
       - name: Install root dependencies
         run: |
           if [ -f package-lock.json ]; then
@@ -68,14 +71,19 @@ jobs:
         working-directory: design-system
         run: npm run build
 
-      - name: Deploy to Cloudflare Pages
-        if: env.HAS_CF == 'true'
-        uses: cloudflare/wrangler-action@v3
+      - name: Publish to gilavi/hubble-ds (gh-pages)
+        if: env.HAS_KEY == 'true'
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy design-system/dist --project-name=hubble-ds --branch=main
+          deploy_key: ${{ secrets.HUBBLE_DS_DEPLOY_KEY }}
+          external_repository: gilavi/hubble-ds
+          publish_branch: gh-pages
+          publish_dir: ./design-system/dist
+          # Add a CNAME file here (cname: ds.hubble.ge) once the DNS record for
+          # ds.hubble.ge exists — see docs/DESIGN_SYSTEM_DEPLOY.md. Until then the
+          # site is served at https://gilavi.github.io/hubble-ds/.
+          enable_jekyll: false
 
       - name: Note (deploy skipped)
-        if: env.HAS_CF != 'true'
-        run: echo "CLOUDFLARE_API_TOKEN not set — built only, skipped deploy. See docs/DESIGN_SYSTEM_DEPLOY.md."
+        if: env.HAS_KEY != 'true'
+        run: echo "HUBBLE_DS_DEPLOY_KEY not set — built only, skipped deploy. See docs/DESIGN_SYSTEM_DEPLOY.md."
