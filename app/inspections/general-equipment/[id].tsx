@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CirclePlus, Info, Camera, CircleX, Check, X, TriangleAlert } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { Button } from '../../../components/primitives/Button';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
@@ -408,14 +409,14 @@ export default function GeneralEquipmentScreen() {
               />
             ))}
             <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>
-              <Pressable
-                style={styles.addRowBtn}
+              <Button
+                title="აღჭურვილობის დამატება"
+                variant="ghost"
+                size="sm"
+                leftIcon={CirclePlus}
                 onPress={addEquipmentRow}
-                {...a11y('აღჭ. დამატება', '+ აღჭურვილობის სტრიქონის დამატება', 'button')}
-              >
-                <CirclePlus size={18} color={theme.colors.accent} strokeWidth={1.5} />
-                <Text style={styles.addRowText}>+ აღჭურვილობის დამატება</Text>
-              </Pressable>
+                style={{ alignSelf: 'flex-start', marginTop: 4 }}
+              />
               {filledCount === 0 && (
                 <View style={styles.emptyHint}>
                   <Info size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />

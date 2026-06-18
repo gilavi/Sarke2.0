@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
+import { Selector, type SelectorOption } from '../ui/Selector';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
@@ -45,6 +46,13 @@ export interface IdentificationGridProps {
   allowUnknown?: boolean;
 }
 
+/** Build canonical Selector options from the parallel options/optionLabels arrays. */
+function toOptions(field: IdentificationField): SelectorOption[] {
+  const options = field.options ?? [];
+  const labels = field.optionLabels ?? options;
+  return options.map((value, i) => ({ value, label: labels[i] ?? value }));
+}
+
 export function IdentificationGrid({
   fields,
   columns = 2,
@@ -57,173 +65,75 @@ export function IdentificationGrid({
 
   return (
     <View style={styles.grid}>
-      {fields.map((field, idx) => (
-        <View
-          key={idx}
-          // chips/select fields span full width for readability
-          style={[styles.item, { width: field.type === 'chips' || field.type === 'select' ? '100%' : itemWidth }]}
-        >
-          {field.type === 'select' ? (
-            <SelectField field={field} />
-          ) : field.type === 'chips' ? (
-            field.multiSelect
-              ? <MultiChipsField field={field} />
-              : <ChipsField field={field} />
-          ) : (
-            <View style={styles.textFieldWrap}>
-              <FloatingLabelInput
+      {fields.map((field, idx) => {
+        const isSelector = field.type === 'chips' || field.type === 'select';
+        const isMulti = field.type === 'chips' && field.multiSelect;
+        const otherActive = field.otherOptionValue ? (field.values ?? []).includes(field.otherOptionValue) : false;
+
+        return (
+          <View
+            key={idx}
+            // chips/select fields span full width for readability
+            style={[styles.item, { width: isSelector ? '100%' : itemWidth }]}
+          >
+            {field.type === 'select' || (field.type === 'chips' && !field.multiSelect) ? (
+              <Selector
                 label={field.label}
-                value={field.unknown ? '' : field.value}
-                onChangeText={field.onChange ?? (() => {})}
-                keyboardType={field.type === 'number' ? 'decimal-pad' : 'default'}
-                editable={!field.unknown && !!field.onChange}
+                presentation={field.type === 'select' ? 'rows' : 'chips'}
+                options={toOptions(field)}
+                value={field.value}
+                onChange={(v) => field.onChange?.(v)}
               />
-              {allowUnknown && field.onUnknownChange ? (
-                <Pressable
-                  style={styles.unknownRow}
-                  onPress={() => {
-                    haptic.light();
-                    field.onUnknownChange?.(!field.unknown);
-                  }}
-                  {...a11y('მონაცემი ვერ დგინდება', undefined, 'checkbox')}
-                >
-                  <View style={[styles.checkbox, field.unknown && styles.checkboxActive]}>
-                    {field.unknown && <View style={styles.checkboxInner} />}
-                  </View>
-                  <Text style={styles.unknownLabel}>მონაცემი ვერ დგინდება</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ── Single-select "form selector" - full-width selectable list rows ──────────
-
-function SelectField({ field }: { field: IdentificationField }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const options = field.options ?? [];
-  const labels = field.optionLabels ?? options;
-
-  return (
-    <View style={styles.chipsGroup}>
-      <Text style={styles.chipsLabel}>{field.label}</Text>
-      <View style={styles.selectList}>
-        {options.map((opt, i) => {
-          const active = field.value === opt;
-          return (
-            <Pressable
-              key={opt}
-              style={[styles.selectRow, active && styles.selectRowActive]}
-              onPress={() => {
-                haptic.light();
-                field.onChange?.(opt);
-              }}
-              {...a11y(labels[i] ?? opt, undefined, 'radio')}
-            >
-              <Text style={[styles.selectRowText, active && styles.selectRowTextActive]}>
-                {labels[i] ?? opt}
-              </Text>
-              <View style={[styles.radio, active && styles.radioActive]}>
-                {active && <View style={styles.radioDot} />}
+            ) : field.type === 'chips' && field.multiSelect ? (
+              <View style={styles.multiWrap}>
+                <Selector
+                  mode="multi"
+                  label={field.label}
+                  presentation="chips"
+                  options={toOptions(field)}
+                  values={field.values ?? []}
+                  onValuesChange={(vals) => field.onValuesChange?.(vals)}
+                />
+                {otherActive && field.onOtherValueChange ? (
+                  <FloatingLabelInput
+                    label={`${field.otherOptionValue} - კონკრეტული სახელი`}
+                    value={field.otherValue ?? ''}
+                    onChangeText={field.onOtherValueChange}
+                  />
+                ) : null}
               </View>
-            </Pressable>
-          );
-        })}
-      </View>
+            ) : (
+              <View style={styles.textFieldWrap}>
+                <FloatingLabelInput
+                  label={field.label}
+                  value={field.unknown ? '' : field.value}
+                  onChangeText={field.onChange ?? (() => {})}
+                  keyboardType={field.type === 'number' ? 'decimal-pad' : 'default'}
+                  editable={!field.unknown && !!field.onChange}
+                />
+                {allowUnknown && field.onUnknownChange ? (
+                  <Pressable
+                    style={styles.unknownRow}
+                    onPress={() => {
+                      haptic.light();
+                      field.onUnknownChange?.(!field.unknown);
+                    }}
+                    {...a11y('მონაცემი ვერ დგინდება', undefined, 'checkbox')}
+                  >
+                    <View style={[styles.checkbox, field.unknown && styles.checkboxActive]}>
+                      {field.unknown && <View style={styles.checkboxInner} />}
+                    </View>
+                    <Text style={styles.unknownLabel}>მონაცემი ვერ დგინდება</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
-
-// ── Single-select chips field ─────────────────────────────────────────────────
-
-function ChipsField({ field }: { field: IdentificationField }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const options = field.options ?? [];
-  const labels = field.optionLabels ?? options;
-
-  return (
-    <View style={styles.chipsGroup}>
-      <Text style={styles.chipsLabel}>{field.label}</Text>
-      <View style={styles.chipsRow}>
-        {options.map((opt, i) => {
-          const active = field.value === opt;
-          return (
-            <Pressable
-              key={opt}
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => {
-                haptic.light();
-                field.onChange?.(opt);
-              }}
-              {...a11y(labels[i] ?? opt, undefined, 'radio')}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {labels[i] ?? opt}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-// ── Multi-select chips field ──────────────────────────────────────────────────
-
-function MultiChipsField({ field }: { field: IdentificationField }) {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const options = field.options ?? [];
-  const labels = field.optionLabels ?? options;
-  const selected = field.values ?? [];
-  const otherActive = field.otherOptionValue ? selected.includes(field.otherOptionValue) : false;
-
-  const toggle = (opt: string) => {
-    haptic.light();
-    const next = selected.includes(opt)
-      ? selected.filter(v => v !== opt)
-      : [...selected, opt];
-    field.onValuesChange?.(next);
-  };
-
-  return (
-    <View style={styles.chipsGroup}>
-      <Text style={styles.chipsLabel}>{field.label}</Text>
-      <View style={styles.chipsRow}>
-        {options.map((opt, i) => {
-          const active = selected.includes(opt);
-          return (
-            <Pressable
-              key={opt}
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => toggle(opt)}
-              {...a11y(labels[i] ?? opt, undefined, 'checkbox')}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {active ? '✓ ' : ''}{labels[i] ?? opt}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      {otherActive && field.onOtherValueChange ? (
-        <FloatingLabelInput
-          label={`${field.otherOptionValue} - კონკრეტული სახელი`}
-          value={field.otherValue ?? ''}
-          onChangeText={field.onOtherValueChange}
-        />
-      ) : null}
-    </View>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
@@ -237,6 +147,7 @@ function getstyles(theme: Theme) {
       marginBottom: 12,
     },
     textFieldWrap: { gap: 2 },
+    multiWrap: { gap: 12 },
     unknownRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -265,62 +176,5 @@ function getstyles(theme: Theme) {
       backgroundColor: theme.colors.white,
     },
     unknownLabel: { fontSize: 11, color: theme.colors.inkSoft },
-    chipsGroup: { gap: 8 },
-    chipsLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-    selectList: { gap: 8 },
-    selectRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    selectRowActive: {
-      borderColor: theme.colors.ink,
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    selectRowText: { fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
-    selectRowTextActive: { color: theme.colors.ink, fontWeight: '700' },
-    radio: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 2,
-      borderColor: theme.colors.hairline,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    radioActive: { borderColor: theme.colors.ink },
-    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.ink },
-    chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 11,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    chipActive: {
-      borderColor: theme.colors.ink,
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    chipProblematic: {
-      borderColor: theme.colors.danger,
-      backgroundColor: theme.colors.dangerSoft,
-    },
-    chipWarning: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    chipText: { fontSize: 14, color: theme.colors.inkSoft },
-    chipTextActive: { color: theme.colors.ink, fontWeight: '700' },
-    chipTextProblematic: { color: theme.colors.danger, fontWeight: '700' },
-    chipTextWarning: { color: theme.colors.warn, fontWeight: '700' },
   });
 }

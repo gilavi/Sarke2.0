@@ -2,6 +2,7 @@ import { memo, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { CirclePlus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
+import { Button } from '../primitives/Button';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
@@ -64,14 +65,14 @@ export function DynamicTable({
         />
       ))}
 
-      <Pressable
-        style={styles.addBtn}
+      <Button
+        title="სტრიქონის დამატება"
+        variant="ghost"
+        size="sm"
+        leftIcon={CirclePlus}
         onPress={handleAdd}
-        {...a11y('სტრიქონის დამატება', undefined, 'button')}
-      >
-        <CirclePlus size={18} color={theme.colors.accent} strokeWidth={1.5} />
-        <Text style={styles.addText}>+ სტრიქონის დამატება</Text>
-      </Pressable>
+        style={styles.addBtn}
+      />
 
       {footer && <View style={styles.footer}>{footer}</View>}
     </View>
@@ -238,12 +239,9 @@ function getstyles(theme: Theme) {
     readonlyLabel: { fontSize: 10, color: theme.colors.inkFaint, marginBottom: 2 },
     readonlyValue: { fontSize: 13, color: theme.colors.ink, fontWeight: '600' },
     addBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingVertical: 12,
+      alignSelf: 'flex-start',
+      marginVertical: 8,
     },
-    addText: { fontSize: 13, color: theme.colors.accent, fontWeight: '600' },
     footer: {
       paddingVertical: 14,
       paddingHorizontal: 12,
