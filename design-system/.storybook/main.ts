@@ -61,6 +61,10 @@ const config: StorybookConfig = {
         dedupe: ['react', 'react-dom', 'react-native-web'],
         alias: [
           { find: 'expo-haptics', replacement: path.resolve(dirname, '../shims/expo-haptics.web.ts') },
+          // react-native-gesture-handler ships untranspiled .ts that the babel
+          // pass can't parse; we only need swipe-to-dismiss (non-essential on
+          // web), so stub it. Mirrors metro.config.js WEB_SHIMS.
+          { find: /^react-native-gesture-handler$/, replacement: path.resolve(dirname, '../shims/react-native-gesture-handler.web.tsx') },
           // Icons: map lucide-react-native → lucide-react (DOM SVG; same names/
           // props, avoids lucide-react-native's broken ESM barrel + react-native-svg).
           // Must be an ABSOLUTE path: components in ../components/ import lucide at

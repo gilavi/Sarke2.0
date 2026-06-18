@@ -1,8 +1,10 @@
 import React from 'react';
 import type { Preview } from '@storybook/react-native-web-vite';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeContext } from '@root/lib/ThemeContext';
 import { lightTheme, darkTheme, type Theme } from '@root/lib/theme';
+import { BottomSheetProvider } from '@root/components/BottomSheet';
 
 /** Controlled theme provider for Storybook — drives the real ThemeContext from
  *  the toolbar so light/dark switches deterministically (no AsyncStorage). */
@@ -41,13 +43,17 @@ const preview: Preview = {
       const mode = (ctx.globals.theme as 'light' | 'dark') || 'dark';
       const bg = mode === 'dark' ? '#000000' : '#FFFFFF';
       return (
-        <SafeAreaProvider>
-          <StorybookThemeProvider mode={mode}>
-            <div style={{ padding: 32, background: bg, minHeight: '100vh', boxSizing: 'border-box' }}>
-              <Story />
-            </div>
-          </StorybookThemeProvider>
-        </SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider>
+            <StorybookThemeProvider mode={mode}>
+              <BottomSheetProvider>
+                <div style={{ padding: 32, background: bg, minHeight: '100vh', boxSizing: 'border-box' }}>
+                  <Story />
+                </div>
+              </BottomSheetProvider>
+            </StorybookThemeProvider>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
       );
     },
   ],
