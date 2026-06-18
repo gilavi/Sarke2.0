@@ -17,9 +17,15 @@ The generic inspection PDF/act template ([lib/pdf/inspection/](../lib/pdf/inspec
 
 Plus two result-screen fixes ([app/inspections/[id].tsx](../app/inspections/[id].tsx), [components/InspectionResultView.tsx](../components/InspectionResultView.tsx)): the native "‹ უკან" back is replaced with the shared circular `HeaderBackButton` used by flow headers, and the share button is relabelled **გადმოწერა → გაზიარება** (the action is a native share, not a download — the icon was already `Share2`).
 
-## 2026-06-18 — Project card: radial gradient map mask
+## 2026-06-18 — Project card: monochrome map + radial mask + location dot
 
-The `ProjectCard` map thumbnail no longer sits under a flat 82% white wash. The overlay is now a `react-native-svg` **radial gradient** centered on the top-right corner — the map reads strongest there and fades into the card surface toward the bottom/left, keeping the name/address legible. The mask colour is `theme.colors.surface` (was hardcoded white), so it also behaves in dark mode. See [components/home/ProjectCard.tsx](../components/home/ProjectCard.tsx).
+The `ProjectCard` map thumbnail was restyled:
+
+- **Monochrome map.** A grey overlay blended in `mixBlendMode: 'saturation'` strips the map's colour (zeroes saturation, keeps hue/luminosity). The card uses `isolation: 'isolate'` to scope the blend. (An earlier `grayscale` style `filter` was dropped — RN filters don't composite over the native MapKit view.)
+- **Radial gradient mask.** The flat 82% white wash is replaced by a `react-native-svg` **radial gradient** (`gradientUnits="userSpaceOnUse"`) centred on the top-right corner: opacity ramps `0.08 → 0.6 → 1.0` of `theme.colors.surface`, so the map reads strongest top-right and fades to solid surface at the bottom-left (keeps the name/address legible, works in dark mode).
+- **Location dot.** A small (8px) orange dot (`theme.colors.accent`, white ring + soft shadow) biased toward the top-left, rendered above the mask so it stays vivid, with a gentle reanimated "breathing" scale/opacity pulse.
+
+See [components/home/ProjectCard.tsx](../components/home/ProjectCard.tsx).
 
 ## 2026-06-18 — Single project: skip the project-picker step
 
