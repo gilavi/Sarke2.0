@@ -1,5 +1,10 @@
 import '@testing-library/jest-dom/vitest';
 
+// React Native / react-native-web modules reference the global __DEV__ flag.
+if (typeof (globalThis as any).__DEV__ === 'undefined') {
+  (globalThis as any).__DEV__ = false;
+}
+
 // Mock global fetch for Supabase tests if needed
 if (!globalThis.fetch) {
   const { fetch } = require('cross-fetch');

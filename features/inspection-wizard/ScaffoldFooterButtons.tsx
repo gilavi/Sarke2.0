@@ -11,6 +11,7 @@ import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
 import type { Answer, GridValues, Question } from '../../types/models';
 import { getstyles, staticStyles } from './styles';
 import { scaffoldColStyle } from './wizardSchema';
+import { useMorphStage } from './useMorphStage';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -62,11 +63,12 @@ export function ScaffoldFooterButtons({
     });
   };
 
-  // One persistent button instance per status. `compact` (keyboard open) flips
-  // it between the big stacked option and the side-by-side chip; the shared
-  // `layout` transition morphs each button's frame instead of hard-swapping
-  // between two trees. Icons fade out in compact form (chips are label-only).
-  const layoutAnim = reduceMotion ? undefined : LinearTransition.duration(220);
+  // One persistent button instance per status. The morph between the big
+  // stacked option and the side-by-side chip is sequenced one property at a
+  // time (icons → shrink → rearrange) via useMorphStage, so the per-element
+  // `layout` transition only ever animates a single change at once.
+  const morph = useMorphStage(compact, reduceMotion);
+  const layoutAnim = reduceMotion ? undefined : LinearTransition.duration(160);
 
   const renderDetail = (col: string) => {
     const isSelected = selectedStatus === col;
@@ -84,7 +86,7 @@ export function ScaffoldFooterButtons({
           else if (compact) KeyboardController.dismiss();
         }}
         style={[
-          compact ? styles.statusChip : styles.statusOption,
+          morph.sized === 'chip' ? styles.statusChip : styles.statusOption,
           isSelected && {
             backgroundColor: theme.colors.inverse.background,
             borderColor: theme.colors.inverse.background,
@@ -92,7 +94,7 @@ export function ScaffoldFooterButtons({
         ]}
         {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
       >
-        {!compact ? (
+        {morph.showIcon ? (
           <Animated.View
             entering={reduceMotion ? undefined : FadeIn.duration(150)}
             exiting={reduceMotion ? undefined : FadeOut.duration(120)}
@@ -107,7 +109,7 @@ export function ScaffoldFooterButtons({
         ) : null}
         <Text
           style={[
-            compact ? staticStyles.statusChipText : staticStyles.statusOptionText,
+            morph.sized === 'chip' ? staticStyles.statusChipText : staticStyles.statusOptionText,
             { color: isSelected ? theme.colors.inverse.ink : theme.colors.inkSoft },
           ]}
         >
@@ -118,9 +120,9 @@ export function ScaffoldFooterButtons({
   };
 
   return (
-    <Animated.View layout={layoutAnim} style={compact ? styles.statusRow : staticStyles.gap8}>
+    <Animated.View layout={layoutAnim} style={morph.row ? styles.statusRow : staticStyles.gap8}>
       {detailCols.map(renderDetail)}
-      {!compact ? (
+      {morph.expanded ? (
         showDetails ? (
           <Animated.View
             key="next"

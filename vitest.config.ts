@@ -44,6 +44,9 @@ export default defineConfig({
       // reanimated v4 hangs on import under jsdom; alias it to an inert stub so
       // the real native/worklet graph never loads. See tests/mocks/reanimated-stub.ts.
       'react-native-reanimated': path.resolve(__dirname, 'tests/mocks/reanimated-stub.ts'),
+      // expo-haptics drags in ExpoModulesCore (needs the native bridge); stub it
+      // so components that reach haptics transitively still import under jsdom.
+      'expo-haptics': path.resolve(__dirname, 'tests/mocks/expo-haptics-stub.ts'),
     },
   },
 });

@@ -14,6 +14,12 @@ import { a11y } from '../lib/accessibility';
  */
 export const PROJECT_AVATAR_BG = '#ECFA44';
 export const PROJECT_AVATAR_FG = '#000000';
+/**
+ * A slightly darker shade of the avatar yellow, used as a soft hairline ring so
+ * the bright fill separates from light surfaces (e.g. the project card) without
+ * a harsh outline.
+ */
+export const PROJECT_AVATAR_BORDER = '#C8D52E';
 /** Editable-overlay action badge: black circle + white +/pencil, white ring. */
 const PROJECT_AVATAR_BADGE = '#000000';
 
@@ -66,6 +72,8 @@ export const ProjectAvatar = memo(function ProjectAvatar({
         height: size,
         borderRadius: r,
         backgroundColor: PROJECT_AVATAR_BG,
+        borderWidth: 1.5,
+        borderColor: PROJECT_AVATAR_BORDER,
         alignItems: 'center',
         justifyContent: 'center',
       }}

@@ -1,7 +1,15 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { useTheme, withOpacity } from '../../lib/theme';
@@ -23,6 +31,23 @@ export const ProjectCard = memo(function ProjectCard({
 }: ProjectCardProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
+
+  const hasLocation = project.latitude != null && project.longitude != null;
+
+  // Gentle "breathing" pulse for the location dot.
+  const breathe = useSharedValue(1);
+  useEffect(() => {
+    if (!hasLocation) return;
+    breathe.value = withRepeat(
+      withTiming(1.35, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
+  }, [hasLocation, breathe]);
+  const dotStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: breathe.value }],
+    opacity: interpolate(breathe.value, [1, 1.35], [1, 0.55]),
+  }));
 
   return (
     <Pressable
@@ -59,6 +84,9 @@ export const ProjectCard = memo(function ProjectCard({
               liteMode
               pointerEvents="none"
             />
+            {/* Strip the map's colour: a grey layer blended in 'saturation' mode
+                leaves the map's hue/luminosity but zeroes its saturation. */}
+            <View style={styles.mapDesaturate} pointerEvents="none" />
             <Svg
               width={width}
               height={PROJECT_CARD_HEIGHT}
@@ -73,8 +101,10 @@ export const ProjectCard = memo(function ProjectCard({
                   r={Math.hypot(width, PROJECT_CARD_HEIGHT)}
                   gradientUnits="userSpaceOnUse"
                 >
-                  <Stop offset="0" stopColor={theme.colors.surface} stopOpacity={0.08} />
-                  <Stop offset="0.55" stopColor={theme.colors.surface} stopOpacity={0.6} />
+                  <Stop offset="0" stopColor={theme.colors.surface} stopOpacity={0.3} />
+                  <Stop offset="0.2" stopColor={theme.colors.surface} stopOpacity={0.55} />
+                  <Stop offset="0.45" stopColor={theme.colors.surface} stopOpacity={0.78} />
+                  <Stop offset="0.7" stopColor={theme.colors.surface} stopOpacity={0.92} />
                   <Stop offset="1" stopColor={theme.colors.surface} stopOpacity={1} />
                 </RadialGradient>
               </Defs>
@@ -86,6 +116,7 @@ export const ProjectCard = memo(function ProjectCard({
                 fill={`url(#mapMask-${project.id})`}
               />
             </Svg>
+            <Animated.View style={[styles.locationDot, dotStyle]} pointerEvents="none" />
           </>
         )}
 
@@ -123,6 +154,32 @@ function getStyles(theme: any) {
       height: PROJECT_CARD_HEIGHT,
       overflow: 'hidden',
       position: 'relative',
+      // Scope the desaturation blend to this card only.
+      isolation: 'isolate',
+    },
+    mapDesaturate: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: '#808080',
+      mixBlendMode: 'saturation',
+    },
+    locationDot: {
+      position: 'absolute',
+      // Off-centre, biased toward the top-right. Tweak these two to move it.
+      left: '80%',
+      top: '30%',
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginLeft: -4,
+      marginTop: -4,
+      backgroundColor: theme.colors.accent,
+      borderWidth: 1.5,
+      borderColor: '#FFFFFF',
+      shadowColor: '#000000',
+      shadowOpacity: 0.3,
+      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 3,
     },
     projectName: {
       fontSize: 18,

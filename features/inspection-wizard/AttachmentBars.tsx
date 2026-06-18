@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Camera, Pencil, Plus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { PressableScale } from '../../components/animations/PressableScale';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import type { AnswerPhoto } from '../../types/models';
@@ -41,21 +42,18 @@ export function AttachmentBars({
 
   return (
     <View style={{ gap: 10 }}>
-      <Pressable
+      <PressableScale
         onPress={onPickPhoto}
-        style={({ pressed }) => [
-          styles.bar,
-          { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-          pressed && styles.barPressed,
-        ]}
         {...a11y('ფოტოს დამატება', 'შეეხეთ ფოტოს ასატვირთად', 'button')}
       >
-        <View style={styles.barLabel}>
-          <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>ფოტო</Text>
+        <View style={[styles.bar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+          <View style={styles.barLabel}>
+            <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
+            <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>ფოტო</Text>
+          </View>
+          <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </View>
-        <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
-      </Pressable>
+      </PressableScale>
 
       {hasPhotos ? (
         <ScrollView
@@ -83,23 +81,22 @@ export function AttachmentBars({
 
       {onNoteCommit ? (
         showNote ? (
-          <DebouncedNotes initial={note ?? null} onCommit={onNoteCommit} />
+          // autoFocus only when opened by tap (noteOpen) — a pre-existing note
+          // shown on mount shouldn't yank the keyboard open.
+          <DebouncedNotes initial={note ?? null} onCommit={onNoteCommit} autoFocus={noteOpen} />
         ) : (
-          <Pressable
+          <PressableScale
             onPress={() => setNoteOpen(true)}
-            style={({ pressed }) => [
-              styles.bar,
-              { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-              pressed && styles.barPressed,
-            ]}
             {...a11y('შენიშვნის დამატება', 'შეეხეთ შენიშვნის დასაწერად', 'button')}
           >
-            <View style={styles.barLabel}>
-              <Pencil size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
-              <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>შენიშვნა</Text>
+            <View style={[styles.bar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
+              <View style={styles.barLabel}>
+                <Pencil size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
+                <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>შენიშვნა</Text>
+              </View>
+              <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
             </View>
-            <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
-          </Pressable>
+          </PressableScale>
         )
       ) : null}
     </View>
@@ -117,10 +114,6 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderRadius: 14,
       borderWidth: 1.5,
       borderStyle: 'dashed',
-    },
-    barPressed: {
-      backgroundColor: theme.colors.subtleSurface,
-      borderColor: theme.colors.inkSoft,
     },
     barLabel: { flexDirection: 'row', alignItems: 'center', gap: 11 },
     barText: { fontSize: 15, fontWeight: '500' },

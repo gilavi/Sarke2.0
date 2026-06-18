@@ -8,9 +8,12 @@ import { getstyles } from './styles';
 export function DebouncedNotes({
   initial,
   onCommit,
+  autoFocus = false,
 }: {
   initial: string | null;
   onCommit: (value: string) => void;
+  /** Focus the field (and open the keyboard) on mount — set when opened by tap. */
+  autoFocus?: boolean;
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -63,6 +66,7 @@ export function DebouncedNotes({
         onEndEditing={() => onCommit(text)}
         multiline
         maxLength={500}
+        autoFocus={autoFocus}
         style={{ marginBottom: 4 }}
       />
       <Text style={[styles.label, { textAlign: 'right', marginBottom: 0 }]}>

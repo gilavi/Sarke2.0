@@ -23,7 +23,7 @@ The `ProjectCard` map thumbnail was restyled:
 
 - **Monochrome map.** A grey overlay blended in `mixBlendMode: 'saturation'` strips the map's colour (zeroes saturation, keeps hue/luminosity). The card uses `isolation: 'isolate'` to scope the blend. (An earlier `grayscale` style `filter` was dropped — RN filters don't composite over the native MapKit view.)
 - **Radial gradient mask.** The flat 82% white wash is replaced by a `react-native-svg` **radial gradient** (`gradientUnits="userSpaceOnUse"`) centred on the top-right corner: opacity ramps `0.08 → 0.6 → 1.0` of `theme.colors.surface`, so the map reads strongest top-right and fades to solid surface at the bottom-left (keeps the name/address legible, works in dark mode).
-- **Location dot.** A small (8px) orange dot (`theme.colors.accent`, white ring + soft shadow) biased toward the top-left, rendered above the mask so it stays vivid, with a gentle reanimated "breathing" scale/opacity pulse.
+- **Location dot.** A small (8px) orange dot (`theme.colors.accent`, white ring + soft shadow) biased toward the top-right, rendered above the mask so it stays vivid, with a gentle reanimated "breathing" scale/opacity pulse.
 
 See [components/home/ProjectCard.tsx](../components/home/ProjectCard.tsx).
 
