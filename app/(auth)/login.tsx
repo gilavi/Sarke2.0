@@ -524,7 +524,9 @@ function Header() {
 
   return (
     <View style={{ alignItems: 'center', gap: 8 }}>
-      <HubbleMark size={56} color={theme.colors.highlight} />
+      <View style={styles.logoBadge}>
+        <HubbleMark size={44} color={theme.colors.white} />
+      </View>
       <Text style={{ fontSize: 36, fontWeight: '900', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink }}>Hubble</Text>
       <Text style={{ color: theme.colors.inkSoft }}>{t('auth.tagline')}</Text>
     </View>
@@ -614,6 +616,18 @@ function getstyles(theme: any) {
     fontSize: 12,
     fontWeight: '600',
     color: theme.colors.accent,
+  },
+  logoBadge: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: theme.colors.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
   },
   scroll: { paddingHorizontal: 22, paddingTop: 40, paddingBottom: 40 },
   pickerWrap: {
