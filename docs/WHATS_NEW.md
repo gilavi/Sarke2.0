@@ -13,6 +13,10 @@ A report slide could hold one photo; now it holds **1 or 2** (hard cap at 2), an
 - **PDF** ([lib/reportPdf.ts](../lib/reportPdf.ts)) gained `two-side` and `two-stacked` layouts and embeds every photo on a slide. Existing single-photo reports render exactly as before.
 - **Data model** — `ReportSlide` now carries `images: SlideImage[]` + `layout`, with the old `image_path` / `annotated_image_path` kept as a back-compat mirror. Slides are JSON in `reports.slides`, so **no migration**. All readers go through the new canonical helpers in [lib/reportSlides.ts](../lib/reportSlides.ts) (`slideImages`, `slideLayout`, `withSlideImages`) — see [docs/primitives.md](primitives.md) "Report slide photos + layout".
 
+## 2026-06-19 — Photo uploads survive flaky connections
+
+The native uploader ([lib/services/real/storage.ts](../lib/services/real/storage.ts) `uploadFromUri`) now **retries once** when `FileSystem.uploadAsync` rejects at the connection layer (on iOS this is `NSURLErrorDomain Code=-1`, common on weak/unstable links). The upload is an idempotent upsert, so the retry is safe. Both the rejection and any non-2xx status are now logged to Sentry — previously native rejections threw **unlogged**, so they never showed up in telemetry. The user-facing toast for these failures is now the localized "ქსელის შეცდომა…" message instead of a raw `NSURLErrorDomain` dump ([lib/errorMap.ts](../lib/errorMap.ts)). Affects every photo/PDF/signature upload, not just reports.
+
 ## 2026-06-19 — Pull-to-refresh is now one reusable primitive
 
 Pull-to-refresh used to be copy-pasted boilerplate (`useState` + `onRefresh` + a `react-native` `RefreshControl` with a hand-typed `tintColor`) in ~13 screens, each free to drift on tint, haptic, or error handling. It's now a single design-system primitive.

@@ -25,9 +25,18 @@ export function friendlyError(err: unknown, fallback = 'უცნობი შ�
     lower.includes('fetch failed') ||
     lower.includes('failed to fetch') ||
     lower.includes('offline') ||
-    lower.includes('timeout')
+    lower.includes('timeout') ||
+    // Native iOS upload/connection failures from FileSystem.uploadAsync
+    // (NSURLErrorDomain). These never reach the server, so they are network
+    // errors — surface the localized message, not the raw NSError dump.
+    lower.includes('nsurlerrordomain') ||
+    lower.includes('unable to upload the file') ||
+    lower.includes('the network connection was lost') ||
+    lower.includes('the request timed out') ||
+    lower.includes('could not connect') ||
+    lower.includes('connection appears to be offline')
   )
-    return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი';
+    return 'ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი და სცადეთ თავიდან';
   if (lower.includes('cancelled') || lower.includes('canceled')) return 'ოპერაცია გაუქმდა';
   // Word-boundary the numeric codes so "4040" / "5040" don't false-positive.
   if (lower.includes('not found') || /\b404\b/.test(lower)) return 'მონაცემი ვერ მოიძებნა';

@@ -54,11 +54,38 @@ export const storageApi = {
       headers.Authorization = `Bearer ${session.access_token}`;
     }
     const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
-    const result = await FileSystem.uploadAsync(url, uploadUri, {
-      httpMethod: 'POST',
-      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-      headers,
-    });
+
+    // Native upload with one retry. `FileSystem.uploadAsync` can REJECT (not
+    // return a status) when the connection drops mid-flight — on iOS this
+    // surfaces as `NSURLErrorDomain Code=-1`, common on weak/unstable links.
+    // The upload is an idempotent upsert (x-upsert: true), so a single retry on
+    // a native rejection is safe and materially improves success on flaky
+    // networks. Both the rejection and a non-2xx status are logged (previously
+    // native rejections threw unlogged, so they never reached Sentry).
+    const doUpload = () =>
+      FileSystem.uploadAsync(url, uploadUri, {
+        httpMethod: 'POST',
+        uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers,
+      });
+
+    let result: FileSystem.FileSystemUploadResult;
+    try {
+      result = await doUpload();
+    } catch (e) {
+      logError(e, `storage.uploadFromUri native-reject (retrying) bucket=${bucket} path=${path}`);
+      try {
+        result = await doUpload();
+      } catch (e2) {
+        logError(e2, `storage.uploadFromUri native-reject (failed) bucket=${bucket} path=${path}`);
+        // Clean up the compressed temp file before bailing.
+        if (uploadUri !== fileUri) {
+          FileSystem.deleteAsync(uploadUri, { idempotent: true }).catch(() => {});
+        }
+        throw e2;
+      }
+    }
+
     // Clean up compressed temp file if different from original
     if (uploadUri !== fileUri) {
       FileSystem.deleteAsync(uploadUri, { idempotent: true }).catch(() => {});
