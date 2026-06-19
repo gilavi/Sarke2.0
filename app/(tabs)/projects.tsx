@@ -28,7 +28,7 @@ import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { SheetLayout } from '../../components/SheetLayout';
-import { PressableScale } from '../../components/animations/PressableScale';
+import { PressBounce } from '../../components/animations/PressBounce';
 import { a11y } from '../../lib/accessibility';
 import EmptyState from '../../components/EmptyState';
 import { Skeleton } from '../../components/Skeleton';
@@ -646,7 +646,7 @@ const ProjectRow = memo(function ProjectRow({
   if (isGrid) {
     return (
       <View ref={cardRef} collapsable={false} style={{ flex: 1 }}>
-        <PressableScale onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
+        <PressBounce onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
           <Card padding={12}>
             <View style={{ gap: 6 }}>
               <ProjectAvatar project={project} size={36} />
@@ -668,7 +668,7 @@ const ProjectRow = memo(function ProjectRow({
               </Text>
             </View>
           </Card>
-        </PressableScale>
+        </PressBounce>
       </View>
     );
   }
@@ -682,7 +682,7 @@ const ProjectRow = memo(function ProjectRow({
         overshootRight={false}
         onSwipeableWillOpen={onSwipeOpen}
       >
-        <PressableScale onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
+        <PressBounce onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
           <Card padding={14}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <ProjectAvatar project={project} size={44} />
@@ -707,7 +707,7 @@ const ProjectRow = memo(function ProjectRow({
               <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
             </View>
           </Card>
-        </PressableScale>
+        </PressBounce>
       </Swipeable>
     </View>
   );

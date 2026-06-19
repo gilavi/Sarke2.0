@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Camera, Pencil, Plus, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { PressableScale } from '../../components/animations/PressableScale';
+import { PressBounce } from '../../components/animations/PressBounce';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import type { AnswerPhoto } from '../../types/models';
@@ -42,7 +42,7 @@ export function AttachmentBars({
 
   return (
     <View style={{ gap: 10 }}>
-      <PressableScale
+      <PressBounce
         onPress={onPickPhoto}
         {...a11y('ფოტოს დამატება', 'შეეხეთ ფოტოს ასატვირთად', 'button')}
       >
@@ -53,7 +53,7 @@ export function AttachmentBars({
           </View>
           <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </View>
-      </PressableScale>
+      </PressBounce>
 
       {hasPhotos ? (
         <ScrollView
@@ -85,7 +85,7 @@ export function AttachmentBars({
           // shown on mount shouldn't yank the keyboard open.
           <DebouncedNotes initial={note ?? null} onCommit={onNoteCommit} autoFocus={noteOpen} />
         ) : (
-          <PressableScale
+          <PressBounce
             onPress={() => setNoteOpen(true)}
             {...a11y('შენიშვნის დამატება', 'შეეხეთ შენიშვნის დასაწერად', 'button')}
           >
@@ -96,7 +96,7 @@ export function AttachmentBars({
               </View>
               <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
             </View>
-          </PressableScale>
+          </PressBounce>
         )
       ) : null}
     </View>

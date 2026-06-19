@@ -28,6 +28,8 @@ rather than a bare `<TextInput>`.
 ## Internal files
 - `FloatingLabelInput.tsx`, `PlateInput.tsx`, `SerialKeypad.tsx`,
   `QuantitySelector.tsx`, `GeocodingAddressInput.tsx`.
+- `PlateCell.tsx` — one plate cell, extracted from `PlateInput` so each
+  cell owns its own animated border shared value.
 
 ## Gotchas / non-obvious things
 - `FloatingLabelInput` accepts `inputAccessoryViewID` and is the
@@ -36,6 +38,13 @@ rather than a bare `<TextInput>`.
 - `PlateInput` exposes an imperative ref (`PlateInputHandle`) for
   callers that need to `.focus()` programmatically — equipment routes
   use this to jump from "model" to "plate" automatically.
+- Animations: `SerialKeypad` keys + `QuantitySelector` preset chips use
+  [`PressBounce`](../animations/PressBounce.tsx) (keys are punchy, `scaleTo 0.90`).
+  `PlateInput`'s active cell fades its ink border in (`PlateCell`, `withTiming` on a
+  `subtleSurface`→`ink` interpolation to dodge the `transparent`-tint issue) and the
+  caret fades in once — **no press-bounce** (a cell tap is focus, not a discrete press).
+  `FloatingLabelInput` tweens its focus border color via legacy `Animated` (the file has
+  no reanimated). All honour reduce-motion.
 
 ## Canonical helpers used
 - `lib/theme`, `lib/haptics`.

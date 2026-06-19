@@ -27,9 +27,15 @@ Local legacy helpers (split from the original `components/ui.tsx`):
   bottom-sheet behaviour.
 
 ## Internal files
-One file per export above, plus `index.ts`.
+One file per export above, plus `index.ts`. `Selector` splits its mapped
+options into `SelectorOption.tsx` (`SelectorOptionChip` + `SelectorOptionRow`)
+so each option can own its own press/selection animated values.
 
 ## Gotchas / non-obvious things
+- `Selector` options carry the canonical press squish ([`PressBounce`](../animations/PressBounce.tsx))
+  + a selection spring-in ([`useSelectionPop`](../animations/useSelectionPop.ts)) + a 150ms
+  border/fill tween. The per-option shared values live in `SelectorOption.tsx` (a `.map()` can't
+  call hooks); the parent passes `styles`/`theme` down. `CustomDropdown`'s trigger uses `PressBounce`.
 - `SectionHeader` (legacy here) and `SectionHeaderNew` (the newer
   modular header at `components/SectionHeader.tsx`) coexist. New
   call sites should import `SectionHeaderNew` (or the newer

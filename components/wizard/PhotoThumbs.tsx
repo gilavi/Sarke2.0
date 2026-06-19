@@ -7,7 +7,7 @@ import { useTheme, type Theme } from '../../lib/theme';
 
 import { haptic } from '../../lib/haptics';
 import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
-import { PressableScale } from '../animations/PressableScale';
+import { PressBounce } from '../animations/PressBounce';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import type { AnswerPhoto } from '../../types/models';
@@ -43,7 +43,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
 
   return (
     <>
-      <PressableScale onPress={() => onView(photo)} hapticOnPress="light" scaleTo={0.95}>
+      <PressBounce onPress={() => onView(photo)} hapticOnPress="light" scaleTo={0.95}>
         {loadError ? (
           <Pressable onPress={fetchUri} style={[styles.thumb, { alignItems: 'center', justifyContent: 'center' }]}>
             <RefreshCw size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
@@ -55,7 +55,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
             <ActivityIndicator color={theme.colors.inkSoft} />
           </View>
         )}
-      </PressableScale>
+      </PressBounce>
       <Pressable
         onPress={() => onDelete(photo)}
         style={styles.deleteBtn}

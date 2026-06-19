@@ -3,7 +3,7 @@
  *
  * The real module pulls in ExpoModulesCore, which throws under jsdom/node (it
  * expects React Native's native bridge + `__DEV__`). Anything that reaches
- * haptics transitively (e.g. PressableScale → lib/haptics) would fail to import
+ * haptics transitively (e.g. PressBounce → lib/haptics) would fail to import
  * a component under test. Aliased in vitest.config.ts; every call is an inert
  * resolved promise.
  */

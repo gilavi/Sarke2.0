@@ -1,8 +1,19 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-18 | Branch: `gio-design-update-2.0`
+**Updated:** 2026-06-19 | Branch: `develop`
 
 ---
+
+## 2026-06-19 — Design system: every tappable control gets the canonical press + selection feel
+
+The buttons already shared one press "bounce" (`usePressBounce`); now every other interactive DS control does too, so the whole app clicks with the same snappy-but-premium motion. Hover is intentionally ignored (mobile-first) — **press** is the gold.
+
+- **New `PressBounce` wrapper** ([components/animations/PressBounce.tsx](../components/animations/PressBounce.tsx)) — the component-shaped surface of `usePressBounce`, applying the squish→bouncy-spring to the `Pressable` itself so bordered chips/rows scale as one unit. Adopted by `Selector`, `ActionSheetItem`, `SerialKeypad`, `QuantitySelector`, `ChipNavStrip`, `VerdictSelector`, `DateTimeField`, and `CustomDropdown`'s trigger.
+- **New `useSelectionPop` hook** ([components/animations/useSelectionPop.ts](../components/animations/useSelectionPop.ts)) — a chosen option's indicator springs in (0→1) and its border/fill tweens 150ms. Used by `Selector`, `StatusChip`, `ChipNavStrip`. `PlateInput`'s active cell fades its ink border in (no reflow, no press-bounce — it's a focus target); `FloatingLabelInput` now tweens its focus border color.
+- **Retired `PressableScale`.** The old wrapper (hold feel + `gentle` spring + an inner-view scale that didn't move borders, and it ignored reduce-motion) is deleted; its 5 call sites (project cards, attachment bars, photo thumbs) moved to `PressBounce`, unifying the feel and fixing the reduce-motion bug.
+- **Rules-of-hooks extractions.** Per-option animation needs per-item shared values, so the mapped items moved to small children: [`SelectorOption`](../components/ui/SelectorOption.tsx), [`NavChip`](../components/inspection-parts/NavChip.tsx), [`PlateCell`](../components/inputs/PlateCell.tsx), [`DateTimeTrigger`](../components/DateTimeTrigger.tsx) (the last also relieves the 385-line `DateTimeField`).
+- **Storybook.** A new `Components/Motion → Interactions` playground showcases the press + selection feel across every control; the old `PressScale` story now demos `PressBounce`.
+- Reduce-motion is honored throughout (transitions suppressed, final state applied instantly).
 
 ## 2026-06-18 — Design system foundations: canonical tokens + Storybook on react-native-web
 
