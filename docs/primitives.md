@@ -48,6 +48,8 @@ One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose
 
 **Don't** add a fourth export. If you think you need one, you almost certainly want `pdfPhotoEmbed` with custom `opts`. The previous four-export version of this file caused the P1 "PDFs silently used unreachable signed URLs" bug because the wrong-default `getStorageImageDataUrl` was easy to call by accident.
 
+For a screen showing **several** stored images at once, use [`hooks/useResolvedImageUris.ts`](../hooks/useResolvedImageUris.ts) — `useResolvedImageUris(bucket, paths)` resolves a list of paths via `imageForDisplay`, cached by path (so changing one entry doesn't refetch the others) and returns URIs aligned 1:1 with `paths` (`null` while loading). The report slide editor feeds the same `uris` to both the live preview and the photo tiles this way. For a single image, call `imageForDisplay` inline.
+
 ## Keyboard handling
 
 Three patterns, documented in detail in [README.md](../README.md#keyboard-handling--the-three-patterns). One library: `react-native-keyboard-controller` (must be imported from there, **never** from `react-native`).

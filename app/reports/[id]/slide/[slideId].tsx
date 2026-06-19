@@ -3,23 +3,20 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
-import * as Crypto from 'expo-crypto';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
-import { useBottomSheet } from '../../../../components/BottomSheet';
 import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
 import { HeaderBackButton } from '../../../../components/HeaderBackButton';
 import { SlidePhotoRow } from '../../../../components/reports/SlidePhotoRow';
-import { SlideLayoutPicker } from '../../../../components/reports/SlideLayoutPicker';
+import { SlideLayoutField } from '../../../../components/reports/SlideLayoutField';
+import { SlideCanvas } from '../../../../components/reports/SlideCanvas';
 import { useTheme } from '../../../../lib/theme';
 import { SkeletonPreview } from '../../../../components/Skeleton';
 import { useToast } from '../../../../lib/toast';
 import { friendlyError } from '../../../../lib/errorMap';
-import { reportsApi, storageApi } from '../../../../lib/services';
+import { reportsApi } from '../../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
-import { imageForDisplay } from '../../../../lib/imageUrl';
 import {
-  MAX_SLIDE_PHOTOS,
   defaultSlideLayout,
   layoutsForCount,
   slideImagePath,
@@ -28,7 +25,8 @@ import {
 } from '../../../../lib/reportSlides';
 import { qk } from '../../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePhotoPicker } from '../../../../hooks/usePhotoPicker';
+import { useResolvedImageUris } from '../../../../hooks/useResolvedImageUris';
+import { useSlidePhotoEditing } from '../../../../hooks/useSlidePhotoEditing';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
 import type { Report, ReportSlide, ReportSlideLayout, SlideImage } from '../../../../types/models';
 
@@ -38,10 +36,8 @@ export default function ReportSlideEditor() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  const showSheet = useBottomSheet();
   const queryClient = useQueryClient();
   const { id, slideId } = useLocalSearchParams<{ id: string; slideId: string }>();
-  const { pickPhotoWithAnnotation, pickPhotoWithAnnotationFromUri } = usePhotoPicker();
 
   const [report, setReport] = useState<Report | null>(null);
   const [slide, setSlide] = useState<ReportSlide | null>(null);
@@ -50,10 +46,16 @@ export default function ReportSlideEditor() {
   const [images, setImages] = useState<SlideImage[]>([]);
   const [layout, setLayout] = useState<ReportSlideLayout | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const [addingPhoto, setAddingPhoto] = useState(false);
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   // Enabled "შენახვა" button + on-press title error (see useSubmitGuard).
   const { attempted, guard } = useSubmitGuard();
+
+  // Photo add / change / annotate / delete behaviour lives in its own hook.
+  const { addingPhoto, uploadingPaths, uploading, addPhoto, onTapPhoto } = useSlidePhotoEditing({
+    report,
+    slideId,
+    images,
+    setImages,
+  });
 
   // Prevents useFocusEffect from resetting user-edited fields when the screen
   // regains focus after returning from the photo picker / annotator.
@@ -86,108 +88,16 @@ export default function ReportSlideEditor() {
     }, [load]),
   );
 
-  const uploadLocalUri = async (localUri: string): Promise<string | null> => {
-    if (!report) return null;
-    const ext = (localUri.split('.').pop() || 'jpg').split('?')[0];
-    const path = `${report.id}/${slideId}/annotated-${Crypto.randomUUID()}.${ext}`;
-    try {
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.reportPhotos, path, localUri, 'image/jpeg', 'report');
-      return path;
-    } catch (e) {
-      toast.error(friendlyError(e, 'სურათის ატვირთვა ვერ მოხერხდა'));
-      return null;
-    }
-  };
-
-  const addPhoto = async () => {
-    if (images.length >= MAX_SLIDE_PHOTOS || addingPhoto) return;
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
-    setAddingPhoto(true);
-    const newPath = await uploadLocalUri(result.uri);
-    if (newPath) {
-      setImages(prev => [...prev, { image_path: newPath, annotated_image_path: null }]);
-    }
-    setAddingPhoto(false);
-  };
-
-  // Handlers match the target photo by object identity, not positional index, so
-  // a concurrent remove of a lower-indexed photo (while a change/re-annotate upload
-  // is in flight) can't reindex the array and drop or overwrite the wrong photo.
-  const changePhoto = async (target: SlideImage, index: number) => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
-    setUploadingIndex(index);
-    const newPath = await uploadLocalUri(result.uri);
-    if (newPath) {
-      setImages(prev => prev.map(im => (im === target ? { image_path: newPath, annotated_image_path: null } : im)));
-    }
-    setUploadingIndex(null);
-  };
-
-  const reAnnotatePhoto = async (target: SlideImage, index: number) => {
-    const path = slideImagePath(target);
-    if (!path) return;
-    setUploadingIndex(index);
-    try {
-      const signed = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
-      const annotatedUri = await pickPhotoWithAnnotationFromUri(signed);
-      if (annotatedUri) {
-        const newPath = await uploadLocalUri(annotatedUri);
-        if (newPath) {
-          setImages(prev =>
-            prev.map(im => (im === target ? { image_path: newPath, annotated_image_path: null } : im)),
-          );
-        }
-      }
-    } catch (e) {
-      toast.error(friendlyError(e, 'ხატვის გახსნა ვერ მოხერხდა'));
-    } finally {
-      setUploadingIndex(null);
-    }
-  };
-
-  const removePhoto = (target: SlideImage) => {
-    showSheet(
-      {
-        title: 'სურათის წაშლა?',
-        options: ['დიახ, წაშლა', 'გაუქმება'],
-        cancelButtonIndex: 1,
-        destructiveButtonIndex: 0,
-      },
-      idx => {
-        if (idx !== 0) return;
-        setImages(prev => prev.filter(im => im !== target));
-      },
-    );
-  };
-
-  const onTapPhoto = (index: number) => {
-    const target = images[index];
-    if (!target) return;
-    showSheet(
-      {
-        title: 'სურათის ცვლილება',
-        options: ['შეცვლა', 'ხატვა / რედაქტირება', 'წაშლა', 'გაუქმება'],
-        cancelButtonIndex: 3,
-        destructiveButtonIndex: 2,
-      },
-      idx => {
-        if (idx === 0) void changePhoto(target, index);
-        else if (idx === 1) void reAnnotatePhoto(target, index);
-        else if (idx === 2) removePhoto(target);
-      },
-    );
-  };
-
   const validLayouts = layoutsForCount(images.length);
   const effectiveLayout =
     layout && validLayouts.includes(layout) ? layout : defaultSlideLayout(images.length);
 
+  // Resolve photo paths → display URIs once (cached); feeds preview + tiles.
+  const uris = useResolvedImageUris(STORAGE_BUCKETS.reportPhotos, images.map(slideImagePath));
+
   // Title gate for the (always-enabled) save button. In-flight uploads stay a
   // separate disable so a half-uploaded photo can't be saved.
   const titleValid = title.trim().length > 0;
-  const uploading = addingPhoto || uploadingIndex !== null;
 
   const onSave = async () => {
     if (!report || !slide || busy || uploading || !titleValid) return;
@@ -235,11 +145,21 @@ export default function ReportSlideEditor() {
         }}
       />
 
-      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 14 }}>
-        {/* Photos (1–2 per slide) */}
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 16 }}>
+        {/* Live preview — mirrors how the slide renders in the PDF. */}
+        <SlideCanvas
+          num={slideIndex + 1}
+          title={title}
+          description={description}
+          layout={effectiveLayout}
+          uris={uris}
+        />
+
+        {/* Photos (1–2 per slide; the 2nd is optional). */}
         <SlidePhotoRow
           images={images}
-          uploadingIndex={uploadingIndex}
+          uris={uris}
+          uploadingPaths={uploadingPaths}
           addingPhoto={addingPhoto}
           onTapPhoto={onTapPhoto}
           onAddPhoto={addPhoto}
@@ -247,7 +167,7 @@ export default function ReportSlideEditor() {
 
         {/* Layout chooser — only when there's a real choice (≥1 photo). */}
         {validLayouts.length > 1 ? (
-          <SlideLayoutPicker layouts={validLayouts} value={effectiveLayout} onChange={setLayout} />
+          <SlideLayoutField layouts={validLayouts} value={effectiveLayout} onChange={setLayout} />
         ) : null}
 
         {/* Title */}

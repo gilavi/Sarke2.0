@@ -13,6 +13,15 @@ A report slide could hold one photo; now it holds **1 or 2** (hard cap at 2), an
 - **PDF** ([lib/reportPdf.ts](../lib/reportPdf.ts)) gained `two-side` and `two-stacked` layouts and embeds every photo on a slide. Existing single-photo reports render exactly as before.
 - **Data model** — `ReportSlide` now carries `images: SlideImage[]` + `layout`, with the old `image_path` / `annotated_image_path` kept as a back-compat mirror. Slides are JSON in `reports.slides`, so **no migration**. All readers go through the new canonical helpers in [lib/reportSlides.ts](../lib/reportSlides.ts) (`slideImages`, `slideLayout`, `withSlideImages`) — see [docs/primitives.md](primitives.md) "Report slide photos + layout".
 
+## 2026-06-19 — Slide editor: live preview, reusable layout picker, optional 2nd photo
+
+The per-slide editor ([app/reports/[id]/slide/[slideId].tsx](../app/reports/%5Bid%5D/slide/%5BslideId%5D.tsx)) was redesigned:
+
+- **Live preview** ([SlideCanvas](../components/reports/SlideCanvas.tsx)) at the top — a WYSIWYG mirror of how the slide renders in the PDF (`lib/reportPdf.ts`), across all four layouts, updating as you type or switch layout. Resize modes match the PDF (`cover` for side-by-side, `contain` for full/stacked).
+- **Layout chooser** now reuses the canonical [Selector](../components/ui/Selector.tsx) ([SlideLayoutField](../components/reports/SlideLayoutField.tsx)) — the same monochrome form picker as the inspection flow (rows + check indicator, glyph + hint), replacing the bespoke orange chip row (`SlideLayoutPicker`, removed).
+- **2nd photo is optional** ([SlidePhotoRow](../components/reports/SlidePhotoRow.tsx)) — the big equal-sized empty box is gone; once there's a photo, adding a second is a slim "მეორე ფოტო · არასავალდებულო" button, so a one-photo slide no longer looks unfinished.
+- Internals: photo add/change/annotate/delete moved to [useSlidePhotoEditing](../hooks/useSlidePhotoEditing.ts) (keeping the route file orchestration-only), and a new [useResolvedImageUris](../hooks/useResolvedImageUris.ts) primitive resolves all of a screen's image paths in one cached pass — the preview and the photo tiles share it. In-flight upload spinners are now tracked by storage path (not array index), so a concurrent remove or a second change can't mis-place the spinner.
+
 ## 2026-06-19 — Report slide list: consistent header, drag-to-reorder, cleaner cards
 
 The slides editor ([app/reports/[id]/edit.tsx](../app/reports/%5Bid%5D/edit.tsx)) was brought in line with the inspection flow and the new-report screen:
