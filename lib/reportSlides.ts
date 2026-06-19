@@ -56,10 +56,14 @@ export function slidePhotoCount(slide: ReportSlide): number {
   return slideImages(slide).length;
 }
 
-/** The layout options valid for a given photo count — drives the editor chips. */
+/**
+ * The layout options the editor offers for a given photo count. Only the
+ * two-photo case has a real choice (side-by-side vs stacked); a single photo
+ * renders automatically (big photo when there's no description, text+photo when
+ * there is — see `SlideCanvas` / the PDF), so it offers no chooser.
+ */
 export function layoutsForCount(count: number): ReportSlideLayout[] {
   if (count >= 2) return ['two-side', 'two-stacked'];
-  if (count === 1) return ['text-photo', 'photo-full'];
   return [];
 }
 

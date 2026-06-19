@@ -13,6 +13,15 @@ A report slide could hold one photo; now it holds **1 or 2** (hard cap at 2), an
 - **PDF** ([lib/reportPdf.ts](../lib/reportPdf.ts)) gained `two-side` and `two-stacked` layouts and embeds every photo on a slide. Existing single-photo reports render exactly as before.
 - **Data model** — `ReportSlide` now carries `images: SlideImage[]` + `layout`, with the old `image_path` / `annotated_image_path` kept as a back-compat mirror. Slides are JSON in `reports.slides`, so **no migration**. All readers go through the new canonical helpers in [lib/reportSlides.ts](../lib/reportSlides.ts) (`slideImages`, `slideLayout`, `withSlideImages`) — see [docs/primitives.md](primitives.md) "Report slide photos + layout".
 
+## 2026-06-19 — Slide list reads as a deck; slide editor polish
+
+Follow-up pass on the report slide UI:
+
+- **Slide list = actual slide previews** ([ReportSlideCard](../components/reports/ReportSlideCard.tsx)) — each row is now a fixed-height **slide thumbnail** that mirrors the slide's real layout (text+photo / big photo / side-by-side / stacked) instead of a list row, so the list reads as a deck of slides.
+- **Layout chooser only when it matters** — a single photo offers no chooser (`layoutsForCount(1)` → `[]`); it appears only once a 2nd photo is added (side-by-side vs stacked). The chooser also moved directly under the preview.
+- **Slide editor header** now uses the shared [FlowHeader](../components/FlowHeader.tsx) (no native iOS translucent bar behind the back button), matching the slide list.
+- **Preview fixes** ([SlideCanvas](../components/reports/SlideCanvas.tsx)) — dropped the "გადახედვა" caption, and the two side-by-side images now fill the slide instead of overflowing (`align-items: flex-start` + `minWidth: 0`, mirroring the PDF).
+
 ## 2026-06-19 — Slide editor: live preview, reusable layout picker, optional 2nd photo
 
 The per-slide editor ([app/reports/[id]/slide/[slideId].tsx](../app/reports/%5Bid%5D/slide/%5BslideId%5D.tsx)) was redesigned:

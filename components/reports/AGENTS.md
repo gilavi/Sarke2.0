@@ -29,10 +29,12 @@ resolution, and persistence stay in the route files.
   second equal-sized empty box). Takes pre-resolved `uris` aligned with
   `images`; does not fetch. Props: `images`, `uris`, `uploadingIndex`,
   `addingPhoto`, `onTapPhoto(index)`, `onAddPhoto()`.
-- `ReportSlideCard` — one row in the slide list: fixed-height card,
-  large thumbnail with the slide number overlaid, swipe-to-delete.
-  Props: `{ slide, index, dragging?, onPress, onDelete }`. Exports
-  `SLIDE_CARD_HEIGHT`.
+- `ReportSlideCard` — one row in the slide list, rendered as a fixed-height
+  **slide thumbnail** that mirrors the slide's real layout (text+photo /
+  big photo / side-by-side / stacked) so the list reads as a deck of slides,
+  not a list. Resolves its own photos via `useResolvedImageUris`;
+  swipe-to-delete. Props: `{ slide, index, dragging?, onPress, onDelete }`.
+  Exports `SLIDE_CARD_HEIGHT` (the reorder list's row-height constant).
 - `SlideReorderList` — long-press **drag-to-reorder** wrapper around
   `ReportSlideCard` (custom reanimated v4 + gesture-handler, no drag
   dependency). Props: `{ slides, onPress, onDelete, onReorder(ids) }`.

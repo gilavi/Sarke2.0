@@ -98,12 +98,7 @@ export function SlideCanvas({ num, title, description, layout, uris }: Props) {
     );
   }
 
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={styles.previewLabel}>გადახედვა</Text>
-      <View style={styles.card}>{body}</View>
-    </View>
-  );
+  return <View style={styles.card}>{body}</View>;
 }
 
 /** Module-level so the <Image> instances are preserved across the editor's
@@ -132,7 +127,6 @@ function Photo({
 
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    previewLabel: { fontSize: 12, color: theme.colors.inkFaint, fontWeight: '700' },
     card: {
       backgroundColor: theme.colors.surface,
       borderRadius: 14,
@@ -162,8 +156,8 @@ function makeStyles(theme: any) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    row: { flexDirection: 'row', gap: 8 },
-    duo: { flex: 1, aspectRatio: 4 / 3 },
+    row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+    duo: { flex: 1, minWidth: 0, aspectRatio: 4 / 3 },
     stacked: { width: '100%', aspectRatio: 16 / 9 },
     full: { width: '100%', aspectRatio: 16 / 10 },
     splitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

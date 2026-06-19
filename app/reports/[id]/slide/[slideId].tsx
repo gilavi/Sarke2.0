@@ -6,7 +6,7 @@ import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
 import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
-import { HeaderBackButton } from '../../../../components/HeaderBackButton';
+import { FlowHeader } from '../../../../components/FlowHeader';
 import { SlidePhotoRow } from '../../../../components/reports/SlidePhotoRow';
 import { SlideLayoutField } from '../../../../components/reports/SlideLayoutField';
 import { SlideCanvas } from '../../../../components/reports/SlideCanvas';
@@ -123,7 +123,7 @@ export default function ReportSlideEditor() {
 
   if (!report || !slide) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
         <SkeletonPreview />
       </View>
     );
@@ -132,17 +132,15 @@ export default function ReportSlideEditor() {
   const slideIndex = report.slides.findIndex(s => s.id === slide.id);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: `სლაიდი ${slideIndex + 1}`,
-          headerBackVisible: false,
-          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
-        }}
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <FlowHeader
+        flowTitle={`სლაიდი ${slideIndex + 1}`}
+        leading="back"
+        trailing="none"
+        onBack={() => router.back()}
+        surfaceColor={theme.colors.surface}
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 16 }}>
@@ -155,6 +153,12 @@ export default function ReportSlideEditor() {
           uris={uris}
         />
 
+        {/* Layout chooser sits right under the preview — only when there's a real
+            choice (i.e. 2 photos: side-by-side vs stacked). */}
+        {validLayouts.length > 1 ? (
+          <SlideLayoutField layouts={validLayouts} value={effectiveLayout} onChange={setLayout} />
+        ) : null}
+
         {/* Photos (1–2 per slide; the 2nd is optional). */}
         <SlidePhotoRow
           images={images}
@@ -164,11 +168,6 @@ export default function ReportSlideEditor() {
           onTapPhoto={onTapPhoto}
           onAddPhoto={addPhoto}
         />
-
-        {/* Layout chooser — only when there's a real choice (≥1 photo). */}
-        {validLayouts.length > 1 ? (
-          <SlideLayoutField layouts={validLayouts} value={effectiveLayout} onChange={setLayout} />
-        ) : null}
 
         {/* Title */}
         <FloatingLabelInput
@@ -210,7 +209,7 @@ function makeStyles(theme: any) {
     footer: {
       borderTopWidth: 1,
       borderTopColor: theme.colors.hairline,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.card,
       paddingHorizontal: 16,
       paddingTop: 12,
     },

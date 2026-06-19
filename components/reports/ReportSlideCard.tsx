@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Trash2, Image as ImageIcon } from 'lucide-react-native';
@@ -6,18 +6,19 @@ import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { imageForDisplay } from '../../lib/imageUrl';
-import { slideImagePath, slideImages } from '../../lib/reportSlides';
+import { useResolvedImageUris } from '../../hooks/useResolvedImageUris';
+import { slideImagePaths, slideLayout } from '../../lib/reportSlides';
 import type { ReportSlide } from '../../types/models';
 
 /** Fixed card height — the reorder list relies on a deterministic row height. */
-export const SLIDE_CARD_HEIGHT = 104;
+export const SLIDE_CARD_HEIGHT = 176;
 
 /**
- * One row in the report slide list (`app/reports/[id]/edit.tsx`): a large photo
- * thumbnail with the slide number overlaid, title + description, swipe-to-delete,
- * and (via the parent reorder list) long-press-to-drag. Reorder chevrons were
- * removed in favour of drag. Reads photos via `slideImages()`.
+ * One row in the report slide list (`app/reports/[id]/edit.tsx`): a fixed-height
+ * **slide thumbnail** that mirrors the slide's real layout (text+photo, big
+ * photo, side-by-side, stacked) so the list reads as a deck of slides rather
+ * than a plain list. Swipe to delete; long-press to drag (via the parent reorder
+ * list). Resolves its own photos via `useResolvedImageUris`.
  */
 export function ReportSlideCard({
   slide,
@@ -28,34 +29,50 @@ export function ReportSlideCard({
 }: {
   slide: ReportSlide;
   index: number;
-  /** True while this card is being dragged — lifts it with a stronger shadow. */
   dragging?: boolean;
   onPress: () => void;
   onDelete: () => void;
 }) {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const imgs = slideImages(slide);
-  const imagePath = imgs[0] ? slideImagePath(imgs[0]) : null;
-  const photoCount = imgs.length;
-  const [thumbUri, setThumbUri] = useState<string | null>(null);
+  const uris = useResolvedImageUris(STORAGE_BUCKETS.reportPhotos, slideImagePaths(slide));
+  const layout = slideLayout(slide);
+  const title = slide.title || `სლაიდი ${index + 1}`;
+  const hasDesc = !!slide.description?.trim();
 
-  useEffect(() => {
-    if (!imagePath) {
-      setThumbUri(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, imagePath);
-        if (!cancelled) setThumbUri(u);
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [imagePath]);
+  let media: React.ReactNode;
+  if (uris.length >= 2) {
+    media =
+      layout === 'two-stacked' ? (
+        <View style={styles.stack}>
+          <Thumb uri={uris[0]} style={styles.fill} theme={theme} />
+          <Thumb uri={uris[1]} style={styles.fill} theme={theme} />
+        </View>
+      ) : (
+        <View style={styles.duoRow}>
+          <Thumb uri={uris[0]} style={styles.fill} theme={theme} />
+          <Thumb uri={uris[1]} style={styles.fill} theme={theme} />
+        </View>
+      );
+  } else if (uris.length === 1 && hasDesc) {
+    // text-photo: description left, photo right.
+    media = (
+      <View style={styles.splitRow}>
+        <Text style={styles.desc} numberOfLines={4}>{slide.description}</Text>
+        <Thumb uri={uris[0]} style={styles.splitPhoto} theme={theme} />
+      </View>
+    );
+  } else if (uris.length === 1) {
+    media = <Thumb uri={uris[0]} style={styles.fill} theme={theme} />;
+  } else {
+    media = hasDesc ? (
+      <Text style={styles.descOnly} numberOfLines={5}>{slide.description}</Text>
+    ) : (
+      <View style={[styles.fill, styles.emptyMedia]}>
+        <ImageIcon size={24} color={theme.colors.inkFaint} strokeWidth={1.5} />
+      </View>
+    );
+  }
 
   return (
     <Swipeable
@@ -68,53 +85,50 @@ export function ReportSlideCard({
     >
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [styles.card, dragging && styles.cardDragging, pressed && { opacity: 0.85 }]}
+        style={({ pressed }) => [styles.card, dragging && styles.cardDragging, pressed && { opacity: 0.9 }]}
       >
-        <View style={styles.thumb}>
-          {thumbUri ? (
-            <Image source={{ uri: thumbUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-          ) : (
-            <ImageIcon size={26} color={theme.colors.inkFaint} strokeWidth={1.5} />
-          )}
-          <View style={styles.numberBadge}>
-            <Text style={styles.numberBadgeText}>{index + 1}</Text>
+        <View style={styles.header}>
+          <View style={styles.numBadge}>
+            <Text style={styles.numText}>{index + 1}</Text>
           </View>
-          {photoCount > 1 ? (
-            <View style={styles.photoCountBadge}>
-              <Text style={styles.photoCountBadgeText}>{photoCount}</Text>
-            </View>
-          ) : null}
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
         </View>
-
-        <View style={styles.body}>
-          <Text style={styles.cardTitle} numberOfLines={1}>
-            {slide.title || `სლაიდი ${index + 1}`}
-          </Text>
-          {slide.description ? (
-            <Text style={styles.cardDescription} numberOfLines={2}>
-              {slide.description}
-            </Text>
-          ) : (
-            <Text style={[styles.cardDescription, styles.cardDescriptionEmpty]}>აღწერა არ არის</Text>
-          )}
-        </View>
+        <View style={styles.media}>{media}</View>
       </Pressable>
     </Swipeable>
   );
 }
 
+function Thumb({ uri, style, theme }: { uri: string | null; style: any; theme: any }) {
+  return (
+    <View style={[styleThumbBase(theme), style]}>
+      {uri ? (
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : (
+        <ImageIcon size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
+      )}
+    </View>
+  );
+}
+
+const styleThumbBase = (theme: any) => ({
+  borderRadius: 10,
+  overflow: 'hidden' as const,
+  backgroundColor: theme.colors.subtleSurface,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+});
+
 function makeStyles(theme: any) {
   return StyleSheet.create({
     card: {
       height: SLIDE_CARD_HEIGHT,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 14,
       backgroundColor: theme.colors.surface,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.colors.border,
-      padding: 14,
+      padding: 12,
+      gap: 8,
       shadowColor: theme.colors.ink,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
@@ -128,19 +142,8 @@ function makeStyles(theme: any) {
       elevation: 8,
       borderColor: theme.colors.borderStrong,
     },
-    thumb: {
-      width: 96,
-      height: 72,
-      borderRadius: 12,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.subtleSurface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    numberBadge: {
-      position: 'absolute',
-      top: 5,
-      left: 5,
+    header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    numBadge: {
       width: 22,
       height: 22,
       borderRadius: 11,
@@ -148,24 +151,17 @@ function makeStyles(theme: any) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    numberBadgeText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
-    photoCountBadge: {
-      position: 'absolute',
-      bottom: 4,
-      right: 4,
-      minWidth: 18,
-      height: 18,
-      paddingHorizontal: 5,
-      borderRadius: 9,
-      backgroundColor: 'rgba(0,0,0,0.6)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    photoCountBadgeText: { color: theme.colors.white, fontSize: 10, fontWeight: '700' },
-    body: { flex: 1, paddingTop: 2, gap: 4 },
-    cardTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.ink, lineHeight: 22 },
-    cardDescription: { fontSize: 13, fontWeight: '400', color: theme.colors.inkSoft, lineHeight: 18 },
-    cardDescriptionEmpty: { fontStyle: 'italic', color: theme.colors.inkFaint },
+    numText: { color: theme.colors.white, fontSize: 11, fontWeight: '800' },
+    title: { flex: 1, fontSize: 15, fontWeight: '700', color: theme.colors.ink },
+    media: { flex: 1 },
+    fill: { flex: 1, width: '100%' },
+    duoRow: { flex: 1, flexDirection: 'row', gap: 8 },
+    stack: { flex: 1, gap: 8 },
+    splitRow: { flex: 1, flexDirection: 'row', gap: 12 },
+    splitPhoto: { width: '44%' },
+    desc: { flex: 1, fontSize: 13, color: theme.colors.inkSoft, lineHeight: 19 },
+    descOnly: { fontSize: 13, color: theme.colors.inkSoft, lineHeight: 20 },
+    emptyMedia: {},
     swipeDelete: {
       width: 64,
       height: SLIDE_CARD_HEIGHT,

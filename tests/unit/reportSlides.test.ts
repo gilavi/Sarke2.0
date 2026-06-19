@@ -74,9 +74,9 @@ describe('slideImagePath / slideImagePaths', () => {
 });
 
 describe('layout helpers', () => {
-  it('exposes the valid layouts per photo count', () => {
+  it('exposes the valid layouts per photo count (only 2 photos offer a choice)', () => {
     expect(layoutsForCount(0)).toEqual([]);
-    expect(layoutsForCount(1)).toEqual(['text-photo', 'photo-full']);
+    expect(layoutsForCount(1)).toEqual([]);
     expect(layoutsForCount(2)).toEqual(['two-side', 'two-stacked']);
   });
 
@@ -87,12 +87,12 @@ describe('layout helpers', () => {
   });
 
   it('honors a stored layout valid for the photo count', () => {
-    const s = mockSlide({ images: [img('a.jpg')], layout: 'photo-full' });
-    expect(slideLayout(s)).toBe('photo-full');
+    const s = mockSlide({ images: [img('a.jpg'), img('b.jpg')], layout: 'two-stacked' });
+    expect(slideLayout(s)).toBe('two-stacked');
   });
 
-  it('overrides a stored layout that is invalid for the photo count', () => {
-    // 'two-side' is a 2-photo layout; on a 1-photo slide it must fall back.
+  it('ignores any stored layout on a 1-photo slide (no choice → auto default)', () => {
+    // 1 photo offers no chooser now; a leftover 2-photo layout must fall back.
     const s = mockSlide({ images: [img('a.jpg')], layout: 'two-side' });
     expect(slideLayout(s)).toBe('text-photo');
   });
