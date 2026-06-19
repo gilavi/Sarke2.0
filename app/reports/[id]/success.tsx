@@ -11,6 +11,7 @@ import { SkeletonCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
 import { useSession } from '../../../lib/session';
 import { pdfPhotoEmbed } from '../../../lib/imageUrl';
+import { slideImagePaths } from '../../../lib/reportSlides';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../../lib/pdfOpen';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../../lib/usePdfUsage';
@@ -55,11 +56,9 @@ export default function ReportSuccessScreen() {
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setSharing(true);
     try {
-      const slidesWithImages = report.slides.filter(s => s.image_path || s.annotated_image_path);
+      const paths = Array.from(new Set(report.slides.flatMap(slideImagePaths)));
       const dataUrlEntries = await Promise.all(
-        slidesWithImages.map(async s => {
-          const path = s.annotated_image_path ?? s.image_path;
-          if (!path) return [path, ''] as const;
+        paths.map(async path => {
           try {
             const url = await pdfPhotoEmbed(STORAGE_BUCKETS.reportPhotos, path);
             return [path, url] as const;

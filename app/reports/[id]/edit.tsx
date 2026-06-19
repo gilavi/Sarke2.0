@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Trash2, Images, Image as ImageIcon, ChevronUp, ChevronDown, CirclePlus } from 'lucide-react-native';
+import { Images, CirclePlus } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { HeaderBackButton } from '../../../components/HeaderBackButton';
 import { useBottomSheet } from '../../../components/BottomSheet';
+import { ReportSlideCard } from '../../../components/reports/ReportSlideCard';
 import { useTheme } from '../../../lib/theme';
 import { SkeletonListCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
@@ -22,8 +21,6 @@ import { a11y } from '../../../lib/accessibility';
 import { reportDisplayName } from '../../../lib/shared/documentName';
 import { friendlyError } from '../../../lib/errorMap';
 import { reportsApi } from '../../../lib/services';
-import { STORAGE_BUCKETS } from '../../../lib/supabase';
-import { imageForDisplay } from '../../../lib/imageUrl';
 import { useReport, useProject, qk } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Report, ReportSlide } from '../../../types/models';
@@ -212,7 +209,7 @@ export default function ReportSlidesEditor() {
           </View>
         ) : (
           slides.map((s, idx) => (
-            <SlideCard
+            <ReportSlideCard
               key={s.id}
               slide={s}
               index={idx}
@@ -221,8 +218,6 @@ export default function ReportSlidesEditor() {
               onUp={() => moveSlide(idx, -1)}
               onDown={() => moveSlide(idx, 1)}
               onDelete={() => removeSlide(s)}
-              theme={theme}
-              styles={styles}
             />
           ))
         )}
@@ -270,124 +265,8 @@ export default function ReportSlidesEditor() {
   );
 }
 
-function SlideCard({
-  slide,
-  index,
-  total,
-  onPress,
-  onUp,
-  onDown,
-  onDelete,
-  theme,
-  styles,
-}: {
-  slide: ReportSlide;
-  index: number;
-  total: number;
-  onPress: () => void;
-  onUp: () => void;
-  onDown: () => void;
-  onDelete: () => void;
-  theme: any;
-  styles: any;
-}) {
-  const imagePath = slide.annotated_image_path ?? slide.image_path;
-  const [thumbUri, setThumbUri] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!imagePath) {
-      setThumbUri(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, imagePath);
-        if (!cancelled) setThumbUri(u);
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [imagePath]);
-
-  return (
-    <Swipeable
-      renderRightActions={() => (
-        <Pressable
-          onPress={onDelete}
-          style={styles.swipeDelete}
-          {...a11y('წაშლა', 'სლაიდის წაშლა', 'button')}
-        >
-          <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
-        </Pressable>
-      )}
-      overshootRight={false}
-    >
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
-        <View style={styles.cardRow}>
-          <View style={styles.numberBadge}>
-            <Text style={styles.numberBadgeText}>{index + 1}</Text>
-          </View>
-
-          <View style={styles.thumb}>
-            {thumbUri ? (
-              <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            ) : (
-              <ImageIcon size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
-            )}
-          </View>
-
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {slide.title || `სლაიდი ${index + 1}`}
-            </Text>
-            {slide.description ? (
-              <Text style={styles.cardDescription} numberOfLines={2}>
-                {slide.description}
-              </Text>
-            ) : (
-              <Text style={[styles.cardDescription, { fontStyle: 'italic', color: theme.colors.inkFaint }]}>
-                აღწერა არ არის
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.reorderStack}>
-            <Pressable
-              onPress={onUp}
-              disabled={index === 0}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.reorderBtn,
-                index === 0 && { opacity: 0.3 },
-                pressed && { opacity: 0.6 },
-              ]}
-            >
-              <ChevronUp size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            </Pressable>
-            <Pressable
-              onPress={onDown}
-              disabled={index === total - 1}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.reorderBtn,
-                index === total - 1 && { opacity: 0.3 },
-                pressed && { opacity: 0.6 },
-              ]}
-            >
-              <ChevronDown size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            </Pressable>
-          </View>
-        </View>
-      </Pressable>
-    </Swipeable>
-  );
-}
-
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    centered: { alignItems: 'center', justifyContent: 'center' },
     pdfBtn: {
       paddingHorizontal: 12,
       paddingVertical: 7,
@@ -400,63 +279,6 @@ function makeStyles(theme: any) {
     },
     emptyText: { fontSize: 14, color: theme.colors.inkSoft, fontWeight: '600' },
     emptyHint: { fontSize: 12, color: theme.colors.inkFaint },
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 12,
-      shadowColor: theme.colors.ink,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 4,
-      elevation: 1,
-    },
-    cardRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    numberBadge: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: theme.colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    numberBadgeText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
-    thumb: {
-      width: 64,
-      aspectRatio: 16 / 9,
-      borderRadius: 8,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.subtleSurface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    cardTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
-    cardDescription: { fontSize: 12, color: theme.colors.inkSoft, lineHeight: 16 },
-    reorderStack: {
-      flexDirection: 'column',
-      gap: 4,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    reorderBtn: {
-      width: 24,
-      height: 24,
-      borderRadius: 6,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    swipeDelete: {
-      width: 64,
-      backgroundColor: theme.colors.danger,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: 8,
-    },
     addBtn: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -462,16 +462,50 @@ export interface Briefing {
 
 export type ReportStatus = 'draft' | 'completed';
 
+/**
+ * How a slide renders its photo(s) in the app preview + generated PDF. Resolved
+ * via `slideLayout()` in `lib/reportSlides.ts`, which falls back to a sensible
+ * default for the slide's photo count when unset or invalid.
+ *
+ * - `text-photo`   — 1 photo: description left, photo right (the historical default).
+ * - `photo-full`   — 1 photo: full-width photo, title centered below.
+ * - `two-side`     — 2 photos: description on top, two photos side by side.
+ * - `two-stacked`  — 2 photos: two photos stacked full-width.
+ */
+export type ReportSlideLayout = 'text-photo' | 'photo-full' | 'two-side' | 'two-stacked';
+
+/** One photo attached to a report slide. A slide holds up to 2 (see `MAX_SLIDE_PHOTOS`). */
+export interface SlideImage {
+  /** Storage path in `report-photos` bucket; null when no image picked. */
+  image_path: string | null;
+  /** Annotated variant; preferred over `image_path` when set. */
+  annotated_image_path: string | null;
+}
+
 export interface ReportSlide {
   id: string;
   /** 0-based, used for ordering. */
   order: number;
   title: string;
   description: string;
-  /** Storage path in `report-photos` bucket; null when no image picked. */
+  /**
+   * @deprecated Legacy single-photo field — mirror of `images[0].image_path`,
+   * kept so older reports and any not-yet-migrated readers keep working. Always
+   * read photos through `slideImages()` in `lib/reportSlides.ts`, never these
+   * two fields directly.
+   */
   image_path: string | null;
-  /** Annotated variant; PDF prefers this when set. */
+  /** @deprecated Legacy single-photo field — mirror of `images[0].annotated_image_path`. */
   annotated_image_path: string | null;
+  /**
+   * Canonical photo list, 0–2 entries. Optional for back-compat: when absent,
+   * `slideImages()` folds the legacy `image_path`/`annotated_image_path` pair
+   * into a single-element array. Writers also mirror `images[0]` back into the
+   * legacy fields.
+   */
+  images?: SlideImage[];
+  /** Chosen render layout. When unset, `slideLayout()` derives it from photo count. */
+  layout?: ReportSlideLayout;
 }
 
 export interface Report {

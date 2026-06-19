@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +9,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Trash2, CircleCheck } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { Button } from '../../components/ui';
 import { HeaderBackButton } from '../../components/HeaderBackButton';
 import { useBottomSheet } from '../../components/BottomSheet';
@@ -21,7 +21,9 @@ import { reportDisplayName } from '../../lib/shared/documentName';
 import { friendlyError } from '../../lib/errorMap';
 import { reportsApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { pdfPhotoEmbed, imageForDisplay } from '../../lib/imageUrl';
+import { pdfPhotoEmbed } from '../../lib/imageUrl';
+import { slideImagePaths } from '../../lib/reportSlides';
+import { ReportSlidePreview } from '../../components/reports/ReportSlidePreview';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
@@ -30,7 +32,7 @@ import { generatePdfName } from '../../lib/pdfName';
 import { formatShortDateTime } from '../../lib/formatDate';
 import { useReport, useProject } from '../../lib/apiHooks';
 import { ErrorScreen } from '../../components/ErrorScreen';
-import type { Report, ReportSlide } from '../../types/models';
+import type { Report } from '../../types/models';
 
 export default function ReportDetailScreen() {
   const { theme } = useTheme();
@@ -42,8 +44,10 @@ export default function ReportDetailScreen() {
   const showSheet = useBottomSheet();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: report } = useReport(id);
-  const { data: project } = useProject(report?.project_id);
+  const reportQ = useReport(id);
+  const { data: report } = reportQ;
+  const projectQ = useProject(report?.project_id);
+  const { data: project } = projectQ;
   const [generating, setGenerating] = useState(false);
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
@@ -65,11 +69,9 @@ export default function ReportDetailScreen() {
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setGenerating(true);
     try {
-      const slidesWithImages = report.slides.filter(s => s.image_path || s.annotated_image_path);
+      const paths = Array.from(new Set(report.slides.flatMap(slideImagePaths)));
       const dataUrlEntries = await Promise.all(
-        slidesWithImages.map(async s => {
-          const path = s.annotated_image_path ?? s.image_path;
-          if (!path) return [path, ''] as const;
+        paths.map(async path => {
           try {
             const url = await pdfPhotoEmbed(STORAGE_BUCKETS.reportPhotos, path);
             return [path, url] as const;
@@ -164,6 +166,7 @@ export default function ReportDetailScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100, gap: 12 }}
+        refreshControl={<RefreshControl queries={[reportQ, projectQ]} />}
       >
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>{report.title}</Text>
@@ -181,7 +184,7 @@ export default function ReportDetailScreen() {
 
         <Text style={styles.sectionLabel}>სლაიდები</Text>
         {slides.map((s, i) => (
-          <SlideRow key={s.id} slide={s} index={i} theme={theme} styles={styles} />
+          <ReportSlidePreview key={s.id} slide={s} index={i} />
         ))}
       </ScrollView>
 
@@ -193,62 +196,8 @@ export default function ReportDetailScreen() {
   );
 }
 
-function SlideRow({
-  slide,
-  index,
-  theme,
-  styles,
-}: {
-  slide: ReportSlide;
-  index: number;
-  theme: any;
-  styles: any;
-}) {
-  const path = slide.annotated_image_path ?? slide.image_path;
-  const [uri, setUri] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!path) {
-      setUri(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
-        if (!cancelled) setUri(u);
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [path]);
-
-  return (
-    <View style={styles.slideRow}>
-      <View style={styles.slideHeader}>
-        <View style={styles.numberBadge}>
-          <Text style={styles.numberBadgeText}>{index + 1}</Text>
-        </View>
-        <Text style={styles.slideTitle} numberOfLines={1}>
-          {slide.title || `სლაიდი ${index + 1}`}
-        </Text>
-      </View>
-      {uri ? (
-        <View style={styles.slideImageWrap}>
-          <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-        </View>
-      ) : null}
-      {slide.description ? (
-        <Text style={styles.slideDescription}>{slide.description}</Text>
-      ) : null}
-    </View>
-  );
-}
-
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    centered: { alignItems: 'center', justifyContent: 'center' },
     heroCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 12,
@@ -276,35 +225,6 @@ function makeStyles(theme: any) {
       textTransform: 'uppercase',
       letterSpacing: 0.4,
       marginTop: 8,
-    },
-    slideRow: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 12,
-      gap: 8,
-    },
-    slideHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    numberBadge: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      backgroundColor: theme.colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    numberBadgeText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
-    slideTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: theme.colors.ink },
-    slideImageWrap: {
-      width: '100%',
-      aspectRatio: 16 / 9,
-      borderRadius: 8,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    slideDescription: {
-      fontSize: 12,
-      color: theme.colors.inkSoft,
-      lineHeight: 18,
     },
     footer: {
       paddingHorizontal: 24,

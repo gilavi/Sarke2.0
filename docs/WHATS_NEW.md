@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-06-19 — Reports: up to 2 photos per slide + choosable slide layout
+
+A report slide could hold one photo; now it holds **1 or 2** (hard cap at 2), and you choose how they render.
+
+- **Photo strip in the slide editor** ([components/reports/SlidePhotoRow.tsx](../components/reports/SlidePhotoRow.tsx)) — an empty slide shows the familiar full-width "+ ფოტოს დამატება" box; with one photo a compact dashed "+ მეორე ფოტო" tile appears beside it; with two photos the add tile is gone (the cap is enforced by **absence** — no disabled button, no error toast). Each photo keeps the same tap menu (`შეცვლა / ხატვა-რედაქტირება / წაშლა`), now indexed per slot.
+- **Layout chooser** ([components/reports/SlideLayoutPicker.tsx](../components/reports/SlideLayoutPicker.tsx)) — small glyph chips appear under the photos, showing only the layouts valid for the current photo count: 1 photo → `ტექსტი + ფოტო` / `დიდი ფოტო`; 2 photos → `გვერდიგვერდ` / `დაწყობილი`. It auto-defaults sensibly, so picking is optional polish.
+- **PDF** ([lib/reportPdf.ts](../lib/reportPdf.ts)) gained `two-side` and `two-stacked` layouts and embeds every photo on a slide. Existing single-photo reports render exactly as before.
+- **Data model** — `ReportSlide` now carries `images: SlideImage[]` + `layout`, with the old `image_path` / `annotated_image_path` kept as a back-compat mirror. Slides are JSON in `reports.slides`, so **no migration**. All readers go through the new canonical helpers in [lib/reportSlides.ts](../lib/reportSlides.ts) (`slideImages`, `slideLayout`, `withSlideImages`) — see [docs/primitives.md](primitives.md) "Report slide photos + layout".
+
+## 2026-06-19 — Pull-to-refresh is now one reusable primitive
+
+Pull-to-refresh used to be copy-pasted boilerplate (`useState` + `onRefresh` + a `react-native` `RefreshControl` with a hand-typed `tintColor`) in ~13 screens, each free to drift on tint, haptic, or error handling. It's now a single design-system primitive.
+
+- **New `RefreshControl`** ([components/primitives/RefreshControl.tsx](../components/primitives/RefreshControl.tsx), exported from `components/primitives`). Pass it as a list's `refreshControl`: `<RefreshControl queries={[projectsQ, statsQ]} />`. It owns its own `refreshing` state, fires a medium haptic on pull, refetches every query (anything with `.refetch()`), and tints the spinner with `theme.colors.accent` (iOS + Android). Non-query screens use `onRefresh={fn}` (e.g. profile calls `refreshUser()`); both compose. `progressViewOffset`/`tintColor` pass through for overlaid-header screens like home.
+- **Added** pull-to-refresh where it was missing: `certificates`, `more`, `incidents/[id]`, `reports/[id]`, `profile`, `history`, `templates`.
+- **Migrated** all remaining hand-rolled implementations to the primitive: `home`, `projects`, `calendar`, `regulations`, `qualifications`, and the project detail sub-tabs (`inspections`, `briefings`, `incidents`, `reports`, `files`, `participants`). No screen imports `RefreshControl` from `react-native` anymore.
+- Documented in [docs/primitives.md](primitives.md#pull-to-refresh); `react-native` `RefreshControl` is now a banned-by-convention import.
+
 ## 2026-06-19 — Design system: every tappable control gets the canonical press + selection feel
 
 The buttons already shared one press "bounce" (`usePressBounce`); now every other interactive DS control does too, so the whole app clicks with the same snappy-but-premium motion. Hover is intentionally ignored (mobile-first) — **press** is the gold.

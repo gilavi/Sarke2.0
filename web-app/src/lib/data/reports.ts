@@ -6,13 +6,37 @@ export type ReportRow = Tables<'reports'>;
 
 export type ReportStatus = 'draft' | 'completed';
 
+/** One photo on a slide. Mirrors the mobile `SlideImage` (types/models.ts). */
+export interface SlideImage {
+  image_path: string | null;
+  annotated_image_path: string | null;
+}
+
 export interface ReportSlide {
   id: string;
   order: number;
   title: string;
   description: string;
+  /** Legacy single-photo fields — mobile mirrors only `images[0]` into these. */
   image_path: string | null;
   annotated_image_path: string | null;
+  /** Canonical 1–2 photo list (mobile writes this); may be absent on old rows. */
+  images?: SlideImage[];
+}
+
+/**
+ * Every report-photos storage path on a slide. Reads the canonical `images`
+ * array (mobile may store 2 photos there, with only the first mirrored into the
+ * legacy fields), falling back to the legacy pair for rows without `images`.
+ * Use this for storage cleanup so a 2nd photo isn't orphaned on delete.
+ */
+function slideStoragePaths(slide: ReportSlide): string[] {
+  const imgs = slide.images?.length
+    ? slide.images
+    : [{ image_path: slide.image_path, annotated_image_path: slide.annotated_image_path }];
+  return imgs
+    .flatMap((im) => [im.image_path, im.annotated_image_path])
+    .filter((p): p is string => !!p);
 }
 
 export interface Report {
@@ -142,9 +166,7 @@ export async function removeReportSlide(report: Report, slideId: string): Promis
   const existing = report.slides ?? [];
   const target = existing.find((s) => s.id === slideId);
   if (target) {
-    const paths = [target.image_path, target.annotated_image_path].filter(
-      (p): p is string => !!p,
-    );
+    const paths = slideStoragePaths(target);
     if (paths.length) {
       await removeObjects(STORAGE_BUCKETS.reportPhotos, paths);
     }
@@ -163,9 +185,7 @@ export async function removeReportSlide(report: Report, slideId: string): Promis
 }
 
 export async function deleteReport(report: Report): Promise<void> {
-  const paths = (report.slides ?? [])
-    .flatMap((s) => [s.image_path, s.annotated_image_path])
-    .filter((p): p is string => !!p);
+  const paths = (report.slides ?? []).flatMap(slideStoragePaths);
   if (paths.length) {
     await removeObjects(STORAGE_BUCKETS.reportPhotos, paths);
   }

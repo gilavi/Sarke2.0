@@ -1,12 +1,13 @@
 import type { Project, Report, ReportSlide } from '../types/models';
 import { KA_MONTH_FULL } from './homeUtils';
+import { slideImagePath, slideImages, slideLayout } from './reportSlides';
 
 interface ReportPdfArgs {
   report: Report;
   project: Project | null;
   inspectorName: string;
-  /** image_path → data URL, for the slide that has an image. Missing keys render
-   *  the slide without an image. */
+  /** storage path → data URL, for every embedded slide photo. Missing keys render
+   *  the slide without that image. */
   slideImageDataUrls: Record<string, string>;
 }
 
@@ -34,56 +35,85 @@ function projectInitials(name: string | undefined): string {
     .join('') || '?';
 }
 
-function renderSlide(slide: ReportSlide, idx: number, imageUrl: string | undefined): string {
+function renderSlide(slide: ReportSlide, idx: number, urls: Record<string, string>): string {
   const num = idx + 1;
   const title = escapeHtml(slide.title || `სლაიდი ${num}`);
   const description = escapeHtml(slide.description || '');
-  const hasImage = !!imageUrl;
   const hasDescription = description.length > 0;
 
-  // Slide with only image (no description): image full-width, title centered below.
-  if (hasImage && !hasDescription) {
-    return `
-      <section class="slide">
-        <div class="slide-header">
-          <span class="slide-num">${num}</span>
-        </div>
-        <img class="slide-image-full" src="${imageUrl}" alt="" />
-        <h3 class="slide-title-centered">${title}</h3>
-      </section>
-    `;
-  }
+  // Resolve every photo on the slide to its embedded data URL, dropping any that
+  // failed to embed (so a 2-photo slide with one bad image degrades to 1-photo).
+  const imageUrls = slideImages(slide)
+    .map(im => {
+      const p = slideImagePath(im);
+      return p ? urls[p] : undefined;
+    })
+    .filter((u): u is string => !!u);
+  const layout = slideLayout(slide);
 
-  // Text-only slide: full-width text.
-  if (!hasImage) {
-    return `
-      <section class="slide">
+  const header = `
         <div class="slide-header">
           <span class="slide-num">${num}</span>
           <h3 class="slide-title">${title}</h3>
-        </div>
-        ${
-          hasDescription
-            ? `<p class="slide-description full-width">${description}</p>`
-            : ''
-        }
+        </div>`;
+
+  // Text-only slide: full-width text.
+  if (imageUrls.length === 0) {
+    return `
+      <section class="slide">
+        ${header}
+        ${hasDescription ? `<p class="slide-description full-width">${description}</p>` : ''}
       </section>
     `;
   }
 
-  // Standard: 55% description left, 40% image right, 5% gap.
+  // Two photos: description full-width on top, photos side by side or stacked.
+  if (imageUrls.length >= 2) {
+    const [a, b] = imageUrls;
+    const grid =
+      layout === 'two-stacked'
+        ? `<div class="slide-stack">
+             <img class="slide-image-stacked" src="${a}" alt="" />
+             <img class="slide-image-stacked" src="${b}" alt="" />
+           </div>`
+        : `<div class="slide-duo">
+             <img class="slide-image-duo" src="${a}" alt="" />
+             <img class="slide-image-duo" src="${b}" alt="" />
+           </div>`;
+    return `
+      <section class="slide">
+        ${header}
+        ${hasDescription ? `<p class="slide-description full-width">${description}</p>` : ''}
+        ${grid}
+      </section>
+    `;
+  }
+
+  // One photo, no description: image full-width, title centered below (also the
+  // 'photo-full' look). Preserves the historical image-only slide layout.
+  if (!hasDescription || layout === 'photo-full') {
+    return `
+      <section class="slide">
+        <div class="slide-header">
+          <span class="slide-num">${num}</span>
+        </div>
+        <img class="slide-image-full" src="${imageUrls[0]}" alt="" />
+        <h3 class="slide-title-centered">${title}</h3>
+        ${hasDescription ? `<p class="slide-description full-width">${description}</p>` : ''}
+      </section>
+    `;
+  }
+
+  // One photo + description ('text-photo'): 55% description left, 40% image right.
   return `
     <section class="slide">
-      <div class="slide-header">
-        <span class="slide-num">${num}</span>
-        <h3 class="slide-title">${title}</h3>
-      </div>
+      ${header}
       <div class="slide-body">
         <div class="slide-text">
           <p class="slide-description">${description}</p>
         </div>
         <div class="slide-media">
-          <img class="slide-image" src="${imageUrl}" alt="" />
+          <img class="slide-image" src="${imageUrls[0]}" alt="" />
         </div>
       </div>
     </section>
@@ -98,11 +128,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
   const reportTitle = escapeHtml(report.title);
 
   const slidesHtml = slidesSorted
-    .map((s, i) => {
-      const path = s.annotated_image_path ?? s.image_path;
-      const url = path ? slideImageDataUrls[path] : undefined;
-      return renderSlide(s, i, url);
-    })
+    .map((s, i) => renderSlide(s, i, slideImageDataUrls))
     .join('<hr class="slide-divider" />');
 
   const initials = projectInitials(projectName);
@@ -238,6 +264,32 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
   .slide-image-full {
     width: 100%;
     max-height: 320px;
+    object-fit: contain;
+    border-radius: 6px;
+    display: block;
+  }
+  .slide-duo {
+    display: flex;
+    gap: 4%;
+    align-items: flex-start;
+    margin-top: 4px;
+  }
+  .slide-image-duo {
+    width: 48%;
+    max-height: 220px;
+    object-fit: cover;
+    border-radius: 6px;
+    display: block;
+  }
+  .slide-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .slide-image-stacked {
+    width: 100%;
+    max-height: 230px;
     object-fit: contain;
     border-radius: 6px;
     display: block;

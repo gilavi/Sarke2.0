@@ -24,6 +24,30 @@ const RULES = [
       'Import KeyboardAvoidingView from "react-native-keyboard-controller", not "react-native". The bare RN version does not coordinate with the keyboard-aware sheet/scroll wrappers — see README "Keyboard handling".',
   },
   {
+    name: 'bare-RefreshControl',
+    // Single-line `import { … RefreshControl … } from 'react-native'`. The
+    // canonical owner (components/primitives/RefreshControl.tsx) is allow-listed.
+    pattern: /import\s*\{[^}]*\bRefreshControl\b[^}]*\}\s*from\s+['"]react-native['"]/,
+    allow: ['components/primitives/RefreshControl.tsx'],
+    message:
+      'Import RefreshControl from "components/primitives", not "react-native". The themed primitive owns the refreshing state + haptic + brand tint — see docs/primitives.md → "Pull-to-refresh".',
+  },
+  {
+    name: 'direct-slide-image-field',
+    // Member access on the legacy single-photo slide fields via a `slide`/`s`
+    // receiver. A report slide holds 1–2 photos in `images`; the legacy
+    // image_path/annotated_image_path only mirror images[0], so reading them
+    // directly silently sees just the first photo. The canonical owner
+    // (lib/reportSlides.ts) is allow-listed. Reads of a `SlideImage` (e.g.
+    // `img.image_path`) are fine — only `slide.`/`s.` receivers are banned.
+    pattern: /\b(?:slide|s)\.(?:image_path|annotated_image_path)\b/,
+    allow: ['lib/reportSlides.ts'],
+    message:
+      'Read report-slide photos via lib/reportSlides.ts (slideImages / slideImagePath / slideImagePaths), ' +
+      'not slide.image_path / slide.annotated_image_path — those legacy fields only mirror the first of up to 2 photos. ' +
+      'See docs/primitives.md → "Report slide photos + layout".',
+  },
+  {
     name: 'legacy-image-helper',
     pattern: /\b(getStorageImageDataUrl|getStorageImageDataUrlStrict|getStorageImageResizedDataUrl|getStorageImageDisplayUrl)\b/,
     message:

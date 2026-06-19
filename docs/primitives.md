@@ -28,6 +28,14 @@ One component: [`components/ui/Selector.tsx`](../components/ui/Selector.tsx) —
 
 **Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated. Now built on `Selector`: `IdentificationGrid` (3 inline selectors), `TopicSelector`, `ProjectPickerStep`, `SlingTypeSheet`. `CustomDropdown` still owns the sheet-trigger case and shares `SelectorOption`.
 
+## Pull-to-refresh
+
+One component: [`components/primitives/RefreshControl.tsx`](../components/primitives/RefreshControl.tsx), exported from `components/primitives`.
+
+`<RefreshControl queries={[projectsQ, statsQ]} />` — pass it as the `refreshControl` prop of any `ScrollView` / `FlatList`. It owns its own `refreshing` state, fires a medium haptic on pull, refetches every query in `queries` (anything with `.refetch()`), and tints the spinner with `theme.colors.accent` (light + Android `colors`). For non-React-Query screens pass `onRefresh={() => reload()}` instead (e.g. `profile.tsx` calls `refreshUser()`); both can be combined. `progressViewOffset`, `tintColor`, etc. pass straight through for screens with an overlaid animated header (`app/(tabs)/home.tsx`).
+
+**Don't** re-implement the `const [refreshing, setRefreshing] = useState(false)` + `onRefresh` + `<RefreshControl tintColor={theme.colors.accent}>` boilerplate inline, and **don't** import `RefreshControl` from `react-native` directly — that duplicated pattern lived in ~13 screens, each free to drift on tint/haptic/error-handling. Consumers: `home`, `projects`, `certificates`, `more`, `incidents/[id]`, `reports/[id]`, `profile`, and the project detail sub-tabs.
+
 ## Storage images
 
 One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose so picking the right name picks the right defaults:
@@ -103,6 +111,23 @@ One file: [`hooks/usePhotoPicker.ts`](../hooks/usePhotoPicker.ts) (formerly `use
 | Re-annotate an already-uploaded photo URI | `pickPhotoWithAnnotationFromUri(sourceUri, location)` |
 
 The picker opens `/photo-picker` (live camera + gallery + GPS via `photoPickerBus`); `pickPhotosWithAnnotation` opens it with `?multi=1` for the multi-select UX (pinch-to-zoom on capture, recent-strip multi-select with a "დასრულება (n)" bar, multi-select system library). The bus callback delivers `string[] | null`. The annotator opens `/photo-annotate` — the user may save without drawing. Never call `ImagePicker.launchCameraAsync` or `ImagePicker.launchImageLibraryAsync` directly outside this hook or `app/photo-picker.tsx` — the lint check blocks it.
+
+## Report slide photos + layout
+
+One file: [`lib/reportSlides.ts`](../lib/reportSlides.ts). A report slide (`ReportSlide`, stored as JSON in the `reports.slides` column — no SQL schema) carries **1–2 photos** (`MAX_SLIDE_PHOTOS`) and a chosen render `layout`. The canonical store is `ReportSlide.images: SlideImage[]`, but older reports persisted a single photo in the now-`@deprecated` `image_path` / `annotated_image_path` fields.
+
+**Always go through these helpers — never read `slide.image_path` / `slide.annotated_image_path` directly.** This module is the only place that knows the legacy single-photo shape.
+
+| Use case | Export |
+|---|---|
+| Read a slide's photos (0–2, empties dropped; folds legacy single fields) | `slideImages(slide)` → `SlideImage[]` |
+| Best display/PDF path for one image (annotated variant preferred) | `slideImagePath(img)` |
+| All photo paths on a slide (for PDF prefetch via `pdfPhotoEmbed`) | `slideImagePaths(slide)` |
+| Resolve the layout to render (honors `slide.layout` only when valid for the photo count, else auto-defaults) | `slideLayout(slide)` |
+| Layout options valid for a photo count (drives the editor chips) | `layoutsForCount(count)` |
+| Write photos back (caps at 2, mirrors `images[0]` into the legacy fields, sets layout) | `withSlideImages(slide, images, layout?)` |
+
+Layouts: `text-photo` (1 photo, desc left/photo right), `photo-full` (1 photo full-width), `two-side` (2 photos side by side), `two-stacked` (2 photos stacked). The editor UI lives in [`components/reports/`](../components/reports/AGENTS.md) (`SlidePhotoRow`, `SlideLayoutPicker`); the read-only detail card is `ReportSlidePreview`; the PDF renders them in [`lib/reportPdf.ts`](../lib/reportPdf.ts). The 2-photo cap is enforced by **absence** of the add tile, not a disabled button.
 
 ## Web dashboard photo upload (answer-photos bucket)
 

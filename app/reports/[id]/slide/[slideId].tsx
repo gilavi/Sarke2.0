@@ -1,21 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
-import { A11yText as Text } from '../../../../components/primitives/A11yText';
 import { useBottomSheet } from '../../../../components/BottomSheet';
 import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
 import { HeaderBackButton } from '../../../../components/HeaderBackButton';
+import { SlidePhotoRow } from '../../../../components/reports/SlidePhotoRow';
+import { SlideLayoutPicker } from '../../../../components/reports/SlideLayoutPicker';
 import { useTheme } from '../../../../lib/theme';
 import { SkeletonPreview } from '../../../../components/Skeleton';
 import { useToast } from '../../../../lib/toast';
@@ -23,11 +17,19 @@ import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi, storageApi } from '../../../../lib/services';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
 import { imageForDisplay } from '../../../../lib/imageUrl';
+import {
+  MAX_SLIDE_PHOTOS,
+  defaultSlideLayout,
+  layoutsForCount,
+  slideImagePath,
+  slideImages,
+  withSlideImages,
+} from '../../../../lib/reportSlides';
 import { qk } from '../../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePhotoPicker } from '../../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../../hooks/useSubmitGuard';
-import type { Report, ReportSlide } from '../../../../types/models';
+import type { Report, ReportSlide, ReportSlideLayout, SlideImage } from '../../../../types/models';
 
 export default function ReportSlideEditor() {
   const insets = useSafeAreaInsets();
@@ -44,11 +46,11 @@ export default function ReportSlideEditor() {
   const [slide, setSlide] = useState<ReportSlide | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [imagePath, setImagePath] = useState<string | null>(null);
-  const [annotatedPath, setAnnotatedPath] = useState<string | null>(null);
+  const [images, setImages] = useState<SlideImage[]>([]);
+  const [layout, setLayout] = useState<ReportSlideLayout | undefined>(undefined);
   const [busy, setBusy] = useState(false);
-  const [imageUploading, setImageUploading] = useState(false);
-  const [thumbUri, setThumbUri] = useState<string | null>(null);
+  const [addingPhoto, setAddingPhoto] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   // Enabled "შენახვა" button + on-press title error (see useSubmitGuard).
   const { attempted, guard } = useSubmitGuard();
 
@@ -56,9 +58,7 @@ export default function ReportSlideEditor() {
   // regains focus after returning from the photo picker / annotator.
   const hasInitialized = useRef(false);
 
-  // Navigating to a different slideId should re-sync the form to the new
-  // slide's content. Without this reset, the ref stays true from the prior
-  // slide and the next load() skips the sync, leaving stale title/desc.
+  // Navigating to a different slideId should re-sync the form to the new slide.
   useEffect(() => {
     hasInitialized.current = false;
   }, [slideId]);
@@ -74,8 +74,8 @@ export default function ReportSlideEditor() {
       hasInitialized.current = true;
       setTitle(s.title);
       setDescription(s.description);
-      setImagePath(s.image_path);
-      setAnnotatedPath(s.annotated_image_path);
+      setImages(slideImages(s));
+      setLayout(s.layout);
     }
   }, [id, slideId]);
 
@@ -85,29 +85,10 @@ export default function ReportSlideEditor() {
     }, [load]),
   );
 
-  // Resolve display URI for the active image.
-  useEffect(() => {
-    const path = annotatedPath ?? imagePath;
-    if (!path) {
-      setThumbUri(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const u = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
-        if (!cancelled) setThumbUri(u);
-      } catch {}
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [annotatedPath, imagePath]);
-
-  const uploadLocalUri = async (localUri: string, kind: 'raw' | 'annotated'): Promise<string | null> => {
+  const uploadLocalUri = async (localUri: string): Promise<string | null> => {
     if (!report) return null;
     const ext = (localUri.split('.').pop() || 'jpg').split('?')[0];
-    const path = `${report.id}/${slideId}/${kind}-${Crypto.randomUUID()}.${ext}`;
+    const path = `${report.id}/${slideId}/annotated-${Crypto.randomUUID()}.${ext}`;
     try {
       await storageApi.uploadFromUri(STORAGE_BUCKETS.reportPhotos, path, localUri, 'image/jpeg', 'report');
       return path;
@@ -117,34 +98,55 @@ export default function ReportSlideEditor() {
     }
   };
 
-  const pickPhoto = async () => {
+  const addPhoto = async () => {
+    if (images.length >= MAX_SLIDE_PHOTOS || addingPhoto) return;
     const result = await pickPhotoWithAnnotation();
     if (!result) return;
-    setImageUploading(true);
-    const newPath = await uploadLocalUri(result.uri, 'annotated');
-    if (newPath) setImagePath(newPath);
-    setImageUploading(false);
+    setAddingPhoto(true);
+    const newPath = await uploadLocalUri(result.uri);
+    if (newPath) {
+      setImages(prev => [...prev, { image_path: newPath, annotated_image_path: null }]);
+    }
+    setAddingPhoto(false);
   };
 
-  const reAnnotateExisting = async () => {
-    const path = annotatedPath ?? imagePath;
+  // Handlers match the target photo by object identity, not positional index, so
+  // a concurrent remove of a lower-indexed photo (while a change/re-annotate upload
+  // is in flight) can't reindex the array and drop or overwrite the wrong photo.
+  const changePhoto = async (target: SlideImage, index: number) => {
+    const result = await pickPhotoWithAnnotation();
+    if (!result) return;
+    setUploadingIndex(index);
+    const newPath = await uploadLocalUri(result.uri);
+    if (newPath) {
+      setImages(prev => prev.map(im => (im === target ? { image_path: newPath, annotated_image_path: null } : im)));
+    }
+    setUploadingIndex(null);
+  };
+
+  const reAnnotatePhoto = async (target: SlideImage, index: number) => {
+    const path = slideImagePath(target);
     if (!path) return;
-    setImageUploading(true);
+    setUploadingIndex(index);
     try {
       const signed = await imageForDisplay(STORAGE_BUCKETS.reportPhotos, path);
       const annotatedUri = await pickPhotoWithAnnotationFromUri(signed);
       if (annotatedUri) {
-        const newPath = await uploadLocalUri(annotatedUri, 'annotated');
-        if (newPath) setImagePath(newPath);
+        const newPath = await uploadLocalUri(annotatedUri);
+        if (newPath) {
+          setImages(prev =>
+            prev.map(im => (im === target ? { image_path: newPath, annotated_image_path: null } : im)),
+          );
+        }
       }
     } catch (e) {
       toast.error(friendlyError(e, 'ხატვის გახსნა ვერ მოხერხდა'));
     } finally {
-      setImageUploading(false);
+      setUploadingIndex(null);
     }
   };
 
-  const removeImage = () => {
+  const removePhoto = (target: SlideImage) => {
     showSheet(
       {
         title: 'სურათის წაშლა?',
@@ -154,17 +156,14 @@ export default function ReportSlideEditor() {
       },
       idx => {
         if (idx !== 0) return;
-        setImagePath(null);
-        setAnnotatedPath(null);
+        setImages(prev => prev.filter(im => im !== target));
       },
     );
   };
 
-  const onImageTap = () => {
-    if (!imagePath && !annotatedPath) {
-      pickPhoto();
-      return;
-    }
+  const onTapPhoto = (index: number) => {
+    const target = images[index];
+    if (!target) return;
     showSheet(
       {
         title: 'სურათის ცვლილება',
@@ -173,29 +172,32 @@ export default function ReportSlideEditor() {
         destructiveButtonIndex: 2,
       },
       idx => {
-        if (idx === 0) pickPhoto();
-        else if (idx === 1) void reAnnotateExisting();
-        else if (idx === 2) removeImage();
+        if (idx === 0) void changePhoto(target, index);
+        else if (idx === 1) void reAnnotatePhoto(target, index);
+        else if (idx === 2) removePhoto(target);
       },
     );
   };
 
-  // Title gate for the (now always-enabled) save button. `busy`/`imageUploading`
-  // stay separate in-flight disables.
+  const validLayouts = layoutsForCount(images.length);
+  const effectiveLayout =
+    layout && validLayouts.includes(layout) ? layout : defaultSlideLayout(images.length);
+
+  // Title gate for the (always-enabled) save button. In-flight uploads stay a
+  // separate disable so a half-uploaded photo can't be saved.
   const titleValid = title.trim().length > 0;
+  const uploading = addingPhoto || uploadingIndex !== null;
 
   const onSave = async () => {
-    if (!report || !slide || busy || imageUploading || !titleValid) return;
+    if (!report || !slide || busy || uploading || !titleValid) return;
     setBusy(true);
     const next = report.slides.map(s =>
       s.id === slide.id
-        ? {
-            ...s,
-            title: title.trim(),
-            description: description.trim(),
-            image_path: imagePath,
-            annotated_image_path: annotatedPath,
-          }
+        ? withSlideImages(
+            { ...s, title: title.trim(), description: description.trim() },
+            images,
+            effectiveLayout,
+          )
         : s,
     );
     try {
@@ -232,23 +234,20 @@ export default function ReportSlideEditor() {
         }}
       />
 
-      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 12 }}>
-        {/* Image section */}
-        <Pressable onPress={onImageTap} style={styles.imageWrap}>
-          {thumbUri ? (
-            <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <Camera size={32} color={theme.colors.inkFaint} strokeWidth={1.5} />
-              <Text style={styles.imagePlaceholderText}>+ ფოტოს დამატება</Text>
-            </View>
-          )}
-          {imageUploading ? (
-            <View style={styles.imageOverlay}>
-              <ActivityIndicator color={theme.colors.white} />
-            </View>
-          ) : null}
-        </Pressable>
+      <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16, gap: 14 }}>
+        {/* Photos (1–2 per slide) */}
+        <SlidePhotoRow
+          images={images}
+          uploadingIndex={uploadingIndex}
+          addingPhoto={addingPhoto}
+          onTapPhoto={onTapPhoto}
+          onAddPhoto={addPhoto}
+        />
+
+        {/* Layout chooser — only when there's a real choice (≥1 photo). */}
+        {validLayouts.length > 1 ? (
+          <SlideLayoutPicker layouts={validLayouts} value={effectiveLayout} onChange={setLayout} />
+        ) : null}
 
         {/* Title */}
         <FloatingLabelInput
@@ -273,7 +272,7 @@ export default function ReportSlideEditor() {
         <Button
           title="შენახვა"
           onPress={() => guard(titleValid, onSave)}
-          disabled={busy || imageUploading}
+          disabled={busy || uploading}
           loading={busy}
         />
       </View>
@@ -283,32 +282,6 @@ export default function ReportSlideEditor() {
 
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    centered: { alignItems: 'center', justifyContent: 'center' },
-    imageWrap: {
-      width: '100%',
-      aspectRatio: 16 / 9,
-      borderRadius: 12,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    imagePlaceholder: {
-      width: '100%',
-      height: '100%',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      borderWidth: 1.5,
-      borderStyle: 'dashed',
-      borderColor: theme.colors.borderStrong,
-      borderRadius: 12,
-    },
-    imagePlaceholderText: { fontSize: 14, color: theme.colors.inkSoft, fontWeight: '600' },
-    imageOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.4)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     footer: {
       borderTopWidth: 1,
       borderTopColor: theme.colors.hairline,
