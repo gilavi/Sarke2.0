@@ -8,7 +8,7 @@ import { IconButton } from '@ds/IconButton';
 // delete/close/overflow controls (e.g. photo & row deletes in inspections).
 
 const meta = {
-  title: 'Components/Icon Button',
+  title: 'Actions/Icon Button',
   component: IconButton,
   argTypes: {
     variant: { control: 'select', options: ['plain', 'ghost', 'danger', 'overlay'] },

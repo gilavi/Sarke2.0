@@ -29,6 +29,16 @@ it (`metro.config.js` blockList + root `tsconfig.json` exclude both list it).
   `SHOULD_BE_USE_WEB = true` (redirected for both Vite + esbuild prebundle).
 - `shims/expo-haptics.web.ts`, `shims/empty.ts` — web no-ops.
 - `stories/` — `Tokens.stories.tsx` (galleries) + one file per universal primitive.
+  `Motion.stories.tsx` has an `Interactions` playground showcasing the shared press
+  squish + selection spring across every tappable control (tap to feel it; reanimated
+  renders on web via the shims below).
+- **Sidebar taxonomy.** Every story `title` is `Category/Component` (NOT a flat
+  `Components/*`). Categories: `Foundations`, `Actions`, `Forms`, `Selection`,
+  `Data Display`, `Feedback`, `Navigation`, `Overlays`, `Inspection`, `Patterns`.
+  The order is pinned by `options.storySort.order` in `.storybook/preview.tsx` — add new
+  categories there too. The `Selection/*` group gathers every option-picker (`Selector`
+  with a Controls-driven Playground, `Verdict`, `Answer Chips`) so they're found together.
+  When adding a story, pick the matching category prefix rather than inventing a new one.
 
 ## Gotchas (reanimated v4 + react-native-web in Vite)
 

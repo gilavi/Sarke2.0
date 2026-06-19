@@ -4,7 +4,7 @@ import { ArrowRight, Plus } from 'lucide-react-native';
 import { Button } from '@ds/Button';
 
 const meta = {
-  title: 'Components/Button',
+  title: 'Actions/Button',
   component: Button,
   argTypes: {
     variant: {

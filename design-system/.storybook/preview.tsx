@@ -23,7 +23,21 @@ const preview: Preview = {
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
     layout: 'fullscreen',
     options: {
-      storySort: { order: ['Tokens', 'Components', '*'] },
+      storySort: {
+        order: [
+          'Foundations',
+          'Actions',
+          'Forms',
+          'Selection',
+          'Data Display',
+          'Feedback',
+          'Navigation',
+          'Overlays',
+          'Inspection',
+          'Patterns',
+          '*',
+        ],
+      },
     },
   },
   globalTypes: {

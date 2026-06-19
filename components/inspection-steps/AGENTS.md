@@ -120,7 +120,9 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   per-flow variant. Every consuming flow orders its options
   positive → negative, which is what the positional icon default keys
   off; if you ever need a different order, set `tone` (or `icon`)
-  explicitly on the option rather than reordering.
+  explicitly on the option rather than reordering. Its cards carry the
+  canonical press squish via [`PressBounce`](../animations/PressBounce.tsx)
+  (`scaleTo 0.96`); selected styling stays prop-driven.
 - This is the equipment-route shell, NOT the generic harness wizard.
   The generic wizard lives at `features/inspection-wizard/`.
   Equipment routes (bobcat, excavator, ...) own their own step

@@ -4,7 +4,6 @@ import {
   KeyboardTypeOptions,
   Pressable,
   ReturnKeyTypeOptions,
-  StyleSheet,
   Text,
   TextInput,
   TextInputProps,
@@ -13,6 +12,7 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 import { useAccessibilitySettings } from '../../lib/accessibility';
+import { styles } from './FloatingLabelInput.styles';
 
 export interface FloatingLabelInputProps {
   label: string;
@@ -256,52 +256,3 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
 );
 
 FloatingLabelInput.displayName = 'FloatingLabelInput';
-
-const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 0,
-  },
-  container: {
-    position: 'relative',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  label: {
-    position: 'absolute',
-    left: 14,
-    zIndex: 1,
-    backgroundColor: 'transparent',
-    fontFamily: 'Inter-Regular',
-  },
-  asterisk: {
-    // danger color applied inline via theme in render
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    paddingHorizontal: 14,
-    paddingBottom: 8,
-    margin: 0,
-    padding: 0,
-    paddingLeft: 14,
-    // Prevent Android from painting its own white background over the themed
-    // container surface - without this, light text is invisible in dark mode.
-    backgroundColor: 'transparent',
-  },
-  inputMultiline: {
-    paddingBottom: 10,
-    alignSelf: 'stretch',
-  },
-  rightIcon: {
-    position: 'absolute',
-    right: 14,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
-  subText: {
-    fontSize: 11,
-    marginTop: 4,
-    marginLeft: 2,
-  },
-});

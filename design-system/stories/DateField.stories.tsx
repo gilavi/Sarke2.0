@@ -6,7 +6,7 @@ import { DateTimeField } from '@root/components/DateTimeField';
 // The OS spinner is native; the trigger field/chips render on web (the picker is
 // stubbed). value is a Date; mode = 'date' | 'time' | 'datetime'.
 
-const meta: Meta = { title: 'Components/Date & Time Field' };
+const meta: Meta = { title: 'Forms/Date & Time' };
 export default meta;
 type Story = StoryObj;
 

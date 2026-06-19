@@ -7,7 +7,7 @@ import { SerialKeypad } from '@root/components/inputs/SerialKeypad';
 
 // Specialized inputs used in equipment inspections.
 
-const meta: Meta = { title: 'Components/Special Inputs' };
+const meta: Meta = { title: 'Forms/Special Inputs' };
 export default meta;
 type Story = StoryObj;
 

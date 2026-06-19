@@ -11,10 +11,10 @@ import { usePressBounce } from '../animations/usePressBounce';
 import { useSelectionPop } from '../animations/useSelectionPop';
 import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
 import type { Theme } from '../../lib/theme';
-import type { getStyles } from './Selector';
 import type { SelectorOption } from './Selector';
+import type { getSelectorStyles } from './Selector.styles';
 
-type SelectorStyles = ReturnType<typeof getStyles>;
+type SelectorStyles = ReturnType<typeof getSelectorStyles>;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

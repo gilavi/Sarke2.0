@@ -14,7 +14,7 @@ import {
 // lib/design-tokens.ts — the same data mobile and web-app consume. If a value
 // changes there, these update automatically.
 
-const meta: Meta = { title: 'Tokens/Overview' };
+const meta: Meta = { title: 'Foundations/Tokens' };
 export default meta;
 type Story = StoryObj;
 

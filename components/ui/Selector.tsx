@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
-import { useTheme, type Theme } from '../../lib/theme';
+import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { SelectorOptionChip, SelectorOptionRow } from './SelectorOption';
+import { getSelectorStyles } from './Selector.styles';
 
 /**
  * Selector — the ONE canonical form option-picker for the app.
@@ -69,7 +70,7 @@ export type SelectorProps = SingleProps | MultiProps;
 export function Selector(props: SelectorProps) {
   const { options, label, presentation = 'chips', indicator = 'radio', error, style, testID } = props;
   const { theme } = useTheme();
-  const styles = useMemo(() => getStyles(theme), [theme]);
+  const styles = useMemo(() => getSelectorStyles(theme), [theme]);
 
   const isMulti = props.mode === 'multi';
   const selectedValues = isMulti ? props.values : props.value != null ? [props.value] : [];
@@ -131,81 +132,4 @@ export function Selector(props: SelectorProps) {
       )}
     </View>
   );
-}
-
-export function getStyles(theme: Theme) {
-  return StyleSheet.create({
-    group: { gap: 8 },
-    groupLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
-    disabled: { opacity: 0.4 },
-
-    // rows (border + fill colors are animated per-option; defaults live here)
-    rowList: { gap: 8 },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-
-    // list (divided full-bleed rows, for sheets / scrollable pickers)
-    listContainer: {},
-    listRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 14,
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.hairline,
-    },
-    listRowError: { borderBottomColor: theme.colors.semantic.danger },
-
-    rowTextWrap: { flex: 1, gap: 2 },
-    rowText: { fontSize: 15, color: theme.colors.ink, fontWeight: '500' },
-    rowTextActive: { color: theme.colors.ink, fontWeight: '700' },
-    rowSubtitle: { fontSize: 12, color: theme.colors.inkFaint },
-    radio: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 2,
-      borderColor: theme.colors.hairline,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    radioActive: { borderColor: theme.colors.ink },
-    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.ink },
-    checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 6,
-      borderWidth: 2,
-      borderColor: theme.colors.hairline,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    checkboxActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.ink },
-    checkboxInner: { width: 9, height: 9, borderRadius: 2, backgroundColor: theme.colors.white },
-
-    // chips (border + fill colors are animated per-option; defaults live here)
-    chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    chip: {
-      paddingHorizontal: 16,
-      paddingVertical: 11,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    chipText: { fontSize: 14, color: theme.colors.inkSoft },
-    chipTextActive: { color: theme.colors.ink, fontWeight: '700' },
-  });
 }

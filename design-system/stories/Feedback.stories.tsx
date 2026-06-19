@@ -8,7 +8,7 @@ import { Plus } from 'lucide-react-native';
 
 // Loading / empty / error states — the three-state UI rule (see CLAUDE.md).
 
-const meta: Meta = { title: 'Components/Feedback' };
+const meta: Meta = { title: 'Feedback/States' };
 export default meta;
 type Story = StoryObj;
 

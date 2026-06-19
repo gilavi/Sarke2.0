@@ -5,7 +5,7 @@ import { RecordTypePill } from '@root/components/RecordTypePill';
 import { StatusBadge } from '@root/components/StatusBadge';
 import { InspectionListAvatar } from '@root/components/InspectionListAvatar';
 
-const meta: Meta = { title: 'Components/Status' };
+const meta: Meta = { title: 'Data Display/Status' };
 export default meta;
 type Story = StoryObj;
 

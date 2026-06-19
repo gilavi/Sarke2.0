@@ -9,7 +9,7 @@ import { FloatingLabelInput } from '@root/components/inputs/FloatingLabelInput';
 // legacy artifact and is intentionally not showcased.)
 
 const meta = {
-  title: 'Components/Text Field',
+  title: 'Forms/Text Field',
   component: FloatingLabelInput,
 } satisfies Meta<typeof FloatingLabelInput>;
 

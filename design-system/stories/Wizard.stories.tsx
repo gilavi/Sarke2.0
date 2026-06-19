@@ -5,11 +5,12 @@ import { CircleCheck, CircleX } from 'lucide-react-native';
 import { AnswerButtons } from '@root/components/wizard/AnswerButtons';
 import { StatusChip } from '@root/components/wizard/StatusChip';
 
-// NOTE: the real wizard step indicator is FlowHeader's progress bar (see
-// "Components/Navigation → Flow Header"). components/wizard/StepBar.tsx and
-// WizardNav.tsx are legacy/unused, so they are intentionally NOT showcased.
+// Answer-chip selection controls: the binary AnswerButtons and the underlying
+// StatusChip. Grouped under Selection/* with Selector + Verdict. (The wizard step
+// indicator is FlowHeader's progress bar — see Navigation → Header & Back;
+// WizardNav.tsx is legacy/unused and not showcased.)
 
-const meta: Meta = { title: 'Components/Wizard' };
+const meta: Meta = { title: 'Selection/Answer Chips' };
 export default meta;
 type Story = StoryObj;
 

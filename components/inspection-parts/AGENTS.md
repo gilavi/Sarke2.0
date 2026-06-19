@@ -42,12 +42,17 @@ renamed in Phase 1 of the refactor to distinguish from
   and is consumed via the shared `ConclusionStep`.)
 
 ## Internal files
-One file per export above, plus `index.ts`.
+One file per export above, plus `index.ts`. `ChipNavStrip` renders its mapped
+chips via `NavChip.tsx` (extracted so each chip owns its press/selection animated
+values; the parent computes per-chip colors and passes them down).
 
 ## Gotchas / non-obvious things
 - `inspection-parts` (this folder) is the small pieces.
   `inspection-steps` is the big wizard step shells. Don't mix the
   two — keep step shells in `inspection-steps/`, atoms here.
+- `ChipNavStrip` chips carry the canonical press squish ([`PressBounce`](../animations/PressBounce.tsx)
+  via `NavChip`) + a 150ms pill border/fill tween; the `done` checkmark springs in via
+  [`useSelectionPop`](../animations/useSelectionPop.ts). The status dot stays instant. Honours reduce-motion.
 
 ## Canonical helpers used
 - `lib/theme`, `lib/accessibility`.

@@ -1,35 +1,17 @@
 import React, { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { View } from 'react-native';
-import { VerdictSelector } from '@root/components/inspection-steps/VerdictSelector';
 import { VerdictSuggestionBanner } from '@root/components/inspection-steps/VerdictSuggestionBanner';
 import { ChecklistRow, CHECKLIST_LEGEND, type ChecklistItemState } from '@root/components/inspection-steps/ChecklistRow';
 import { ChecklistLegend } from '@root/components/inspection-parts/ChecklistLegend';
 import { ChipNavStrip } from '@root/components/inspection-parts/ChipNavStrip';
 
-const meta: Meta = { title: 'Components/Inspection' };
+// Inspection-specific parts. The verdict picker moved to Selection/Verdict; the
+// answer chips live at Selection/Answer Chips.
+
+const meta: Meta = { title: 'Inspection/Parts' };
 export default meta;
 type Story = StoryObj;
-
-export const Verdict: Story = {
-  name: 'Verdict Selector',
-  render: () => {
-    const [v, setV] = useState<string | null>(null);
-    return (
-      <View style={{ width: 380 }}>
-        <VerdictSelector
-          value={v}
-          onChange={setV}
-          options={[
-            { value: 'pass', label: 'Pass' },
-            { value: 'conditional', label: 'Conditional' },
-            { value: 'fail', label: 'Fail' },
-          ]}
-        />
-      </View>
-    );
-  },
-};
 
 export const Suggestion: Story = {
   name: 'Verdict Suggestion Banner',

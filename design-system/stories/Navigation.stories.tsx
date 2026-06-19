@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { HeaderBackButton } from '@root/components/HeaderBackButton';
 import { FlowHeader } from '@root/components/FlowHeader';
 
-const meta: Meta = { title: 'Components/Navigation' };
+const meta: Meta = { title: 'Navigation/Header & Back' };
 export default meta;
 type Story = StoryObj;
 

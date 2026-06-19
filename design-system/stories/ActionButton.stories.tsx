@@ -7,7 +7,7 @@ import { QuickActionButton } from '@root/components/QuickActionButton';
 // colorKey and the icon/tint follow. Use the Controls panel to switch colorKey/label.
 
 const meta = {
-  title: 'Components/Action Button',
+  title: 'Actions/Action Button',
   component: QuickActionButton,
   argTypes: {
     colorKey: {

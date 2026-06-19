@@ -16,7 +16,7 @@ import { Button } from '@ds/Button';
 import { ActionSheetItem } from '@ds/ActionSheetItem';
 import { A11yText } from '@ds/A11yText';
 
-const meta: Meta = { title: 'Components/Motion' };
+const meta: Meta = { title: 'Foundations/Motion' };
 export default meta;
 type Story = StoryObj;
 

@@ -33,6 +33,9 @@ One file per export above plus `index.ts`.
 - The `A11yText` size/weight/color props feed into theme-aware
   text styles; pass them rather than building inline style objects
   so dark mode + the dynamic-type setting keep working.
+- `Button`, `IconButton`, `FabButton` call [`usePressBounce`](../animations/usePressBounce.ts)
+  directly for the press squish; `ActionSheetItem` uses the [`PressBounce`](../animations/PressBounce.tsx)
+  wrapper (`scaleTo 0.98`) — its old `pressed` bg flash was dropped (the scale carries the feedback).
 
 ## Canonical helpers used
 - `lib/theme`, `lib/accessibility`.

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { A11yText } from '@ds/A11yText';
 
 const meta = {
-  title: 'Components/Text (A11yText)',
+  title: 'Foundations/Typography',
   component: A11yText,
   argTypes: {
     size: { control: 'select', options: ['xs', 'sm', 'base', 'lg', 'xl', '2xl'] },

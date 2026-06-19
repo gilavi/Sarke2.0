@@ -10,15 +10,8 @@ import {
 import { useTheme } from '../../lib/theme';
 import { PlateCell } from './PlateCell';
 
-const SLOTS = [
-  { kind: 'letter' as const },
-  { kind: 'letter' as const },
-  { kind: 'digit' as const },
-  { kind: 'digit' as const },
-  { kind: 'digit' as const },
-  { kind: 'letter' as const },
-  { kind: 'letter' as const },
-];
+const SLOTS = (['letter', 'letter', 'digit', 'digit', 'digit', 'letter', 'letter'] as const)
+  .map((kind) => ({ kind }));
 
 function parseValue(raw: string): string[] {
   const cleaned = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 7);

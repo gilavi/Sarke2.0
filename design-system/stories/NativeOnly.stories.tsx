@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 // on native modules with no web implementation. Documented here so the design
 // system is honest about its boundary — they live on the Expo app only.
 
-const meta: Meta = { title: 'Components/Native only' };
+const meta: Meta = { title: 'Foundations/Native Only' };
 export default meta;
 type Story = StoryObj;
 

@@ -9,7 +9,7 @@ import { Button } from '@ds/Button';
 // Interactive overlays. These need providers (BottomSheetProvider +
 // GestureHandlerRootView), wired globally in .storybook/preview.tsx.
 
-const meta: Meta = { title: 'Components/Overlays' };
+const meta: Meta = { title: 'Overlays/Sheets & Dropdown' };
 export default meta;
 type Story = StoryObj;
 

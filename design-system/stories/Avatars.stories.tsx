@@ -5,7 +5,7 @@ import { InspectionTypeAvatar } from '@root/components/InspectionTypeAvatar';
 import { InspectionListAvatar } from '@root/components/InspectionListAvatar';
 import { QuestionAvatar } from '@root/components/QuestionAvatar';
 
-const meta: Meta = { title: 'Components/Avatars' };
+const meta: Meta = { title: 'Data Display/Avatars' };
 export default meta;
 type Story = StoryObj;
 

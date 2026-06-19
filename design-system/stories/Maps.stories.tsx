@@ -9,7 +9,7 @@ import { MapPicker, type LatLng } from '@root/components/MapPicker';
 // the components fall back to a coordinate/address card — exactly what the
 // dashboard shows. The native build uses react-native-maps.
 
-const meta: Meta = { title: 'Components/Maps (web fallback)' };
+const meta: Meta = { title: 'Patterns/Maps (web fallback)' };
 export default meta;
 type Story = StoryObj;
 

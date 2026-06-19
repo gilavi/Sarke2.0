@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { View } from 'react-native';
 import { ProjectCard } from '@root/components/home/ProjectCard';
 
-const meta: Meta = { title: 'Components/Project Card' };
+const meta: Meta = { title: 'Patterns/Project Card' };
 export default meta;
 type Story = StoryObj;
 

@@ -12,8 +12,10 @@ The buttons already shared one press "bounce" (`usePressBounce`); now every othe
 - **New `useSelectionPop` hook** ([components/animations/useSelectionPop.ts](../components/animations/useSelectionPop.ts)) — a chosen option's indicator springs in (0→1) and its border/fill tweens 150ms. Used by `Selector`, `StatusChip`, `ChipNavStrip`. `PlateInput`'s active cell fades its ink border in (no reflow, no press-bounce — it's a focus target); `FloatingLabelInput` now tweens its focus border color.
 - **Retired `PressableScale`.** The old wrapper (hold feel + `gentle` spring + an inner-view scale that didn't move borders, and it ignored reduce-motion) is deleted; its 5 call sites (project cards, attachment bars, photo thumbs) moved to `PressBounce`, unifying the feel and fixing the reduce-motion bug.
 - **Rules-of-hooks extractions.** Per-option animation needs per-item shared values, so the mapped items moved to small children: [`SelectorOption`](../components/ui/SelectorOption.tsx), [`NavChip`](../components/inspection-parts/NavChip.tsx), [`PlateCell`](../components/inputs/PlateCell.tsx), [`DateTimeTrigger`](../components/DateTimeTrigger.tsx) (the last also relieves the 385-line `DateTimeField`).
-- **Storybook.** A new `Components/Motion → Interactions` playground showcases the press + selection feel across every control; the old `PressScale` story now demos `PressBounce`.
+- **Storybook.** A new `Foundations/Motion → Interactions` playground showcases the press + selection feel across every control; the old `PressScale` story now demos `PressBounce`.
 - Reduce-motion is honored throughout (transitions suppressed, final state applied instantly).
+
+**Storybook sidebar reorganized (same day).** The flat ~23-entry `Components/*` list was regrouped into 10 categories (`Foundations`, `Actions`, `Forms`, `Selection`, `Data Display`, `Feedback`, `Navigation`, `Overlays`, `Inspection`, `Patterns`), order pinned via `storySort`. All the option-pickers now live together under `Selection/*` — `Selector` (with a Controls-driven **Playground** for presentation/indicator/mode), `Verdict`, and `Answer Chips` — so "form selector with different properties" is one place to browse.
 
 ## 2026-06-18 — Design system foundations: canonical tokens + Storybook on react-native-web
 

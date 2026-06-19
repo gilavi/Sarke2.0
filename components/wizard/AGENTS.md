@@ -20,7 +20,6 @@ which has its own AGENTS.md.
 - `ExitModal` — confirmation modal when the user backs out with
   unsaved progress.
 - `PhotoThumbs` — horizontal photo strip + add-photo tile.
-- `StepBar` — progress bar at the top of the wizard.
 - `StepSectionLabel` — small caps section label inside a step.
 - `WizardNav` — back/next nav footer (separate from the wizard's
   custom footer that hosts AnswerButtons).

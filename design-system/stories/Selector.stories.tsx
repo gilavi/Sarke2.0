@@ -5,10 +5,20 @@ import { Selector } from '@root/components/ui/Selector';
 
 // The ONE canonical form selector — replaces the hand-rolled option lists/chip
 // rows scattered across the app (IdentificationGrid's three selectors now use it).
-// Single or multi select, rendered as rows or chips. (For a dropdown/sheet, see
-// Components/Overlays → Custom Dropdown, which shares the option shape.)
+// One component, many shapes: presentation (chips / rows / list), indicator
+// (radio / check), single or multi. Use the Playground's Controls to mix them.
+// Sibling selection controls live under Selection/* (Verdict, Answer Chips). For a
+// dropdown/sheet, see Overlays → Sheets & Dropdown (shares the option shape).
 
-const meta: Meta = { title: 'Components/Selector' };
+const meta: Meta = {
+  title: 'Selection/Selector',
+  argTypes: {
+    presentation: { control: 'inline-radio', options: ['chips', 'rows', 'list'] },
+    indicator: { control: 'inline-radio', options: ['radio', 'check'] },
+    error: { control: 'boolean' },
+  },
+  args: { presentation: 'chips', indicator: 'radio', error: false },
+};
 export default meta;
 type Story = StoryObj;
 
@@ -17,6 +27,25 @@ const CONDITION = [
   { value: 'deficient', label: 'ხარვეზი' },
   { value: 'unusable', label: 'გამოუსადეგარია' },
 ];
+
+export const Playground: Story = {
+  render: (args) => {
+    const [v, setV] = useState<string | null>('good');
+    return (
+      <View style={{ width: 420 }}>
+        <Selector
+          label="Condition"
+          presentation={args.presentation as 'chips' | 'rows' | 'list'}
+          indicator={args.indicator as 'radio' | 'check'}
+          error={args.error as boolean}
+          options={CONDITION}
+          value={v}
+          onChange={setV}
+        />
+      </View>
+    );
+  },
+};
 
 export const SingleChips: Story = {
   name: 'Single · chips',

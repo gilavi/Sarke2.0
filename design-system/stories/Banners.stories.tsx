@@ -6,7 +6,7 @@ import { PdfLockedBanner } from '@root/components/PdfLockedBanner';
 // Uses react-i18next (initialized in preview.tsx) to render real strings.
 // (SubscriptionNotice is omitted — it needs a Supabase session via usePdfUsage.)
 
-const meta: Meta = { title: 'Components/Banners' };
+const meta: Meta = { title: 'Feedback/Banners' };
 export default meta;
 type Story = StoryObj;
 

@@ -14,7 +14,7 @@ import { primary, semantic } from '@tokens';
 
 // A few smaller reusable components grouped together.
 
-const meta: Meta = { title: 'Components/Misc' };
+const meta: Meta = { title: 'Patterns/Misc Helpers' };
 export default meta;
 type Story = StoryObj;
 
