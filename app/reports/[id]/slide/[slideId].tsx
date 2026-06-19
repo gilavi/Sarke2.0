@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import * as Crypto from 'expo-crypto';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
 import { useBottomSheet } from '../../../../components/BottomSheet';
@@ -268,14 +269,18 @@ export default function ReportSlideEditor() {
         />
       </KeyboardSafeArea>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
-        <Button
-          title="შენახვა"
-          onPress={() => guard(titleValid, onSave)}
-          disabled={busy || uploading}
-          loading={busy}
-        />
-      </View>
+      {/* Footer rides above the keyboard so the save button stays reachable while
+          editing the title / description. Mirrors app/reports/new.tsx. */}
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
+          <Button
+            title="შენახვა"
+            onPress={() => guard(titleValid, onSave)}
+            disabled={busy || uploading}
+            loading={busy}
+          />
+        </View>
+      </KeyboardStickyView>
     </View>
   );
 }

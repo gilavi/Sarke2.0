@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
@@ -95,14 +96,25 @@ export default function NewReportTitleScreen() {
         />
       </KeyboardSafeArea>
 
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 + insets.bottom }}>
-        <Button
-          title="შემდეგი →"
-          onPress={() => guard(inputValid, onNext)}
-          disabled={busy}
-          loading={busy}
-        />
-      </View>
+      {/* Footer rides above the keyboard (the input autofocuses, so the keyboard
+          is up immediately). Mirrors the briefings/account-settings pattern. */}
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+        <View
+          style={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: insets.bottom + 12,
+            backgroundColor: theme.colors.card,
+          }}
+        >
+          <Button
+            title="შემდეგი →"
+            onPress={() => guard(inputValid, onNext)}
+            disabled={busy}
+            loading={busy}
+          />
+        </View>
+      </KeyboardStickyView>
     </View>
   );
 }
