@@ -13,9 +13,15 @@ A report slide could hold one photo; now it holds **1 or 2** (hard cap at 2), an
 - **PDF** ([lib/reportPdf.ts](../lib/reportPdf.ts)) gained `two-side` and `two-stacked` layouts and embeds every photo on a slide. Existing single-photo reports render exactly as before.
 - **Data model** — `ReportSlide` now carries `images: SlideImage[]` + `layout`, with the old `image_path` / `annotated_image_path` kept as a back-compat mirror. Slides are JSON in `reports.slides`, so **no migration**. All readers go through the new canonical helpers in [lib/reportSlides.ts](../lib/reportSlides.ts) (`slideImages`, `slideLayout`, `withSlideImages`) — see [docs/primitives.md](primitives.md) "Report slide photos + layout".
 
-## 2026-06-19 — Reports: keyboard no longer hides the action button
+## 2026-06-19 — Action buttons no longer hidden by the keyboard
 
-The new-report name screen ([app/reports/new.tsx](../app/reports/new.tsx)) autofocuses its input, so the keyboard came up immediately and covered the "შემდეგი →" button (it sat in a plain bottom view outside the keyboard wrapper). The slide editor ([app/reports/[id]/slide/[slideId].tsx](../app/reports/%5Bid%5D/slide/%5BslideId%5D.tsx)) had the same issue with its "შენახვა" button while editing the title/description. Both footers are now wrapped in `KeyboardStickyView` (`offset={{ closed: 0, opened: insets.bottom }}`), the canonical pattern already used by `briefings/new`, `account-settings`, and `InspectionShell` — the button rides above the keyboard and returns to the bottom when it dismisses.
+Several wizard footers sat in a plain bottom view *outside* the keyboard wrapper, so the soft keyboard covered the primary action button. Fixed across the app by wrapping each footer in `KeyboardStickyView` (`offset={{ closed: 0, opened: insets.bottom }}`), the canonical pattern already used by `briefings/new`, `account-settings`, and `InspectionShell`:
+
+- [app/reports/new.tsx](../app/reports/new.tsx) — "შემდეგი →" (the input autofocuses, so the keyboard was up immediately).
+- [app/reports/[id]/slide/[slideId].tsx](../app/reports/%5Bid%5D/slide/%5BslideId%5D.tsx) — "შენახვა" while editing the title/description.
+- [app/incidents/new.tsx](../app/incidents/new.tsx) and [features/order-new/NewOrderScreen.tsx](../features/order-new/NewOrderScreen.tsx) — the multi-step `bottomBar` actions.
+
+Audited the other `KeyboardSafeArea` consumers (auth screens, profile) — those already place the button as the last child *inside* the wrapper, so they were unaffected.
 
 ## 2026-06-19 — Photo uploads survive flaky connections
 

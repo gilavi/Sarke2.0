@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -380,33 +381,37 @@ export default function NewOrderScreen() {
         )}
       </KeyboardSafeArea>
 
-      <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
-        {step < getTotalSteps(docType) ? (
-          <Button
-            title="შემდეგი"
-            rightIcon={ArrowRight}
-            onPress={() => guard(canAdvance, goNext, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
-            style={{ width: '100%' }}
-          />
-        ) : (
-          <View style={{ gap: 10 }}>
+      {/* Footer rides above the keyboard so action buttons stay reachable while
+          typing in any step's fields. Matches reports/new + briefings/new. */}
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+        <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
+          {step < getTotalSteps(docType) ? (
             <Button
-              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon={FileText}
-              loading={saving}
-              onPress={() => guard(canAdvance, saveAndGeneratePdf, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
+              title="შემდეგი"
+              rightIcon={ArrowRight}
+              onPress={() => guard(canAdvance, goNext, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
               style={{ width: '100%' }}
             />
-            <Button
-              title="შენახვა PDF-ის გარეშე"
-              variant="link"
-              disabled={saving}
-              onPress={saveDraft}
-              style={{ width: '100%' }}
-            />
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <Button
+                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
+                leftIcon={FileText}
+                loading={saving}
+                onPress={() => guard(canAdvance, saveAndGeneratePdf, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
+                style={{ width: '100%' }}
+              />
+              <Button
+                title="შენახვა PDF-ის გარეშე"
+                variant="link"
+                disabled={saving}
+                onPress={saveDraft}
+                style={{ width: '100%' }}
+              />
+            </View>
+          )}
+        </View>
+      </KeyboardStickyView>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>

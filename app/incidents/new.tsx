@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import * as Crypto from 'expo-crypto';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
@@ -485,33 +486,37 @@ export default function NewIncident() {
 
       </KeyboardSafeArea>
 
-      <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
-        {step < 4 ? (
-          <Button
-            title="შემდეგი"
-            rightIcon={ArrowRight}
-            onPress={handleAdvance}
-            style={{ width: '100%' }}
-          />
-        ) : (
-          <View style={{ gap: 10 }}>
+      {/* Footer rides above the keyboard so action buttons stay reachable while
+          typing in any step's fields. Matches reports/new + briefings/new. */}
+      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
+        <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
+          {step < 4 ? (
             <Button
-              title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
-              leftIcon={FileText}
-              loading={saving}
-              onPress={saveAndGeneratePdf}
+              title="შემდეგი"
+              rightIcon={ArrowRight}
+              onPress={handleAdvance}
               style={{ width: '100%' }}
             />
-            <Button
-              title="შენახვა ხელმოწერის გარეშე"
-              variant="link"
-              disabled={saving}
-              onPress={saveDraft}
-              style={{ width: '100%' }}
-            />
-          </View>
-        )}
-      </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              <Button
+                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
+                leftIcon={FileText}
+                loading={saving}
+                onPress={saveAndGeneratePdf}
+                style={{ width: '100%' }}
+              />
+              <Button
+                title="შენახვა ხელმოწერის გარეშე"
+                variant="link"
+                disabled={saving}
+                onPress={saveDraft}
+                style={{ width: '100%' }}
+              />
+            </View>
+          )}
+        </View>
+      </KeyboardStickyView>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
