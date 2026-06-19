@@ -13,6 +13,15 @@ A report slide could hold one photo; now it holds **1 or 2** (hard cap at 2), an
 - **PDF** ([lib/reportPdf.ts](../lib/reportPdf.ts)) gained `two-side` and `two-stacked` layouts and embeds every photo on a slide. Existing single-photo reports render exactly as before.
 - **Data model** — `ReportSlide` now carries `images: SlideImage[]` + `layout`, with the old `image_path` / `annotated_image_path` kept as a back-compat mirror. Slides are JSON in `reports.slides`, so **no migration**. All readers go through the new canonical helpers in [lib/reportSlides.ts](../lib/reportSlides.ts) (`slideImages`, `slideLayout`, `withSlideImages`) — see [docs/primitives.md](primitives.md) "Report slide photos + layout".
 
+## 2026-06-19 — Report slide list: consistent header, drag-to-reorder, cleaner cards
+
+The slides editor ([app/reports/[id]/edit.tsx](../app/reports/%5Bid%5D/edit.tsx)) was brought in line with the inspection flow and the new-report screen:
+
+- **Header** now uses the shared [FlowHeader](../components/FlowHeader.tsx) — back button (left) + **close X** (right) + a **2 / 2 stepper** — instead of a one-off native header with a duplicate "PDF" pill. PDF generation lives only in the sticky footer now.
+- **Footer button** is the canonical primary [Button](../components/primitives/Button.tsx) (black text) instead of a hand-rolled orange Pressable.
+- **Slide cards** ([ReportSlideCard](../components/reports/ReportSlideCard.tsx)) are taller with a larger 96×72 thumbnail, the slide number overlaid on the photo, and better spacing. The two up/down reorder chevrons are gone — **long-press a card and drag to reorder** ([SlideReorderList](../components/reports/SlideReorderList.tsx), a custom reanimated-v4 + gesture-handler list, no new dependency, OTA-safe).
+- **Add-slide tile** dropped its orange accent for neutral dashed styling, consistent with the rest of the UI.
+
 ## 2026-06-19 — Action buttons no longer hidden by the keyboard
 
 Several wizard footers sat in a plain bottom view *outside* the keyboard wrapper, so the soft keyboard covered the primary action button. Fixed across the app by wrapping each footer in `KeyboardStickyView` (`offset={{ closed: 0, opened: insets.bottom }}`), the canonical pattern already used by `briefings/new`, `account-settings`, and `InspectionShell`:

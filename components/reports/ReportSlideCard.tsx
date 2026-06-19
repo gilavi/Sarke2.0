@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Trash2, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react-native';
+import { Trash2, Image as ImageIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -10,26 +10,27 @@ import { imageForDisplay } from '../../lib/imageUrl';
 import { slideImagePath, slideImages } from '../../lib/reportSlides';
 import type { ReportSlide } from '../../types/models';
 
+/** Fixed card height — the reorder list relies on a deterministic row height. */
+export const SLIDE_CARD_HEIGHT = 104;
+
 /**
- * One row in the report slide list (`app/reports/[id]/edit.tsx`): swipe-to-delete,
- * thumbnail of the first photo with a count badge when the slide has 2, title +
- * description, and up/down reorder controls. Reads photos via `slideImages()`.
+ * One row in the report slide list (`app/reports/[id]/edit.tsx`): a large photo
+ * thumbnail with the slide number overlaid, title + description, swipe-to-delete,
+ * and (via the parent reorder list) long-press-to-drag. Reorder chevrons were
+ * removed in favour of drag. Reads photos via `slideImages()`.
  */
 export function ReportSlideCard({
   slide,
   index,
-  total,
+  dragging = false,
   onPress,
-  onUp,
-  onDown,
   onDelete,
 }: {
   slide: ReportSlide;
   index: number;
-  total: number;
+  /** True while this card is being dragged — lifts it with a stronger shadow. */
+  dragging?: boolean;
   onPress: () => void;
-  onUp: () => void;
-  onDown: () => void;
   onDelete: () => void;
 }) {
   const { theme } = useTheme();
@@ -65,62 +66,37 @@ export function ReportSlideCard({
       )}
       overshootRight={false}
     >
-      <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}>
-        <View style={styles.cardRow}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, dragging && styles.cardDragging, pressed && { opacity: 0.85 }]}
+      >
+        <View style={styles.thumb}>
+          {thumbUri ? (
+            <Image source={{ uri: thumbUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          ) : (
+            <ImageIcon size={26} color={theme.colors.inkFaint} strokeWidth={1.5} />
+          )}
           <View style={styles.numberBadge}>
             <Text style={styles.numberBadgeText}>{index + 1}</Text>
           </View>
+          {photoCount > 1 ? (
+            <View style={styles.photoCountBadge}>
+              <Text style={styles.photoCountBadgeText}>{photoCount}</Text>
+            </View>
+          ) : null}
+        </View>
 
-          <View style={styles.thumb}>
-            {thumbUri ? (
-              <Image source={{ uri: thumbUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-            ) : (
-              <ImageIcon size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
-            )}
-            {photoCount > 1 ? (
-              <View style={styles.photoCountBadge}>
-                <Text style={styles.photoCountBadgeText}>{photoCount}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {slide.title || `სლაიდი ${index + 1}`}
+        <View style={styles.body}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {slide.title || `სლაიდი ${index + 1}`}
+          </Text>
+          {slide.description ? (
+            <Text style={styles.cardDescription} numberOfLines={2}>
+              {slide.description}
             </Text>
-            {slide.description ? (
-              <Text style={styles.cardDescription} numberOfLines={2}>
-                {slide.description}
-              </Text>
-            ) : (
-              <Text style={[styles.cardDescription, { fontStyle: 'italic', color: theme.colors.inkFaint }]}>
-                აღწერა არ არის
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.reorderStack}>
-            <Pressable
-              onPress={onUp}
-              disabled={index === 0}
-              hitSlop={10}
-              style={({ pressed }) => [styles.reorderBtn, index === 0 && { opacity: 0.3 }, pressed && { opacity: 0.6 }]}
-            >
-              <ChevronUp size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            </Pressable>
-            <Pressable
-              onPress={onDown}
-              disabled={index === total - 1}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.reorderBtn,
-                index === total - 1 && { opacity: 0.3 },
-                pressed && { opacity: 0.6 },
-              ]}
-            >
-              <ChevronDown size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            </Pressable>
-          </View>
+          ) : (
+            <Text style={[styles.cardDescription, styles.cardDescriptionEmpty]}>აღწერა არ არის</Text>
+          )}
         </View>
       </Pressable>
     </Swipeable>
@@ -130,62 +106,71 @@ export function ReportSlideCard({
 function makeStyles(theme: any) {
   return StyleSheet.create({
     card: {
+      height: SLIDE_CARD_HEIGHT,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 14,
       backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: 14,
       shadowColor: theme.colors.ink,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
       shadowRadius: 4,
       elevation: 1,
     },
-    cardRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    numberBadge: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: theme.colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
+    cardDragging: {
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 8,
+      borderColor: theme.colors.borderStrong,
     },
-    numberBadgeText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
     thumb: {
-      width: 64,
-      aspectRatio: 16 / 9,
-      borderRadius: 8,
+      width: 96,
+      height: 72,
+      borderRadius: 12,
       overflow: 'hidden',
       backgroundColor: theme.colors.subtleSurface,
       alignItems: 'center',
       justifyContent: 'center',
     },
+    numberBadge: {
+      position: 'absolute',
+      top: 5,
+      left: 5,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: theme.colors.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    numberBadgeText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
     photoCountBadge: {
       position: 'absolute',
-      bottom: 3,
-      right: 3,
-      minWidth: 16,
-      height: 16,
-      paddingHorizontal: 4,
-      borderRadius: 8,
+      bottom: 4,
+      right: 4,
+      minWidth: 18,
+      height: 18,
+      paddingHorizontal: 5,
+      borderRadius: 9,
       backgroundColor: 'rgba(0,0,0,0.6)',
       alignItems: 'center',
       justifyContent: 'center',
     },
     photoCountBadgeText: { color: theme.colors.white, fontSize: 10, fontWeight: '700' },
-    cardTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
-    cardDescription: { fontSize: 12, color: theme.colors.inkSoft, lineHeight: 16 },
-    reorderStack: { flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center' },
-    reorderBtn: {
-      width: 24,
-      height: 24,
-      borderRadius: 6,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.subtleSurface,
-    },
+    body: { flex: 1, paddingTop: 2, gap: 4 },
+    cardTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.ink, lineHeight: 22 },
+    cardDescription: { fontSize: 13, fontWeight: '400', color: theme.colors.inkSoft, lineHeight: 18 },
+    cardDescriptionEmpty: { fontStyle: 'italic', color: theme.colors.inkFaint },
     swipeDelete: {
       width: 64,
+      height: SLIDE_CARD_HEIGHT,
       backgroundColor: theme.colors.danger,
-      borderRadius: 12,
+      borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: 8,
