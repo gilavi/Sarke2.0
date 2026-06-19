@@ -28,9 +28,10 @@ export interface ReportSlide {
  * Every report-photos storage path on a slide. Reads the canonical `images`
  * array (mobile may store 2 photos there, with only the first mirrored into the
  * legacy fields), falling back to the legacy pair for rows without `images`.
- * Use this for storage cleanup so a 2nd photo isn't orphaned on delete.
+ * Use for storage cleanup and for building signed-URL maps (so a 2nd photo
+ * isn't skipped in the gallery).
  */
-function slideStoragePaths(slide: ReportSlide): string[] {
+export function slideStoragePaths(slide: ReportSlide): string[] {
   const imgs = slide.images?.length
     ? slide.images
     : [{ image_path: slide.image_path, annotated_image_path: slide.annotated_image_path }];

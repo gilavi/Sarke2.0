@@ -20,6 +20,7 @@ import {
   updateReportSlide,
   signedReportPdfUrl,
   signedReportPhotoUrl,
+  slideStoragePaths,
   type Report,
 } from '@/lib/data/reports';
 import { getProject } from '@/lib/data/projects';
@@ -45,12 +46,12 @@ export default function ReportDetail() {
     queryFn: () => getProject(projectId!),
     enabled: !!projectId,
   });
-  // Photo paths that actually need a signed URL - stable string key so the query
-  // doesn't re-run (and regenerate 10-min signed URLs) on every refetch just because
-  // `item.slides` is a fresh array reference.
-  const slidePaths = (item?.slides ?? [])
-    .map((s) => s.annotated_image_path || s.image_path)
-    .filter((p): p is string => !!p);
+  // Collect ALL photo paths across all slides (up to 2 per slide via images array).
+  // Stable string key so the query doesn't regenerate 10-min signed URLs on every
+  // refetch just because `item.slides` is a fresh array reference.
+  const slidePaths = Array.from(
+    new Set((item?.slides ?? []).flatMap(slideStoragePaths)),
+  );
   const { data: imageUrls = {} } = useQuery({
     queryKey: ['reportPhotos', id, slidePaths.join('|')],
     queryFn: async () => {
@@ -378,10 +379,9 @@ export default function ReportDetail() {
                   slide={s}
                   index={idx}
                   editable={item.status === 'draft'}
-                  imageUrl={(() => {
-                    const path = s.annotated_image_path || s.image_path;
-                    return path ? imageUrls[path] : undefined;
-                  })()}
+                  imageUrls={slideStoragePaths(s)
+                    .map((p) => imageUrls[p])
+                    .filter((u): u is string => !!u)}
                   onSave={(patch) => updateSlideMutation.mutateAsync({ slideId: s.id, patch })}
                   onRemove={() => requestRemoveSlide(s.id)}
                   isRemoving={removeSlideMutation.isPending}
@@ -405,11 +405,14 @@ export default function ReportDetail() {
 
         {/* Photo gallery */}
         {(() => {
-          const galleryUrls = slides.map((s) => {
-            const path = s.annotated_image_path || s.image_path;
-            return path ? imageUrls[path] ?? '' : '';
-          });
-          const captions = slides.map((s, idx) => s.title || `სლაიდი ${idx + 1}`);
+          const galleryUrls = slides.flatMap((s) =>
+            slideStoragePaths(s).map((p) => imageUrls[p] ?? ''),
+          );
+          const captions = slides.flatMap((s, idx) =>
+            slideStoragePaths(s).map((_, i) =>
+              i === 0 ? s.title || `სლაიდი ${idx + 1}` : `${s.title || `სლაიდი ${idx + 1}`} (2)`,
+            ),
+          );
           const hasAny = galleryUrls.some(Boolean);
           return hasAny ? (
             <Card className="mt-4">

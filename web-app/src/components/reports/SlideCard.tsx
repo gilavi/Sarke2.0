@@ -13,7 +13,8 @@ interface SlideCardProps {
   index: number;
   /** Draft reports allow editing title/description and removing the slide. */
   editable: boolean;
-  imageUrl?: string;
+  /** Signed URLs for slide photos — 0, 1, or 2 entries. */
+  imageUrls?: string[];
   /** Persist a title/description patch. Must reject on failure so we can revert. */
   onSave: (patch: { title?: string; description?: string }) => Promise<unknown>;
   onRemove: () => void;
@@ -31,7 +32,7 @@ export function SlideCard({
   slide,
   index,
   editable,
-  imageUrl,
+  imageUrls = [],
   onSave,
   onRemove,
   isRemoving,
@@ -93,13 +94,18 @@ export function SlideCard({
           )}
         </div>
         <div className="flex items-start gap-2 shrink-0 ml-2">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={label}
-              className="h-16 w-16 rounded-lg object-cover border border-neutral-200"
-            />
-          ) : null}
+          {imageUrls.length > 0 && (
+            <div className="flex gap-1">
+              {imageUrls.map((url, i) => (
+                <img
+                  key={url}
+                  src={url}
+                  alt={i === 0 ? label : `${label} — ფოტო ${i + 1}`}
+                  className="h-16 w-16 rounded-lg object-cover border border-neutral-200"
+                />
+              ))}
+            </div>
+          )}
           {editable && (
             <button
               type="button"
