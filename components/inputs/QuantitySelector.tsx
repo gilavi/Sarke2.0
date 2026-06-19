@@ -8,10 +8,11 @@
 // Reusable across any "how many?" prompt - the caller supplies the
 // presets and bounds; this component owns the chip/typing UX only.
 import { memo, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
+import { PressBounce } from '../animations/PressBounce';
 
 export type QuantitySelectorProps = {
   value: number;
@@ -75,16 +76,17 @@ export const QuantitySelector = memo(function QuantitySelector({
       {presets.map(p => {
         const active = value === p && !customActive;
         return (
-          <Pressable
+          <PressBounce
             key={p}
             onPress={() => selectPreset(p)}
+            scaleTo={0.94}
             style={[styles.chip, active && styles.chipActive]}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             accessibilityLabel={`${accessibilityLabelPrefix} ${p}`}
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>{p}</Text>
-          </Pressable>
+          </PressBounce>
         );
       })}
 

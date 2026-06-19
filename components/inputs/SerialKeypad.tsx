@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../lib/theme';
+import { PressBounce } from '../animations/PressBounce';
 
 // QWERTY rows
 const QWERTY_ROWS = [
@@ -17,31 +18,28 @@ export interface SerialKeypadProps {
 export function SerialKeypad({ slotKind, onKey }: SerialKeypadProps) {
   const { theme } = useTheme();
 
-  const key = (label: string, value: string, flex = 1) => (
-    <Pressable
+  const key = (label: string, value: string) => (
+    <PressBounce
       key={label}
       onPress={() => onKey(value)}
-      style={({ pressed }) => [
-        styles.key,
-        pressed && { backgroundColor: theme.colors.hairline },
-      ]}
+      hapticOnPress="light"
+      scaleTo={0.9}
+      style={styles.key}
     >
       <Text style={[styles.keyText, { color: theme.colors.ink }]}>{label}</Text>
-    </Pressable>
+    </PressBounce>
   );
 
   const bsKey = (flex = 1) => (
-    <Pressable
+    <PressBounce
       key="bs"
       onPress={() => onKey('Backspace')}
-      style={({ pressed }) => [
-        styles.key,
-        { flex },
-        pressed && { backgroundColor: theme.colors.hairline },
-      ]}
+      hapticOnPress="light"
+      scaleTo={0.9}
+      style={[styles.key, { flex }]}
     >
       <Text style={[styles.keyText, { color: theme.colors.inkSoft, fontSize: 20 }]}>⌫</Text>
-    </Pressable>
+    </PressBounce>
   );
 
   if (slotKind === 'digit') {

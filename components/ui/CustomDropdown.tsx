@@ -5,6 +5,7 @@ import { Check, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 import { useBottomSheet, BottomSheetScrollView } from '../BottomSheet';
 import { haptic } from '../../lib/haptics';
+import { PressBounce } from '../animations/PressBounce';
 
 export interface DropdownOption {
   label: string;
@@ -223,9 +224,11 @@ export const CustomDropdown = memo(function CustomDropdown({
           {label}{required ? ' *' : ''}
         </Text>
       )}
-      <Pressable
+      <PressBounce
         onPress={openSheet}
         disabled={disabled}
+        scaleTo={0.98}
+        hapticOnPress="light"
         accessibilityRole="combobox"
         accessibilityLabel={label}
         accessibilityState={{ disabled, expanded: isOpen }}
@@ -247,7 +250,7 @@ export const CustomDropdown = memo(function CustomDropdown({
           {selectedOption?.label ?? placeholder}
         </Text>
         <ChevronDown size={16} color={disabled ? c.inkFaint : c.inkSoft} strokeWidth={1.5} />
-      </Pressable>
+      </PressBounce>
       {error != null && (
         <Text style={[styles.errorText, { fontFamily: ty.fontFamily.body, color: c.danger }]}>
           {error}

@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Check } from 'lucide-react-native';
 import { A11yText } from './A11yText';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
 import { useTheme } from '../../lib/theme';
+import { PressBounce } from '../animations/PressBounce';
 
 export type ActionSheetItemVariant = 'default' | 'destructive' | 'highlight';
 
@@ -48,13 +49,10 @@ export function ActionSheetItem({
 
   return (
     <>
-      <Pressable
+      <PressBounce
         onPress={handlePress}
-        style={({ pressed }) => [
-          styles.container,
-          isSelected && styles.selected,
-          pressed && styles.pressed,
-        ]}
+        scaleTo={0.98}
+        style={[styles.container, isSelected && styles.selected]}
         {...a11y(label, undefined, 'button')}
       >
         {/* Selection indicator */}
@@ -81,7 +79,7 @@ export function ActionSheetItem({
         {isSelected && (
           <Check size={20} color={theme.colors.accent} strokeWidth={1.5} />
         )}
-      </Pressable>
+      </PressBounce>
       {!isLast && <View style={styles.separator} />}
     </>
   );
@@ -100,9 +98,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.accentSoft,
     borderLeftWidth: 3,
     borderLeftColor: colors.accent,
-  },
-  pressed: {
-    backgroundColor: colors.surfaceSecondary,
   },
   selectionCircle: {
     width: 22,

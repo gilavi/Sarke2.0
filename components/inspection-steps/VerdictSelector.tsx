@@ -11,13 +11,14 @@
  *      negative (warning), anything in between is caution (eye). Every flow
  *      orders its options positive → negative, so this needs no per-route wiring.
  */
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Eye, ShieldCheck, TriangleAlert } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
+import { PressBounce } from '../animations/PressBounce';
 
 export type VerdictTone = 'success' | 'caution' | 'danger';
 
@@ -77,9 +78,10 @@ export function VerdictSelector<T extends string = string>({
           const active = value === opt.value;
           const IconComp = opt.icon ?? (opt.tone ? TONE_ICON[opt.tone] : positionalIcon(i, options.length));
           return (
-            <Pressable
+            <PressBounce
               key={opt.value}
               onPress={() => press(opt.value, active)}
+              scaleTo={0.96}
               style={[
                 styles.button,
                 active
@@ -92,7 +94,7 @@ export function VerdictSelector<T extends string = string>({
               <Text style={[styles.label, { color: active ? theme.colors.ink : theme.colors.inkSoft }]}>
                 {opt.label}
               </Text>
-            </Pressable>
+            </PressBounce>
           );
         })}
       </View>

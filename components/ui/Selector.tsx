@@ -1,11 +1,10 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { CircleCheck } from 'lucide-react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
-import { a11y } from '../../lib/accessibility';
+import { SelectorOptionChip, SelectorOptionRow } from './SelectorOption';
 
 /**
  * Selector — the ONE canonical form option-picker for the app.
@@ -15,6 +14,9 @@ import { a11y } from '../../lib/accessibility';
  * etc.). Supports single or multi select, rendered as full-width `rows` (label +
  * radio) or wrapped `chips`. Monochrome by design — selection is carried by an
  * ink border + subtle fill, matching the rest of the inspection UI.
+ *
+ * Each option (see {@link SelectorOptionChip}/{@link SelectorOptionRow}) carries the
+ * canonical press squish, a 150ms selection fill, and an indicator spring-in.
  *
  * For sheet/dropdown presentation use {@link CustomDropdown} (same option shape).
  */
@@ -94,71 +96,50 @@ export function Selector(props: SelectorProps) {
 
       {presentation !== 'chips' ? (
         <View style={presentation === 'list' ? styles.listContainer : styles.rowList}>
-          {options.map((opt) => {
-            const active = isSelected(opt.value);
-            const Icon = opt.icon;
-            const isList = presentation === 'list';
-            return (
-              <Pressable
-                key={opt.value}
-                style={[
-                  isList ? styles.listRow : styles.row,
-                  active && (isList ? styles.listRowActive : styles.rowActive),
-                  error && (isList ? styles.listRowError : styles.rowError),
-                  opt.disabled && styles.disabled,
-                ]}
-                onPress={() => handlePress(opt)}
-                disabled={opt.disabled}
-                {...a11y(opt.label ?? opt.value, undefined, a11yRole)}
-              >
-                {opt.leading ?? (Icon ? <Icon size={20} color={active ? theme.colors.ink : theme.colors.inkSoft} strokeWidth={1.8} /> : null)}
-                <View style={styles.rowTextWrap}>
-                  <Text style={[styles.rowText, active && styles.rowTextActive]}>{opt.label ?? opt.value}</Text>
-                  {opt.subtitle ? <Text style={styles.rowSubtitle}>{opt.subtitle}</Text> : null}
-                </View>
-                {indicator === 'check' ? (
-                  active ? <CircleCheck size={22} color={theme.colors.ink} strokeWidth={1.5} /> : null
-                ) : (
-                  <View style={[isMulti ? styles.checkbox : styles.radio, active && (isMulti ? styles.checkboxActive : styles.radioActive)]}>
-                    {active && (isMulti ? <View style={styles.checkboxInner} /> : <View style={styles.radioDot} />)}
-                  </View>
-                )}
-              </Pressable>
-            );
-          })}
+          {options.map((opt) => (
+            <SelectorOptionRow
+              key={opt.value}
+              opt={opt}
+              active={isSelected(opt.value)}
+              error={error}
+              isMulti={isMulti}
+              isList={presentation === 'list'}
+              indicator={indicator}
+              onPress={() => handlePress(opt)}
+              styles={styles}
+              theme={theme}
+              a11yRole={a11yRole}
+            />
+          ))}
         </View>
       ) : (
         <View style={styles.chipsRow}>
-          {options.map((opt) => {
-            const active = isSelected(opt.value);
-            return (
-              <Pressable
-                key={opt.value}
-                style={[styles.chip, active && styles.chipActive, error && styles.chipError, opt.disabled && styles.disabled]}
-                onPress={() => handlePress(opt)}
-                disabled={opt.disabled}
-                {...a11y(opt.label ?? opt.value, undefined, a11yRole)}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                  {isMulti && active ? '✓ ' : ''}
-                  {opt.label ?? opt.value}
-                </Text>
-              </Pressable>
-            );
-          })}
+          {options.map((opt) => (
+            <SelectorOptionChip
+              key={opt.value}
+              opt={opt}
+              active={isSelected(opt.value)}
+              error={error}
+              isMulti={isMulti}
+              onPress={() => handlePress(opt)}
+              styles={styles}
+              theme={theme}
+              a11yRole={a11yRole}
+            />
+          ))}
         </View>
       )}
     </View>
   );
 }
 
-function getStyles(theme: Theme) {
+export function getStyles(theme: Theme) {
   return StyleSheet.create({
     group: { gap: 8 },
     groupLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
     disabled: { opacity: 0.4 },
 
-    // rows
+    // rows (border + fill colors are animated per-option; defaults live here)
     rowList: { gap: 8 },
     row: {
       flexDirection: 'row',
@@ -172,8 +153,6 @@ function getStyles(theme: Theme) {
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,
     },
-    rowActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
-    rowError: { borderColor: theme.colors.semantic.danger },
 
     // list (divided full-bleed rows, for sheets / scrollable pickers)
     listContainer: {},
@@ -187,7 +166,6 @@ function getStyles(theme: Theme) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.hairline,
     },
-    listRowActive: { backgroundColor: theme.colors.subtleSurface },
     listRowError: { borderBottomColor: theme.colors.semantic.danger },
 
     rowTextWrap: { flex: 1, gap: 2 },
@@ -217,7 +195,7 @@ function getStyles(theme: Theme) {
     checkboxActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.ink },
     checkboxInner: { width: 9, height: 9, borderRadius: 2, backgroundColor: theme.colors.white },
 
-    // chips
+    // chips (border + fill colors are animated per-option; defaults live here)
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: {
       paddingHorizontal: 16,
@@ -227,8 +205,6 @@ function getStyles(theme: Theme) {
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,
     },
-    chipActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.subtleSurface },
-    chipError: { borderColor: theme.colors.semantic.danger },
     chipText: { fontSize: 14, color: theme.colors.inkSoft },
     chipTextActive: { color: theme.colors.ink, fontWeight: '700' },
   });

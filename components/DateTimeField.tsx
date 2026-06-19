@@ -25,10 +25,10 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Clock } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
+import { DateTimeChip, DateTimeTabButton } from './DateTimeTrigger';
 
 export type DateTimeMode = 'date' | 'time' | 'datetime';
 
@@ -126,43 +126,31 @@ export function DateTimeField({
 
       <View style={styles.row}>
         {showDateChip && (
-          <Pressable
+          <DateTimeChip
+            icon={CalendarDays}
+            label={formatDate(value)}
             onPress={() => openSheet('date')}
             disabled={disabled}
-            style={({ pressed }) => [
-              styles.chip,
-              { flex: mode === 'datetime' ? 1.5 : 1 },
-              error ? styles.chipError : null,
-              pressed && styles.chipPressed,
-              disabled && styles.chipDisabled,
-            ]}
-            {...a11y(formatDate(value), 'თარიღის არჩევა', 'button')}
-          >
-            <CalendarDays size={18} color={theme.colors.accent} strokeWidth={1.5} />
-            <Text style={styles.chipText} numberOfLines={1}>
-              {formatDate(value)}
-            </Text>
-          </Pressable>
+            error={!!error}
+            flex={mode === 'datetime' ? 1.5 : 1}
+            accentColor={theme.colors.accent}
+            styles={styles}
+            a11yProps={a11y(formatDate(value), 'თარიღის არჩევა', 'button')}
+          />
         )}
 
         {showTimeChip && (
-          <Pressable
+          <DateTimeChip
+            icon={Clock}
+            label={formatTime(value)}
             onPress={() => openSheet('time')}
             disabled={disabled}
-            style={({ pressed }) => [
-              styles.chip,
-              { flex: 1 },
-              error ? styles.chipError : null,
-              pressed && styles.chipPressed,
-              disabled && styles.chipDisabled,
-            ]}
-            {...a11y(formatTime(value), 'დროის არჩევა', 'button')}
-          >
-            <Clock size={18} color={theme.colors.accent} strokeWidth={1.5} />
-            <Text style={styles.chipText} numberOfLines={1}>
-              {formatTime(value)}
-            </Text>
-          </Pressable>
+            error={!!error}
+            flex={1}
+            accentColor={theme.colors.accent}
+            styles={styles}
+            a11yProps={a11y(formatTime(value), 'დროის არჩევა', 'button')}
+          />
         )}
       </View>
 
@@ -203,14 +191,14 @@ export function DateTimeField({
             {/* Tabs (only in datetime mode) */}
             {mode === 'datetime' && (
               <View style={styles.tabs}>
-                <TabButton
+                <DateTimeTabButton
                   active={activeTab === 'date'}
                   label={formatDate(draft)}
                   icon={CalendarDays}
                   onPress={() => setActiveTab('date')}
                   theme={theme}
                 />
-                <TabButton
+                <DateTimeTabButton
                   active={activeTab === 'time'}
                   label={formatTime(draft)}
                   icon={Clock}
@@ -244,58 +232,7 @@ export function DateTimeField({
   );
 }
 
-function TabButton({
-  active, label, icon: IconComp, onPress, theme,
-}: {
-  active: boolean;
-  label: string;
-  icon: LucideIcon;
-  onPress: () => void;
-  theme: any;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        tabStyles.btn,
-        {
-          backgroundColor: active ? theme.colors.accentSoft : theme.colors.surfaceSecondary,
-          borderColor: active ? theme.colors.accent : theme.colors.hairline,
-        },
-      ]}
-    >
-      <IconComp
-        size={16}
-        color={active ? theme.colors.accent : theme.colors.inkSoft}
-        strokeWidth={1.5}
-      />
-      <Text
-        style={{
-          fontSize: 14,
-          fontWeight: active ? '700' : '500',
-          color: active ? theme.colors.accent : theme.colors.inkSoft,
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-const tabStyles = StyleSheet.create({
-  btn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-});
-
-function makeStyles(theme: any) {
+export function makeStyles(theme: any) {
   return StyleSheet.create({
     label: {
       fontSize: 13,
@@ -316,9 +253,6 @@ function makeStyles(theme: any) {
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.colors.hairline,
-    },
-    chipPressed: {
-      opacity: 0.7,
     },
     chipDisabled: {
       opacity: 0.4,

@@ -3,12 +3,11 @@
 // Each chip shows a status dot + label and highlights the active item; tapping
 // jumps to it. Originated as the fall-protection device tab strip, extracted so
 // other flows can reuse the same look + behaviour.
-import { ScrollView, Pressable, View, StyleSheet } from 'react-native';
-import { Check } from 'lucide-react-native';
-import { A11yText as Text } from '../primitives/A11yText';
+import { ScrollView, StyleSheet } from 'react-native';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import { a11y } from '../../lib/accessibility';
+import { NavChip } from './NavChip';
 
 export type ChipNavState = 'pending' | 'active' | 'done' | 'problem' | 'warning' | 'skipped';
 
@@ -100,39 +99,27 @@ export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status', do
         // Status marker: colored dot (default) or a monochrome dot / checkmark.
         const showCheck = dotMode === 'check' && item.state === 'done';
         return (
-          <Pressable
+          <NavChip
             key={item.key}
-            style={[
-              styles.tab,
-              { borderColor },
-              isActive && { backgroundColor: activeBg },
-            ]}
+            label={item.label}
+            isActive={isActive}
+            borderColor={borderColor}
+            activeBg={activeBg}
+            labelColor={labelColor}
+            dotStyle={dotMode === 'color' ? { backgroundColor: dotColor } : monoDot(item.state, theme, isActive)}
+            showCheck={showCheck}
             onPress={() => { haptic.light(); onSelect(idx); }}
-            {...a11y(item.label, item.a11yHint ?? item.label, 'tab')}
-          >
-            {showCheck ? (
-              <Check size={13} color={theme.colors.ink} strokeWidth={1.5} style={styles.check} />
-            ) : (
-              <View
-                style={[
-                  styles.dot,
-                  dotMode === 'color'
-                    ? { backgroundColor: dotColor }
-                    : monoDot(item.state, theme, isActive),
-                ]}
-              />
-            )}
-            <Text style={[styles.label, isActive && { color: labelColor, fontWeight: '800' }]}>
-              {item.label}
-            </Text>
-          </Pressable>
+            styles={styles}
+            theme={theme}
+            a11yProps={a11y(item.label, item.a11yHint ?? item.label, 'tab')}
+          />
         );
       })}
     </ScrollView>
   );
 }
 
-function getStyles(theme: Theme) {
+export function getStyles(theme: Theme) {
   return StyleSheet.create({
     wrap: {
       borderBottomWidth: StyleSheet.hairlineWidth,

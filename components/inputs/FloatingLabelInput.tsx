@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
+import { useAccessibilitySettings } from '../../lib/accessibility';
 
 export interface FloatingLabelInputProps {
   label: string;
@@ -66,13 +67,18 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     const value = valueProp ?? '';
 
     const { theme } = useTheme();
+    const { reduceMotion } = useAccessibilitySettings();
     const isDisabled = disabled || editable === false;
 
     // Initialize floated if a value already exists on mount
     const floatAnim = useRef(new Animated.Value(value ? 1 : 0)).current;
+    // Focus border-color tween: 0 = rest, 1 = focused. Legacy Animated to match
+    // the label float (this file deliberately has no reanimated).
+    const borderAnim = useRef(new Animated.Value(0)).current;
     const [isFocused, setIsFocused] = useState(false);
 
     const float = () => {
+      if (reduceMotion) { floatAnim.setValue(1); return; }
       Animated.timing(floatAnim, {
         toValue: 1,
         duration: 150,
@@ -82,6 +88,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
 
     const sink = () => {
       if (!value) {
+        if (reduceMotion) { floatAnim.setValue(0); return; }
         Animated.timing(floatAnim, {
           toValue: 0,
           duration: 150,
@@ -90,7 +97,10 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       }
     };
 
-    useEffect(() => () => { floatAnim.stopAnimation(); }, []);
+    useEffect(() => () => {
+      floatAnim.stopAnimation();
+      borderAnim.stopAnimation();
+    }, []);
 
     // Keep label floated when value is set externally (e.g. pre-filled edit form)
     const prevValue = useRef(value);
@@ -104,12 +114,16 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
     const handleFocus = () => {
       setIsFocused(true);
       float();
+      if (reduceMotion) borderAnim.setValue(1);
+      else Animated.timing(borderAnim, { toValue: 1, duration: 150, useNativeDriver: false }).start();
       onFocus?.();
     };
 
     const handleBlur = () => {
       setIsFocused(false);
       sink();
+      if (reduceMotion) borderAnim.setValue(0);
+      else Animated.timing(borderAnim, { toValue: 0, duration: 150, useNativeDriver: false }).start();
       onBlur?.();
     };
 
@@ -132,11 +146,15 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
       ? theme.colors.inkSoft
       : theme.colors.inkFaint;
 
+    // Border color animates between rest (border) and focused (ink) over 150ms;
+    // error wins instantly. borderWidth stays state-driven (instant) to avoid
+    // sub-pixel reflow mid-tween.
     const borderColor = error
       ? theme.colors.semantic.danger
-      : isFocused
-      ? theme.colors.ink
-      : theme.colors.border;
+      : borderAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [theme.colors.border, theme.colors.ink],
+        });
 
     const borderWidth = isFocused || !!error ? 1.5 : 1;
     const floated = isFocused || !!value;
@@ -167,7 +185,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
 
     return (
       <View style={[styles.wrapper, style]}>
-        <View style={containerStyle}>
+        <Animated.View style={containerStyle}>
           <Animated.Text
             pointerEvents="none"
             style={[
@@ -221,7 +239,7 @@ export const FloatingLabelInput = React.forwardRef<TextInput, FloatingLabelInput
               />
             </Pressable>
           )}
-        </View>
+        </Animated.View>
 
         {error ? (
           <Text style={[styles.subText, { color: theme.colors.semantic.danger }]}>

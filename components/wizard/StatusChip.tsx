@@ -74,6 +74,13 @@ export function StatusChip({
 
   const showError = error && !selected;
 
+  // Selected border/fill animate (150ms) — the premium "this is chosen" beat.
+  // Composed into the SAME animatedStyle as scale+shake so transforms don't clash.
+  const borderC = useSharedValue(
+    selected ? theme.colors.inverse.background : showError ? theme.colors.danger : theme.colors.border,
+  );
+  const bgC = useSharedValue(selected ? theme.colors.inverse.background : theme.colors.surface);
+
   // Shake once when the error turns on (skipped under reduce-motion).
   useEffect(() => {
     if (showError && !reduceMotion) {
@@ -86,8 +93,22 @@ export function StatusChip({
     }
   }, [showError, reduceMotion, shake]);
 
+  useEffect(() => {
+    const b = selected ? theme.colors.inverse.background : showError ? theme.colors.danger : theme.colors.border;
+    const g = selected ? theme.colors.inverse.background : theme.colors.surface;
+    if (reduceMotion) {
+      borderC.value = b;
+      bgC.value = g;
+    } else {
+      borderC.value = withTiming(b, { duration: theme.motion.fast });
+      bgC.value = withTiming(g, { duration: theme.motion.fast });
+    }
+  }, [selected, showError, reduceMotion, theme, borderC, bgC]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }, { translateX: shake.value }],
+    borderColor: borderC.value,
+    backgroundColor: bgC.value,
   }));
 
   const handlePress = () => {
@@ -109,14 +130,6 @@ export function StatusChip({
       layout={reduceMotion ? undefined : LinearTransition.duration(240).easing(Easing.out(Easing.cubic))}
       style={[
         layout === 'pill' ? styles.pill : styles.chip,
-        {
-          borderColor: selected
-            ? theme.colors.inverse.background
-            : showError
-            ? theme.colors.danger
-            : theme.colors.border,
-          backgroundColor: selected ? theme.colors.inverse.background : theme.colors.surface,
-        },
         disabled && { opacity: 0.4 },
         animatedStyle,
         style,

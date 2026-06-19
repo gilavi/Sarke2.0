@@ -1,7 +1,6 @@
 import React, { useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   NativeSyntheticEvent,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -9,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from '../../lib/theme';
+import { PlateCell } from './PlateCell';
 
 const SLOTS = [
   { kind: 'letter' as const },
@@ -138,46 +138,22 @@ export const PlateInput = React.forwardRef<PlateInputHandle, PlateInputProps>(
       }
     };
 
-    const renderCell = (i: number) => {
-      const ch = chars[i];
-      const isActive = activeSlot === i;
-
-      return (
-        <Pressable
-          key={i}
-          onPress={() => focusSlot(i)}
-          style={[
-            styles.cell,
-            {
-              backgroundColor: theme.colors.subtleSurface,
-              // Active = thick ink border all around (no orange, no bottom bar).
-              borderColor: isActive ? theme.colors.ink : 'transparent',
-            },
-          ]}
-        >
-          <Text style={[styles.cellText, { color: isActive && !ch ? theme.colors.inkFaint : theme.colors.ink }]}>
-            {ch || (isActive ? '·' : '')}
-          </Text>
-          {!customKeyboard && (
-            <TextInput
-              ref={r => { nativeRefs.current[i] = r; }}
-              value={ch}
-              onChangeText={t => handleChange(i, t)}
-              onKeyPress={e => handleKeyPress(i, e)}
-              onFocus={() => { setActiveSlot(i); notifySlotKind(i); }}
-              onBlur={() => setActiveSlot(s => (s === i ? null : s))}
-              keyboardType={SLOTS[i].kind === 'digit' ? 'number-pad' : 'default'}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={1}
-              selectTextOnFocus
-              caretHidden
-              style={styles.hiddenInput}
-            />
-          )}
-        </Pressable>
-      );
-    };
+    const renderCell = (i: number) => (
+      <PlateCell
+        key={i}
+        ch={chars[i]}
+        isActive={activeSlot === i}
+        slotKind={SLOTS[i].kind}
+        customKeyboard={customKeyboard}
+        onPress={() => focusSlot(i)}
+        onChangeText={t => handleChange(i, t)}
+        onKeyPress={e => handleKeyPress(i, e)}
+        onFocus={() => { setActiveSlot(i); notifySlotKind(i); }}
+        onBlur={() => setActiveSlot(s => (s === i ? null : s))}
+        inputRef={r => { nativeRefs.current[i] = r; }}
+        theme={theme}
+      />
+    );
 
     const dash = (
       <Text style={[styles.dash, { color: theme.colors.inkFaint }]}>–</Text>
@@ -215,28 +191,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-  },
-  cell: {
-    width: 40,
-    height: 52,
-    borderRadius: 10,
-    // Transparent border at rest so the active ink border doesn't shift layout.
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  cellText: {
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  hiddenInput: {
-    position: 'absolute',
-    opacity: 0,
-    width: 1,
-    height: 1,
   },
   dash: {
     fontSize: 18,
