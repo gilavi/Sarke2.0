@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -8,6 +7,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { SkeletonRow } from '../../../components/Skeleton';
@@ -54,14 +54,6 @@ export default function ProjectInspectionsList() {
   // queries: skeleton while any source hasn't produced a real answer and the
   // merged list is still empty - never flash empty state over a stale [].
   const anyUnsettled = [genericQ, bobcatQ, excavatorQ, geQ, templatesQ].some(q => q.isFetching || !q.isFetched);
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([genericQ.refetch(), bobcatQ.refetch(), excavatorQ.refetch(), geQ.refetch(), templatesQ.refetch()]);
-    } finally { setRefreshing(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [genericQ.refetch, bobcatQ.refetch, excavatorQ.refetch, geQ.refetch, templatesQ.refetch]);
 
   type UnifiedItem = {
     id: string;
@@ -91,9 +83,7 @@ export default function ProjectInspectionsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl queries={[genericQ, bobcatQ, excavatorQ, geQ, templatesQ]} />}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>შემოწმების აქტები</Text>

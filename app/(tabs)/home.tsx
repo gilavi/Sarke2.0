@@ -5,7 +5,6 @@ import {
   Animated as RNAnimated,
   AppState,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
@@ -14,6 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -42,7 +42,6 @@ import { Skeleton } from '../../components/Skeleton';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useToast } from '../../lib/toast';
-import { haptic } from '../../lib/haptics';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Template } from '../../types/models';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
@@ -136,7 +135,6 @@ export default function HomeScreen() {
     (recentQ.isFetching || !recentQ.isFetched) && recent.length === 0;
 
 
-  const [refreshing, setRefreshing] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
@@ -214,17 +212,6 @@ export default function HomeScreen() {
     }
   }, [qc]);
 
-  const onRefresh = useCallback(async () => {
-    haptic.medium();
-    setRefreshing(true);
-    await Promise.all([
-      certsQ.refetch(),
-      templatesQ.refetch(),
-      recentQ.refetch(),
-      projectsQ.refetch(),
-    ]);
-    setRefreshing(false);
-  }, [certsQ, templatesQ, recentQ, projectsQ]);
 
   const templateName = useCallback((id: string) => inspectionDisplayName(templates.find((tpl) => tpl.id === id)?.name), [templates]);
 
@@ -248,13 +235,11 @@ export default function HomeScreen() {
     () => (
       <RefreshControl
         key={HEADER_FULL}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        tintColor={theme.colors.accent}
+        queries={[certsQ, templatesQ, recentQ, projectsQ]}
         progressViewOffset={HEADER_FULL}
       />
     ),
-    [HEADER_FULL, refreshing, onRefresh]
+    [HEADER_FULL, certsQ, templatesQ, recentQ, projectsQ]
   );
 
   return (

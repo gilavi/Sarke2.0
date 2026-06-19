@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -12,6 +11,7 @@ import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { Skeleton } from '../../components/Skeleton';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
 import type { InspectionStatus } from '../../components/StatusBadge';
@@ -169,18 +169,6 @@ export default function CalendarScreen() {
   const loadingBrief = briefingsQ.isLoading;
   const { data: templates = [] } = useTemplates();
   const events = useCalendarEvents();
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        inspectionsQ.refetch(),
-        briefingsQ.refetch(),
-        queryClient.invalidateQueries({ queryKey: ['schedules'] }),
-      ]);
-    } finally { setRefreshing(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inspectionsQ.refetch, briefingsQ.refetch, queryClient]);
   const { projectId } = useLocalSearchParams<{ projectId?: string }>();
   const filteredEvents = useMemo(
     () => (projectId ? events.filter(e => e.projectId === projectId) : events),
@@ -404,7 +392,10 @@ export default function CalendarScreen() {
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
+            <RefreshControl
+              queries={[inspectionsQ, briefingsQ]}
+              onRefresh={() => queryClient.invalidateQueries({ queryKey: ['schedules'] })}
+            />
           }
         >
           {sections.map(section => (

@@ -17,6 +17,7 @@ import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, Tria
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import { incidentColors } from '../../lib/statusColors';
@@ -267,6 +268,7 @@ export default function IncidentDetail() {
           paddingBottom: insets.bottom + 120,
           gap: 14,
         }}
+        refreshControl={<RefreshControl queries={[incidentQ, projectQ]} />}
       >
         {/* Header card */}
         <View style={s.headerCard}>

@@ -10,6 +10,7 @@ import {
 import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChevronRight, CalendarDays, Infinity, TriangleAlert, Moon, Languages, FileText, Box, ExternalLink, LogOut, Clock, Award, BookOpen } from 'lucide-react-native';
@@ -109,7 +110,15 @@ export default function MoreScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingTop: 16, paddingBottom: 24, gap: 18 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 24, gap: 18 }}
+        refreshControl={
+          <RefreshControl
+            queries={[countsQ, certsQ, templatesQ, projectsQ, paymentHistoryQ]}
+          />
+        }
+      >
         <Text style={{ fontSize: 28, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, paddingHorizontal: 20, color: theme.colors.ink }}>
           {t('more.title')}
         </Text>

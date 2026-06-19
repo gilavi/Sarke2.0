@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Linking,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -13,6 +12,7 @@ import { Image as ImageIcon } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { formatShortDateTime } from '../../../lib/formatDate';
@@ -62,11 +62,6 @@ export default function ProjectFilesList() {
   // Canonical three-state guard (see CLAUDE.md): skeleton until the query
   // has produced a real answer; never flash empty state over a stale [].
   const loading = (filesQ.isFetching || !filesQ.isFetched) && items.length === 0;
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await filesQ.refetch(); } finally { setRefreshing(false); }
-  }, [filesQ]);
 
   const grouped = useMemo(() => groupByDateDesc(items, f => f.created_at), [items]);
 
@@ -87,9 +82,7 @@ export default function ProjectFilesList() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
 
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl queries={[filesQ]} />}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>ბრძანებები</Text>

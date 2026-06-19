@@ -20,6 +20,15 @@ need a button / card / pill / text, reach here first.
   as `Text` (`import { A11yText as Text } from ...`).
 - `FabButton` — floating action button.
 - `ActionSheetItem` — single row in an action sheet.
+- `RefreshControl` — themed pull-to-refresh. Pass as the
+  `refreshControl` prop of a `ScrollView`/`FlatList`:
+  `<RefreshControl queries={[projectsQ, statsQ]} />`. Owns its own
+  `refreshing` state, fires a medium haptic, refetches every query
+  (anything with `.refetch()`), tints with `theme.colors.accent`.
+  Non-query screens use `onRefresh={fn}` (both compose).
+  `progressViewOffset`/`tintColor` pass through. **Never** import
+  `RefreshControl` from `react-native` directly — see
+  [docs/primitives.md](../../docs/primitives.md#pull-to-refresh).
 
 ## Internal files
 One file per export above plus `index.ts`.

@@ -6,3 +6,5 @@ export { Badge } from './Badge';
 export { Screen } from './Screen';
 export { A11yText } from './A11yText';
 export { FabButton } from './FabButton';
+export { RefreshControl } from './RefreshControl';
+export type { RefreshControlProps } from './RefreshControl';

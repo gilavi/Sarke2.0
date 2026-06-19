@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -9,6 +8,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText, ShieldCheck, Hourglass, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useBriefingsByProject } from '../../../lib/apiHooks';
@@ -40,11 +40,6 @@ export default function ProjectBriefingsList() {
   // Canonical three-state guard (see CLAUDE.md): skeleton until the query has
   // produced a real answer; never flash the empty state over a stale [].
   const loading = (briefingsQ.isFetching || !briefingsQ.isFetched) && items.length === 0;
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await briefingsQ.refetch(); } finally { setRefreshing(false); }
-  }, [briefingsQ]);
 
   const grouped = useMemo(() => groupByDateDesc(items, b => b.dateTime), [items]);
 
@@ -55,9 +50,7 @@ export default function ProjectBriefingsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl queries={[briefingsQ]} />}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>ინსტრუქტაჟი</Text>

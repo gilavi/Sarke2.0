@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -200,10 +201,14 @@ export default function CertificatesScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
-  const { data: certs = [], isLoading: certsLoading } = useCertificates();
-  const { data: inspections = [], isLoading: inspsLoading } = useRecentInspections(500);
-  const { data: templates = [], isLoading: tplsLoading } = useTemplates();
-  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  const certsQ = useCertificates();
+  const inspectionsQ = useRecentInspections(500);
+  const templatesQ = useTemplates();
+  const projectsQ = useProjects();
+  const { data: certs = [], isLoading: certsLoading } = certsQ;
+  const { data: inspections = [], isLoading: inspsLoading } = inspectionsQ;
+  const { data: templates = [], isLoading: tplsLoading } = templatesQ;
+  const { data: projects = [], isLoading: projectsLoading } = projectsQ;
   const loaded = !certsLoading && !inspsLoading && !tplsLoading && !projectsLoading;
   const queryClient = useQueryClient();
 
@@ -257,6 +262,9 @@ export default function CertificatesScreen() {
         data={certs}
         keyExtractor={c => c.id}
         contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 10 }}
+        refreshControl={
+          <RefreshControl queries={[certsQ, inspectionsQ, templatesQ, projectsQ]} />
+        }
         ListEmptyComponent={
           !loaded ? (
             <View style={{ gap: 10 }}>

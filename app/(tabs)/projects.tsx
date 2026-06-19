@@ -8,10 +8,10 @@ import {
   Keyboard,
   Modal,
   Pressable,
-  RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
+import { RefreshControl } from '../../components/primitives';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { List, LayoutGrid, MapPin, Trash2, ChevronRight, Building2 } from 'lucide-react-native';
@@ -55,7 +55,6 @@ export default function ProjectsScreen() {
   const toast = useToast();
   const showActionSheet = useBottomSheet();
   const qc = useQueryClient();
-  const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'map'>('list');
   const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
@@ -252,23 +251,7 @@ export default function ProjectsScreen() {
         initialNumToRender={8}
         windowSize={7}
         removeClippedSubviews
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              haptic.medium();
-              setRefreshing(true);
-              try {
-                await Promise.all([projectsQ.refetch(), statsQ.refetch(), overdueQ.refetch()]);
-              } catch {
-                // individual query errors are surfaced by each query's own error state
-              } finally {
-                setRefreshing(false);
-              }
-            }}
-            tintColor={theme.colors.accent}
-          />
-        }
+        refreshControl={<RefreshControl queries={[projectsQ, statsQ, overdueQ]} />}
         ListEmptyComponent={
           loading ? (
             <View style={{ gap: 10 }}>

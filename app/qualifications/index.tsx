@@ -6,20 +6,20 @@
 // REQUIRED_TYPES entry (empty cards are dashed upload affordances, filled
 // cards show the document thumbnail with edit/delete actions). Any
 // qualification whose type isn't in the required set is appended to the grid.
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   Alert,
   Animated,
   Easing,
   Modal,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { Trash2, CloudUpload, Pencil, ChevronRight, FileText, Plus } from 'lucide-react-native';
@@ -47,12 +47,6 @@ export default function QualificationsScreen() {
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
   const qualsQ = useQualifications();
   const [loaded, setLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await qualsQ.refetch(); } finally { setRefreshing(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qualsQ.refetch]);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Qualification | null>(null);
   const [addSheetVisible, setAddSheetVisible] = useState(false);
@@ -135,9 +129,7 @@ export default function QualificationsScreen() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 12 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl queries={[qualsQ]} />}
       >
         {/* Custom certificate entry */}
         <Pressable

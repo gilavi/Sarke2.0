@@ -3,11 +3,11 @@ import {
   ActivityIndicator,
   Linking,
   Pressable,
-  RefreshControl,
   ScrollView,
   View,
 } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { RefreshControl } from '../../components/primitives';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { RefreshCw, ChevronRight } from 'lucide-react-native';
@@ -43,7 +43,6 @@ export default function RegulationsScreen() {
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const refreshing = useRef(false);
-  const [pullRefreshing, setPullRefreshing] = useState(false);
 
   const refresh = useCallback(async (force = false) => {
     if (refreshing.current) return;
@@ -65,11 +64,6 @@ export default function RegulationsScreen() {
     }, [refresh])
   );
 
-  const onPullRefresh = useCallback(async () => {
-    setPullRefreshing(true);
-    try { await refresh(true); } finally { setPullRefreshing(false); }
-  }, [refresh]);
-
   const handleOpen = async (id: string, url: string) => {
     await markRegulationSeen(id);
     Linking.openURL(url);
@@ -80,9 +74,7 @@ export default function RegulationsScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 40, gap: 16 }}
-        refreshControl={
-          <RefreshControl refreshing={pullRefreshing} onRefresh={onPullRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl onRefresh={() => refresh(true)} />}
       >
         <Text style={{
           fontSize: 28,

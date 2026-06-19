@@ -28,6 +28,7 @@ import { KeyboardSafeArea } from '../components/layout/KeyboardSafeArea';
 import { Stack, useRouter } from 'expo-router';
 import { Key, ChevronRight, Trash2 } from 'lucide-react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
+import { RefreshControl } from '../components/primitives';
 import { Button } from '../components/ui';
 import { FloatingLabelInput } from '../components/inputs/FloatingLabelInput';
 import { useSession } from '../lib/session';
@@ -111,6 +112,7 @@ export default function ProfileScreen() {
         <ScrollView
           contentContainerStyle={{ gap: 16, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl onRefresh={() => refreshUser()} />}
         >
           {/* Name fields */}
           <View style={{ gap: 12 }}>

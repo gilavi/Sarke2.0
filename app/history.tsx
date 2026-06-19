@@ -1,6 +1,7 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
+import { RefreshControl } from '../components/primitives';
 import { Stack, useRouter } from 'expo-router';
 import { Trash2, FileText, ChevronRight, PlayCircle } from 'lucide-react-native';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -149,12 +150,6 @@ export default function HistoryScreen() {
   const templates = templatesQ.data ?? [];
   const qsLoading = recentQ.isLoading;
   const tplsLoading = templatesQ.isLoading;
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await Promise.all([recentQ.refetch(), templatesQ.refetch()]); } finally { setRefreshing(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recentQ.refetch, templatesQ.refetch]);
   const { data: projects = [], isLoading: projectsLoading } = useProjects();
   const completedIds = useMemo(() => qs.filter(i => i.status === 'completed').map(i => i.id), [qs]);
   const { data: certCounts = {}, isLoading: countsLoading } = useCertificateCounts(completedIds);
@@ -220,8 +215,7 @@ export default function HistoryScreen() {
       <FlatList
           data={items}
           keyExtractor={(item) => (item.kind === 'header' ? `h-${item.label}` : item.q.id)}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
+          refreshControl={<RefreshControl queries={[recentQ, templatesQ]} />}
           contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, gap: 8 }}
           renderItem={renderItem}
           initialNumToRender={10}

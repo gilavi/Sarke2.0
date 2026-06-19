@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { RefreshControl } from '../../../components/primitives';
 import { RoleSlotList, type InspectorRow } from '../../../components/RoleSlotList';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
@@ -28,11 +29,6 @@ export default function ProjectParticipantsList() {
   // Single-object detail: skeleton until the row arrives (cached data renders
   // instantly on return visits - isPending stays false then).
   const loading = projectQ.isPending;
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await projectQ.refetch(); } finally { setRefreshing(false); }
-  }, [projectQ]);
   const queryClient = useQueryClient();
 
   const inspector = useMemo<InspectorRow | null>(() => {
@@ -87,9 +83,7 @@ export default function ProjectParticipantsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl queries={[projectQ]} />}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>მონაწილეები</Text>

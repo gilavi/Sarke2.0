@@ -1,15 +1,15 @@
 import React, {ReactNode, useMemo} from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
-
-import { haptic } from '../../lib/haptics';
+import { RefreshControl } from './RefreshControl';
 
 interface ScreenProps {
   children: ReactNode;
   scrollable?: boolean;
+  /** @deprecated The themed RefreshControl owns its own refreshing state — pass `onRefresh` only. */
   refreshing?: boolean;
-  onRefresh?: () => void;
+  onRefresh?: () => void | Promise<void>;
   style?: any;
   contentContainerStyle?: any;
   /** Opt in to a 20px horizontal gutter. By default Screen is edge-to-edge so consumers control their own padding. */
@@ -23,7 +23,6 @@ interface ScreenProps {
 export function Screen({
   children,
   scrollable,
-  refreshing,
   onRefresh,
   style,
   contentContainerStyle,
@@ -39,18 +38,7 @@ export function Screen({
     <ScrollView
       style={[styles.container, style]}
       contentContainerStyle={[contentPadding, contentContainerStyle]}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={refreshing || false}
-            onRefresh={() => {
-              haptic.medium();
-              onRefresh();
-            }}
-            tintColor={theme.colors.accent}
-          />
-        ) : undefined
-      }
+      refreshControl={onRefresh ? <RefreshControl onRefresh={onRefresh} /> : undefined}
       showsVerticalScrollIndicator={false}
     >
       {children}

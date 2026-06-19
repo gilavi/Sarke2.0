@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { Card, Screen } from '../components/ui';
 import { A11yText } from '../components/primitives/A11yText';
+import { RefreshControl } from '../components/primitives';
 import { Skeleton } from '../components/Skeleton';
 import { ScaffoldTour } from '../components/ScaffoldTour';
 import { useTemplates } from '../lib/apiHooks';
@@ -56,12 +57,6 @@ export default function TemplatesScreen() {
   const templates = templatesQ.data ?? [];
   const loaded = !templatesQ.isLoading;
   const [tourVisible, setTourVisible] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await templatesQ.refetch(); } finally { setRefreshing(false); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templatesQ.refetch]);
 
   const handleHelpPress = useCallback(() => setTourVisible(true), []);
   const renderItem = useCallback(({ item }: { item: Template }) => (
@@ -75,8 +70,7 @@ export default function TemplatesScreen() {
         <FlatList
           data={templates}
           keyExtractor={t => t.id}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
+          refreshControl={<RefreshControl queries={[templatesQ]} />}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
             !loaded ? (

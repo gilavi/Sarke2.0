@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -9,6 +8,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText, Hourglass, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
+import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
@@ -40,11 +40,6 @@ export default function ProjectIncidentsList() {
   // Canonical three-state guard (see CLAUDE.md): skeleton until the query
   // has produced a real answer; never flash empty state over a stale [].
   const loading = (incidentsQ.isFetching || !incidentsQ.isFetched) && items.length === 0;
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try { await incidentsQ.refetch(); } finally { setRefreshing(false); }
-  }, [incidentsQ]);
   const [filter, setFilter] = useState<'all' | IncidentStatus>('all');
 
   const counts = useMemo(
@@ -74,9 +69,7 @@ export default function ProjectIncidentsList() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
 
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-        }
+        refreshControl={<RefreshControl queries={[incidentsQ]} />}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>ინციდენტები</Text>
