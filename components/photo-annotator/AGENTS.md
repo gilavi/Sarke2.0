@@ -14,14 +14,24 @@ new file URI.
 ## Internal files
 - `PhotoAnnotator.tsx` — the component. Owns the annotations array,
   current-stroke state, tool/color/width toolbar state, the text-tool
-  modal, and the `captureRef` → `onSave` flatten step.
-- `schema.ts` — `Tool` union, `Point`, `Annotation`,
-  `PhotoAnnotatorProps`; constants `COLORS`, `WIDTHS`, `SCREEN`;
-  pure helpers `uid`, `pointsToPathD`, `arrowHead`.
+  modal, the move-tool drag session (`selectedId` + `dragRef`), and
+  the `captureRef` → `onSave` flatten step.
+- `schema.ts` — `Tool` union (includes `'move'`), `Point`,
+  `Annotation`, `Bounds`, `PhotoAnnotatorProps`; constants `COLORS`,
+  `WIDTHS`, `SCREEN`; pure helpers `uid`, `pointsToPathD`,
+  `arrowHead`, plus the move-tool geometry helpers `annotationBounds`,
+  `hitTestAnnotation`, `translateAnnotation`.
 - `styles.ts` — `getstyles(theme)` (full-screen layout) + `getmodalStyles(theme)`
   (text-tool modal card).
 
 ## Gotchas / non-obvious things
+- The `move` tool (first toolbar button) selects the topmost
+  annotation under a tap (bounding-box hit-test, last-drawn wins) and
+  drags it; the live drag rewrites that annotation's coordinates via
+  `translateAnnotation`. The dashed selection outline is only drawn
+  while `tool === 'move'`, and `save()` clears `selectedId` + waits one
+  `requestAnimationFrame` before `captureRef` so the outline is never
+  baked into the flattened image.
 - `SCREEN = Dimensions.get('window')` is captured at *module load*.
   Rotation after load is not re-measured. Acceptable here because the
   annotator is a modal screen that's mounted fresh per launch.

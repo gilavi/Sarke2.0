@@ -24,7 +24,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle as SvgCircle, G, Line, Path, Polygon, Rect, Text as SvgText } from 'react-native-svg';
-import { ArrowRight, Check, Circle, Pencil, Square, Trash2, Type, Undo2, X } from 'lucide-react-native';
+import { ArrowRight, Check, Circle, Move, Pencil, Square, Trash2, Type, Undo2, X } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import { a11y } from '../../lib/accessibility';
@@ -32,7 +32,7 @@ import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 
-import { COLORS, WIDTHS, SCREEN, uid, pointsToPathD, arrowHead } from './schema';
+import { COLORS, WIDTHS, SCREEN, uid, pointsToPathD, arrowHead, annotationBounds, hitTestAnnotation, translateAnnotation } from './schema';
 import type { Annotation, PhotoAnnotatorProps, Point, Tool } from './schema';
 import { getstyles, getmodalStyles } from './styles';
 
@@ -56,6 +56,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   const [textInput, setTextInput] = useState('');
   const [textPos, setTextPos] = useState<Point>({ x: 0, y: 0 });
   const [saving, setSaving] = useState(false);
+  // Move tool: id of the annotation currently selected for dragging.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const photoContainerRef = useRef<View>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
@@ -65,12 +67,23 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   const currentRef = useRef(current);
   const colorRef = useRef(color);
   const widthRef = useRef(width);
+  // Live mirrors for the move tool's hit-testing / drag session.
+  const annotationsRef = useRef(annotations);
+  const selectedIdRef = useRef(selectedId);
+  const dragRef = useRef<{ id: string; startX: number; startY: number; original: Annotation } | null>(null);
   useEffect(() => {
     toolRef.current = tool;
     currentRef.current = current;
     colorRef.current = color;
     widthRef.current = width;
-  }, [tool, current, color, width]);
+    annotationsRef.current = annotations;
+    selectedIdRef.current = selectedId;
+  }, [tool, current, color, width, annotations, selectedId]);
+
+  // Leaving the move tool drops any active selection so the outline disappears.
+  useEffect(() => {
+    if (tool !== 'move' && selectedId !== null) setSelectedId(null);
+  }, [tool, selectedId]);
 
   /* Load photo dimensions */
   useEffect(() => {
@@ -113,6 +126,28 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
       onPanResponderGrant: (evt) => {
         const t = toolRef.current;
         const { locationX, locationY } = evt.nativeEvent;
+        if (t === 'move') {
+          // Pick the topmost annotation under the touch (last drawn wins).
+          const list = annotationsRef.current;
+          let hit: Annotation | null = null;
+          for (let i = list.length - 1; i >= 0; i--) {
+            if (hitTestAnnotation(list[i], { x: locationX, y: locationY })) {
+              hit = list[i];
+              break;
+            }
+          }
+          if (hit) {
+            dragRef.current = { id: hit.id, startX: locationX, startY: locationY, original: hit };
+            setSelectedId(hit.id);
+            selectedIdRef.current = hit.id;
+            haptic.light();
+          } else {
+            dragRef.current = null;
+            setSelectedId(null);
+            selectedIdRef.current = null;
+          }
+          return;
+        }
         if (t === 'text') {
           setTextPos({ x: locationX, y: locationY });
           setTextInput('');
@@ -133,10 +168,19 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         }
       },
       onPanResponderMove: (evt) => {
-        const cur = currentRef.current;
         const t = toolRef.current;
-        if (!cur) return;
         const { locationX, locationY } = evt.nativeEvent;
+        if (t === 'move') {
+          const d = dragRef.current;
+          if (!d) return;
+          const dx = locationX - d.startX;
+          const dy = locationY - d.startY;
+          const moved = translateAnnotation(d.original, dx, dy);
+          setAnnotations((prev) => prev.map((a) => (a.id === d.id ? moved : a)));
+          return;
+        }
+        const cur = currentRef.current;
+        if (!cur) return;
         if (t === 'pen') {
           const updated: Annotation = { ...cur, points: [...(cur.points ?? []), { x: locationX, y: locationY }] };
           setCurrent(updated);
@@ -148,8 +192,13 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         }
       },
       onPanResponderRelease: () => {
-        const cur = currentRef.current;
         const t = toolRef.current;
+        if (t === 'move') {
+          if (dragRef.current) haptic.light();
+          dragRef.current = null;
+          return;
+        }
+        const cur = currentRef.current;
         if (!cur) return;
         if (t === 'pen' && (cur.points?.length ?? 0) < 2) {
           setCurrent(null);
@@ -209,6 +258,10 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   const save = useCallback(async () => {
     if (!photoContainerRef.current) return;
     setSaving(true);
+    // Drop the move-tool selection outline and let the frame repaint so it
+    // isn't baked into the flattened image.
+    setSelectedId(null);
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
     try {
       const uri = await captureRef(photoContainerRef, {
         format: 'jpg',
@@ -325,12 +378,21 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   };
 
   const toolButtons: { key: Tool; Icon: LucideIcon }[] = [
+    { key: 'move', Icon: Move },
     { key: 'pen', Icon: Pencil },
     { key: 'arrow', Icon: ArrowRight },
     { key: 'circle', Icon: Circle },
     { key: 'rect', Icon: Square },
     { key: 'text', Icon: Type },
   ];
+
+  // Bounding box of the selected annotation, drawn as a dashed outline while
+  // the move tool is active so the user can see what they're dragging.
+  const selectedBounds = useMemo(() => {
+    if (tool !== 'move' || !selectedId) return null;
+    const a = annotations.find((x) => x.id === selectedId);
+    return a ? annotationBounds(a) : null;
+  }, [tool, selectedId, annotations]);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -373,6 +435,19 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
             >
               {annotations.map((a) => renderAnnotation(a))}
               {current && renderAnnotation(current, true)}
+              {selectedBounds && (
+                <Rect
+                  x={selectedBounds.minX - 8}
+                  y={selectedBounds.minY - 8}
+                  width={selectedBounds.maxX - selectedBounds.minX + 16}
+                  height={selectedBounds.maxY - selectedBounds.minY + 16}
+                  stroke={theme.colors.accent}
+                  strokeWidth={1.5}
+                  strokeDasharray="6 4"
+                  fill="none"
+                  rx={6}
+                />
+              )}
             </Svg>
           </View>
         )}

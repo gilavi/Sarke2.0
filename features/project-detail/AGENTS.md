@@ -2,9 +2,15 @@
 
 ## What this module does
 The full project-detail screen — header arch with logo + map preview,
-crew/roles, files, then per-record-type sections (inspections,
-briefings, incidents, reports, orders, breathalyzer logs).
+files, then per-record-type sections (inspections, briefings,
+incidents, reports, orders, breathalyzer logs).
 Backs the `app/projects/[id].tsx` route.
+
+The crew/participants surface (quick-action button, the
+`/projects/[id]/participants` page, and the bottom roles section that
+used `RoleSlotList`/`RoleSlotSheet`) was removed in 2026-06 — it was a
+leftover signer-collection flow no longer in use. The `crew` column on
+`projects` is left untouched; it's simply no longer edited from here.
 
 ## Public API (from index.ts)
 - `ProjectDetail` — default export; renders the entire screen.
@@ -64,10 +70,9 @@ Backs the `app/projects/[id].tsx` route.
   modals. A follow-up could pull those into a `ProjectHero.tsx` and
   a `useProjectFileActions` hook — out of scope for v2.
 - The data layer (`useProjectDetailData`) mirrors React Query results
-  into local state so older mutation paths (crew edit, file
-  upload/delete, swipe-delete in inspection sections) keep working
-  via setters. Switching to pure query-cache mutations is a separate
-  change.
+  into local state so older mutation paths (file upload/delete,
+  swipe-delete in inspection sections) keep working via setters.
+  Switching to pure query-cache mutations is a separate change.
 - Adding a new equipment inspection type now only requires the
   parent `inspections.type` tag to be in sync (set by
   `create_equipment_inspection` RPC and the unify-identity migration)
@@ -93,6 +98,6 @@ Backs the `app/projects/[id].tsx` route.
   `unifiedInspections.ts`).
 - `lib/briefingsApi`, `lib/ordersApi`.
 - `lib/projectLogo` — `pickProjectLogo`.
-- `lib/theme`, `lib/toast`, `lib/session`, `lib/errorMap`,
+- `lib/theme`, `lib/toast`, `lib/errorMap`,
   `lib/formatDate`, `lib/logError`, `lib/accessibility`.
 - `hooks/usePhotoPicker`.

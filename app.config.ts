@@ -59,17 +59,22 @@ const PRODUCTION: EnvConfig = {
 };
 
 // --- Staging (separate installable app, internal distribution) --------------
-// The staging Supabase project does not exist yet (plan Phase 0.B). Its URL +
-// anon key are read from env vars so they can be supplied the moment the
-// project is created - no code change needed. The guard below fails the build
-// if a staging/dev build is attempted before these are set.
+// Staging Supabase publishable (non-secret) values - hardcoded as defaults the
+// same way PRODUCTION is, so `eas update`/`build` resolve them WITHOUT a local
+// `.env` (EAS evaluates app.config with EXPO_NO_DOTENV=1, which skips .env).
+// Env vars still override for per-machine flexibility (e.g. a different staging
+// project), so `.env` continues to work for local dev.
+const STAGING_SUPABASE_URL = process.env.STAGING_SUPABASE_URL ?? 'https://oiwkfzadftmgmshidyqx.supabase.co';
+const STAGING_SUPABASE_ANON_KEY =
+  process.env.STAGING_SUPABASE_ANON_KEY ?? 'sb_publishable_if2XIf1WB03rHEC0PQKNSg_eJ4frwNu';
+
 const STAGING: EnvConfig = {
   appEnv: 'staging',
   name: 'Hubble (Staging)',
   bundleId: 'ge.sarke2.app.staging',
   scheme: 'sarke2staging',
-  supabaseUrl: process.env.STAGING_SUPABASE_URL ?? '',
-  supabaseAnonKey: process.env.STAGING_SUPABASE_ANON_KEY ?? '',
+  supabaseUrl: STAGING_SUPABASE_URL,
+  supabaseAnonKey: STAGING_SUPABASE_ANON_KEY,
   channel: 'staging',
   sentryEnv: 'staging',
 };
@@ -81,9 +86,8 @@ const DEVELOPMENT: EnvConfig = {
   name: 'Hubble (Dev)',
   bundleId: 'ge.sarke2.app.dev',
   scheme: 'sarke2dev',
-  supabaseUrl: process.env.DEV_SUPABASE_URL ?? process.env.STAGING_SUPABASE_URL ?? '',
-  supabaseAnonKey:
-    process.env.DEV_SUPABASE_ANON_KEY ?? process.env.STAGING_SUPABASE_ANON_KEY ?? '',
+  supabaseUrl: process.env.DEV_SUPABASE_URL ?? STAGING_SUPABASE_URL,
+  supabaseAnonKey: process.env.DEV_SUPABASE_ANON_KEY ?? STAGING_SUPABASE_ANON_KEY,
   channel: null,
   sentryEnv: 'development',
 };

@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useRef, useState } from 'react';
+﻿import { useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -11,7 +11,7 @@ import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Pencil, Plus, UserPlus } from 'lucide-react-native';
+import { ChevronLeft, Pencil, Plus } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
@@ -31,12 +31,10 @@ import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
-import type { CrewMember, Project, ProjectFile, Template } from '../../types/models';
+import type { ProjectFile, Template } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { ordersApi } from '../../lib/ordersApi';
-import { RoleSlotList } from '../../components/RoleSlotList';
 import { pickProjectLogo } from '../../lib/projectLogo';
-import { useSession } from '../../lib/session';
 import { a11y } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
@@ -71,7 +69,6 @@ export default function ProjectDetail() {
   const router = useRouter();
   const showActionSheetWithOptions = useBottomSheet();
   const toast = useToast();
-  const session = useSession();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
   const insets = useSafeAreaInsets();
 
@@ -99,7 +96,6 @@ export default function ProjectDetail() {
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
   const quickActionsRef = useRef<View>(null);
-  const participantsRef = useRef<View>(null);
   const questionnairesRef = useRef<View>(null);
   const deletingFileIdsRef = useRef<Set<string>>(new Set());
   const tourSteps: TourStep[] = useMemo(
@@ -122,12 +118,6 @@ export default function ProjectDetail() {
         body: t('projects.tourHistoryBody'),
         position: 'bottom',
       },
-      {
-        targetRef: participantsRef,
-        title: t('projects.tourCrew'),
-        body: t('projects.tourCrewBody'),
-        position: 'top',
-      },
     ],
     [t],
   );
@@ -135,40 +125,6 @@ export default function ProjectDetail() {
   // Data now flows through React Query - cached, deduplicated, and
   // background-refreshed. No more useFocusEffect hammering Supabase
   // on every tab switch.
-
-  // Inspector row (logged-in expert) - derived from auth, never persisted
-  // into projects.crew. The crew list itself is just the manual entries.
-  const inspector = useMemo(() => {
-    if (session.state.status !== 'signedIn') return null;
-    const u = session.state.user;
-    const fallback = session.state.session.user.email ?? t('projects.inspectorFallback');
-    const name = u
-      ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || fallback
-      : fallback;
-    return {
-      name,
-      role: t('projects.inspectorFallback'),
-      signaturePath: u?.saved_signature_url ?? null,
-    };
-  }, [session.state, t]);
-
-  const persistCrew = useCallback(
-    async (next: CrewMember[]) => {
-      if (!project) return;
-      // Optimistic - patch local state, then persist. Roll back on failure
-      // so the user sees what's actually stored.
-      const prev = project;
-      setProject({ ...project, crew: next });
-      try {
-        const saved = await projectsApi.update(project.id, { crew: next });
-        setProject(saved);
-      } catch (e) {
-        setProject(prev);
-        toast.error(friendlyError(e, t('projects.memberSaveError')));
-      }
-    },
-    [project, toast],
-  );
 
   const startNewInspection = () => {
     if (!id || typeof id !== 'string') {
@@ -367,7 +323,6 @@ export default function ProjectDetail() {
       { label: 'ინციდენტი',   colorKey: 'incident',    onPress: () => id && router.push(`/incidents/new?projectId=${id}` as any) },
       { label: 'ინსტრუქტაჟი', colorKey: 'briefing',    onPress: () => id && router.push(`/briefings/new?projectId=${id}` as any) },
       { label: 'რეპორტი',     colorKey: 'report',      onPress: () => id && router.push(`/reports/new?projectId=${id}` as any) },
-      { label: 'მონაწილე',    colorKey: 'participant', onPress: () => id && router.push(`/projects/${id}/participants` as any) },
       { label: 'ფაილი',       colorKey: 'file',        onPress: uploadFile },
     ],
     [id, router, startNewInspection, uploadFile],
@@ -379,8 +334,6 @@ export default function ProjectDetail() {
   if (!loaded && !project) {
     return <LoadingSkeletonScreen />;
   }
-
-  const participantCount = (project?.crew?.length ?? 0) + (inspector ? 1 : 0);
 
   return (
     <TourGuide tourId="project_screen_v2" steps={tourSteps}>
@@ -554,29 +507,6 @@ export default function ProjectDetail() {
           {/* ── ჟურნალები ── */}
           <View style={styles.sectionCard}>
             <BreathalyzerSection id={id} breathalyzerLogs={breathalyzerLogs} loading={pending.breathalyzer} />
-          </View>
-
-          {/* ── მონაწილეები (merged: inspector + crew) ── */}
-          <View ref={participantsRef} collapsable={false} style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <UserPlus size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-                <Text style={styles.sectionTitle}>{t('projects.participantsSection')}</Text>
-                <Text style={styles.sectionCount}>{participantCount}</Text>
-              </View>
-            </View>
-            <View style={{ marginTop: 10 }}>
-              {project ? (
-                <RoleSlotList
-                  projectId={project.id}
-                  inspector={inspector}
-                  crew={project.crew ?? []}
-                  onChange={persistCrew}
-                  maxVisible={3}
-                  onViewAll={() => router.push(`/projects/${id}/participants` as any)}
-                />
-              ) : null}
-            </View>
           </View>
 
         </View>{/* end section cards wrapper */}
