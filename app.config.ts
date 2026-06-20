@@ -122,7 +122,7 @@ if (env.appEnv !== 'production' && (!env.supabaseUrl || !env.supabaseAnonKey)) {
 const config: ExpoConfig = {
   name: env.name,
   slug: 'sarke2',
-  version: '1.1.0',
+  version: '1.2.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
