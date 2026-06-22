@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PasswordInput } from '@mantine/core';
 import { Input } from '@/components/ui/input';
 import { AuthLayout } from './AuthLayout';
+import { SocialAuthButtons } from './SocialAuthButtons';
 
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
   let score = 0;
@@ -137,6 +138,9 @@ export default function Register() {
               </Link>
             </p>
           </form>
+          <div className="mt-4">
+            <SocialAuthButtons />
+          </div>
         </CardContent>
       </Card>
     </AuthLayout>

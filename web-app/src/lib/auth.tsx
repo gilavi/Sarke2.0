@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase, passwordResetRedirect } from './supabase';
+import { supabase, passwordResetRedirect, oauthRedirect } from './supabase';
 
 interface Profile {
   id: string;
@@ -15,6 +15,8 @@ interface AuthContextValue {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  // signInWithApple: () => Promise<void>;  // drop-in once the Apple Services ID is configured
   signUp: (args: { email: string; password: string; firstName: string; lastName: string }) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
@@ -99,6 +101,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading: false,
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      },
+      async signInWithGoogle() {
+        // Full-page redirect to Google's consent screen; the session is completed
+        // on return by detectSessionInUrl + the onAuthStateChange listener above.
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: oauthRedirect() },
+        });
         if (error) throw error;
       },
       async signUp({ email, password, firstName, lastName }) {

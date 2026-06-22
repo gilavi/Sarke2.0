@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-06-22 — Web dashboard: Google sign-in
+
+The web dashboard ([web-app/](../web-app/), `https://hubble.ge/app/`) now offers **"Google-ით გაგრძელება"** on both the Login and Register pages, alongside email/password — matching the mobile app's social login.
+
+- **How it flows** — a new `signInWithGoogle()` on the web auth context ([web-app/src/lib/auth.tsx](../web-app/src/lib/auth.tsx)) calls `supabase.auth.signInWithOAuth({ provider: 'google' })` with a hash-free `redirectTo` ([oauthRedirect()](../web-app/src/lib/supabase.ts)) so the PKCE `?code=` lands in `window.location.search`; `detectSessionInUrl` completes the session on return and MarketingLayout bounces it to `/home`. The `public.users` row is auto-created by the existing `handle_new_user()` trigger — no provisioning code needed.
+- **UI** — a shared [SocialAuthButtons](../web-app/src/pages/auth/SocialAuthButtons.tsx) component (an "ან" divider + an outline button with an inline Google glyph), built to take **Apple** as a one-line drop-in once an Apple Services ID is configured in Supabase. The Login error localizer moved to a shared [authErrors.ts](../web-app/src/pages/auth/authErrors.ts).
+- **Setup** — reuses the project's existing Google provider (mobile already relies on it); the only Supabase change is **adding** the web origins to the Redirect URLs allowlist (additive — mobile `sarke2://` entries untouched). Apple-on-web is tracked as follow-up.
+
 ## 2026-06-22 — Text CMS: co-workers can correct app texts live
 
 A new password-gated **text CMS** ([cms/](../cms/), hosted at `https://hubble.ge/cms/`) lets non-engineers correct the mobile app's Georgian/English UI strings — with good search and breadcrumbs (`common › save`) — and have the fix go **live without an App Store build**.

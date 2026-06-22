@@ -14,6 +14,7 @@ vi.mock('@/lib/supabase', () => ({
       getSession: vi.fn(),
       onAuthStateChange: vi.fn(),
       signInWithPassword: vi.fn(),
+      signInWithOAuth: vi.fn(),
       signUp: vi.fn(),
       signOut: vi.fn(),
       resetPasswordForEmail: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/lib/supabase', () => ({
     from: vi.fn(),
   },
   passwordResetRedirect: vi.fn(() => 'https://app/#/reset'),
+  oauthRedirect: vi.fn(() => 'https://app/'),
 }));
 
 import { supabase, passwordResetRedirect } from '@/lib/supabase';
@@ -31,6 +33,7 @@ import { makeBuilder } from '../helpers/supabaseChain';
 const getSession = supabase.auth.getSession as unknown as Mock;
 const onAuthStateChange = supabase.auth.onAuthStateChange as unknown as Mock;
 const signInWithPassword = supabase.auth.signInWithPassword as unknown as Mock;
+const signInWithOAuth = supabase.auth.signInWithOAuth as unknown as Mock;
 const signUp = supabase.auth.signUp as unknown as Mock;
 const signOut = supabase.auth.signOut as unknown as Mock;
 const resetPasswordForEmail = supabase.auth.resetPasswordForEmail as unknown as Mock;
@@ -104,6 +107,22 @@ describe('AuthProvider - actions', () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await act(() => result.current.signIn('a@b.com', 'pw'));
     expect(signInWithPassword).toHaveBeenCalledWith({ email: 'a@b.com', password: 'pw' });
+  });
+
+  it('signInWithGoogle calls signInWithOAuth with the google provider and redirect', async () => {
+    signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/...' }, error: null });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await act(() => result.current.signInWithGoogle());
+    expect(signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'google',
+      options: { redirectTo: 'https://app/' },
+    });
+  });
+
+  it('signInWithGoogle throws when supabase returns an error', async () => {
+    signInWithOAuth.mockResolvedValue({ data: {}, error: new Error('oauth failed') });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await expect(result.current.signInWithGoogle()).rejects.toThrow('oauth failed');
   });
 
   it('signIn throws when supabase returns an error', async () => {

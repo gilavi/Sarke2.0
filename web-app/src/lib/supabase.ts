@@ -35,3 +35,12 @@ export const supabase = createClient<Database>(
 export function passwordResetRedirect(): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/reset`;
 }
+
+// Where Supabase sends the browser back after an OAuth (Google/Apple) sign-in.
+// Deliberately NO hash: the PKCE auto-exchange (`detectSessionInUrl`) reads the
+// `?code=…` Supabase appends from `window.location.search`, which a `#/route`
+// fragment would push the query into. Landing on the app root (`/app/`) hits the
+// `/` route, where MarketingLayout bounces the now-authenticated session to /home.
+export function oauthRedirect(): string {
+  return `${window.location.origin}${import.meta.env.BASE_URL}`;
+}
