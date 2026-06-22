@@ -80,9 +80,10 @@ To change the password later: re-run step 3's `secrets set` (no redeploy needed)
 - **Drift:** the DB overrides the bundled JSON at runtime, so a DB edit wins over a
   later code change to the same key. Co-worker text fixes belong in the CMS; the
   locale files are the dev-owned baseline. Re-run the seed script to register new keys.
-- **Local build quirk:** `browserslist` can land corrupted from a bad local npm cache
-  (`Invalid regular expression`); clean CI installs are unaffected. If it bites,
-  re-copy a known-good `node_modules/browserslist`.
+- **browserslist pin:** `package.json` pins `browserslist` to `4.28.2` via `overrides`.
+  Release `4.28.3` ships a broken `node.js` (truncated `/^@[^/]+\//` regex →
+  "Invalid regular expression: missing /"), which fails the Vite build everywhere
+  (local **and** CI). Don't drop the override unless a fixed release is out.
 
 ## Canonical helpers consumed
 
