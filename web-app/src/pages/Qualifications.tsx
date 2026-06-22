@@ -52,7 +52,13 @@ export default function Qualifications() {
       {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
       {isLoading && <SkeletonList count={4} />}
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">სერტიფიკატები არ არის ატვირთული.</p>
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <img src="/ilu/ppe-set.png" alt="" aria-hidden="true" className="h-40 w-40 object-contain" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">კვალიფიკაციები არ არის</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">ლიცენზიები და ნებართვები აქ გამოჩნდება.</p>
+          </div>
+        </div>
       )}
 
       {items && items.length > 0 && (

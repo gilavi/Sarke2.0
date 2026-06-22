@@ -207,9 +207,13 @@ export default function Projects() {
       )}
 
       {items && view === 'list' && items.length === 0 && (
-        <Text style={{ fontSize: 14, color: theme.colors.inkSoft }}>
-          პროექტები ჯერ არ არის. დააჭირეთ „ახალი" - ახალი პროექტის შესაქმნელად.
-        </Text>
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <img src="/ilu/crane.png" alt="" aria-hidden="true" className="h-40 w-40 object-contain" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">პროექტები ჯერ არ არის</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">დააჭირეთ „ახალი პროექტი" პირველი პროექტის შესაქმნელად.</p>
+          </div>
+        </div>
       )}
 
       {items && view === 'list' && items.length > 0 && (

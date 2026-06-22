@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ClipboardList } from 'lucide-react';
+import { EmptyStateIllustration } from '@/components/EmptyStateIllustration';
 import { Badge } from '@root/components/primitives';
 import DeleteButton from '@/components/DeleteButton';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
@@ -196,10 +196,11 @@ export default function History() {
       {isLoading && <SkeletonList />}
 
       {!isLoading && allRows.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-800">
-          <ClipboardList size={32} className="text-neutral-300 dark:text-neutral-600" />
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">ჩანაწერები არ არის</p>
-        </div>
+        <EmptyStateIllustration
+          image="/ilu/excavator.png"
+          title="ჩანაწერები არ არის"
+          description="შემოწმების ჩატარების შემდეგ ისტორია აქ გამოჩნდება."
+        />
       )}
 
       {!isLoading &&

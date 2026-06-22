@@ -8,6 +8,7 @@ import { listProjectFiles, signedFileUrl, deleteProjectFile, formatSize, type Pr
 import { getProject } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { EmptyStateIllustration } from '@/components/EmptyStateIllustration';
 import { useState } from 'react';
 import { toastError } from '@/lib/errors';
 
@@ -60,9 +61,11 @@ export default function ProjectFiles() {
       {isLoading && <SkeletonList />}
 
       {!isLoading && (!files || files.length === 0) && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-800">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">ფაილები ჯერ არ არის.</p>
-        </div>
+        <EmptyStateIllustration
+          image="/ilu/cargo.png"
+          title="ფაილები ჯერ არ არის"
+          description="პროექტის ფაილები და დოკუმენტები აქ გამოჩნდება."
+        />
       )}
 
       {files && files.length > 0 && (

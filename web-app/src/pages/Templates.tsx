@@ -48,7 +48,13 @@ export default function Templates() {
       ) : q.error ? (
         <ErrorMessage>{humanizeError(q.error)}</ErrorMessage>
       ) : items.length === 0 ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">შაბლონები ჯერ არ არის.</p>
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <img src="/ilu/mobile-staircase.png" alt="" aria-hidden="true" className="h-40 w-40 object-contain" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">შაბლონები ჯერ არ არის</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">სისტემური შაბლონები ადმინის მიერ ემატება.</p>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((t) => (

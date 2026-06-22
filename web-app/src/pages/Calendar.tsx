@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
   ChevronRight,
-  CalendarDays,
   ClipboardCheck,
   Megaphone,
   AlertTriangle,
@@ -19,6 +18,7 @@ import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listIncidents } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
+import { EmptyStateIllustration } from '@/components/EmptyStateIllustration';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
@@ -351,10 +351,11 @@ export default function Calendar() {
       {isLoading && <SkeletonList />}
 
       {!isLoading && allEvents.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
-          <CalendarDays size={32} className="text-neutral-300 dark:text-neutral-600" />
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">ჩანაწერები ჯერ არ არის.</p>
-        </div>
+        <EmptyStateIllustration
+          image="/ilu/cargo.png"
+          title="ჩანაწერები ჯერ არ არის"
+          description="შემოწმებები, ინსტრუქტაჟები და ინციდენტები კალენდარში გამოჩნდება."
+        />
       )}
 
       {!isLoading && allEvents.length > 0 && (

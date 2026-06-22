@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { FileText } from 'lucide-react'; // rendered as DOM (uses className)
+import { FileText } from 'lucide-react';
+import { EmptyStateIllustration } from '@/components/EmptyStateIllustration';
 import { Upload } from 'lucide-react-native'; // passed to the shared Button's leftIcon
 import { Button } from '@root/components/primitives';
 import { SkeletonList } from '@/components/SkeletonCard';
@@ -97,23 +98,21 @@ export default function Certificates() {
       {isLoading && <SkeletonList count={4} />}
 
       {items && items.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
-            <FileText size={22} className="text-neutral-400 dark:text-neutral-500" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">სერტიფიკატები ვერ მოიძებნა</p>
-            <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">ატვირთეთ PDF ან გენერირება მოახდინეთ შემოწმებიდან</p>
-          </div>
-          <Button
-            title="PDF-ის ატვირთვა"
-            size="sm"
-            variant="outline"
-            leftIcon={Upload}
-            onPress={() => fileInputRef.current?.click()}
-            disabled={uploadMutation.isPending}
-          />
-        </div>
+        <EmptyStateIllustration
+          image="/ilu/harness.png"
+          title="სერტიფიკატები ვერ მოიძებნა"
+          description="ატვირთეთ PDF ან გენერირება მოახდინეთ შემოწმებიდან"
+          action={
+            <Button
+              title="PDF-ის ატვირთვა"
+              size="sm"
+              variant="outline"
+              leftIcon={Upload}
+              onPress={() => fileInputRef.current?.click()}
+              disabled={uploadMutation.isPending}
+            />
+          }
+        />
       )}
 
       {items && items.length > 0 && (
