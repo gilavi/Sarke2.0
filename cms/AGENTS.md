@@ -34,8 +34,9 @@ edge function. The client-side gate is just UX/session (`sessionStorage`).
 
 - `src/App.tsx` — auth gate; reuses the session password on refresh.
 - `src/PasswordGate.tsx` — single password field → `api.load`.
-- `src/Editor.tsx` — search + list + save bar; tracks dirty rows vs a baseline.
-- `src/SearchBar.tsx`, `src/StringRow.tsx`, `src/Breadcrumbs.tsx` — UI pieces.
+- `src/Editor.tsx` — filters + list + save bar; tracks dirty rows vs a baseline.
+- `src/FilterBar.tsx` — text search + section dropdown (top-level key segment, with counts) + "missing translation" toggle.
+- `src/StringRow.tsx`, `src/Breadcrumbs.tsx` — UI pieces.
 - `src/api.ts` — `load(pw)` / `save(pw, editor, changes)`; `VITE_CMS_MOCK=1` runs
   the UI against in-memory data with no backend (password `test`).
 - `src/types.ts` — `Row`, `Change`.

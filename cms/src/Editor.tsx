@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { AuthError, save, StaleError } from './api';
-import { SearchBar } from './SearchBar';
+import { FilterBar } from './FilterBar';
 import { StringRow } from './StringRow';
 import type { Row } from './types';
+
+const nsOf = (key: string) => key.split('.')[0];
 
 const RENDER_LIMIT = 100; // keep the DOM light; search is the primary navigation
 
@@ -26,6 +28,8 @@ export function Editor({
   const [rows, setRows] = useState<Row[]>(initialRows);
   const [baseline, setBaseline] = useState<Baseline>(() => toBaseline(initialRows));
   const [query, setQuery] = useState('');
+  const [namespace, setNamespace] = useState('');
+  const [missingOnly, setMissingOnly] = useState(false);
   const [editor, setEditor] = useState(() => sessionStorage.getItem('cms.editor') ?? '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -40,16 +44,26 @@ export function Editor({
   );
   const dirtyKeys = useMemo(() => new Set(dirty.map((r) => r.key)), [dirty]);
 
+  // Section list (top-level key segment) with counts, for the dropdown.
+  const namespaces = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of rows) counts.set(nsOf(r.key), (counts.get(nsOf(r.key)) ?? 0) + 1);
+    return [...counts.entries()].sort().map(([name, count]) => ({ name, count }));
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
+    return rows.filter((r) => {
+      if (namespace && nsOf(r.key) !== namespace) return false;
+      if (missingOnly && norm(r.en) !== '' && norm(r.ka) !== '') return false;
+      if (!q) return true;
+      return (
         r.key.toLowerCase().includes(q) ||
         norm(r.en).toLowerCase().includes(q) ||
-        norm(r.ka).toLowerCase().includes(q),
-    );
-  }, [rows, query]);
+        norm(r.ka).toLowerCase().includes(q)
+      );
+    });
+  }, [rows, query, namespace, missingOnly]);
 
   const shown = filtered.slice(0, RENDER_LIMIT);
 
@@ -100,12 +114,18 @@ export function Editor({
       </header>
 
       <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-200 bg-[#fafafa] px-4 pb-3 pt-2">
-        <SearchBar
+        <FilterBar
           query={query}
           onQuery={setQuery}
+          namespace={namespace}
+          onNamespace={setNamespace}
+          namespaces={namespaces}
+          total={rows.length}
+          missingOnly={missingOnly}
+          onMissingOnly={setMissingOnly}
           resultLabel={
             filtered.length > shown.length
-              ? `Showing ${shown.length} of ${filtered.length} — refine your search`
+              ? `${shown.length} of ${filtered.length} — refine to see more`
               : `${filtered.length} ${filtered.length === 1 ? 'text' : 'texts'}`
           }
         />
@@ -121,7 +141,7 @@ export function Editor({
           />
         ))}
         {filtered.length === 0 && (
-          <p className="py-12 text-center text-sm text-neutral-400">No texts match “{query}”.</p>
+          <p className="py-12 text-center text-sm text-neutral-400">No texts match your filters.</p>
         )}
       </div>
 
