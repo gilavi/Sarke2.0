@@ -31,15 +31,15 @@ const TYPE_LABEL: Record<string, string> = {
   cargo_platform:     '📦 ტვირთის პლატფორმა',
 };
 
-const TYPE_AVATAR: Record<string, { emoji: string; bg: string }> = {
-  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20' },
-  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-  mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20' },
-  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20' },
-  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20' },
-  general:            { emoji: '⚙️', bg: 'bg-brand-50 dark:bg-brand-950/20' },
-  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20' },
+const TYPE_IMAGE: Record<string, string> = {
+  harness:            '/ilu/harness.png',
+  xaracho:            '/ilu/scaffolding.png',
+  mobile_scaffold:    '/ilu/mobile-staircase.png',
+  mobile_scaffold_n3: '/ilu/mobile-staircase.png',
+  bobcat:             '/ilu/bulldozer-sm.png',
+  excavator:          '/ilu/excavator.png',
+  general:            '/ilu/clamp.png',
+  cargo_platform:     '/ilu/cargo.png',
 };
 
 interface Row {
@@ -215,8 +215,8 @@ export default function History() {
                   className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50"
                 >
                   <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${TYPE_AVATAR[row.type]?.bg ?? 'bg-neutral-100 dark:bg-neutral-800'}`}>
-                      <span className="text-base leading-none">{TYPE_AVATAR[row.type]?.emoji ?? '📋'}</span>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-950/20">
+                      <img src={TYPE_IMAGE[row.type] ?? '/ilu/clamp.png'} alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
