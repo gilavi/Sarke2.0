@@ -7,25 +7,6 @@ const shims = resolve(__dirname, 'shims');
 
 export default defineConfig({
   plugins: [react()],
-  // When Vitest transforms @root/components/** files, esbuild walks up to the
-  // repo root tsconfig.json which extends "expo/tsconfig.base" — a package that
-  // isn't installed in CI (only web-app/ deps are). Providing tsconfigRaw here
-  // bypasses file-based tsconfig discovery for all esbuild transforms so the
-  // missing expo package never causes a TSConfckParseError.
-  esbuild: {
-    tsconfigRaw: {
-      compilerOptions: {
-        jsx: 'react-jsx',
-        jsxImportSource: 'react',
-        target: 'esnext',
-        module: 'esnext',
-        moduleResolution: 'bundler',
-        allowSyntheticDefaultImports: true,
-        esModuleInterop: true,
-        strict: false,
-      },
-    },
-  },
   test: {
     environment: 'jsdom',
     globals: true,
