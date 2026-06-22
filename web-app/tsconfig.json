@@ -13,8 +13,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // Off because web-app now compiles the shared ../components/primitives +
+    // ../lib library (authored under the Expo app's looser rules — unused React
+    // imports under the classic runtime, etc.). web-app's own src is still
+    // guarded for unused vars by eslint (npm run lint).
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": { "@/*": ["./src/*"], "@root/*": ["../*"] },

@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { ThemeContext } from '@root/lib/ThemeContext';
-import { lightTheme, darkTheme } from '@root/lib/theme';
+import { lightTheme, darkTheme, type Theme } from '@root/lib/theme';
 import { useTheme } from '@/lib/theme';
 
 /**
@@ -19,7 +19,8 @@ export function RNThemeBridge({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      theme: isDark ? darkTheme : lightTheme,
+      // darkTheme widens some literal types vs lightTheme; both satisfy Theme.
+      theme: (isDark ? darkTheme : lightTheme) as Theme,
       isDark,
       mode: mode as 'light' | 'dark' | 'system',
       setMode: (m: 'light' | 'dark' | 'system') => setMode(m === 'system' ? 'light' : m),

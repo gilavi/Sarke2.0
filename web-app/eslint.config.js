@@ -4,6 +4,17 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
+// web-app shares ONE component library with the Expo app: the universal
+// primitives (rendered via react-native-web) plus the design tokens / theme /
+// haptics / accessibility / animations they depend on. Those @root paths are
+// allowed; every OTHER reach into the mobile codebase is still banned (share
+// via Supabase, or port into web-app/src). This negative-lookahead regex
+// matches the BANNED imports — any @root/* that isn't part of the shared lib.
+const RESTRICTED_ROOT_REGEX =
+  '^@root/(?!(components/(primitives|animations)|lib/(theme|ThemeContext|design-tokens|haptics|accessibility))($|/))';
+const RESTRICTED_ROOT_MESSAGE =
+  'web-app may import the SHARED component library (@root/components/primitives + the design tokens/theme/haptics/accessibility/animations it needs), but not other mobile code. Share everything else via Supabase, or port it into web-app/src.';
+
 export default tseslint.config(
   {
     ignores: [
@@ -35,18 +46,12 @@ export default tseslint.config(
       // tsc (noUnusedLocals) is the source of truth for unused symbols; keep
       // ESLint's as a warning that respects the _-prefix escape hatch.
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      // The web app must not share code with the Expo mobile app except via
-      // Supabase (see CLAUDE.md). Flag any reach into the repo root.
+      // web-app shares the universal component library with the Expo app; any
+      // OTHER reach into the repo root is still banned (see CLAUDE.md).
       'no-restricted-imports': [
         'warn',
         {
-          patterns: [
-            {
-              group: ['@root/*'],
-              message:
-                'web-app must not import from the mobile codebase (@root). Share only via Supabase; port what you need into web-app/src.',
-            },
-          ],
+          patterns: [{ regex: RESTRICTED_ROOT_REGEX, message: RESTRICTED_ROOT_MESSAGE }],
         },
       ],
     },
@@ -59,7 +64,7 @@ export default tseslint.config(
         'warn',
         {
           patterns: [
-            { group: ['@root/*'], message: 'Do not import from the mobile codebase (@root).' },
+            { regex: RESTRICTED_ROOT_REGEX, message: RESTRICTED_ROOT_MESSAGE },
             {
               group: ['@/lib/supabase'],
               message:
