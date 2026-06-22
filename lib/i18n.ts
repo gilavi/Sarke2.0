@@ -22,6 +22,9 @@ i18n
     },
     react: {
       useSuspense: false,
+      // Re-render mounted useTranslation components when the runtime overlay
+      // (lib/i18nOverlay.ts) calls addResourceBundle after the launch fetch.
+      bindI18nStore: 'added',
     },
   });
 

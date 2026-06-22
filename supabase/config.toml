@@ -391,6 +391,12 @@ verify_jwt = false
 [functions.ai-chat]
 verify_jwt = false
 
+# Text CMS backend (cms/, hubble.ge/cms/). Co-workers have no Supabase session,
+# only a shared password — so JWT verification is off and the password is checked
+# inside the function, which then writes with the service role. See cms/AGENTS.md.
+[functions.cms-texts]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
