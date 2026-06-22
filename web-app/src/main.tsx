@@ -1,9 +1,15 @@
 import '@mantine/core/styles.css';
+// react-native-reanimated's worklets runtime reads `global` at module init,
+// which doesn't exist in the browser. Alias it to globalThis before any lazy
+// chunk pulls reanimated in (the shared primitives use it). Runs at app boot,
+// before the first route loads.
+(globalThis as typeof globalThis & { global?: unknown }).global ??= globalThis;
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from '@/lib/theme';
+import { RNThemeBridge } from '@/lib/RNThemeBridge';
 import { migrateLegacyStorage } from '@/lib/migrateLegacyStorage';
 import '@/lib/i18n';
 import './index.css';
@@ -51,9 +57,11 @@ function ThemedMantine({ children }: { children: ReactNode }) {
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
     <ThemedMantine>
-      <ErrorBoundary>
-        <App />
-      </ErrorBoundary>
+      <RNThemeBridge>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </RNThemeBridge>
     </ThemedMantine>
   </ThemeProvider>,
 );
