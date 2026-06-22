@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { AuthError, save, StaleError } from './api';
 import { FilterBar } from './FilterBar';
+import { sameTokens } from './placeholders';
 import { StringRow } from './StringRow';
+import { T } from './strings';
 import type { Row } from './types';
 
+const RENDER_LIMIT = 100; // keep the DOM light; search/section are the navigation
 const nsOf = (key: string) => key.split('.')[0];
-
-const RENDER_LIMIT = 100; // keep the DOM light; search is the primary navigation
-
 const norm = (v: string | null) => v ?? '';
 
 type Baseline = Map<string, { en: string | null; ka: string | null }>;
@@ -30,7 +30,6 @@ export function Editor({
   const [query, setQuery] = useState('');
   const [namespace, setNamespace] = useState('');
   const [missingOnly, setMissingOnly] = useState(false);
-  const [editor, setEditor] = useState(() => sessionStorage.getItem('cms.editor') ?? '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -44,7 +43,17 @@ export function Editor({
   );
   const dirtyKeys = useMemo(() => new Set(dirty.map((r) => r.key)), [dirty]);
 
-  // Section list (top-level key segment) with counts, for the dropdown.
+  // Rows whose edit removed/changed a {{...}} placeholder — must be fixed first.
+  const broken = useMemo(
+    () =>
+      dirty.filter((r) => {
+        const b = baseline.get(r.key);
+        return b && (!sameTokens(b.en, r.en) || !sameTokens(b.ka, r.ka));
+      }),
+    [dirty, baseline],
+  );
+
+  // Sections (top-level key segment) with counts, for the dropdown.
   const namespaces = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of rows) counts.set(nsOf(r.key), (counts.get(nsOf(r.key)) ?? 0) + 1);
@@ -73,24 +82,22 @@ export function Editor({
   }
 
   async function onSave() {
-    if (dirty.length === 0) return;
+    if (dirty.length === 0 || broken.length > 0) return;
     setStatus('saving');
     setErrorMsg('');
     try {
-      // Empty field → null: "no override", so the bundled value shows (a label
-      // can't be blanked to nothing). The mobile overlay skips null values.
+      // Empty field → null: the bundled value shows (a label can't be blanked).
       const changes = dirty.map((r) => ({
         key: r.key,
         en: norm(r.en) === '' ? null : r.en,
         ka: norm(r.ka) === '' ? null : r.ka,
       }));
-      await save(password, editor.trim(), changes);
+      await save(password, '', changes);
       setBaseline((prev) => {
         const next = new Map(prev);
         for (const r of dirty) next.set(r.key, { en: r.en, ka: r.ka });
         return next;
       });
-      sessionStorage.setItem('cms.editor', editor.trim());
       setStatus('saved');
     } catch (e) {
       if (e instanceof AuthError) {
@@ -98,19 +105,17 @@ export function Editor({
         return;
       }
       setStatus('error');
-      setErrorMsg(
-        e instanceof StaleError
-          ? 'Texts changed on the server. Reload the page and re-apply your edits.'
-          : 'Save failed. Check your connection and try again.',
-      );
+      setErrorMsg(e instanceof StaleError ? T.staleError : T.saveError);
     }
   }
+
+  const canSave = dirty.length > 0 && broken.length === 0 && status !== 'saving';
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-32 pt-6">
       <header className="mb-5">
-        <h1 className="text-lg font-bold text-neutral-900">Hubble — Text CMS</h1>
-        <p className="text-sm text-neutral-500">Correct the app's Georgian &amp; English texts.</p>
+        <h1 className="text-lg font-bold text-neutral-900">{T.title}</h1>
+        <p className="text-sm text-neutral-500">{T.subtitle}</p>
       </header>
 
       <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-200 bg-[#fafafa] px-4 pb-3 pt-2">
@@ -125,8 +130,8 @@ export function Editor({
           onMissingOnly={setMissingOnly}
           resultLabel={
             filtered.length > shown.length
-              ? `${shown.length} of ${filtered.length} — refine to see more`
-              : `${filtered.length} ${filtered.length === 1 ? 'text' : 'texts'}`
+              ? T.showingOf(shown.length, filtered.length)
+              : T.count(filtered.length)
           }
         />
       </div>
@@ -136,41 +141,38 @@ export function Editor({
           <StringRow
             key={row.key}
             row={row}
+            base={baseline.get(row.key)}
             dirty={dirtyKeys.has(row.key)}
             onChange={(lang, value) => update(row.key, lang, value)}
           />
         ))}
         {filtered.length === 0 && (
-          <p className="py-12 text-center text-sm text-neutral-400">No texts match your filters.</p>
+          <p className="py-12 text-center text-sm text-neutral-400">{T.noMatch}</p>
         )}
       </div>
 
       {/* Save bar */}
       <div className="fixed inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <input
-            value={editor}
-            onChange={(e) => setEditor(e.target.value)}
-            placeholder="Your name (optional)"
-            className="hidden w-40 rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-brand-400 sm:block"
-          />
           <div className="flex-1 text-sm">
-            {status === 'error' ? (
+            {broken.length > 0 ? (
+              <span className="text-red-600">{T.fixTokensFirst(broken.length)}</span>
+            ) : status === 'error' ? (
               <span className="text-red-600">{errorMsg}</span>
             ) : status === 'saved' && dirty.length === 0 ? (
-              <span className="text-green-600">Saved — live on the next app open.</span>
+              <span className="text-green-600">{T.saved}</span>
             ) : (
               <span className="text-neutral-500">
-                {dirty.length === 0 ? 'No unsaved changes' : `${dirty.length} unsaved`}
+                {dirty.length === 0 ? T.noUnsaved : T.unsaved(dirty.length)}
               </span>
             )}
           </div>
           <button
             onClick={onSave}
-            disabled={dirty.length === 0 || status === 'saving'}
+            disabled={!canSave}
             className="rounded-lg bg-brand-500 px-5 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
-            {status === 'saving' ? 'Saving…' : 'Save changes'}
+            {status === 'saving' ? T.saving : T.saveBtn}
           </button>
         </div>
       </div>

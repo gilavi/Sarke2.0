@@ -26,7 +26,7 @@ export function App() {
   if (booting) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-neutral-400">
-        Loading…
+        იტვირთება…
       </div>
     );
   }
