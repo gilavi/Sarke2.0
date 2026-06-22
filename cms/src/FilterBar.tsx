@@ -1,3 +1,6 @@
+import { sectionLabel } from './sections';
+import { T } from './strings';
+
 export type NsCount = { name: string; count: number };
 
 export function FilterBar({
@@ -28,19 +31,21 @@ export function FilterBar({
         value={query}
         autoFocus
         onChange={(e) => onQuery(e.target.value)}
-        placeholder="Search key, English or Georgian…"
+        placeholder={T.searchPlaceholder}
         className="w-full rounded-lg border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
       />
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={namespace}
           onChange={(e) => onNamespace(e.target.value)}
-          className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 outline-none focus:border-brand-400"
+          className="max-w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-700 outline-none focus:border-brand-400"
         >
-          <option value="">All sections ({total})</option>
+          <option value="">
+            {T.allSections} ({total})
+          </option>
           {namespaces.map((n) => (
             <option key={n.name} value={n.name}>
-              {n.name} ({n.count})
+              {sectionLabel(n.name)} ({n.count})
             </option>
           ))}
         </select>
@@ -51,7 +56,7 @@ export function FilterBar({
             onChange={(e) => onMissingOnly(e.target.checked)}
             className="h-4 w-4 accent-brand-500"
           />
-          Missing translation
+          {T.missingOnly}
         </label>
         <span className="ml-auto text-xs text-neutral-500">{resultLabel}</span>
       </div>

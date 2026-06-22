@@ -21,6 +21,8 @@ const mockRows: Row[] = [
   { key: 'calendar.monthLabels.0', en: 'January', ka: 'იანვარი' },
   { key: 'calendar.monthLabels.1', en: 'February', ka: 'თებერვალი' },
   { key: 'errors.network', en: 'Network error. Try again.', ka: 'ქსელის შეცდომა. სცადეთ თავიდან.' },
+  { key: 'pdf.limitReached', en: 'You have used {{used}} of {{limit}} PDFs', ka: 'გამოყენებულია {{used}} / {{limit}} PDF' },
+  { key: 'home.greeting', en: 'Hello, {{name}}', ka: 'გამარჯობა, {{name}}' },
 ];
 
 async function post(body: Record<string, unknown>): Promise<unknown> {
