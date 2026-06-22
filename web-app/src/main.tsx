@@ -1,9 +1,7 @@
+// MUST be first: defines `global` (→globalThis) before any import pulls
+// react-native-reanimated into the module graph (the shared primitives do).
+import '@/lib/rn-global-shim';
 import '@mantine/core/styles.css';
-// react-native-reanimated's worklets runtime reads `global` at module init,
-// which doesn't exist in the browser. Alias it to globalThis before any lazy
-// chunk pulls reanimated in (the shared primitives use it). Runs at app boot,
-// before the first route loads.
-(globalThis as typeof globalThis & { global?: unknown }).global ??= globalThis;
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MantineProvider, createTheme } from '@mantine/core';
