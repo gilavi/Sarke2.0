@@ -78,8 +78,8 @@ export default {
         'heading-3': ['16px', { lineHeight: '1.4', fontWeight: '600' }],
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['"Space Grotesk"', 'Inter', 'sans-serif'],
+        sans: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+        display: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {

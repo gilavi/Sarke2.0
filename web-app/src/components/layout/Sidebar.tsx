@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { memo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { SidebarNavList } from './SidebarNav';
 import { SidebarFooter } from './SidebarFooter';
 import { IconButton } from '@/components/ui/icon-button';
+import { HubbleLogo } from '@/components/HubbleLogo';
 
 /* ── Main Sidebar Component ─────────────────────────────
    Single permanent state - always full + labeled (no icon-only collapse). The
@@ -21,8 +22,8 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
     <>
       <div className="flex h-16 items-center px-4">
         <NavLink to="/home" onClick={onNavigate} aria-label="მთავარი" className="flex items-center gap-2.5">
-          <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-[var(--brand-600)] text-white">
-            <ShieldCheck size={18} />
+          <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[9px] bg-[#1A1A1A]">
+            <HubbleLogo className="h-[18px] w-[18px] text-[var(--brand-500)]" />
           </span>
           <span className="font-display text-lg font-bold text-[var(--text-primary)]">Hubble</span>
         </NavLink>
@@ -41,7 +42,7 @@ export const Sidebar = memo(function Sidebar({ open = false, onClose }: SidebarP
   return (
     <>
       {/* Desktop: fixed sidebar, always expanded, directly on the canvas */}
-      <aside className="hidden lg:flex lg:h-full lg:w-64 lg:shrink-0 lg:flex-col">
+      <aside className="hidden lg:flex lg:h-full lg:w-64 lg:shrink-0 lg:flex-col lg:border-r lg:border-[var(--border-default)]">
         <SidebarBody onNavigate={handleNavigate} />
       </aside>
 

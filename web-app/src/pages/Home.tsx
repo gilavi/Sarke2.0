@@ -1,16 +1,34 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, ClipboardCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
+import { ProBanner } from '@/components/ProBanner';
 import { ProjectActivityWidget } from '@/components/ProjectActivityWidget';
+import InspectionWizard from '@/components/InspectionWizard';
 import { useAuth } from '@/lib/auth';
+import { usePdfUsage } from '@/lib/usePdfUsage';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 
 export default function Home() {
   const { profile, user } = useAuth();
+  const { data: usage } = usePdfUsage();
+  // Active Pro → manage/cancel card; free & expired → the orange ProBanner
+  // (two-state: progress bar + state-specific copy).
+  const isPro = usage?.status === 'active';
   const firstName = profile ? (profile.first_name?.trim() || user?.email?.split('@')[0] || '') : '';
+
+  // New inspection-act wizard (modal). Opened from the header CTA (no project
+  // preselected) or a project widget's "+" (that project preselected).
+  const [newActOpen, setNewActOpen] = useState(false);
+  const [newActProjectId, setNewActProjectId] = useState('');
+  const openNewAct = (projectId = '') => {
+    setNewActProjectId(projectId);
+    setNewActOpen(true);
+  };
 
   const { data: projects, isLoading } = useQuery({
     queryKey: projectKeys.lists(),
@@ -35,14 +53,19 @@ export default function Home() {
             Hubble - თქვენი შრომის უსაფრთხოების ცენტრი.
           </p>
         </div>
+        <Button className="shrink-0 gap-1.5" onClick={() => openNewAct()}>
+          <ClipboardCheck size={15} />
+          ახალი შემოწმების აქტი
+        </Button>
       </motion.header>
 
-      {/* ═════ Row 2: Subscription Banner ═════ */}
+      {/* ═════ Row 2: Subscription banner — orange ProBanner (free/expired) or
+           the manage card (active Pro) ═════ */}
       <motion.div variants={fadeUpItem()}>
-        <SubscriptionCard />
+        {isPro ? <SubscriptionCard /> : <ProBanner />}
       </motion.div>
 
-      {/* ═════ Row 3: Project widgets ═════ */}
+      {/* ═════ Row 4: Project widgets ═════ */}
       <motion.div variants={fadeUpItem()}>
         {isLoading ? (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -61,12 +84,18 @@ export default function Home() {
               <ProjectActivityWidget
                 key={project.id}
                 project={project}
-                onNewAct={() => {}}
+                onNewAct={() => openNewAct(project.id)}
               />
             ))}
           </div>
         )}
       </motion.div>
+
+      <InspectionWizard
+        open={newActOpen}
+        onClose={() => setNewActOpen(false)}
+        defaultProjectId={newActProjectId}
+      />
     </motion.div>
   );
 }

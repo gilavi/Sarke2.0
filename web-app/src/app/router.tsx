@@ -39,6 +39,7 @@ const Privacy = lazy(() => import('@/pages/Privacy'));
 const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 const History = lazy(() => import('@/pages/History'));
 const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
+const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
 
 // Public marketing pages (the landing is multi-page). Landing stays eager
 // (first paint); the rest are lazy under MarketingLayout's Suspense boundary.
@@ -47,6 +48,7 @@ const Contact = lazy(() => import('@/pages/Contact'));
 const PricingPage = lazy(() => import('@/pages/Pricing'));
 const Legislation = lazy(() => import('@/pages/Legislation'));
 
+const DesignSystemCheck = lazy(() => import('@/pages/DesignSystemCheck'));
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
 const SubscribeSuccess = lazy(() => import('@/pages/SubscribeSuccess'));
 const SubscribeFail = lazy(() => import('@/pages/SubscribeFail'));
@@ -150,6 +152,7 @@ export function AppRouter() {
               under MarketingLayout (which bounces sessions to /home) or the
               protected shell. */}
           <Route element={<PublicLazyLayout />}>
+            <Route path="/ds" element={<DesignSystemCheck />} />
             <Route path={routePattern.subscribe} element={<Subscribe />} />
             <Route path={routePattern.subscribeSuccess} element={<SubscribeSuccess />} />
             <Route path={routePattern.subscribeFail} element={<SubscribeFail />} />
@@ -175,6 +178,7 @@ export function AppRouter() {
             <Route path={routePattern.projectEdit} element={<EditProject />} />
             <Route path={routePattern.projectDetail} element={<ProjectDetail />} />
             <Route path={routePattern.projectFiles} element={<ProjectFiles />} />
+            <Route path={routePattern.inspectionPrint} element={<InspectionPrint />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

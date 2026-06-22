@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { User, UserRound, LogOut, Globe, Sun, Moon, CreditCard, Rocket, Download } from 'lucide-react';
+import { User, UserRound, LogOut, Globe, Sun, Moon, CreditCard, Download } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
 import { usePdfUsage } from '@/lib/usePdfUsage';
@@ -60,33 +60,6 @@ export function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <div className="space-y-2.5 px-2 pb-3 pt-1">
-      {/* Go Pro card - the single upgrade entry point (free users) */}
-      {!isPro && (
-        <button
-          type="button"
-          onClick={() => go(routes.subscribe.index)}
-          aria-label="Hubble Pro"
-          className="block w-full rounded-2xl p-3.5 text-left text-white transition-transform hover:scale-[1.02]"
-          style={{
-            background: 'linear-gradient(135deg, #1FA968 0%, #0C5236 100%)',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.10)',
-          }}
-        >
-          <span className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/20">
-              <Rocket className="h-4 w-4 text-white" />
-            </span>
-            <span className="text-sm font-bold">Hubble Pro</span>
-          </span>
-          <span className="mt-2 block text-[11px] leading-snug text-white/85">
-            ულიმიტო PDF და ფუნქციები
-          </span>
-          <span className="mt-2.5 block rounded-full bg-white py-1.5 text-center text-[11.5px] font-bold text-[#0C5236]">
-            განახლება →
-          </span>
-        </button>
-      )}
-
       <DropdownMenu position="top-start" offset={8} width={236} withinPortal>
         <DropdownMenuTrigger>
           <button

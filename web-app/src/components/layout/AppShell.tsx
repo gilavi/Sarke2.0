@@ -2,8 +2,9 @@ import { useEffect, useState, memo, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, ShieldCheck, Settings } from 'lucide-react';
+import { Menu, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { HubbleLogo } from '@/components/HubbleLogo';
 import SettingsModal from '@/components/SettingsModal';
 
 export const AppShell = memo(function AppShell({ children }: { children: ReactNode }) {
@@ -22,7 +23,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
   }, [location.pathname]);
 
   return (
-    <div className="flex h-full min-h-screen bg-[var(--bg-body)]">
+    <div className="flex h-full min-h-screen bg-[var(--bg-card)]">
       {/* Ambient mesh background - desktop only */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden hidden sm:block">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-brand-500/5 blur-3xl animate-mesh-1" />
@@ -41,12 +42,9 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
 
       <Sidebar open={sidebarOpen} onClose={handleCloseSidebar} />
 
-      {/* Content as a floating card on the canvas (rounded, hairline border,
-          soft shadow, even gutter all around on desktop). */}
-      <div
-        className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-card)] lg:my-4 lg:mr-4 lg:rounded-[18px] lg:border lg:border-[var(--border-default)]"
-        style={{ boxShadow: 'var(--card-shadow)' }}
-      >
+      {/* Content sits flush on the canvas; the sidebar's right divider is the
+          only separation between nav and content (no floating-card gutter). */}
+      <div className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-card)]">
         {/* Mobile top bar */}
         <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900 lg:hidden">
           <div className="flex items-center gap-3">
@@ -59,8 +57,8 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
               <Menu size={20} />
             </button>
             <Link to="/home" className="flex items-center gap-2 lg:hidden">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white">
-                <ShieldCheck size={15} />
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#1A1A1A]">
+                <HubbleLogo className="h-[15px] w-[15px] text-brand-500" />
               </div>
               <span className="font-display text-base font-bold text-neutral-900 dark:text-neutral-100">Hubble</span>
             </Link>

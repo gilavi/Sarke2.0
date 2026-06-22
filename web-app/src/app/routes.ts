@@ -49,6 +49,10 @@ export const routePattern = {
   safety: '/safety',
   safetyStandalone: '/safety-standalone',
 
+  // Inspection acts - created via the home/project wizard modal; only the
+  // print route survives (PDF generation). Listing + detail pages were removed.
+  inspectionPrint: '/inspections/:id/print',
+
   // Projects
   projects: project,
   projectNew: `${project}/new`,

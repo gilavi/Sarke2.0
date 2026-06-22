@@ -29,7 +29,6 @@ import {
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
 import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
-import { routes } from '@/app/routes';
 import { VERDICT_GOOD, VERDICT_BAD } from '@/lib/verdictColors';
 import { toastError } from '@/lib/errors';
 
@@ -324,13 +323,10 @@ export default function InspectionWizard({
           // confirmation appears on top of the completed inspection.
           onClose();
           navigate(preset.successDetailRoute(insId), { state: { inspectionSuccess: successPayload } });
-        } else if (mode === 'create') {
-          // Generic create: land on the inspection's detail page with the success
-          // modal - uniform with the harness/equipment flows.
-          onClose();
-          navigate(routes.inspections.detail(insId), { state: { inspectionSuccess: successPayload } });
         } else {
-          // Edit-in-place (detail-page wizard) - show the success modal over the detail.
+          // Generic create + edit: the standalone inspection detail page was
+          // removed, so show the success modal in place. The modal owns PDF
+          // generation (opens the print route in a new tab).
           setCompletedId(insId);
           setSuccessData(successPayload);
           setSuccessOpen(true);
@@ -402,7 +398,7 @@ export default function InspectionWizard({
     effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
     projectId, templateId, harnessName, department, inspectorName,
     answerMutation, qc, totalSteps, preset, profileName,
-    onComplete, gridSummary, projectName, onClose, navigate, mode,
+    onComplete, gridSummary, projectName, onClose, navigate,
     templates, defaultCategory, resolvedTemplateId,
   ]);
 
