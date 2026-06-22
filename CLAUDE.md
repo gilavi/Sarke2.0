@@ -96,13 +96,14 @@ When adding a new "list screen", do all three of:
 
 ## Web codebases
 
-There are three separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.
+There are four separate web codebases in this repo. None share code with the Expo mobile app — only Supabase.
 
 - **`web/` (hubble-sign):** tokenized signing page hosted at `https://hubble.ge/` (GitHub Pages, `hubble.ge` CNAME). Linked from SMS in `lib/sms.ts` + `supabase/functions/send-signing-sms/`. Hash routing (`#/sign/<token>`). Don't change its base path — it would break in-flight SMS links.
 - **`web-app/` (dashboard):** public dashboard at `https://hubble.ge/app/`. Vite + React + TypeScript + Tailwind. Reimplements features in HTML/CSS — no Expo, no React Native. **Mobile parity is generally not a goal** — most changes here don't need to track the Expo app. **Exception — inspection acts:** the unified inspection engine (`web-app/src/lib/inspection/` + `web-app/src/features/inspections/structured/`) **does** track the mobile app — web schemas/catalogs are hand-mirrored from the Expo `lib/inspection/` + `types/<type>.ts` (the `@root` import is eslint-banned), and equipment rows must round-trip with mobile (web creates the parent `public.inspections` row via the `create_equipment_inspection` RPC; see `lib/db/repository.ts` `parentInspection`). See [web-app/UNIFIED_INSPECTIONS_PLAN.md](web-app/UNIFIED_INSPECTIONS_PLAN.md).
+- **`cms/` (text CMS):** password-gated editor at `https://hubble.ge/cms/` for correcting the **mobile app's** `ka`/`en` UI strings. Vite + React + Tailwind. Writes the `public.ui_strings` table via the `cms-texts` edge function (the password lives there, not in the client); the mobile app overlays those rows on the bundled `locales/*.json` at launch (`lib/i18nOverlay.ts` + `components/UiStringsLoader.tsx`). Edit-only (no add/delete keys). See [cms/AGENTS.md](cms/AGENTS.md).
 - **`website/` (Docusaurus):** documentation site, deployed via `.github/workflows/docs.yml`.
 
-All three deploy to the same `gh-pages` branch under different `destination_dir` values (workflows: `deploy-web.yml`, `deploy-web-app.yml`, `deploy-web-app-preview.yml`, `docs.yml`); `keep_files: true` preserves the other trees.
+All four deploy to the same `gh-pages` branch under different `destination_dir` values (workflows: `deploy-web.yml`, `deploy-web-app.yml`, `deploy-web-app-preview.yml`, `deploy-cms.yml`, `docs.yml`); `keep_files: true` preserves the other trees.
 
 ## Things to Avoid
 

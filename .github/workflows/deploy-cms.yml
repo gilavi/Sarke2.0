@@ -1,0 +1,55 @@
+name: Deploy CMS (text editor)
+
+# Builds the standalone text CMS (cms/) and deploys it to /cms/ on gh-pages, so
+# https://hubble.ge/cms/ serves it. keep_files:true preserves the sibling trees
+# (/, /app/, /app-staging/, docs). The production base path /cms/ is hard-coded in
+# cms/vite.config.ts for `vite build`, so no --base override is needed here.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cms/**'
+      - '.github/workflows/deploy-cms.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-deploy-cms
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cms
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cms/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps --no-audit --no-fund
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to gh-pages /cms/
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./cms/dist
+          destination_dir: cms
+          keep_files: true

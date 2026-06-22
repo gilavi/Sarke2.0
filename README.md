@@ -2,7 +2,7 @@
 
 Expo (React Native) app for occupational safety experts in Georgia. An expert creates a project, fills a checklist-style inspection on their phone, collects worker signatures, and generates a PDF report. All UI copy is in Georgian (ქართული).
 
-There is also a public web dashboard ([`web-app/`](web-app/)) and a tokenized signing page ([`web/`](web/)) sharing the same Supabase backend.
+There is also a public web dashboard ([`web-app/`](web-app/)), a tokenized signing page ([`web/`](web/)), and a password-gated text CMS ([`cms/`](cms/)) for correcting the app's `ka`/`en` UI strings — all sharing the same Supabase backend.
 
 **See also:** [docs/AI_BRIEFING.md](docs/AI_BRIEFING.md) for a working overview, [docs/WHATS_NEW.md](docs/WHATS_NEW.md) for recent changes, [docs/primitives.md](docs/primitives.md) for cross-cutting helpers, [docs/payments.md](docs/payments.md) for BOG payment flow, [CLAUDE.md](CLAUDE.md) for AI-session rules.
 
@@ -83,6 +83,7 @@ Top-level folders, one line each.
 | `docs/` | Project documentation — `AI_BRIEFING.md`, `WHATS_NEW.md`, `primitives.md`, `payments.md`, `APP_STORE_REVIEW.md`, `design-system-audit-*.md`, `prompts/`, and `reports/` (historical session/QA/bug reports — the repo root keeps only README/CLAUDE/ONBOARDING/TESTING). |
 | `web/` | `hubble-sign` tokenized signing page (Vite + React). Deployed to `https://hubble.ge/` (GitHub Pages with CNAME). |
 | `web-app/` | Public dashboard (Vite + React + TS + Tailwind). Deployed to `https://hubble.ge/app/`. |
+| `cms/` | Password-gated text CMS (Vite + React + TS + Tailwind) for correcting the app's `ka`/`en` UI strings. Deployed to `https://hubble.ge/cms/`. See [cms/AGENTS.md](cms/AGENTS.md). |
 | `website/` | Docusaurus documentation site. Deployed via `.github/workflows/docs.yml`. |
 | `design-system/` | Storybook design-system showcase. Renders the **real** `components/primitives/*` on the web via react-native-web (the "universal" component tier — same files as the Expo app, so no drift) plus token galleries from `lib/design-tokens.ts`. Standalone Vite/Storybook project (not a workspace); excluded from the Metro/Expo build. Planned host: `ds.hubble.ge`. See [design-system/AGENTS.md](design-system/AGENTS.md). |
 | `public/` | Static assets for the web bundles. |
@@ -92,7 +93,7 @@ Top-level folders, one line each.
 | `src/` | Misc shared sources used by the web bundles. |
 | `ios/` | Native iOS scaffold (legacy reference; primary native port is on `ios-legacy` branch). |
 
-GitHub Actions in `.github/workflows/`: `deploy-web.yml`, `deploy-web-app.yml`, `deploy-web-app-staging.yml` (develop → `/app-staging/`, staging Supabase), `deploy-web-app-preview.yml`, `db-and-functions.yml` (Supabase migrations + functions: develop → staging auto, production via gated manual run), `ci-web-app.yml`, `docs.yml`, `test.yml`.
+GitHub Actions in `.github/workflows/`: `deploy-web.yml`, `deploy-web-app.yml`, `deploy-web-app-staging.yml` (develop → `/app-staging/`, staging Supabase), `deploy-web-app-preview.yml`, `deploy-cms.yml` (main → `/cms/`), `db-and-functions.yml` (Supabase migrations + functions: develop → staging auto, production via gated manual run), `ci-web-app.yml`, `docs.yml`, `test.yml`.
 
 The full **staging vs production** environment strategy — branch model (`develop` = staging, `main` = production), the second Supabase project, EAS app variants, GitHub Environments, and the remaining manual setup steps — lives in **[docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md)**.
 
@@ -126,12 +127,13 @@ Photo geotagging was removed 2026-06-12 (location permission dropped for App Sto
 
 ## Web codebases
 
-Two static bundles in this repo plus a Docusaurus site. None share code with the Expo mobile app — only Supabase.
+Three static bundles in this repo plus a Docusaurus site. None share code with the Expo mobile app — only Supabase.
 
 | Path | Purpose | URL | Deploy workflow |
 |---|---|---|---|
 | `web/` (hubble-sign) | Tokenized signing page recipients open from an SMS link | `https://hubble.ge/` | `deploy-web.yml` |
 | `web-app/` (dashboard) | Public dashboard with full BOG payment parity | `https://hubble.ge/app/` | `deploy-web-app.yml` (+ `-preview.yml` for PR previews under `/app/preview/`) |
+| `cms/` (text CMS) | Password-gated editor for the mobile app's `ka`/`en` UI strings (writes `ui_strings`; app overlays at launch) | `https://hubble.ge/cms/` | `deploy-cms.yml` |
 | `website/` (Docusaurus) | Documentation site | published via `docs.yml` | `docs.yml` |
 
 All three deploy to the same `gh-pages` branch under different `destination_dir` values; `keep_files: true` preserves the other trees.
@@ -270,6 +272,7 @@ Outbound email uses **Resend** via custom SMTP (configured in the Supabase dashb
 | `20260527091308_project_inspections_unified_rpc.sql` | `get_project_inspections_unified(project_id uuid)` RPC — single-query replacement for the 10 parallel per-type inspection fetches on the project-detail screen. After the identity-unification migration every equipment row has a parent in `public.inspections` tagged with `type`, so one SELECT returns id+source+template_id+status+created_at for every inspection. SECURITY INVOKER (RLS scopes results). Adds composite index `idx_inspections_project_created`. |
 | `20260527120000_get_inspection_stats_rpc.sql` | `get_inspection_stats()` RPC — per-project draft/completed counts for the projects list. SECURITY INVOKER so RLS scopes results to the caller automatically. **Apply manually**. |
 | `20260527150000_email_exists_rpc.sql` | `email_exists(p_email text)` RPC — boolean lookup of `auth.users`. Backs the login screen's distinct error messages ("wrong password" vs "no account") and the after-3-attempts password-reset prompt. SECURITY DEFINER (RLS hides `auth.users` from anon/authenticated). Deliberate user-enumeration trade-off accepted for modern login UX. Granted to `anon` so the unauthenticated login screen can call it. **Apply manually**. |
+| `20260622120000_ui_strings.sql` | `public.ui_strings` table (`key`/`en`/`ka`/`updated_at`/`updated_by`) backing the text CMS ([cms/](cms/)). **First intentionally public-read table** — `SELECT using (true)` because the mobile app overlays these labels at launch (incl. the pre-login screen) and they hold no PII. No write policy: the `cms-texts` edge function writes with the service role. Seed/sync via `scripts/seed-ui-strings.mjs`. **Apply manually**. |
 
 > Free-tier PDF limit: `increment_pdf_count` allows 30 free PDFs (intentional soft-launch setting). BOG payment is now live with production keys — tighten this limit when ready to enforce it. See [docs/payments.md](docs/payments.md).
 

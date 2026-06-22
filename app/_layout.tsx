@@ -31,6 +31,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '../lib/queryClient';
 import { initCrashReporting } from '../lib/crashReporting';
 import { migrateLegacyStorage } from '../lib/storageMigration';
+import { UiStringsLoader } from '../components/UiStringsLoader';
 
 initCrashReporting();
 // Rebrand: carry legacy `sarke.*` storage keys over to `hubble.*` once on boot
@@ -241,6 +242,7 @@ export default function RootLayout() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
+          <UiStringsLoader />
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <SafeAreaProvider>

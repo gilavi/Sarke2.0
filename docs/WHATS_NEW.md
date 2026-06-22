@@ -1,8 +1,17 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-19 | Branch: `develop`
+**Updated:** 2026-06-22 | Branch: `develop`
 
 ---
+
+## 2026-06-22 — Text CMS: co-workers can correct app texts live
+
+A new password-gated **text CMS** ([cms/](../cms/), hosted at `https://hubble.ge/cms/`) lets non-engineers correct the mobile app's Georgian/English UI strings — with good search and breadcrumbs (`common › save`) — and have the fix go **live without an App Store build**.
+
+- **How it flows** — the CMS writes the new `public.ui_strings` table (one row per dotted i18n key) via the `cms-texts` edge function; the shared password lives in the function (`CMS_PASSWORD`), never the client. The mobile app fetches the rows on launch and overlays them on the bundled `locales/*.json` ([lib/i18nOverlay.ts](../lib/i18nOverlay.ts) + [components/UiStringsLoader.tsx](../components/UiStringsLoader.tsx) + `bindI18nStore` in [lib/i18n.ts](../lib/i18n.ts)). The bundled JSON stays the offline/first-launch fallback, so edits appear on the **next app open**.
+- **Edit-only & safe** — the CMS can only change existing keys, never add/delete them. `ui_strings` is the first intentionally public-read table (UI labels only, no PII); writes are service-role-only via the function.
+- **Seeding/drift** — [scripts/seed-ui-strings.mjs](../scripts/seed-ui-strings.mjs) emits idempotent SQL to load/sync the table from the locale files (insert-only by default; run it after adding new keys). Round-trip flatten/unflatten is unit-tested ([tests/unit/i18nFlatten.test.ts](../tests/unit/i18nFlatten.test.ts)).
+- See [cms/AGENTS.md](../cms/AGENTS.md) for the one-time setup runbook.
 
 ## 2026-06-19 — Reports: up to 2 photos per slide + choosable slide layout
 
