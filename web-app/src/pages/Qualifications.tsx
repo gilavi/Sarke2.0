@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { View, Text } from 'react-native';
+import { Card, Badge, Button } from '@root/components/primitives';
+import { useTheme } from '@root/lib/theme';
 import {
   listQualifications,
   qualificationLabel,
@@ -15,6 +16,7 @@ import { ErrorMessage } from '@/components/ui/error-message';
 import { humanizeError } from '@/lib/errors';
 
 export default function Qualifications() {
+  const { theme } = useTheme();
   const { data: items, error: queryError, isLoading } = useQuery({
     queryKey: qualificationKeys.lists(),
     queryFn: listQualifications,
@@ -47,9 +49,7 @@ export default function Qualifications() {
         </p>
       </header>
 
-      {displayError && (
-        <ErrorMessage>{displayError}</ErrorMessage>
-      )}
+      {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
       {isLoading && <SkeletonList count={4} />}
       {items && items.length === 0 && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">სერტიფიკატები არ არის ატვირთული.</p>
@@ -62,43 +62,32 @@ export default function Qualifications() {
             const expiringSoon = !expired && isExpiringSoon(q.expires_at);
             return (
               <Card key={q.id}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-heading-3 text-neutral-900 dark:text-neutral-100">
-                    <span>{qualificationLabel(q.type)}</span>
-                    {expired && (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-800">
-                        ვადაგასული
-                      </span>
-                    )}
-                    {expiringSoon && (
-                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-yellow-800">
-                        იწურება
-                      </span>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm text-neutral-700 dark:text-neutral-300">
-                  <div>ნომერი: {q.number || '-'}</div>
-                  <div>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
+                    {qualificationLabel(q.type)}
+                  </Text>
+                  {expired && <Badge variant="danger">ვადაგასული</Badge>}
+                  {expiringSoon && <Badge variant="warning">იწურება</Badge>}
+                </View>
+                <View style={{ marginTop: 8, gap: 4 }}>
+                  <Text style={{ fontSize: 14, color: theme.colors.inkSoft }}>ნომერი: {q.number || '-'}</Text>
+                  <Text style={{ fontSize: 14, color: theme.colors.inkSoft }}>
                     გაცემა: {q.issued_at ? new Date(q.issued_at).toLocaleDateString('ka-GE') : '-'}
                     {' · '}
-                    ვადა:{' '}
-                    {q.expires_at
-                      ? new Date(q.expires_at).toLocaleDateString('ka-GE')
-                      : '-'}
-                  </div>
-                  {q.file_url && (
+                    ვადა: {q.expires_at ? new Date(q.expires_at).toLocaleDateString('ka-GE') : '-'}
+                  </Text>
+                </View>
+                {q.file_url && (
+                  <View style={{ marginTop: 12, alignItems: 'flex-start' }}>
                     <Button
-                      type="button"
+                      title={opening === q.id ? 'იხსნება…' : 'სერტიფიკატის ნახვა'}
                       variant="outline"
                       size="sm"
-                      onClick={() => void openFile(q.file_url!, q.id)}
+                      onPress={() => void openFile(q.file_url!, q.id)}
                       disabled={opening === q.id}
-                    >
-                      {opening === q.id ? 'იხსნება…' : 'სერტიფიკატის ნახვა'}
-                    </Button>
-                  )}
-                </CardContent>
+                    />
+                  </View>
+                )}
               </Card>
             );
           })}

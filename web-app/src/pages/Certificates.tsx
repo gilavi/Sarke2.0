@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { FileText, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react'; // rendered as DOM (uses className)
+import { Upload } from 'lucide-react-native'; // passed to the shared Button's leftIcon
+import { Button } from '@root/components/primitives';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useAuth } from '@/lib/auth';
 import { listCertificates, signedCertificatePdfUrl, uploadCertificate } from '@/lib/data/certificates';
@@ -75,13 +76,11 @@ export default function Certificates() {
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">გენერირებული და ატვირთული PDF სერტიფიკატები.</p>
         </div>
         <Button
-          onClick={() => fileInputRef.current?.click()}
+          title={uploadMutation.isPending ? 'იტვირთება…' : 'ატვირთვა'}
+          leftIcon={Upload}
+          onPress={() => fileInputRef.current?.click()}
           disabled={uploadMutation.isPending}
-          className="shrink-0 gap-1.5"
-        >
-          <Upload size={15} />
-          {uploadMutation.isPending ? 'იტვირთება…' : 'ატვირთვა'}
-        </Button>
+        />
         <input
           ref={fileInputRef}
           type="file"
@@ -107,15 +106,13 @@ export default function Certificates() {
             <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500">ატვირთეთ PDF ან გენერირება მოახდინეთ შემოწმებიდან</p>
           </div>
           <Button
+            title="PDF-ის ატვირთვა"
             size="sm"
             variant="outline"
-            onClick={() => fileInputRef.current?.click()}
+            leftIcon={Upload}
+            onPress={() => fileInputRef.current?.click()}
             disabled={uploadMutation.isPending}
-            className="gap-1.5"
-          >
-            <Upload size={13} />
-            PDF-ის ატვირთვა
-          </Button>
+          />
         </div>
       )}
 
@@ -146,14 +143,12 @@ export default function Certificates() {
                   </div>
                 </div>
                 <Button
+                  title={openingId === c.id ? 'იხსნება…' : 'PDF-ის ნახვა'}
                   size="sm"
                   variant="outline"
-                  onClick={() => void openPdf(c.pdf_url, c.id)}
+                  onPress={() => void openPdf(c.pdf_url, c.id)}
                   disabled={openingId === c.id}
-                  className="shrink-0"
-                >
-                  {openingId === c.id ? 'იხსნება…' : 'PDF-ის ნახვა'}
-                </Button>
+                />
               </motion.div>
             );
           })}

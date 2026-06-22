@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ClipboardList } from 'lucide-react';
+import { Badge } from '@root/components/primitives';
 import DeleteButton from '@/components/DeleteButton';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
 import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
@@ -227,18 +228,10 @@ export default function History() {
                     </div>
                   </Link>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
-                      {TYPE_LABEL[row.type]}
-                    </span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        row.status === 'completed'
-                          ? 'bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      }`}
-                    >
+                    <Badge variant="default">{TYPE_LABEL[row.type]}</Badge>
+                    <Badge variant={row.status === 'completed' ? 'success' : 'warning'}>
                       {STATUS_LABEL[row.status] ?? row.status}
-                    </span>
+                    </Badge>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <DeleteButton iconOnly onDelete={() => handleDelete(row)} />
                     </div>

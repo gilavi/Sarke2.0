@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { View, Text } from 'react-native';
+import { Card, Badge } from '@root/components/primitives';
+import { useTheme } from '@root/lib/theme';
 import { listTemplates, SIGNER_ROLE_LABEL, type Template } from '@/lib/data/templates';
 import { templateKeys } from '@/app/queryKeys';
 import { SkeletonGrid } from '@/components/SkeletonCard';
@@ -24,6 +26,7 @@ function categoryLabel(t: Template): string {
 }
 
 export default function Templates() {
+  const { theme } = useTheme();
   const q = useQuery({
     queryKey: templateKeys.lists(),
     queryFn: listTemplates,
@@ -50,22 +53,21 @@ export default function Templates() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((t) => (
             <Card key={t.id}>
-              <CardHeader>
-                <CardTitle className="text-heading-3 text-neutral-900 dark:text-neutral-100">{inspectionDisplayName(t.name)}</CardTitle>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {categoryLabel(t)} · {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '-'}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xs text-neutral-600 dark:text-neutral-400">
-                  <span className="font-medium text-neutral-700">საჭირო ხელმომწერები:</span>{' '}
-                  {t.required_signer_roles.length === 0
-                    ? '-'
-                    : t.required_signer_roles
-                        .map((r) => SIGNER_ROLE_LABEL[r] ?? r)
-                        .join(', ')}
-                </div>
-              </CardContent>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: theme.colors.ink, flex: 1 }}>
+                  {inspectionDisplayName(t.name)}
+                </Text>
+                <Badge variant={t.is_system ? 'info' : 'default'}>{categoryLabel(t)}</Badge>
+              </View>
+              <Text style={{ marginTop: 4, fontSize: 12, color: theme.colors.inkSoft }}>
+                {(t.category && CATEGORY_LABEL[t.category]) ?? t.category ?? '-'}
+              </Text>
+              <Text style={{ marginTop: 12, fontSize: 12, color: theme.colors.inkSoft }}>
+                <Text style={{ fontWeight: '600', color: theme.colors.ink }}>საჭირო ხელმომწერები: </Text>
+                {t.required_signer_roles.length === 0
+                  ? '-'
+                  : t.required_signer_roles.map((r) => SIGNER_ROLE_LABEL[r] ?? r).join(', ')}
+              </Text>
             </Card>
           ))}
         </div>

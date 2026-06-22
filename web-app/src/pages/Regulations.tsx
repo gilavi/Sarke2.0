@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { View, Text } from 'react-native';
+import { ExternalLink, RefreshCw } from 'lucide-react-native';
+import { Card, Badge, Button } from '@root/components/primitives';
+import { useTheme } from '@root/lib/theme';
 import {
   REGULATIONS,
   type RegulationState,
@@ -28,6 +30,7 @@ function formatLastFetch(iso: string | null): string {
 }
 
 export default function Regulations() {
+  const { theme } = useTheme();
   const [states, setStates] = useState<RegulationState[]>(() => loadRegulationStates());
   const [lastFetch, setLastFetch] = useState<string | null>(() => getLastFetchAt());
   const [loading, setLoading] = useState(false);
@@ -72,55 +75,44 @@ export default function Regulations() {
       <header className="flex items-end justify-between">
         <div>
           <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">რეგულაციები</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            ბოლო განახლება: {formatLastFetch(lastFetch)}
-          </p>
+          <p className="mt-1 text-sm text-neutral-500">ბოლო განახლება: {formatLastFetch(lastFetch)}</p>
         </div>
-        <button
-          onClick={() => refresh(true)}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
-          title="განახლება"
-        >
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          განახლება
-        </button>
+        <Button title="განახლება" variant="ghost" size="sm" leftIcon={RefreshCw} onPress={() => refresh(true)} disabled={loading} />
       </header>
 
       <div className="space-y-3">
         {REGULATIONS.map((item, index) => {
           const st = stateById(item.id);
           return (
-            <Card
-              key={item.id}
-              className="cursor-pointer overflow-hidden transition hover:border-brand-300"
-              onClick={() => handleOpen(item.id, item.url)}
-            >
-              <div className="h-0.5 bg-brand-600 opacity-70" />
-              <CardContent className="flex items-start gap-4 py-4">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">
-                  {index + 1}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start gap-2">
-                    <span className="flex-1 text-sm font-semibold leading-snug text-neutral-900 dark:text-neutral-100">
+            <Card key={item.id} padding="none" onPress={() => handleOpen(item.id, item.url)} style={{ overflow: 'hidden' }}>
+              <View style={{ height: 2, backgroundColor: theme.colors.accent, opacity: 0.7 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 16, padding: 16 }}>
+                <View
+                  style={{
+                    height: 28,
+                    width: 28,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: theme.colors.accentSoft,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: theme.colors.accent }}>{index + 1}</Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                    <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', lineHeight: 20, color: theme.colors.ink }}>
                       {item.title}
-                    </span>
-                    {st?.isUpdated && (
-                      <span className="shrink-0 rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
-                        განახლდა
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-xs text-neutral-500">{item.description}</p>
+                    </Text>
+                    {st?.isUpdated && <Badge variant="primary">განახლდა</Badge>}
+                  </View>
+                  <Text style={{ marginTop: 4, fontSize: 12, color: theme.colors.inkSoft }}>{item.description}</Text>
                   {st?.lastUpdated && (
-                    <p className="mt-1.5 text-[11px] text-neutral-400">
-                      განახლდა: {st.lastUpdated}
-                    </p>
+                    <Text style={{ marginTop: 6, fontSize: 11, color: theme.colors.inkFaint }}>განახლდა: {st.lastUpdated}</Text>
                   )}
-                </div>
-                <ExternalLink size={16} className="mt-0.5 shrink-0 text-neutral-400" />
-              </CardContent>
+                </View>
+                <ExternalLink size={16} color={theme.colors.inkFaint} style={{ marginTop: 2 }} />
+              </View>
             </Card>
           );
         })}

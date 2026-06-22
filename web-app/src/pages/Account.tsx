@@ -18,7 +18,9 @@ import {
   Receipt, User, KeyRound, Award, ScrollText,
   ChevronRight, Moon, Sun, Check, CalendarDays, Infinity as InfinityIcon, ArrowRight, AlertTriangle,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// Shared primitives for the display surfaces; web Button/Input stay in the
+// form-coupled modals + cancel dialog (submit/close wiring) for a later pass.
+import { Button as DSButton, Card as DSCard, Badge as DSBadge } from '@root/components/primitives';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/lib/theme';
@@ -38,12 +40,6 @@ const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
   failed: 'წარუმატებელი',
   pending: 'მოლოდინში',
   refunded: 'დაბრუნებული',
-};
-const STATUS_CLASS: Record<PaymentRecord['status'], string> = {
-  success: 'bg-brand-50 text-brand-700',
-  failed: 'bg-red-50 text-red-700',
-  pending: 'bg-neutral-100 text-neutral-600',
-  refunded: 'bg-amber-50 text-amber-700',
 };
 const formatDateTime = fmtDateTimeKa;
 
@@ -319,9 +315,11 @@ export default function Account() {
             </AlertDialog>
           )}
           {(usage?.status === 'expired' || usage?.status === 'free' || (usage?.status === 'active' && cancelled)) && (
-            <Button onClick={() => navigate('/subscribe')} size="sm" className="shrink-0 gap-1">
-              {usage.status === 'active' ? 'განახლება' : 'PRO'} <ArrowRight size={13} />
-            </Button>
+            <DSButton
+              title={usage.status === 'active' ? 'განახლება' : 'PRO'}
+              size="sm"
+              onPress={() => navigate('/subscribe')}
+            />
           )}
         </div>
         {/* Actions */}
@@ -417,41 +415,37 @@ export default function Account() {
       />
 
       {/* Payment history */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Receipt size={16} /> გადახდის ისტორია
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {histLoading ? (
-            <div className="h-20 animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800" />
-          ) : !history || history.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-neutral-500">
-              <Receipt size={28} className="text-neutral-300 dark:text-neutral-600" />
-              <span>ჩანაწერები არ არის</span>
-            </div>
-          ) : (
-            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-              {history.map((row) => (
-                <li key={row.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                      {row.amount != null ? `${row.currency === 'GEL' ? '₾' : (row.currency ?? '')}${row.amount.toFixed(2)}` : '-'}
-                    </div>
-                    <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                      {formatDateTime(row.created_at)} · #{row.bog_order_id.slice(0, 8)}
-                    </div>
+      <DSCard>
+        <div className="mb-3 flex items-center gap-2 text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          <Receipt size={16} /> გადახდის ისტორია
+        </div>
+        {histLoading ? (
+          <div className="h-20 animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800" />
+        ) : !history || history.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-neutral-500">
+            <Receipt size={28} className="text-neutral-300 dark:text-neutral-600" />
+            <span>ჩანაწერები არ არის</span>
+          </div>
+        ) : (
+          <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            {history.map((row) => (
+              <li key={row.id} className="flex items-center justify-between py-3">
+                <div>
+                  <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                    {row.amount != null ? `${row.currency === 'GEL' ? '₾' : (row.currency ?? '')}${row.amount.toFixed(2)}` : '-'}
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${STATUS_CLASS[row.status]}`}>
-                    {STATUS_LABEL[row.status]}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {formatDateTime(row.created_at)} · #{row.bog_order_id.slice(0, 8)}
+                  </div>
+                </div>
+                <DSBadge variant={row.status === 'success' ? 'success' : row.status === 'failed' ? 'danger' : row.status === 'refunded' ? 'warning' : 'default'}>
+                  {STATUS_LABEL[row.status]}
+                </DSBadge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DSCard>
 
       {/* Modals */}
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
