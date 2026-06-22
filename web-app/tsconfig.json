@@ -24,12 +24,24 @@
     "paths": {
       "@/*": ["./src/*"],
       "@root/*": ["../*"],
-      // Mirror Vite aliases so TypeScript resolves shared ../components + ../lib
-      // imports using web-app/node_modules (CI only installs web-app deps, not
-      // root node_modules — without these, tsc can't find react/RN types when
-      // checking files outside web-app/src).
       // Mirror Vite's runtime aliases so tsc resolves shared ../components +
-      // ../lib imports in CI (where root node_modules are absent).
+      // ../lib imports in CI (only web-app/node_modules is installed there —
+      // root node_modules don't exist, so TypeScript walking up from
+      // ../components/primitives/ never finds react, react-native, etc. unless
+      // we explicitly redirect every import to web-app/node_modules via paths).
+      //
+      // Packages present in web-app/node_modules, pointed at their type
+      // declarations. TypeScript's node_modules lookup walks UP from the
+      // importing file — for ../components/primitives/ files it never reaches
+      // web-app/node_modules/ in CI. Explicit paths redirect every import to
+      // web-app/node_modules regardless of which file does the importing.
+      "react": ["./node_modules/@types/react/index.d.ts"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-native-reanimated": ["./node_modules/react-native-reanimated"],
+      "react-native-reanimated/*": ["./node_modules/react-native-reanimated/*"],
+      "@react-native-async-storage/async-storage": ["./node_modules/@react-native-async-storage/async-storage"],
+      "@react-native-async-storage/async-storage/*": ["./node_modules/@react-native-async-storage/async-storage/*"],
+      // Packages aliased to web equivalents or shims (mirrors Vite aliases):
       "react-native": ["./shims/react-native.d.ts"],
       "react-native/*": ["./node_modules/react-native-web/*"],
       "lucide-react-native": ["./shims/lucide-react-native.d.ts"],

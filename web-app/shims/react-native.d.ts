@@ -348,7 +348,7 @@ declare module 'react-native' {
     readOnly?: boolean;
   }
 
-  export class TextInput extends React.Component<TextInputProps> {
+  export class TextInput extends React.Component<TextInputProps & React.RefAttributes<TextInput>> {
     focus(): void;
     blur(): void;
     clear(): void;
