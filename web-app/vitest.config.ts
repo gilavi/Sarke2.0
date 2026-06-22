@@ -66,6 +66,7 @@ export default defineConfig({
       // react-native-worklets and react-native-reanimated both try to initialise
       // TurboModules that don't exist in jsdom. Redirect at the Vite alias level
       // (before module init) so the crashes never happen.
+      { find: /^@react-native-async-storage\/async-storage/, replacement: resolve(__dirname, 'node_modules/@react-native-async-storage/async-storage') },
       { find: /^react-native-worklets/, replacement: resolve(shims, 'react-native-worklets.test.ts') },
       { find: /^react-native-reanimated$/, replacement: resolve(shims, 'react-native-reanimated.test.ts') },
     ],
