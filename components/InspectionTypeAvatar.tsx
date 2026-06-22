@@ -61,7 +61,7 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
       : FALLBACK_IMAGE;
   const bg = muted ? theme.colors.subtleSurface : theme.colors.accentSoft;
   const radius = circle ? size / 2 : 10;
-  const imgSize = Math.round(size * 0.72);
+  const imgSize = Math.round(size * 0.78);
 
   return (
     <View style={[{ width: size, height: size }, style]}>

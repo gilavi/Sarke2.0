@@ -197,20 +197,20 @@ export default function HomeScreen() {
       await questionnairesApi.remove(draftId);
       await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
     } catch {
-      Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');
+      Alert.alert(t('common.error'), t('common.deleteFailed'));
     }
     deleteOpacity.setValue(1);
     deleteScale.setValue(1);
-  }, [deleteOpacity, deleteScale, qc]);
+  }, [deleteOpacity, deleteScale, qc, t]);
 
   const deleteRecentDraft = useCallback(async (id: string, category: string | undefined) => {
     try {
       await deleteInspectionBySource(category, id);
       await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
     } catch {
-      Alert.alert('შეცდომა', 'წაშლა ვერ მოხერხდა');
+      Alert.alert(t('common.error'), t('common.deleteFailed'));
     }
-  }, [qc]);
+  }, [qc, t]);
 
 
   const templateName = useCallback((id: string) => inspectionDisplayName(templates.find((tpl) => tpl.id === id)?.name), [templates]);
@@ -366,7 +366,7 @@ export default function HomeScreen() {
             >
               <View style={styles.newProjectCard}>
                 <CirclePlus size={28} color={theme.colors.ink} strokeWidth={1.5} />
-                <Text style={styles.newProjectCardText}>ახალი</Text>
+                <Text style={styles.newProjectCardText}>{t('home.newLabel')}</Text>
               </View>
             </Pressable>
           </ScrollView>
@@ -388,7 +388,7 @@ export default function HomeScreen() {
           <QuickActions
             actions={[
               {
-                label: 'შემოწმება',
+                label: t('home.quickInspection'),
                 colorKey: 'inspection',
                 onPress: () => {
                   const sysTpls = templates.filter(tpl => tpl.is_system);
@@ -409,17 +409,17 @@ export default function HomeScreen() {
                 },
               },
               {
-                label: 'ინციდენტი',
+                label: t('home.quickIncident'),
                 colorKey: 'incident',
                 onPress: () => router.push('/incidents/new' as any),
               },
               {
-                label: 'ინსტრუქტაჟი',
+                label: t('home.quickBriefing'),
                 colorKey: 'briefing',
                 onPress: () => router.push('/briefings/new' as any),
               },
               {
-                label: 'რეპორტი',
+                label: t('home.quickReport'),
                 colorKey: 'report',
                 onPress: () => router.push('/reports/new' as any),
               },
@@ -450,7 +450,7 @@ export default function HomeScreen() {
             <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
               <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
               <Pressable onPress={() => router.push('/history' as any)} hitSlop={16} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
-                <Text style={styles.sectionLink}>ყველა</Text>
+                <Text style={styles.sectionLink}>{t('home.allActivity')}</Text>
               </Pressable>
             </View>
             {allDrafts.length > 0 && (() => {
@@ -470,7 +470,7 @@ export default function HomeScreen() {
                       renderRightActions={() => (
                         <Pressable onPress={() => handleDraftDelete(draft.id)} style={styles.deleteAction}>
                           <Trash2 size={22} color={theme.colors.white} strokeWidth={1.5} />
-                          <Text style={styles.deleteActionText}>წაშლა</Text>
+                          <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
                         </Pressable>
                       )}
                     >
@@ -484,7 +484,7 @@ export default function HomeScreen() {
                         <View style={styles.resumeContent}>
                           <View style={styles.resumeTopRow}>
                             <Text style={styles.resumeTitle} numberOfLines={1}>{templateName(draft.template_id)}</Text>
-                            <View style={styles.resumePill}><Text style={styles.resumePillText}>დრაფტი</Text></View>
+                            <View style={styles.resumePill}><Text style={styles.resumePillText}>{t('common.draft')}</Text></View>
                           </View>
                           {showProgress ? (
                             <View style={styles.progressTrack}>
@@ -492,7 +492,7 @@ export default function HomeScreen() {
                             </View>
                           ) : null}
                           <View style={styles.resumeBottomRow}>
-                            {step > 0 ? <Text style={styles.resumeStepLabel}>ნაბიჯი {step}</Text> : <View />}
+                            {step > 0 ? <Text style={styles.resumeStepLabel}>{t('home.stepLabel', { step })}</Text> : <View />}
                             <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
                           </View>
                         </View>
@@ -561,7 +561,7 @@ export default function HomeScreen() {
                                       ? <Play size={15} color={theme.colors.ink} strokeWidth={1.5} />
                                       : <Eye size={15} color={theme.colors.ink} strokeWidth={1.5} />}
                                     <Text style={[styles.rowMenuLabel, { color: theme.colors.ink }]}>
-                                      {isDraft ? 'გაგრძელება' : 'ნახვა'}
+                                      {isDraft ? t('common.continue') : t('common.viewAction')}
                                     </Text>
                                   </Pressable>
                                   <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
@@ -569,14 +569,14 @@ export default function HomeScreen() {
                                     style={styles.rowMenuItem}
                                     onPress={() => {
                                       setOpenMenuId(null);
-                                      Alert.alert('წაშლა', 'დარწმუნებული ხართ?', [
-                                        { text: 'გაუქმება', style: 'cancel' },
-                                        { text: 'წაშლა', style: 'destructive', onPress: () => deleteRecentDraft(q.id, tpl?.category ?? undefined) },
+                                      Alert.alert(t('inspections.deleteTitle'), t('common.areYouSure'), [
+                                        { text: t('common.cancel'), style: 'cancel' },
+                                        { text: t('common.delete'), style: 'destructive', onPress: () => deleteRecentDraft(q.id, tpl?.category ?? undefined) },
                                       ]);
                                     }}
                                   >
                                     <Trash2 size={15} color={theme.colors.danger} strokeWidth={1.5} />
-                                    <Text style={[styles.rowMenuLabel, { color: theme.colors.danger }]}>წაშლა</Text>
+                                    <Text style={[styles.rowMenuLabel, { color: theme.colors.danger }]}>{t('common.delete')}</Text>
                                   </Pressable>
                                 </View>
                               </>
@@ -598,7 +598,7 @@ export default function HomeScreen() {
                               style={styles.deleteAction}
                             >
                               <Trash2 size={22} color={theme.colors.white} strokeWidth={1.5} />
-                              <Text style={styles.deleteActionText}>წაშლა</Text>
+                              <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
                             </Pressable>
                           )}
                         >
@@ -639,7 +639,7 @@ export default function HomeScreen() {
               <ShieldCheck size={20} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
             <View style={staticStyles.flex}>
-              <Text style={styles.tipLabel}>რჩევა დღისთვის</Text>
+              <Text style={styles.tipLabel}>{t('home.tipOfDay')}</Text>
               <Text style={styles.tipBody}>{tip}</Text>
             </View>
           </Card>
@@ -651,7 +651,7 @@ export default function HomeScreen() {
         options={tplPickerTemplates.map(tpl => ({
           label: inspectionDisplayName(tpl.name),
           value: tpl.id,
-          icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
+          icon: <InspectionTypeAvatar category={tpl.category} size={52} circle muted />,
         }))}
         value={null}
         onChange={(id) => {
