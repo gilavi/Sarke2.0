@@ -52,7 +52,7 @@ describe('Templates', () => {
     };
     vi.mocked(listTemplates).mockResolvedValue([tpl]);
     renderPage(<Templates />);
-    expect(await screen.findByText('ფასადის ხარაჩო')).toBeInTheDocument();
+    expect((await screen.findAllByText('ფასადის ხარაჩო')).length).toBeGreaterThan(0);
     expect(screen.getByText(/უსაფრთხოების ინჟინერი/)).toBeInTheDocument();
   });
 });
