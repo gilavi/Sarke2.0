@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from 'lucide-react-native';
+import { IconButton } from '@root/components/primitives';
 
 /**
  * Shared wizard header - full viewport width, 80px tall (matches the footer).
@@ -44,14 +45,9 @@ export function WizardHeader({
             </span>
           )}
         </div>
-        <button
-          onClick={onClose}
-          disabled={closeDisabled}
-          aria-label="დახურვა"
-          className="ml-4 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 active:scale-95 dark:hover:bg-neutral-800"
-        >
-          <X size={26} />
-        </button>
+        <div className="ml-4 shrink-0">
+          <IconButton icon={X} a11yLabel="დახურვა" variant="ghost" size="lg" onPress={onClose} disabled={closeDisabled} />
+        </div>
       </div>
       {showProgress && (
         <div className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden bg-neutral-100 dark:bg-neutral-800">

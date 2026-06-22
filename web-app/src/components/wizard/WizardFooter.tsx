@@ -1,9 +1,12 @@
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react'; // bare DOM back link (mobile uses a bare Pressable too)
+import { ArrowRight } from 'lucide-react-native'; // passed to the shared Button
+import { Button } from '@root/components/primitives';
 
 /**
  * Shared wizard footer - fixed, full viewport width, edge-to-edge top border.
- * Exactly two controls: a text-only back link and a green primary button.
- * The primary button never changes style when disabled - only its opacity.
+ * Mirrors the mobile WizardNav: a bare text-only back link + the shared primary
+ * Button (same component the Expo app renders). The primary button dims when
+ * disabled/submitting.
  */
 export function WizardFooter({
   onBack,
@@ -11,7 +14,6 @@ export function WizardFooter({
   backDisabled,
   nextDisabled,
   nextLabel,
-  nextTooltip,
   hideNextArrow,
   submitting,
 }: {
@@ -49,18 +51,15 @@ export function WizardFooter({
         უკან
       </button>
 
-      <button
-        type="button"
-        onClick={onNext}
+      <Button
+        title={nextLabel}
+        rightIcon={hideNextArrow || submitting ? undefined : ArrowRight}
+        size="lg"
+        onPress={onNext}
         disabled={nextDisabled}
-        title={nextDisabled ? nextTooltip : undefined}
-        className="flex min-w-[180px] items-center justify-center gap-2 rounded-2xl bg-brand-500 px-7 text-base font-semibold text-white transition-all hover:bg-brand-600 active:scale-95"
-        style={{ height: 48, opacity: nextDisabled ? 0.4 : 1, cursor: nextDisabled ? 'not-allowed' : 'pointer' }}
-      >
-        {submitting && <Loader2 size={17} className="animate-spin" />}
-        {nextLabel}
-        {!hideNextArrow && !submitting && <ArrowRight size={17} />}
-      </button>
+        loading={submitting}
+        style={{ minWidth: 180 }}
+      />
     </div>
   );
 }
