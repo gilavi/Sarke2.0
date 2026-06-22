@@ -54,7 +54,12 @@ leftover signer-collection flow no longer in use. The `crew` column on
   `queryClient.setQueryData`.
 - `styles.ts` — `getStyles(theme)` factory.
 - `sections/InspectionsSection.tsx` — header + 3-item preview +
-  view-more + swipe-delete for the unified inspection list.
+  view-more + swipe-delete for the unified inspection list. Rows are
+  the shared `components/InspectionRow` (same component the home
+  screen uses) rendered with `inset={0}` so they sit flat inside the
+  section card with full-width dividers, matching the home list. The
+  old `styles.listRow` surfaceSecondary card-rows were removed here
+  (other sections still use them).
 - `sections/IncidentsSection.tsx` — incidents card.
 - `sections/BriefingsSection.tsx` — briefings card.
 - `sections/ReportsSection.tsx` — reports card.

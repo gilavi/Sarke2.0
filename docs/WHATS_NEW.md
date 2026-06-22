@@ -4,6 +4,10 @@
 
 ---
 
+## 2026-06-22 — Project screen: wider widgets + shared inspection list
+
+The project-detail screen now reuses the home screen's inspection list. A new canonical [`components/InspectionRow.tsx`](../components/InspectionRow.tsx) (gray category avatar + record-type pill + title + subtitle + trailing slot/actions) is now rendered by **both** the home "recent activity" list and the project inspections section, so the two can't drift. On the project screen the rows render flat inside the section card (`inset={0}`, full-width dividers, 48px avatars) instead of the old narrow surfaceSecondary card-rows. Section cards also lost padding (outer gutter 24→16, card padding 16→14×12) so the widgets feel wider. Story added at `design-system/stories/InspectionRow.stories.tsx`. OTA-delivered.
+
 ## 2026-06-22 — Home: pull-to-refresh wired up
 
 The Home tab now supports **pull-to-refresh**. A themed `RefreshControl` (refetching projects, templates, recent inspections, and qualifications) was already built on the screen but had never been attached to the scroll view — so dragging down did nothing. It's now passed to `Animated.ScrollView` via `refreshControl`. This also gives users a manual way to recover if a query stalls and the section skeletons would otherwise stay up. OTA-delivered.

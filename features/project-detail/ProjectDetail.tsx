@@ -461,7 +461,7 @@ export default function ProjectDetail() {
         <UpcomingSection projectId={id} />
 
         {/* ── Section cards ── */}
-        <View style={{ paddingHorizontal: 24, gap: 16, paddingTop: 8 }}>
+        <View style={{ paddingHorizontal: 16, gap: 16, paddingTop: 8 }}>
 
           {/* ── Inspections (generic + equipment) ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>

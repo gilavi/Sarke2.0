@@ -45,8 +45,7 @@ import { useToast } from '../../lib/toast';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Template } from '../../types/models';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
-import { InspectionListAvatar } from '../../components/InspectionListAvatar';
-import { RecordTypePill } from '../../components/RecordTypePill';
+import { InspectionRow } from '../../components/InspectionRow';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { ProjectCard } from '../../components/home/ProjectCard';
 import { ProjectPickerSheet } from '../../components/home/ProjectPickerSheet';
@@ -514,29 +513,16 @@ export default function HomeScreen() {
                       const isDraft = q.status === 'draft';
                       const menuOpen = openMenuId === q.id;
                       const rowContent = (
-                        <View style={[styles.recentRow, !isLast && styles.recentRowBorder]}>
-                          <Pressable
-                            onPress={() => router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any)}
-                            style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
-                          >
-                            <InspectionListAvatar
-                              category={tpl?.category}
-                              size={48}
-                              status={isDraft ? 'draft' : 'completed'}
-                              style={{ marginRight: 14 }}
-                            />
-                            <View style={staticStyles.flex}>
-                              <RecordTypePill recordType="inspection" />
-                              <Text style={styles.recentTitle} numberOfLines={1}>
-                                {templateName(q.template_id)}
-                              </Text>
-                              <Text style={styles.recentMeta} numberOfLines={1}>
-                                {(() => { const p = projects.find(pr => pr.id === q.project_id); return p ? (p.company_name || p.name) : ''; })()}
-                              </Text>
-                            </View>
-                            <Text style={styles.recentTime}>{relativeTime(q.created_at, t, i18n.language)}</Text>
-                          </Pressable>
-                          <View style={{ position: 'relative' }}>
+                        <InspectionRow
+                          category={tpl?.category}
+                          status={isDraft ? 'draft' : 'completed'}
+                          title={templateName(q.template_id)}
+                          subtitle={(() => { const p = projects.find(pr => pr.id === q.project_id); return p ? (p.company_name || p.name) : ''; })()}
+                          trailing={relativeTime(q.created_at, t, i18n.language)}
+                          showBorder={!isLast}
+                          onPress={() => router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any)}
+                          actions={
+                            <View style={{ position: 'relative' }}>
                             <Pressable
                               hitSlop={8}
                               onPress={() => setOpenMenuId(menuOpen ? null : q.id)}
@@ -582,8 +568,9 @@ export default function HomeScreen() {
                                 </View>
                               </>
                             )}
-                          </View>
-                        </View>
+                            </View>
+                          }
+                        />
                       );
                       // Don't wrap in Swipeable when the menu is open — Swipeable
                       // clips absolutely-positioned children, hiding the dropdown.

@@ -113,7 +113,9 @@ export function getStyles(theme: any) {
   sectionCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',

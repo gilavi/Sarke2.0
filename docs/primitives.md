@@ -276,6 +276,21 @@ One file: [`components/RecordTypePill.tsx`](../components/RecordTypePill.tsx). S
 
 Always shows the top-level document type — never the inspection subtype (that's already visible from the avatar emoji and template name). Don't add inline type labels elsewhere; use this component.
 
+## Inspection list row
+
+One file: [`components/InspectionRow.tsx`](../components/InspectionRow.tsx). The **canonical inspection list row** — gray category avatar (`InspectionListAvatar`) + `RecordTypePill` + title + subtitle + optional trailing slot. Shared by the home screen "recent activity" list (`app/(tabs)/home.tsx`) and the project-detail inspections section (`features/project-detail/sections/InspectionsSection.tsx`) so the two never diverge. Pure presentational — the caller owns navigation (`onPress`), swipe wrappers, and any trailing `actions` (kebab menu).
+
+| Prop | Purpose |
+|---|---|
+| `category` / `status` | Drive the avatar illustration + draft/completed ring. |
+| `title` / `subtitle` | Primary + secondary text (e.g. project name on home, date in the project card). |
+| `trailing` | Inside the press target, after the text. A string renders as the muted time label; any node renders as-is (e.g. a `ChevronRight`). |
+| `actions` | Rendered **outside** the press target (e.g. a kebab whose popover is absolutely positioned), so taps on the menu don't also navigate. |
+| `inset` | Horizontal padding. Default `20` (home, full-bleed). Pass `0` inside an already-padded card so the card's gutter is the only inset and dividers span the card's inner width. |
+| `showBorder` | Hairline bottom divider — omit on the last row of a group. |
+
+**Don't** re-inline an avatar + pill + title + time row in a screen file — that's the duplication this consolidated. Story: `design-system/stories/InspectionRow.stories.tsx`.
+
 ## Order (ბრძანება) PDF builder
 
 One file: [`lib/orderPdf.ts`](../lib/orderPdf.ts). Exports `buildLaborSafetyOrderHtml(args: OrderPdfArgs): string`.

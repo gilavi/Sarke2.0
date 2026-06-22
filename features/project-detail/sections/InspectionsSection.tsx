@@ -13,8 +13,7 @@ import { ChevronRight, ShieldCheck, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { InspectionListAvatar } from '../../../components/InspectionListAvatar';
-import { RecordTypePill } from '../../../components/RecordTypePill';
+import { InspectionRow } from '../../../components/InspectionRow';
 import { EmptyState, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
 import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
@@ -70,11 +69,12 @@ export function InspectionsSection({
       ) : allInspections.length === 0 ? (
         <EmptyState text={t('projects.noCompletedInspections')} />
       ) : (
-        <View style={{ gap: 8, marginTop: 10 }}>
-          {preview.map(item => {
+        <View style={{ marginTop: 4 }}>
+          {preview.map((item, i) => {
             const tpl = templates.find(tt => tt.id === item.template_id);
             const isCompleted = item.status === 'completed';
             const route = routeForInspection(item.source, item.id, isCompleted);
+            const isLast = i === preview.length - 1 && overflow.length === 0;
             return (
               <Swipeable
                 key={`${item.source}-${item.id}`}
@@ -85,25 +85,17 @@ export function InspectionsSection({
                 )}
                 overshootRight={false}
               >
-                <Pressable
+                <InspectionRow
+                  category={item.source ?? tpl?.category}
+                  status={isCompleted ? 'completed' : 'draft'}
+                  title={inspectionDisplayName(tpl?.name)}
+                  subtitle={formatShortDateTime(item.created_at)}
+                  trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}
+                  inset={0}
+                  showBorder={!isLast}
                   onPress={() => router.push(route as any)}
-                  style={styles.listRow}
-                  {...a11y(inspectionDisplayName(tpl?.name), isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
-                >
-                  <InspectionListAvatar
-                    category={item.source ?? tpl?.category}
-                    size={36}
-                    status={isCompleted ? 'completed' : 'draft'}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <RecordTypePill recordType="inspection" />
-                    <Text style={styles.listRowTitle}>{inspectionDisplayName(tpl?.name)}</Text>
-                    <Text style={styles.listRowSubtitle}>
-                      {formatShortDateTime(item.created_at)}
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-                </Pressable>
+                  a11y={a11y(inspectionDisplayName(tpl?.name), isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                />
               </Swipeable>
             );
           })}
