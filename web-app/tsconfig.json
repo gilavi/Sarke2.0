@@ -21,7 +21,27 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
-    "paths": { "@/*": ["./src/*"], "@root/*": ["../*"] },
+    "paths": {
+      "@/*": ["./src/*"],
+      "@root/*": ["../*"],
+      // Mirror Vite aliases so TypeScript resolves shared ../components + ../lib
+      // imports using web-app/node_modules (CI only installs web-app deps, not
+      // root node_modules — without these, tsc can't find react/RN types when
+      // checking files outside web-app/src).
+      // Mirror Vite's runtime aliases so tsc resolves shared ../components +
+      // ../lib imports in CI (where root node_modules are absent).
+      "react-native": ["./shims/react-native.d.ts"],
+      "react-native/*": ["./node_modules/react-native-web/*"],
+      "lucide-react-native": ["./shims/lucide-react-native.d.ts"],
+      "expo-haptics": ["./shims/expo-haptics.web.ts"],
+      "expo-router": ["./shims/expo-router.web.ts"],
+      "react-native-gesture-handler": ["./shims/react-native-gesture-handler.web.tsx"],
+      "react-native-maps": ["./shims/react-native-maps.ts"],
+      "@react-native-community/datetimepicker": ["./shims/datetimepicker.web.tsx"],
+      // Use real package types (installed in web-app/node_modules); skipLibCheck
+      // silences any internal react-native references inside those .d.ts files.
+      "react-native-safe-area-context": ["./node_modules/react-native-safe-area-context"]
+    },
     "types": ["vite/client"]
   },
   "include": ["src"],
