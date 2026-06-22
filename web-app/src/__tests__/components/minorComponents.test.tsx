@@ -9,7 +9,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import WizardSteps from '@/components/WizardSteps';
 import { ChipSelect } from '@/components/ui/chip-select';
-import { ResultPills } from '@/features/inspections/equipment/components/ResultPills';
 import { VirtualList } from '@/components/VirtualList';
 import SignatureCanvas from '@/components/SignatureCanvas';
 import SidePanel from '@/components/SidePanel';
@@ -113,36 +112,6 @@ describe('ChipSelect', () => {
   });
 });
 
-describe('ResultPills', () => {
-  it('renders the options and fires onChange when one is clicked', () => {
-    const onChange = vi.fn();
-    render(
-      <ResultPills
-        options={[
-          { value: 'good', label: 'კარგი', tone: 'good' },
-          { value: 'bad', label: 'ცუდი', tone: 'bad' },
-        ]}
-        value={null}
-        onSelect={onChange}
-      />,
-    );
-    fireEvent.click(screen.getByText('კარგი'));
-    expect(onChange).toHaveBeenCalledWith('good');
-  });
-
-  it('deselects when the currently-selected pill is clicked again', () => {
-    const onChange = vi.fn();
-    render(
-      <ResultPills
-        options={[{ value: 'good', label: 'კარგი', tone: 'good' }]}
-        value="good"
-        onSelect={onChange}
-      />,
-    );
-    fireEvent.click(screen.getByText('კარგი'));
-    expect(onChange).toHaveBeenCalledWith(null);
-  });
-});
 
 describe('VirtualList', () => {
   it('renders the virtualized list shell', () => {
@@ -200,9 +169,6 @@ describe('routes', () => {
   it('exposes static + parameterized route builders', () => {
     expect(routes.home).toBe('/home');
     expect(routes.projects.detail('p1')).toBe('/projects/p1');
-    expect(routes.bobcat.detail('b1')).toBe('/bobcat/b1');
-    expect(routes.incidents.list('p1')).toBe('/incidents?project=p1');
-    expect(routes.incidents.list()).toBe('/incidents');
     expect(routePattern.projectDetail).toBe('/projects/:id');
   });
 });

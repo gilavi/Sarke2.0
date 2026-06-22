@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import InspectionWizard from '@/components/InspectionWizard';
-import { harnessWizardPreset } from '@/components/inspections/harnessPreset';
 import { getProject, type Project } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
 import { AsyncBoundary } from '@/components/async/AsyncBoundary';
@@ -10,12 +8,7 @@ import { ProjectHeader } from './ProjectHeader';
 import { ProjectDetailsCard } from './ProjectDetailsCard';
 import { CrewSection } from './CrewSection';
 import { SignersSection } from './SignersSection';
-import { InspectionsSection } from './InspectionsSection';
-import { IncidentsSection } from './IncidentsSection';
-import { BriefingsSection } from './BriefingsSection';
-import { ReportsSection } from './ReportsSection';
 import { FilesSection } from './FilesSection';
-import { OrdersSection } from './OrdersSection';
 import { DangerZoneSection } from './DangerZoneSection';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { humanizeError } from '@/lib/errors';
@@ -44,8 +37,6 @@ export default function ProjectDetail() {
   });
 
   const [editing, setEditing] = useState(false);
-  const [wizardOpen, setWizardOpen] = useState(false);
-  const [harnessOpen, setHarnessOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const error =
@@ -86,49 +77,14 @@ export default function ProjectDetail() {
         <SignersSection projectId={project.id} onError={setActionError} />
       </AsyncBoundary>
 
-      <SectionGroup label="ჩანაწერები" />
-      <AsyncBoundary>
-        <InspectionsSection
-          projectId={project.id}
-          onNew={(category) => {
-            if (category === 'harness') setHarnessOpen(true);
-            else setWizardOpen(true);
-          }}
-        />
-      </AsyncBoundary>
-      <AsyncBoundary>
-        <IncidentsSection projectId={project.id} />
-      </AsyncBoundary>
-      <AsyncBoundary>
-        <BriefingsSection projectId={project.id} />
-      </AsyncBoundary>
-
-      <SectionGroup label="დოკუმენტები" />
-      <AsyncBoundary>
-        <ReportsSection projectId={project.id} />
-      </AsyncBoundary>
+      <SectionGroup label="ფაილები" />
       <AsyncBoundary>
         <FilesSection projectId={project.id} onError={setActionError} />
-      </AsyncBoundary>
-      <AsyncBoundary>
-        <OrdersSection projectId={project.id} />
       </AsyncBoundary>
 
       <AsyncBoundary>
         <DangerZoneSection project={project} onError={setActionError} />
       </AsyncBoundary>
-
-      <InspectionWizard
-        open={wizardOpen}
-        onClose={() => setWizardOpen(false)}
-        defaultProjectId={project.id}
-      />
-      <InspectionWizard
-        open={harnessOpen}
-        onClose={() => setHarnessOpen(false)}
-        defaultProjectId={project.id}
-        preset={harnessWizardPreset}
-      />
     </div>
   );
 }

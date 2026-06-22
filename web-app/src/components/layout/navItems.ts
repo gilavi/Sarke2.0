@@ -5,11 +5,6 @@ import {
   BookOpen,
   Certificate,
   Clock,
-  ClipboardText,
-  Warning,
-  Megaphone,
-  FileText,
-  Package,
   SquaresFour,
   Cube,
   type Icon as PhosphorIcon,
@@ -42,11 +37,6 @@ export const topNavItems: NavItemDef[] = [
 ];
 
 export const moreNavItems: NavItemDef[] = [
-  { to: '/inspections', label: 'შემოწმებები',   icon: ClipboardText, shortcut: 'G I', tint: '#45B06E' },
-  { to: '/incidents',   label: 'ინციდენტები',   icon: Warning,       shortcut: 'G M', tint: '#ED5E4C' },
-  { to: '/briefings',   label: 'ინსტრუქტაჟები', icon: Megaphone,     shortcut: 'G B', tint: '#F08B3E' },
-  { to: '/reports',     label: 'რეპორტები',     icon: FileText,      shortcut: 'G R', tint: '#3FA9DE' },
-  { to: '/orders',      label: 'ბრძანებები',    icon: Package,       shortcut: 'G O', tint: '#9B6BE6' },
   { to: '/templates',   label: 'შაბლონები',     icon: SquaresFour,   shortcut: 'G T', tint: '#E866A0' },
   { to: '/safety',      label: '3D უსაფრთხოება', icon: Cube, tint: '#2FB6CC' },
 ];

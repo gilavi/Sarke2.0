@@ -139,7 +139,7 @@ describe('navItems', () => {
       '/home', '/projects', '/calendar', '/regulations', '/certificates', '/history',
     ]);
     expect(moreNavItems.map((i) => i.to)).toEqual([
-      '/inspections', '/incidents', '/briefings', '/reports', '/orders', '/templates', '/safety',
+      '/templates', '/safety',
     ]);
     expect(topNavItems.find((i) => i.to === '/home')?.shortcut).toBe('G H');
   });

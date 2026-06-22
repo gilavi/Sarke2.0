@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, FileText, FolderOpen, AlertTriangle, Megaphone, ClipboardCheck, Calendar, Settings, Home, Plus, type LucideProps } from 'lucide-react';
+import { Search, X, FolderOpen, Calendar, Settings, Home, Plus, type LucideProps } from 'lucide-react';
 import type { ComponentType } from 'react';
 type LucideIcon = ComponentType<LucideProps>;
 import { ActionIcon } from '@mantine/core';
@@ -9,25 +9,14 @@ import { useCommandStore } from '@/store/commandStore';
 import { DURATION, EASE } from '@/lib/animations';
 
 const ICONS: Record<string, LucideIcon> = {
-  Home, FileText, FolderOpen, AlertTriangle, Megaphone, ClipboardCheck, Calendar, Settings, Plus,
+  Home, FolderOpen, Calendar, Settings, Plus,
 };
 
 const STATIC_COMMANDS = [
-  // Quick actions - create a new entity (the "new report / new inspection / …" the
-  // palette was meant to surface).
-  { id: 'new-report', title: 'ახალი რეპორტი', icon: 'Plus', path: '/reports/new' },
-  { id: 'new-inspection', title: 'ახალი შემოწმება', icon: 'Plus', path: '/inspections' },
-  { id: 'new-incident', title: 'ახალი ინციდენტი', icon: 'Plus', path: '/incidents/new' },
-  { id: 'new-briefing', title: 'ახალი ინსტრუქტაჟი', icon: 'Plus', path: '/briefings/new' },
-  { id: 'new-order', title: 'ახალი ბრძანება', icon: 'Plus', path: '/orders/new' },
   { id: 'new-project', title: 'ახალი პროექტი', icon: 'Plus', path: '/projects/new' },
   // Navigation - jump to a section.
   { id: 'nav-home', title: 'მთავარი', icon: 'Home', path: '/home' },
   { id: 'nav-projects', title: 'პროექტები', icon: 'FolderOpen', path: '/projects' },
-  { id: 'nav-inspections', title: 'შემოწმებები', icon: 'ClipboardCheck', path: '/inspections' },
-  { id: 'nav-incidents', title: 'ინციდენტები', icon: 'AlertTriangle', path: '/incidents' },
-  { id: 'nav-briefings', title: 'ინსტრუქტაჟები', icon: 'Megaphone', path: '/briefings' },
-  { id: 'nav-reports', title: 'რეპორტები', icon: 'FileText', path: '/reports' },
   { id: 'nav-calendar', title: 'კალენდარი', icon: 'Calendar', path: '/calendar' },
   { id: 'nav-settings', title: 'პარამეტრები', icon: 'Settings', path: '/account' },
 ];

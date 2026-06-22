@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import { lazy, Suspense, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { DURATION, EASE } from '@/lib/animations';
@@ -12,7 +12,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { CommandPalette } from '@/components/cmdk';
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal';
 import { projectKeys } from '@/app/queryKeys';
-import { routePattern, routes } from '@/app/routes';
+import { routePattern } from '@/app/routes';
 
 // Eager: auth screens + landing + the highest-traffic shell pages.
 import Login from '@/pages/auth/Login';
@@ -28,21 +28,17 @@ import ProjectDetail from '@/pages/ProjectDetail';
 
 const NewProject = lazy(() => import('@/pages/NewProject'));
 const EditProject = lazy(() => import('@/pages/EditProject'));
-const NewIncident = lazy(() => import('@/pages/NewIncident'));
-const NewBriefing = lazy(() => import('@/pages/NewBriefing'));
-const NewReport = lazy(() => import('@/pages/NewReport'));
-// All structured equipment acts (bobcat, excavator, general-equipment,
-// cargo-platform, safety-net) run through ONE unified engine: StructuredActPage
-// for create/edit/result, StructuredInspectionPrint for the descriptor-driven PDF.
-const StructuredActPage = lazy(() => import('@/features/inspections/structured/StructuredActPage'));
-const StructuredInspectionPrint = lazy(() => import('@/pages/print/StructuredInspectionPrint'));
-const HarnessInspectionDetail = lazy(() => import('@/pages/HarnessInspectionDetail'));
-const NewOrder = lazy(() => import('@/pages/NewOrder'));
-const OrderDetail = lazy(() => import('@/pages/OrderDetail'));
-const IncidentPrint = lazy(() => import('@/pages/print/IncidentPrint'));
-const BriefingPrint = lazy(() => import('@/pages/print/BriefingPrint'));
-const ReportPrint = lazy(() => import('@/pages/print/ReportPrint'));
-const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
+const Certificates = lazy(() => import('@/pages/Certificates'));
+const Calendar = lazy(() => import('@/pages/Calendar'));
+const Regulations = lazy(() => import('@/pages/Regulations'));
+const Account = lazy(() => import('@/pages/Account'));
+const Qualifications = lazy(() => import('@/pages/Qualifications'));
+const Templates = lazy(() => import('@/pages/Templates'));
+const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
+const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
+const History = lazy(() => import('@/pages/History'));
+const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
 
 // Public marketing pages (the landing is multi-page). Landing stays eager
 // (first paint); the rest are lazy under MarketingLayout's Suspense boundary.
@@ -54,26 +50,6 @@ const Legislation = lazy(() => import('@/pages/Legislation'));
 const Subscribe = lazy(() => import('@/pages/Subscribe'));
 const SubscribeSuccess = lazy(() => import('@/pages/SubscribeSuccess'));
 const SubscribeFail = lazy(() => import('@/pages/SubscribeFail'));
-const Inspections = lazy(() => import('@/pages/Inspections'));
-const InspectionDetail = lazy(() => import('@/pages/InspectionDetail'));
-const Certificates = lazy(() => import('@/pages/Certificates'));
-const Calendar = lazy(() => import('@/pages/Calendar'));
-const Regulations = lazy(() => import('@/pages/Regulations'));
-const Account = lazy(() => import('@/pages/Account'));
-const Briefings = lazy(() => import('@/pages/Briefings'));
-const BriefingDetail = lazy(() => import('@/pages/BriefingDetail'));
-const Incidents = lazy(() => import('@/pages/Incidents'));
-const IncidentDetail = lazy(() => import('@/pages/IncidentDetail'));
-const Reports = lazy(() => import('@/pages/Reports'));
-const ReportDetail = lazy(() => import('@/pages/ReportDetail'));
-const Qualifications = lazy(() => import('@/pages/Qualifications'));
-const Templates = lazy(() => import('@/pages/Templates'));
-const Terms = lazy(() => import('@/pages/Terms'));
-const Privacy = lazy(() => import('@/pages/Privacy'));
-const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
-const History = lazy(() => import('@/pages/History'));
-const Orders = lazy(() => import('@/pages/Orders'));
-const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
 
 function PageFallback() {
   return (
@@ -107,17 +83,6 @@ function ProtectedShellLayout() {
           </motion.div>
         </Suspense>
       </AppShell>
-    </ProtectedRoute>
-  );
-}
-
-/** Protected layout WITHOUT the AppShell - for print views. */
-function ProtectedBareLayout() {
-  return (
-    <ProtectedRoute>
-      <Suspense fallback={<PageFallback />}>
-        <Outlet />
-      </Suspense>
     </ProtectedRoute>
   );
 }
@@ -210,82 +175,6 @@ export function AppRouter() {
             <Route path={routePattern.projectEdit} element={<EditProject />} />
             <Route path={routePattern.projectDetail} element={<ProjectDetail />} />
             <Route path={routePattern.projectFiles} element={<ProjectFiles />} />
-
-            <Route path={routePattern.inspections} element={<Inspections />} />
-            <Route path="/inspections/new" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path="/inspections/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.inspectionDetail} element={<InspectionDetail />} />
-
-            <Route path={routePattern.bobcatNew} element={<StructuredActPage actKey="bobcat" />} />
-            <Route path="/bobcat/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.bobcatDetail} element={<StructuredActPage actKey="bobcat" />} />
-
-            <Route path={routePattern.largeLoaderNew} element={<StructuredActPage actKey="large_loader" />} />
-            <Route path={routePattern.largeLoaderDetail} element={<StructuredActPage actKey="large_loader" />} />
-
-            <Route path={routePattern.safetyNetNew} element={<StructuredActPage actKey="safety_net_inspection" />} />
-            <Route path={routePattern.safetyNetDetail} element={<StructuredActPage actKey="safety_net_inspection" />} />
-
-            <Route path={routePattern.mobileLadderNew} element={<StructuredActPage actKey="mobile_ladder_inspection" />} />
-            <Route path={routePattern.mobileLadderDetail} element={<StructuredActPage actKey="mobile_ladder_inspection" />} />
-
-            <Route path={routePattern.forkliftNew} element={<StructuredActPage actKey="forklift_inspection" />} />
-            <Route path={routePattern.forkliftDetail} element={<StructuredActPage actKey="forklift_inspection" />} />
-
-            <Route path={routePattern.liftingAccessoriesNew} element={<StructuredActPage actKey="lifting_accessories_inspection" />} />
-            <Route path={routePattern.liftingAccessoriesDetail} element={<StructuredActPage actKey="lifting_accessories_inspection" />} />
-
-            <Route path={routePattern.fallProtectionNew} element={<StructuredActPage actKey="fall_protection_inspection" />} />
-            <Route path={routePattern.fallProtectionDetail} element={<StructuredActPage actKey="fall_protection_inspection" />} />
-
-            <Route path={routePattern.generalEquipmentNew} element={<StructuredActPage actKey="general_equipment" />} />
-            <Route path="/general-equipment/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.generalEquipmentDetail} element={<StructuredActPage actKey="general_equipment" />} />
-
-            <Route path={routePattern.excavatorNew} element={<StructuredActPage actKey="excavator" />} />
-            <Route path="/excavator/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.excavatorDetail} element={<StructuredActPage actKey="excavator" />} />
-
-            <Route path={routePattern.cargoPlatformNew} element={<StructuredActPage actKey="cargo_platform" />} />
-            <Route path="/cargo-platform/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.cargoPlatformDetail} element={<StructuredActPage actKey="cargo_platform" />} />
-
-            <Route path="/harness/draft" element={<Navigate to={routes.inspections.list()} replace />} />
-            <Route path={routePattern.harnessDetail} element={<HarnessInspectionDetail />} />
-
-            <Route path={routePattern.orders} element={<Orders />} />
-            <Route path={routePattern.orderNew} element={<NewOrder />} />
-            <Route path={routePattern.orderDetail} element={<OrderDetail />} />
-
-            <Route path={routePattern.briefings} element={<Briefings />} />
-            <Route path={routePattern.briefingNew} element={<NewBriefing />} />
-            <Route path={routePattern.briefingDetail} element={<BriefingDetail />} />
-
-            <Route path={routePattern.incidents} element={<Incidents />} />
-            <Route path={routePattern.incidentNew} element={<NewIncident />} />
-            <Route path={routePattern.incidentDetail} element={<IncidentDetail />} />
-
-            <Route path={routePattern.reports} element={<Reports />} />
-            <Route path={routePattern.reportNew} element={<NewReport />} />
-            <Route path={routePattern.reportDetail} element={<ReportDetail />} />
-          </Route>
-
-          {/* Protected - bare (print views, no shell chrome) */}
-          <Route element={<ProtectedBareLayout />}>
-            <Route path={routePattern.incidentPrint} element={<IncidentPrint />} />
-            <Route path={routePattern.briefingPrint} element={<BriefingPrint />} />
-            <Route path={routePattern.reportPrint} element={<ReportPrint />} />
-            <Route path={routePattern.inspectionPrint} element={<InspectionPrint />} />
-            <Route path={routePattern.bobcatPrint} element={<StructuredInspectionPrint actKey="bobcat" />} />
-            <Route path={routePattern.largeLoaderPrint} element={<StructuredInspectionPrint actKey="large_loader" />} />
-            <Route path={routePattern.safetyNetPrint} element={<StructuredInspectionPrint actKey="safety_net_inspection" />} />
-            <Route path={routePattern.mobileLadderPrint} element={<StructuredInspectionPrint actKey="mobile_ladder_inspection" />} />
-            <Route path={routePattern.forkliftPrint} element={<StructuredInspectionPrint actKey="forklift_inspection" />} />
-            <Route path={routePattern.liftingAccessoriesPrint} element={<StructuredInspectionPrint actKey="lifting_accessories_inspection" />} />
-            <Route path={routePattern.fallProtectionPrint} element={<StructuredInspectionPrint actKey="fall_protection_inspection" />} />
-            <Route path={routePattern.generalEquipmentPrint} element={<StructuredInspectionPrint actKey="general_equipment" />} />
-            <Route path={routePattern.excavatorPrint} element={<StructuredInspectionPrint actKey="excavator" />} />
-            <Route path={routePattern.cargoPlatformPrint} element={<StructuredInspectionPrint actKey="cargo_platform" />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
