@@ -85,8 +85,11 @@ export default defineConfig({
       // safe-area-context's native build deep-imports react-native core; the web
       // has no device insets, so use a zero-inset passthrough (Screen consumes it).
       { find: /^react-native-safe-area-context$/, replacement: path.resolve(shims, 'react-native-safe-area-context.web.tsx') },
-      // @root/lib/ThemeContext imports async-storage; in CI only web-app/node_modules
-      // is installed, so point Rollup to the copy there explicitly.
+      // @root/components/primitives and @root/lib import packages that in CI are
+      // only installed under web-app/node_modules (root node_modules not present).
+      // These explicit aliases prevent Rollup from walking up past web-app/ and
+      // failing to resolve them.
+      { find: /^react-native-reanimated$/, replacement: path.resolve(__dirname, 'node_modules/react-native-reanimated') },
       { find: /^@react-native-async-storage\/async-storage/, replacement: path.resolve(__dirname, 'node_modules/@react-native-async-storage/async-storage') },
     ],
   },
