@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -51,6 +52,7 @@ import {
 import { useWizardPersistence } from './hooks/useWizardPersistence';
 
 export function useWizardState(id: string | undefined) {
+  const { t } = useTranslation();
   const router = useRouter();
   const toast = useToast();
   const offline = useOffline();
@@ -83,8 +85,8 @@ export function useWizardState(id: string | undefined) {
       setLoadTimedOut(false);
       return;
     }
-    const t = setTimeout(() => setLoadTimedOut(true), 5000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setLoadTimedOut(true), 5000);
+    return () => clearTimeout(timer);
   }, [loading]);
 
   // Enable step transition animations only after the initial load has settled.
@@ -107,7 +109,7 @@ export function useWizardState(id: string | undefined) {
     try {
       const q = await inspectionsApi.getById(id);
       if (ctrl.cancelled) return;
-      if (!q) throw new Error('არ მოიძებნა');
+      if (!q) throw new Error(t('inspections.loadError'));
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
       if (ctrl.cancelled) return;
       const safePatch = localPatch ? stripServerFields(localPatch) : null;
@@ -116,14 +118,14 @@ export function useWizardState(id: string | undefined) {
       projectsApi.getById(qMerged.project_id).then((p) => {
         if (!ctrl.cancelled) setProject(p);
       }).catch(() => null);
-      const t = await templatesApi.getById(qMerged.template_id);
+      const tmpl = await templatesApi.getById(qMerged.template_id);
       if (ctrl.cancelled) return;
-      setTemplate(t);
+      setTemplate(tmpl);
       setConclusion(qMerged.conclusion_text ?? '');
       setSafetyVerdict(qMerged.safety_verdict ?? (qMerged.is_safe_for_use === true ? 'safe' : qMerged.is_safe_for_use === false ? 'unsafe' : null));
       setHarnessName(qMerged.harness_name ?? '');
-      if (t) {
-        const qs = await templatesApi.questions(t.id);
+      if (tmpl) {
+        const qs = await templatesApi.questions(tmpl.id);
         if (ctrl.cancelled) return;
         setQuestions(qs);
         let remoteOk = true;
@@ -151,7 +153,7 @@ export function useWizardState(id: string | undefined) {
           pmap[a.id] = photoResults[i];
         });
         if (!remoteOk) {
-          toast.info('ჩატვირთულია ლოკალური ასლი - სინქრონიზაცია მოხდება ავტომატურად.');
+          toast.info(t('notifications.draftLoaded'));
         }
         const cached = await offline.hydrateAnswers(qMerged.id);
         if (ctrl.cancelled) return;
@@ -201,7 +203,7 @@ export function useWizardState(id: string | undefined) {
     } catch (e) {
       if (!ctrl.cancelled) {
         logError(e, 'wizard.load');
-        toast.error(`ჩატვირთვა ვერ მოხერხდა: ${toErrorMessage(e)}`);
+        toast.error(t('inspections.loadErrorWithDetail', { detail: toErrorMessage(e) }));
       }
     } finally {
       if (loadCtrlRef.current === ctrl) {
@@ -267,7 +269,7 @@ export function useWizardState(id: string | undefined) {
           new Error(`answer/type mismatch: q=${question.id} type=${question.type}`),
           'wizard.patchAnswer.shape',
         );
-        toast.error('პასუხის ფორმატი არასწორია. გთხოვთ, შეასწოროთ.');
+        toast.error(t('errors.invalidAnswerFormat'));
         return;
       }
       setAnswers(prev => {
@@ -289,7 +291,7 @@ export function useWizardState(id: string | undefined) {
         });
       } catch (e) {
         logError(e, 'wizard.patchAnswer.enqueue');
-        toast.error(`პასუხი ვერ შეინახა: ${toErrorMessage(e)}`);
+        toast.error(t('inspections.answerSaveFailed', { detail: toErrorMessage(e) }));
       }
     } finally {
       patchingRef.current.delete(question.id);
@@ -345,7 +347,7 @@ export function useWizardState(id: string | undefined) {
           address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
-        toast.success('ფოტო შენახულია - აიტვირთება ქსელის დაბრუნებისას');
+        toast.success(t('notifications.photoSavedLocally'));
         return;
       }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, actualPath, uri, actualMime, 'inspection');
@@ -359,7 +361,7 @@ export function useWizardState(id: string | undefined) {
       });
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, actualPath).catch(() => undefined);
-      toast.success('ფოტო აიტვირთა');
+      toast.success(t('notifications.photoUploaded'));
     } catch (e) {
       // If the inspection was completed while this upload was in flight the DB
       // trigger rejects the answer write. The completion already succeeded, so
@@ -367,7 +369,7 @@ export function useWizardState(id: string | undefined) {
       // user with a red toast on the success screen.
       const msg = toErrorMessage(e, '');
       if (msg.includes('is completed')) return;
-      toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      toast.error(t('inspections.photoUploadFailed', { detail: toErrorMessage(e, t('errors.network')) }));
     } finally {
       setPhotoUploadCount(c => Math.max(0, c - 1));
     }
@@ -401,7 +403,7 @@ export function useWizardState(id: string | undefined) {
             }
             return next;
           });
-          toast.success('ფოტო წაიშალა - სინქრონიზაცია მოხდება ქსელის დაბრუნებისას');
+          toast.success(t('notifications.photoDeletedLocally'));
           return;
         }
         await answersApi.removePhoto(photo.id);
@@ -412,17 +414,17 @@ export function useWizardState(id: string | undefined) {
           }
           return next;
         });
-        toast.success('ფოტო წაიშალა');
+        toast.success(t('notifications.photoDeleted'));
       } catch (e) {
-        toast.error(`ფოტო ვერ წაიშალა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+        toast.error(t('inspections.photoDeleteFailed', { detail: toErrorMessage(e, t('errors.network')) }));
       }
     };
     Alert.alert(
-      'ფოტოს წაშლა',
-      'დარწმუნებული ხართ, რომ გსურთ ამ ფოტოს წაშლა?',
+      t('inspections.deletePhotoTitle'),
+      t('inspections.deletePhotoBody'),
       [
-        { text: 'გაუქმება', style: 'cancel' },
-        { text: 'წაშლა', style: 'destructive', onPress: doDelete },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: doDelete },
       ],
     );
   }, [offline, toast]);
@@ -431,16 +433,16 @@ export function useWizardState(id: string | undefined) {
     if (!questionnaire) return;
     if (finishing) return;
     if (photoUploadCount > 0) {
-      toast.error('ფოტო ატვირთვა მიმდინარეობს. გთხოვთ მოიცადოთ და სცადოთ თავიდან');
+      toast.error(t('errors.photoSavingPending'));
       return;
     }
     haptic.medium();
     const missing: string[] = [];
-    if (safetyVerdict === null) missing.push('უსაფრთხოების სტატუსი');
-    if (!conclusion.trim()) missing.push('დასკვნა');
-    if (template?.category === 'harness' && !harnessName.trim()) missing.push('ღვედის დასახელება');
+    if (safetyVerdict === null) missing.push(t('inspections.missingSafetyStatus'));
+    if (!conclusion.trim()) missing.push(t('inspections.missingConclusion'));
+    if (template?.category === 'harness' && !harnessName.trim()) missing.push(t('inspections.missingHarnessName'));
     if (missing.length > 0) {
-      toast.error(`შეავსეთ: ${missing.join(', ')}`);
+      toast.error(t('errors.missingFields', { fields: missing.join(', ') }));
       return;
     }
     setFinishing(true);
@@ -470,13 +472,13 @@ export function useWizardState(id: string | undefined) {
       haptic.success();
       const navTimeout = setTimeout(() => {
         setFinishing(false);
-        toast.error('ნავიგაცია ვერ მოხერხდა');
+        toast.error(t('errors.navFailed'));
       }, 5000);
       router.replace(`/inspections/${questionnaire.id}/done` as any);
       clearTimeout(navTimeout);
     } catch (e) {
       haptic.error();
-      toast.error(`შემოწმების აქტის დასრულება ვერ მოხერხდა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      toast.error(t('inspections.completeError', { detail: toErrorMessage(e, t('errors.network')) }));
       setFinishing(false);
     }
   }, [questionnaire, finishing, photoUploadCount, safetyVerdict, conclusion, template, harnessName, offline, queryClient, router, toast]);
@@ -488,13 +490,13 @@ export function useWizardState(id: string | undefined) {
     try {
       await inspectionsApi.remove(id);
       haptic.success();
-      toast.success('წაიშალა');
+      toast.success(t('notifications.deleted'));
       router.back();
       return true;
     } catch (e) {
       setDeleting(false);
       haptic.error();
-      toast.error(toErrorMessage(e, 'ვერ წაიშალა'));
+      toast.error(toErrorMessage(e, t('certificates.deleteError')));
       return false;
     }
   }, [id, router, toast]);

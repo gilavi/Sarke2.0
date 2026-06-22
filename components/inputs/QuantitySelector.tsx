@@ -9,6 +9,7 @@
 // presets and bounds; this component owns the chip/typing UX only.
 import { memo, useMemo, useRef, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
@@ -21,7 +22,7 @@ export type QuantitySelectorProps = {
   presets?: number[];
   min?: number;
   max?: number;
-  /** Accessibility label prefix, e.g. "ქამრების რაოდენობა". */
+  /** Accessibility label prefix, e.g. "ქამრების რაოდენობა". Defaults to translated "Quantity". */
   accessibilityLabelPrefix?: string;
 };
 
@@ -33,8 +34,10 @@ export const QuantitySelector = memo(function QuantitySelector({
   presets = DEFAULT_PRESETS,
   min = 1,
   max = 99,
-  accessibilityLabelPrefix = 'რაოდენობა',
+  accessibilityLabelPrefix,
 }: QuantitySelectorProps) {
+  const { t } = useTranslation();
+  const labelPrefix = accessibilityLabelPrefix ?? t('inputs.quantityLabel');
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -83,7 +86,7 @@ export const QuantitySelector = memo(function QuantitySelector({
             style={[styles.chip, active && styles.chipActive]}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={`${accessibilityLabelPrefix} ${p}`}
+            accessibilityLabel={`${labelPrefix} ${p}`}
           >
             <Text style={[styles.chipText, active && styles.chipTextActive]}>{p}</Text>
           </PressBounce>
@@ -96,10 +99,10 @@ export const QuantitySelector = memo(function QuantitySelector({
           onChangeText={onCustomChange}
           keyboardType="number-pad"
           maxLength={String(max).length}
-          placeholder="სხვა"
+          placeholder={t('inputs.otherPlaceholder')}
           placeholderTextColor={theme.colors.inkFaint}
           style={[styles.customInput, customActive && styles.chipTextActive]}
-          accessibilityLabel={`${accessibilityLabelPrefix} - სხვა`}
+          accessibilityLabel={`${labelPrefix} - ${t('inputs.otherA11y')}`}
           returnKeyType="done"
         />
       </View>

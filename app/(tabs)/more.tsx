@@ -127,7 +127,7 @@ export default function MoreScreen() {
         <Card
           style={{ marginHorizontal: 16 }}
           onPress={() => router.push('/profile')}
-          a11y={a11y('პროფილი', 'პროფილის რედაქტირება', 'button')}
+          a11y={a11y(t('profile.title'), t('a11y.resumeDraft'), 'button')}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
@@ -231,9 +231,9 @@ export default function MoreScreen() {
             <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
           <View style={styles.divider} />
-          <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y('ხარაჩო 3D გიდი', undefined, 'button')}>
+          <Pressable onPress={() => router.push('/guide')} style={styles.settingsRow} {...a11y(t('more.scaffold3dGuide'), undefined, 'button')}>
             <Box size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.settingsLabel}>ხარაჩო 3D გიდი</Text>
+            <Text style={styles.settingsLabel}>{t('more.scaffold3dGuide')}</Text>
             <Badge variant="default" size="sm">BETA</Badge>
             <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
@@ -241,10 +241,10 @@ export default function MoreScreen() {
           <Pressable
             onPress={() => router.push('/safety-3d')}
             style={styles.settingsRow}
-            {...a11y('3D Safety Guide / 3D უსაფრთხოების გიდი', undefined, 'button')}
+            {...a11y(t('more.guide3dSafety'), undefined, 'button')}
           >
             <Box size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.settingsLabel}>3D Safety Guide / 3D უსაფრთხოების გიდი</Text>
+            <Text style={styles.settingsLabel}>{t('more.guide3dSafety')}</Text>
             <Badge variant="default" size="sm">BETA</Badge>
             <ExternalLink size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
@@ -267,22 +267,25 @@ const STATUS_COLOR: Record<PaymentRecord['status'], string> = {
   failed: '#FF3B30',
   refunded: '#8E8E93',
 };
-const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
-  success: 'გადახდილია',
-  pending: 'მუშავდება',
-  failed: 'წარუმატებელი',
-  refunded: 'დაბრუნებულია',
-};
 
 function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const s = useMemo(() => getStyles(theme), [theme]);
   // No records (the common case - payments happen on the web platform):
   // render nothing rather than an empty "payment history" card.
   if (records.length === 0) return null;
+
+  const STATUS_LABEL: Record<PaymentRecord['status'], string> = {
+    success: t('more.paymentStatusPaid'),
+    pending: t('more.paymentStatusPending'),
+    failed: t('more.paymentStatusFailed'),
+    refunded: t('more.paymentStatusRefunded'),
+  };
+
   return (
     <Card style={{ marginHorizontal: 16 }}>
-      <Text style={s.sectionHeader}>გადახდის ისტორია</Text>
+      <Text style={s.sectionHeader}>{t('more.paymentHistory')}</Text>
       <View style={{ gap: 0 }}>
         {records.map((rec, idx) => (
           <View key={rec.id}>
@@ -318,6 +321,7 @@ function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
 
 function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const toast = useToast();
   const s = useMemo(() => getStyles(theme), [theme]);
   const invalidatePdfUsage = useInvalidatePdfUsage();
@@ -331,28 +335,28 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
     const until = expiresAt ? formatShortDate(expiresAt) : null;
     const userId = state.status === 'signedIn' ? state.session.user.id : null;
     Alert.alert(
-      'გამოწერის გაუქმება?',
+      t('more.cancelSubTitle'),
       until
-        ? `წვდომა გაგრძელდება ${until}-მდე. ავტომატური განახლება არ მოხდება.`
-        : 'გამოწერა გაუქმდება. ახალი გადახდა არ მოხდება.',
+        ? t('more.cancelSubBodyUntil', { until })
+        : t('more.cancelSubBody'),
       [
-        { text: 'უკან', style: 'cancel' },
+        { text: t('common.back'), style: 'cancel' },
         {
-          text: 'გაუქმება',
+          text: t('common.cancel'),
           style: 'destructive',
           onPress: async () => {
             if (!userId) {
-              toast.error('სესია არ არის');
+              toast.error(t('more.sessionMissing'));
               return;
             }
             try {
               const { error } = await supabase.rpc('cancel_subscription', { user_id: userId });
               if (error) throw error;
               invalidatePdfUsage();
-              toast.success(until ? `წვდომა გაგრძელდება ${until}-მდე` : 'გამოწერა გაუქმდა');
+              toast.success(until ? t('more.cancelSubSuccessUntil', { until }) : t('more.cancelSubSuccess'));
             } catch (e) {
               console.error('cancel_subscription failed:', e);
-              toast.error('გაუქმება ვერ მოხერხდა');
+              toast.error(t('errors.deleteFailed'));
             }
           },
         },
@@ -365,7 +369,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
       {/* Section label - "გეგმა" (plan), not "გამოწერა" (subscription): accurate
           for free users and keeps the More tab free of purchase vocabulary
           (Apple guideline 3.1.1). */}
-      <Text style={[s.sectionHeader, { marginBottom: 8 }]}>გეგმა</Text>
+      <Text style={[s.sectionHeader, { marginBottom: 8 }]}>{t('more.planSection')}</Text>
 
       {status === 'active' ? (
         <Card style={{ gap: 12 }}>
@@ -382,7 +386,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <CalendarDays size={15} color={theme.colors.inkSoft} strokeWidth={1.5} />
               <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>
-                {`მოქმედია: ${formatShortDate(expiresAt)}-მდე`}
+                {t('more.proActiveUntil', { date: formatShortDate(expiresAt) })}
               </Text>
             </View>
           )}
@@ -390,7 +394,7 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
           {/* Perk line */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Infinity size={15} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>შეუზღუდავი PDF გენერაცია</Text>
+            <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{t('more.unlimitedPdf')}</Text>
           </View>
 
           {/* Cancel link */}
@@ -398,10 +402,10 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
             onPress={confirmCancel}
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, alignSelf: 'flex-start' })}
-            {...a11y('გამოწერის გაუქმება', undefined, 'button')}
+            {...a11y(t('more.cancelSub'), undefined, 'button')}
           >
             <Text style={{ fontSize: 13, color: theme.colors.danger, fontWeight: '600' }}>
-              გამოწერის გაუქმება
+              {t('more.cancelSub')}
             </Text>
           </Pressable>
         </Card>
@@ -410,13 +414,13 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
           {/* Expired amber banner */}
           <View style={[s.expiredBanner]}>
             <TriangleAlert size={16} color={theme.colors.warn} strokeWidth={1.5} />
-            <Text style={[s.expiredBannerText]}>გამოწერა ამოიწურა</Text>
+            <Text style={[s.expiredBannerText]}>{t('more.proExpired')}</Text>
           </View>
 
           {/* PDF usage */}
           <View style={{ gap: 6 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>PDF გამოყენება</Text>
+              <Text style={{ fontSize: 13, color: theme.colors.inkSoft }}>{t('more.pdfUsage')}</Text>
               <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.warn }}>
                 {`${count} / ${limit}`}
               </Text>
@@ -429,9 +433,9 @@ function SubscriptionSection({ pdfUsage }: { pdfUsage: PdfUsage | undefined }) {
         <Card style={{ gap: 12 }}>
           {/* Plan label + count */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>უფასო გეგმა</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.ink }}>{t('more.freePlan')}</Text>
             <Text style={{ fontSize: 13, color: count >= limit ? theme.colors.warn : theme.colors.inkSoft }}>
-              {`PDF: ${count}/${limit} გამოყენებული`}
+              {t('more.pdfUsed', { count, limit })}
             </Text>
           </View>
 
@@ -479,9 +483,10 @@ function HubTile({
   onPress: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   return (
-    <Pressable onPress={onPress} style={styles.hubTileWrap} {...a11y(title, 'გადასვლა', 'button')}>
+    <Pressable onPress={onPress} style={styles.hubTileWrap} {...a11y(title, t('a11y.navigate'), 'button')}>
       <Card style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View style={[styles.tileIcon, { backgroundColor: bg }]}>

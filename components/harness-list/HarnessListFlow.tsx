@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../ui';
 import { useTheme } from '../../lib/theme';
@@ -31,9 +32,10 @@ function cloneGrid(g?: GridValues | null): GridValues {
 const HARNESS_MAX = 15;
 const HARNESS_COUNT_PRESETS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
 
-const LEGEND = [
-  { icon: Check, label: 'გამართული' },
-  { icon: X, label: 'დაზიანებული' },
+// Labels are resolved at render time via t() — see HarnessListFlow body.
+const LEGEND_KEYS = [
+  { icon: Check, labelKey: 'harnessList.statusGood' },
+  { icon: X, labelKey: 'harnessList.statusBad' },
 ];
 
 export type HarnessListFlowProps = {
@@ -57,6 +59,7 @@ export type HarnessListFlowProps = {
 
 export function HarnessListFlow(props: HarnessListFlowProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const s = useMemo(() => gets(theme), [theme]);
   const {
     inspectionId,
@@ -141,7 +144,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     [items, onPatchAnswer],
   );
 
-  const flowTitle = template.name ? inspectionDisplayName(template.name) : 'ქამრების შემოწმება';
+  const flowTitle = template.name ? inspectionDisplayName(template.name) : t('harnessList.harnessCountTitle');
 
   // Leaving the flow persists whatever's been entered so far.
   const handleClose = useCallback(() => {
@@ -159,14 +162,14 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     return (
       <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <Text style={{ color: theme.colors.inkSoft, textAlign: 'center' }}>
-          ამ შაბლონში ქამრის კომპონენტები ვერ მოიძებნა.
+          {t('harnessList.componentsMissing')}
         </Text>
         <View style={{ height: 16 }} />
         <Pressable
           onPress={onClose}
           style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: theme.colors.subtleSurface, borderRadius: 12 }}
         >
-          <Text style={{ fontWeight: '700', color: theme.colors.ink }}>გასვლა</Text>
+          <Text style={{ fontWeight: '700', color: theme.colors.ink }}>{t('harnessList.exitButton')}</Text>
         </Pressable>
       </SafeAreaView>
     );
@@ -190,7 +193,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
         />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.ink }}>
-            რამდენი ქამარი სულ?
+            {t('harnessList.harnessCountTitle')}
           </Text>
           <QuantitySelector
             value={harnessRowCount}
@@ -198,13 +201,13 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
             presets={HARNESS_COUNT_PRESETS}
             min={1}
             max={HARNESS_MAX}
-            accessibilityLabelPrefix="ქამრების რაოდენობა"
+            accessibilityLabelPrefix={t('harnessList.harnessCountA11y')}
           />
         </View>
 
         <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
           <Button
-            title="დაწყება →"
+            title={t('harnessList.startButton')}
             variant="primary"
             size="lg"
             style={{ alignSelf: 'stretch' }}
@@ -291,7 +294,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
         contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >
-        <ChecklistLegend items={LEGEND} />
+        <ChecklistLegend items={LEGEND_KEYS.map(l => ({ icon: l.icon, label: t(l.labelKey) }))} />
         {items.map(item => (
           <ChipRow
             key={item.itemKey}
@@ -306,12 +309,15 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
 
       <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Button
-          title={`ქამარი ${safeRowIdx + 1}${badCountThisRow > 0 ? ` · ${badCountThisRow} პრობლემა` : ''} - დადასტურება →`}
+          title={t('harnessList.confirmButton', {
+            n: safeRowIdx + 1,
+            suffix: badCountThisRow > 0 ? t('harnessList.problemsSuffix', { count: badCountThisRow }) : '',
+          })}
           variant="primary"
           size="lg"
           style={{ alignSelf: 'stretch' }}
           onPress={confirmCurrentRow}
-          accessibilityLabel={`ქამარი ${safeRowIdx + 1} დადასტურება`}
+          accessibilityLabel={t('harnessList.confirmA11y', { n: safeRowIdx + 1 })}
         />
       </View>
     </View>

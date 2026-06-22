@@ -38,6 +38,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../lib/theme';
+import { useTranslation } from 'react-i18next';
 
 import {
   resolvePhotoPicker,
@@ -104,6 +105,7 @@ const MemoizedAssetItem = memo(function AssetItem({
 
 export default function PhotoPickerScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ multi?: string; skip?: string }>();
   const multiMode = params.multi === '1';
@@ -364,9 +366,9 @@ export default function PhotoPickerScreen() {
           ) : camDeniedFinal ? (
             <View style={styles.permPlaceholder}>
               <Camera size={36} color="#fff" strokeWidth={1.5} />
-              <Text style={styles.permText}>კამერაზე წვდომა აკრძალულია</Text>
+              <Text style={styles.permText}>{t('photoPicker.cameraPermDenied')}</Text>
               <Pressable onPress={() => void Linking.openSettings()} style={styles.permButton}>
-                <Text style={styles.permButtonText}>პარამეტრების გახსნა</Text>
+                <Text style={styles.permButtonText}>{t('photoPicker.openSettings')}</Text>
               </Pressable>
             </View>
           ) : (
@@ -389,7 +391,7 @@ export default function PhotoPickerScreen() {
             </Pressable>
             <Pressable onPress={openSystemLibrary} hitSlop={12} style={styles.libraryShortcut}>
               <Images size={18} color="#fff" strokeWidth={1.5} />
-              <Text style={styles.libraryShortcutText}>ბიბლიოთეკა</Text>
+              <Text style={styles.libraryShortcutText}>{t('photoPicker.library')}</Text>
             </Pressable>
           </View>
 
@@ -421,7 +423,7 @@ export default function PhotoPickerScreen() {
               ]}
             >
               <Check size={18} color="#fff" strokeWidth={1.5} />
-              <Text style={styles.doneBarText}>დასრულება ({selectedIds.length})</Text>
+              <Text style={styles.doneBarText}>{t('photoPicker.done', { count: selectedIds.length })}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -432,15 +434,15 @@ export default function PhotoPickerScreen() {
         {!libPerm?.granted ? (
           <View style={styles.libraryEmpty}>
             <Text style={styles.libraryEmptyText}>
-              ბიბლიოთეკაზე წვდომა საჭიროა გასაჭრელად
+              {t('photoPicker.libraryPermRequired')}
             </Text>
             {libPerm && !libPerm.canAskAgain ? (
               <Pressable onPress={() => void Linking.openSettings()} style={styles.permButton}>
-                <Text style={styles.permButtonText}>პარამეტრების გახსნა</Text>
+                <Text style={styles.permButtonText}>{t('photoPicker.openSettings')}</Text>
               </Pressable>
             ) : (
               <Pressable onPress={() => void requestLibPerm()} style={styles.permButton}>
-                <Text style={styles.permButtonText}>წვდომის მიცემა</Text>
+                <Text style={styles.permButtonText}>{t('photoPicker.grantAccess')}</Text>
               </Pressable>
             )}
           </View>

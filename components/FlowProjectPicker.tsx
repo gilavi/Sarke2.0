@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { Plus, ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { FlowHeader } from './FlowHeader';
 import { Button } from './ui';
@@ -44,6 +45,7 @@ interface FlowProjectPickerProps {
  */
 export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowProjectPickerProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: projects = [], isFetched } = useProjects();
@@ -99,11 +101,11 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
             borderColor: theme.colors.hairline,
             backgroundColor: theme.colors.accentSoft,
           }}
-          {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}
+          {...a11y(t('flowProjectPicker.newProject'), t('flowProjectPicker.newProjectA11y'), 'button')}
         >
           <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
           <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: theme.colors.accent }}>
-            ახალი პროექტი
+            {t('flowProjectPicker.newProject')}
           </Text>
           <ChevronRight size={16} color={theme.colors.accent} strokeWidth={1.5} />
         </Pressable>
@@ -125,11 +127,11 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
       >
         {attempted && !selected ? (
           <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 8 }}>
-            აირჩიეთ პროექტი
+            {t('flowProjectPicker.chooseProject')}
           </Text>
         ) : null}
         <Button
-          title="გაგრძელება →"
+          title={t('flowProjectPicker.continueButton')}
           onPress={handleContinue}
         />
       </View>

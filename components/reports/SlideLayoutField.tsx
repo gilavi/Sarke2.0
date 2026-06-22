@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Selector, type SelectorOption } from '../ui/Selector';
 import { useTheme } from '../../lib/theme';
 import type { ReportSlideLayout } from '../../types/models';
@@ -11,19 +12,6 @@ interface Props {
   onChange: (layout: ReportSlideLayout) => void;
 }
 
-const LABELS: Record<ReportSlideLayout, string> = {
-  'text-photo': 'ტექსტი + ფოტო',
-  'photo-full': 'დიდი ფოტო',
-  'two-side': 'გვერდიგვერდ',
-  'two-stacked': 'დაწყობილი',
-};
-
-const SUBTITLES: Record<ReportSlideLayout, string> = {
-  'text-photo': 'აღწერა გვერდით, ფოტო მარჯვნივ',
-  'photo-full': 'დიდი ფოტო, სათაური ქვემოთ',
-  'two-side': 'ორი ფოტო გვერდიგვერდ',
-  'two-stacked': 'ორი ფოტო ერთმანეთის ქვემოთ',
-};
 
 /**
  * Layout chooser for the slide editor, built on the canonical {@link Selector}
@@ -33,7 +21,22 @@ const SUBTITLES: Record<ReportSlideLayout, string> = {
  * field entirely when there's no real choice.
  */
 export function SlideLayoutField({ layouts, value, onChange }: Props) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
+
+  const LABELS: Record<ReportSlideLayout, string> = {
+    'text-photo': t('reports.layoutTextPhoto'),
+    'photo-full': t('reports.layoutPhotoFull'),
+    'two-side': t('reports.layoutTwoSide'),
+    'two-stacked': t('reports.layoutTwoStacked'),
+  };
+
+  const SUBTITLES: Record<ReportSlideLayout, string> = {
+    'text-photo': t('reports.subtitleTextPhoto'),
+    'photo-full': t('reports.subtitlePhotoFull'),
+    'two-side': t('reports.subtitleTwoSide'),
+    'two-stacked': t('reports.subtitleTwoStacked'),
+  };
 
   const options: SelectorOption[] = useMemo(
     () =>
@@ -47,12 +50,13 @@ export function SlideLayoutField({ layouts, value, onChange }: Props) {
           </View>
         ),
       })),
-    [layouts, theme],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layouts, theme, t],
   );
 
   return (
     <Selector
-      label="განლაგება"
+      label={t('reports.layout')}
       presentation="rows"
       indicator="check"
       options={options}

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useToast } from '../toast';
 import { useSession } from '../session';
 import { usePdfUsage, useInvalidatePdfUsage } from '../usePdfUsage';
@@ -114,6 +115,7 @@ export function useInspectionFlow<T extends BaseInspection>(
   cfg: InspectionFlowConfig<T>,
 ): InspectionFlowResult<T> {
   const { id, api, schema } = cfg;
+  const { t } = useTranslation();
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
@@ -184,7 +186,7 @@ export function useInspectionFlow<T extends BaseInspection>(
         if (!cancelled) setInspection(next);
       } catch (e) {
         if (!cancelled) {
-          toast.error(friendlyError(e, 'ვერ ჩაიტვირთა'));
+          toast.error(friendlyError(e, t('errors.loadFailed')));
           router.back();
         }
       } finally {
@@ -216,7 +218,7 @@ export function useInspectionFlow<T extends BaseInspection>(
     saveTimer.current = setTimeout(() => {
       setSaving(true);
       api.patch(insp.id, cfg.toPatch(insp))
-        .catch(e => toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა')))
+        .catch(e => toast.error(friendlyError(e, t('errors.saveFailed'))))
         .finally(() => setSaving(false));
     }, 700);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -246,7 +248,7 @@ export function useInspectionFlow<T extends BaseInspection>(
     if (!insp) return false;
     const missing = cfg.validateMissing(insp);
     if (missing.length > 0) {
-      Alert.alert('შეავსეთ სავალდებულო ველები', missing.map(m => `• ${m}`).join('\n'));
+      Alert.alert(t('inspections.requiredFields'), missing.map(m => `• ${m}`).join('\n'));
       return false;
     }
     setCompleting(true);
@@ -262,13 +264,13 @@ export function useInspectionFlow<T extends BaseInspection>(
       ).catch(() => {});
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } as T : prev);
       await AsyncStorage.removeItem(persistKey);
-      toast.success('შემოწმება დასრულდა');
+      toast.success(t('inspections.completeSuccess'));
       setCelebrating(true);
       haptic.inspectionComplete();
       celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);
       return true;
     } catch (e) {
-      toast.error(friendlyError(e, 'შეცდომა'));
+      toast.error(friendlyError(e, t('common.error')));
       return false;
     } finally {
       setCompleting(false);
@@ -310,7 +312,7 @@ export function useInspectionFlow<T extends BaseInspection>(
     try {
       const html = await renderInspectionPdf(schema, {
         inspection: insp,
-        projectName: projectName || 'პროექტი',
+        projectName: projectName || t('common.project'),
         signaturesSession: buildSignaturesSection(signatures),
       });
       const pdfName = generatePdfName(
@@ -331,7 +333,7 @@ export function useInspectionFlow<T extends BaseInspection>(
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
+      toast.error(friendlyError(e, t('errors.pdfFailed')));
     } finally {
       setGeneratingPdf(false);
     }
@@ -346,12 +348,12 @@ export function useInspectionFlow<T extends BaseInspection>(
     try {
       const html = await renderInspectionPdf(schema, {
         inspection: insp,
-        projectName: projectName || 'პროექტი',
+        projectName: projectName || t('common.project'),
         signaturesSession: buildSignaturesSection(signatures),
       });
       setPreviewHtml(html);
     } catch (e) {
-      toast.error(friendlyError(e, 'PDF ვერ შეიქმნა'));
+      toast.error(friendlyError(e, t('errors.pdfFailed')));
     } finally {
       setPreviewBusy(false);
     }

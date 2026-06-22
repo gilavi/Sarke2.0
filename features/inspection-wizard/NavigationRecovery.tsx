@@ -1,5 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TriangleAlert } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -14,6 +15,7 @@ export function NavigationRecovery({
   onRetry: () => void;
 }) {
   void id;
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const router = useRouter();
   return (
@@ -22,14 +24,14 @@ export function NavigationRecovery({
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <TriangleAlert size={48} color={theme.colors.semantic.warning} strokeWidth={1.5} style={{ marginBottom: 16 }} />
         <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.ink, marginBottom: 8, textAlign: 'center' }}>
-          ჩატვირთვა ვერ მოხერხდა
+          {t('errors.loadFailed')}
         </Text>
         <Text style={{ fontSize: 14, color: theme.colors.inkSoft, marginBottom: 24, textAlign: 'center' }}>
-          შემოწმების მონაცემების ჩატვირთვა ძალიან დიდხანს გრძელდება. სცადეთ თავიდან ან გადადით უკან.
+          {t('inspections.loadTimeout')}
         </Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Button variant="secondary" onPress={() => router.back()} title="უკან" />
-          <Button variant="primary" onPress={onRetry} title="თავიდან ცდა" />
+          <Button variant="secondary" onPress={() => router.back()} title={t('common.back')} />
+          <Button variant="primary" onPress={onRetry} title={t('inspections.retryLoad')} />
         </View>
       </SafeAreaView>
     </Screen>

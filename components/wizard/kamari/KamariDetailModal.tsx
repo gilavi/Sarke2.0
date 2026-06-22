@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Modal, Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,6 +47,7 @@ export function KamariDetailModal({
   onDeletePhoto: (photo: AnswerPhoto) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -95,12 +97,12 @@ export function KamariDetailModal({
       return;
     }
     Alert.alert(
-      'ცვლილებების გაუქმება?',
-      'შენახვის გარეშე გასვლისას ცვლილებები დაიკარგება.',
+      t('wizard.discardTitle'),
+      t('wizard.discardBody'),
       [
-        { text: 'გაგრძელება', style: 'cancel' },
+        { text: t('wizard.discardContinue'), style: 'cancel' },
         {
-          text: 'გასვლა',
+          text: t('wizard.discardExit'),
           style: 'destructive',
           onPress: () => onClose(),
         },
@@ -179,7 +181,7 @@ export function KamariDetailModal({
           >
             <ArrowLeft size={24} color={theme.colors.ink} strokeWidth={1.5} />
           </Pressable>
-          <Text size="lg" weight="bold">ქამარი #{index}</Text>
+          <Text size="lg" weight="bold">{t('wizard.kamariIndexTitle', { index })}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -189,7 +191,7 @@ export function KamariDetailModal({
           bottomOffset={24}
         >
           <Text size="sm" color={theme.colors.inkSoft} style={{ marginBottom: 4 }}>
-            შეეხეთ კომპონენტს თუ აღმოაჩინეთ პრობლემა
+            {t('wizard.touchComponentHint')}
           </Text>
           {cols.map(col => {
             const item = draft[col] ?? { active: false, description: '' };
@@ -232,7 +234,7 @@ export function KamariDetailModal({
                     style={styles.accordion}
                   >
                     <FloatingLabelInput
-                      label="რა პრობლემაა?"
+                      label={t('wizard.problemLabel')}
                       value={item.description}
                       onChangeText={t => setDescription(col, t)}
                       multiline
@@ -252,7 +254,7 @@ export function KamariDetailModal({
                       >
                         <Camera size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
                         <Text size="xs" color={theme.colors.inkSoft} style={{ marginTop: 2 }}>
-                          ფოტო
+                          {t('wizard.photo')}
                         </Text>
                       </Pressable>
                     </View>
@@ -262,7 +264,7 @@ export function KamariDetailModal({
                       style={styles.closeBtn}
                     >
                       <Text size="sm" weight="semibold" color={theme.colors.inkSoft}>
-                        დახურვა
+                        {t('wizard.close')}
                       </Text>
                     </Pressable>
                   </Animated.View>
@@ -273,7 +275,7 @@ export function KamariDetailModal({
         </KeyboardAwareScrollView>
 
         <View style={[styles.detailFooter, { paddingBottom: 12 + insets.bottom }]}>
-          <Button title="შენახვა" onPress={handleSave} size="lg" />
+          <Button title={t('common.save')} onPress={handleSave} size="lg" />
         </View>
       </SafeAreaView>
     </Modal>

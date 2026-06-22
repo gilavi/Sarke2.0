@@ -273,6 +273,7 @@ export default function HomeScreen() {
         onScrollBeginDrag={() => { if (openMenuId) setOpenMenuId(null); }}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="never"
+        refreshControl={refreshControl}
         contentContainerStyle={[staticStyles.scrollContent, { paddingTop: HEADER_FULL }]}
       >
         {/* ───────── FETCH ERROR BANNER ───────── */}

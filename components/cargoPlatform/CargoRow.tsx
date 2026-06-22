@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -17,6 +18,7 @@ interface Props {
 
 export const CargoRow = memo(function CargoRow({ index, row, canDelete, onChange, onDelete }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const [nameDraft, setNameDraft] = useState(row.name);
@@ -40,7 +42,7 @@ export const CargoRow = memo(function CargoRow({ index, row, canDelete, onChange
             onPress={onDelete}
             hitSlop={10}
             style={styles.deleteBtn}
-            {...a11y('სტრიქონის წაშლა', undefined, 'button')}
+            {...a11y(t('cargoPlatform.deleteRowA11y'), undefined, 'button')}
           >
             <X size={16} color={theme.colors.danger} strokeWidth={1.5} />
           </Pressable>
@@ -48,7 +50,7 @@ export const CargoRow = memo(function CargoRow({ index, row, canDelete, onChange
       </View>
 
       <FloatingLabelInput
-        label="ტვირთის დასახელება"
+        label={t('cargoPlatform.cargoName')}
         value={nameDraft}
         onChangeText={text => {
           setNameDraft(text);
@@ -57,7 +59,7 @@ export const CargoRow = memo(function CargoRow({ index, row, canDelete, onChange
       />
 
       <FloatingLabelInput
-        label="სრული წონა (კგ)"
+        label={t('cargoPlatform.cargoWeight')}
         value={weightDraft}
         onChangeText={text => {
           setWeightDraft(text);

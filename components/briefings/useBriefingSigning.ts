@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { type SignatureViewRef } from 'react-native-signature-canvas';
@@ -74,6 +75,7 @@ export interface BriefingSigning {
 }
 
 export function useBriefingSigning(id: string | undefined): BriefingSigning {
+  const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [briefing, setBriefing] = useState<Briefing | null>(null);
@@ -102,8 +104,8 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
       .catch(err => {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : String(err);
-        Alert.alert('შეცდომა', `ინსტრუქტაჟის ჩატვირთვა ვერ მოხერხდა\n\n${msg}`, [
-          { text: 'უკან', onPress: () => router.back() },
+        Alert.alert(t('common.error'), `${t('briefings.loadFailed')}\n\n${msg}`, [
+          { text: t('common.back'), onPress: () => router.back() },
         ]);
       });
     return () => { cancelled = true; };
@@ -185,7 +187,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        Alert.alert('შეცდომა', `ხელმოწერის შენახვა ვერ მოხერხდა\n\n${msg}`);
+        Alert.alert(t('common.error'), `${t('briefings.signatureSaveFailed')}\n\n${msg}`);
       } finally {
         setSaving(false);
       }
@@ -204,12 +206,12 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
   const handleSkip = useCallback(() => {
     if (!briefing) return;
     Alert.alert(
-      'ამ მუშაკის გამოტოვება?',
-      'შეგიძლიათ მოგვიანებით დაბრუნდეთ სიიდან.',
+      t('briefings.skipWorkerTitle'),
+      t('briefings.skipWorkerBody'),
       [
-        { text: 'გაუქმება', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'გამოტოვება',
+          text: t('briefings.skipAction'),
           style: 'default',
           onPress: async () => {
             const next = briefing.participants.map((p, i) =>
@@ -221,7 +223,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
               setCurrentIdx(nextPending === -1 ? next.length : nextPending);
             } catch (err) {
               const msg = err instanceof Error ? err.message : String(err);
-              Alert.alert('შეცდომა', `გამოტოვება ვერ მოხერხდა\n\n${msg}`);
+              Alert.alert(t('common.error'), `${t('briefings.skipFailed')}\n\n${msg}`);
             }
           },
         },
@@ -274,14 +276,14 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
       key: `${p.name}-${idx}`,
       label: p.name,
       state: chipStateOf(statusOf(p, idx, currentIdx)),
-      a11yHint: 'ხელმომწერზე გადასვლა',
+      a11yHint: t('briefings.signerChipHint'),
     }));
     const inspectorState: ChipNavState = briefing.inspectorSignature
       ? 'done'
       : isInspectorPhase
         ? 'active'
         : 'pending';
-    chips.push({ key: 'inspector', label: 'ინსპექტორი', state: inspectorState, a11yHint: 'ინსპექტორის ხელმოწერა' });
+    chips.push({ key: 'inspector', label: t('briefings.inspectorChipLabel'), state: inspectorState, a11yHint: t('briefings.inspectorChipHint') });
     return chips;
   }, [briefing, currentIdx, isInspectorPhase]);
 

@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { logError } from './logError';
+import i18n from './i18n';
 
 // Project logos are rendered as a 88px circle (`ProjectAvatar size={88}`).
 // Even at retina 3x that's a 264px source - a 240px-wide downscale gives
@@ -27,7 +28,7 @@ const LOGO_QUALITY = 0.6;
 export async function pickProjectLogo(): Promise<string | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (perm.status !== 'granted') {
-    Alert.alert('გალერეაზე წვდომა აკრძალულია');
+    Alert.alert(i18n.t('projects.galleryAccessDenied'));
     return null;
   }
   const res = await ImagePicker.launchImageLibraryAsync({
@@ -51,7 +52,7 @@ export async function pickProjectLogo(): Promise<string | null> {
       });
     } catch (e) {
       logError(e, 'projectLogo.readBase64');
-      Alert.alert('სურათის წაკითხვა ვერ მოხერხდა', String((e as Error)?.message ?? e));
+      Alert.alert(i18n.t('errors.imageReadFailed'), String((e as Error)?.message ?? e));
       return null;
     }
   }

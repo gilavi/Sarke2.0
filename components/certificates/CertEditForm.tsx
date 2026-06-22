@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Camera, Trash2 } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -36,6 +37,7 @@ export function CertEditForm({
   onSaved: () => void;
   onDeleted: () => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const toast = useToast();
@@ -85,7 +87,7 @@ export function CertEditForm({
   const save = useCallback(async () => {
     const finalType = isCustom ? customType.trim() : type;
     if (!finalType) {
-      toast.error('აირჩიე ან ჩაწერე სერტიფიკატის ტიპი');
+      toast.error(t('qualifications.typeRequired'));
       return;
     }
     setBusy(true);
@@ -119,10 +121,10 @@ export function CertEditForm({
 
   const remove = useCallback(() => {
     if (!existing) return;
-    Alert.alert('წაიშალოს?', 'სერტიფიკატის წაშლა შეუქცევადია', [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(t('qualifications.deleteTitle'), t('qualifications.deleteBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           setBusy(true);
@@ -145,10 +147,10 @@ export function CertEditForm({
       <View style={styles.header}>
         <HeaderBackButton onPress={onBack} />
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {existing ? 'სერტიფიკატის რედაქტირება' : 'ახალი სერტიფიკატი'}
+          {existing ? t('qualifications.editTitle') : t('qualifications.newCertTitle')}
         </Text>
         {existing ? (
-          <Pressable onPress={remove} hitSlop={11} style={styles.headerAction} {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}>
+          <Pressable onPress={remove} hitSlop={11} style={styles.headerAction} {...a11y(t('common.delete'), t('qualifications.deleteHint'), 'button')}>
             <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
           </Pressable>
         ) : (
@@ -162,54 +164,54 @@ export function CertEditForm({
         bottomOffset={20}
         contentContainerStyle={styles.body}
       >
-        <Text style={styles.fieldLabel}>ტიპი</Text>
+        <Text style={styles.fieldLabel}>{t('qualifications.typeLabel')}</Text>
         <View style={styles.chipsWrap}>
           {ATTACHMENT_TYPE_PRESETS.map(preset => (
             <Pressable
               key={preset}
               onPress={() => setType(preset)}
               style={[styles.chip, type === preset && { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft }]}
-              {...a11y(preset, 'სერტიფიკატის ტიპის არჩევა', 'radio')}
+              {...a11y(preset, t('qualifications.selectTypeHint'), 'radio')}
             >
               <Text style={[styles.chipText, type === preset && { color: theme.colors.accent }]}>{preset}</Text>
             </Pressable>
           ))}
           <Pressable
-            onPress={() => setType(customType || 'სხვა')}
+            onPress={() => setType(customType || t('qualifications.other'))}
             style={[styles.chip, isCustom && { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft }]}
-            {...a11y('სხვა', 'მორგებული ტიპი', 'radio')}
+            {...a11y(t('qualifications.other'), t('qualifications.other'), 'radio')}
           >
-            <Text style={[styles.chipText, isCustom && { color: theme.colors.accent }]}>სხვა</Text>
+            <Text style={[styles.chipText, isCustom && { color: theme.colors.accent }]}>{t('qualifications.other')}</Text>
           </Pressable>
         </View>
         {isCustom ? (
           <FloatingLabelInput
-            label="სერტიფიკატის ტიპი"
+            label={t('qualifications.certTypeInput')}
             value={customType}
             onChangeText={text => {
               setCustomType(text);
-              setType(text || 'სხვა');
+              setType(text || t('qualifications.other'));
             }}
           />
         ) : null}
 
-        <FloatingLabelInput label="ნომერი" value={number} onChangeText={setNumber} keyboardType="number-pad" />
+        <FloatingLabelInput label={t('qualifications.numberLabel')} value={number} onChangeText={setNumber} keyboardType="number-pad" />
 
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>ფოტო (16:9)</Text>
-        <Pressable onPress={pickPhoto} style={styles.photoSlot} {...a11y('ფოტოს ატვირთვა', 'სერტიფიკატის ფოტოს არჩევა', 'button')}>
+        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>{t('qualifications.photoLabel16x9')}</Text>
+        <Pressable onPress={pickPhoto} style={styles.photoSlot} {...a11y(t('qualifications.photoUploadBtn'), t('qualifications.photoUploadBtn'), 'button')}>
           {resolvedPhotoUrl ? (
             <Image source={{ uri: resolvedPhotoUrl }} style={styles.photoPreview} contentFit="cover" />
           ) : (
             <View style={styles.photoPlaceholder}>
               <Camera size={28} color={theme.colors.inkFaint} strokeWidth={1.5} />
-              <Text style={{ color: theme.colors.inkSoft, fontSize: 13, marginTop: 6 }}>ფოტოს ატვირთვა</Text>
+              <Text style={{ color: theme.colors.inkSoft, fontSize: 13, marginTop: 6 }}>{t('qualifications.photoUploadBtn')}</Text>
             </View>
           )}
         </Pressable>
       </KeyboardAwareScrollView>
 
       <View style={styles.footer}>
-        <Button title="შენახვა" onPress={save} loading={busy} disabled={busy} />
+        <Button title={t('common.save')} onPress={save} loading={busy} disabled={busy} />
       </View>
     </View>
   );

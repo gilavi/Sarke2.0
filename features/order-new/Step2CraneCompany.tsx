@@ -1,4 +1,5 @@
 import { View, type LayoutChangeEvent } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../components/DateTimeField';
@@ -14,22 +15,24 @@ export function Step2CraneCompany({
   attempted: boolean;
   registerField: (key: string) => (e: LayoutChangeEvent) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>კომპანიის ინფო</Text>
+      <Text style={s.stepTitle}>{t('orders.companyInfo')}</Text>
 
       <View onLayout={registerField('orderNumber')}>
         <FloatingLabelInput
-          label="ბრძანების ნომერი"
+          label={t('orders.orderNumber')}
           required
           value={form.orderNumber}
           onChangeText={v => setForm(f => ({ ...f, orderNumber: v }))}
-          error={attempted && !form.orderNumber.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !form.orderNumber.trim() ? t('errors.requiredField') : undefined}
         />
       </View>
 
       <DateTimeField
-        label="ბრძანების თარიღი"
+        label={t('orders.orderDate')}
         value={new Date(form.orderDate)}
         onChange={d => setForm(f => ({ ...f, orderDate: d.toISOString() }))}
         mode="date"
@@ -37,27 +40,27 @@ export function Step2CraneCompany({
 
       <View onLayout={registerField('companyName')}>
         <FloatingLabelInput
-          label="კომპანიის დასახელება"
+          label={t('orders.companyName')}
           required
           value={form.companyName}
           onChangeText={v => setForm(f => ({ ...f, companyName: v }))}
-          error={attempted && !form.companyName.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !form.companyName.trim() ? t('errors.requiredField') : undefined}
         />
       </View>
 
       <FloatingLabelInput
-        label="ობიექტის მისამართი"
+        label={t('orders.objectAddress')}
         value={form.objectAddress}
         onChangeText={v => setForm(f => ({ ...f, objectAddress: v }))}
       />
 
       <View onLayout={registerField('directorName')}>
         <FloatingLabelInput
-          label="დირექტორი (სახელი გვარი)"
+          label={t('orders.directorName')}
           required
           value={form.directorName}
           onChangeText={v => setForm(f => ({ ...f, directorName: v }))}
-          error={attempted && !form.directorName.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !form.directorName.trim() ? t('errors.requiredField') : undefined}
         />
       </View>
     </View>

@@ -152,7 +152,7 @@ export function EditProjectSheet({
                 required
                 value={company}
                 onChangeText={setCompany}
-                error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
+                error={attempted && !company.trim() ? t('errors.requiredField') : undefined}
                 autoFocus
               />
 
@@ -164,7 +164,7 @@ export function EditProjectSheet({
               />
 
               <FloatingLabelInput
-                label="საკონტაქტო ტელეფონი"
+                label={t('projects.contactPhone')}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -195,7 +195,7 @@ export function EditProjectSheet({
                   flex: 1, textAlign: 'center',
                   fontSize: 17, fontWeight: '700', color: theme.colors.ink,
                 }}>
-                  მდებარეობის არჩევა
+                  {t('projects.chooseLocation')}
                 </Text>
                 <HeaderCloseButton onPress={() => setMapVisible(false)} />
               </View>

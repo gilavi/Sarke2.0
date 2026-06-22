@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Keyboard,
@@ -25,6 +26,7 @@ import { projectsApi } from '../../lib/services';
 import type { BriefingParticipant, Project } from '../../types/models';
 
 export default function NewBriefingScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
@@ -112,7 +114,7 @@ export default function NewBriefingScreen() {
       router.replace(`/briefings/${briefing.id}/sign` as any);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      Alert.alert('შეცდომა', `ინსტრუქტაჟის შექმნა ვერ მოხერხდა\n\n${msg}`);
+      Alert.alert(t('common.error'), `${t('briefings.createFailed')}\n\n${msg}`);
     } finally {
       setBusy(false);
     }
@@ -130,7 +132,7 @@ export default function NewBriefingScreen() {
   if (!projectId) {
     return (
       <FlowProjectPicker
-        flowTitle="ინსტრუქტაჟი"
+        flowTitle={t('briefings.flowTitle')}
         action="briefing"
         onBack={() => router.back()}
         onPicked={(p) => { setPickedProject(p); setProject(p); }}
@@ -143,7 +145,7 @@ export default function NewBriefingScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
-        flowTitle="ინსტრუქტაჟი"
+        flowTitle={t('briefings.flowTitle')}
         project={project}
         step={step}
         totalSteps={3}
@@ -160,7 +162,7 @@ export default function NewBriefingScreen() {
           <>
             {/* ── Date & Time ── */}
             <View style={styles.card}>
-              <Text style={styles.sectionLabel}>თარიღი და დრო</Text>
+              <Text style={styles.sectionLabel}>{t('briefings.dateTimeSection')}</Text>
               <DateTimeField
                 value={dateTime}
                 onChange={d => { Keyboard.dismiss(); setDateTime(d); }}
@@ -170,8 +172,8 @@ export default function NewBriefingScreen() {
 
             {/* ── Topics ── */}
             <View style={styles.card}>
-              <Text style={styles.sectionLabel}>ინსტრუქტაჟის თემა</Text>
-              <Text style={styles.sectionHint}>შეარჩიეთ ერთი ან მეტი</Text>
+              <Text style={styles.sectionLabel}>{t('briefings.topicSection')}</Text>
+              <Text style={styles.sectionHint}>{t('briefings.topicHint')}</Text>
               <TopicSelector
                 selectedTopics={selectedTopics}
                 onToggle={toggleTopic}
@@ -179,7 +181,7 @@ export default function NewBriefingScreen() {
                 onChangeCustomTopic={setCustomTopic}
               />
               {attempted && !hasTopics && (
-                <Text style={styles.controlError}>აირჩიეთ მინიმუმ ერთი თემა</Text>
+                <Text style={styles.controlError}>{t('briefings.topicRequired')}</Text>
               )}
             </View>
           </>
@@ -187,21 +189,21 @@ export default function NewBriefingScreen() {
           /* ── Participants ── */
           <View style={styles.card}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionLabel}>მონაწილეები</Text>
+              <Text style={styles.sectionLabel}>{t('briefings.participantsSection')}</Text>
               {participants.length > 0 && (
                 <View style={styles.countBadge}>
                   <Text style={styles.countBadgeText}>{participants.length}</Text>
                 </View>
               )}
             </View>
-            <Text style={styles.sectionHint}>მინიმუმ 1 მონაწილე საჭიროა</Text>
+            <Text style={styles.sectionHint}>{t('briefings.participantHint')}</Text>
             <ParticipantsStep
               participants={participants}
               onAdd={addParticipant}
               onRemove={removeParticipant}
             />
             {attempted && !canStart && (
-              <Text style={styles.controlError}>დაამატეთ მინიმუმ ერთი მონაწილე</Text>
+              <Text style={styles.controlError}>{t('briefings.participantRequired')}</Text>
             )}
           </View>
         )}
@@ -211,7 +213,7 @@ export default function NewBriefingScreen() {
         <View style={[styles.footer, { paddingBottom: insets.bottom }]}>
           {step === 1 ? (
             <Button
-              title="შემდეგი"
+              title={t('common.next')}
               size="lg"
               rightIcon={ChevronRight}
               onPress={() => guard(hasTopics, () => setStep(2))}
@@ -219,7 +221,7 @@ export default function NewBriefingScreen() {
             />
           ) : (
             <Button
-              title="დაწყება →"
+              title={t('briefings.startButton')}
               size="lg"
               onPress={() => guard(canStart, onStart)}
               loading={busy}

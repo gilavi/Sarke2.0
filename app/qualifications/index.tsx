@@ -7,6 +7,7 @@
 // cards show the document thumbnail with edit/delete actions). Any
 // qualification whose type isn't in the required set is appended to the grid.
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Animated,
@@ -42,6 +43,7 @@ import AddQualificationSheet from '../../components/qualifications/AddQualificat
 type QualWithThumb = Qualification & { thumbUrl?: string | null };
 
 export default function QualificationsScreen() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
@@ -94,7 +96,7 @@ export default function QualificationsScreen() {
       qc.invalidateQueries({ queryKey: qk.qualifications.list });
     } catch (e) {
       haptic.error();
-      Alert.alert('წაშლა ვერ მოხერხდა', toErrorMessage(e, 'ქსელის შეცდომა'));
+      Alert.alert(t('errors.deleteFailed'), toErrorMessage(e, t('errors.network')));
     }
     setDeleteTarget(null);
   };
@@ -121,7 +123,7 @@ export default function QualificationsScreen() {
       <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.background }}>
         <View style={qStyles.header}>
           <HeaderBackButton />
-          <Text style={qStyles.headerTitle} numberOfLines={1}>სერტიფიკატები</Text>
+          <Text style={qStyles.headerTitle} numberOfLines={1}>{t('qualifications.title')}</Text>
           <View style={qStyles.headerSpacer} />
         </View>
       </SafeAreaView>
@@ -135,12 +137,12 @@ export default function QualificationsScreen() {
         <Pressable
           onPress={() => goAdd('general')}
           style={qStyles.customRow}
-          {...a11y('სხვა ნებისმიერი სერტიფიკატი', 'მორგებული სერტიფიკატის დამატება', 'button')}
+          {...a11y(t('qualifications.customCertRow'), t('qualifications.customCertRow'), 'button')}
         >
           <View style={qStyles.customIcon}>
             <Plus size={18} color={theme.colors.inkSoft} strokeWidth={2} />
           </View>
-          <Text style={qStyles.customText}>სხვა ნებისმიერი სერტიფიკატი</Text>
+          <Text style={qStyles.customText}>{t('qualifications.customCertRow')}</Text>
           <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </Pressable>
 
@@ -201,9 +203,10 @@ export default function QualificationsScreen() {
 }
 
 function StatusPill({ status }: { status: 'expired' | 'expiring' | 'ok' }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   if (status === 'ok') return null;
-  const label = status === 'expired' ? 'ვადა გასულია' : 'იწურება';
+  const label = status === 'expired' ? t('qualifications.expiredLabel') : t('qualifications.expiringLabel');
   const bg = status === 'expired' ? theme.colors.dangerSoft : theme.colors.warnSoft;
   const fg = status === 'expired' ? theme.colors.danger : theme.colors.warn;
   return (
@@ -224,6 +227,7 @@ function FilledCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
   const status = statusOf(qual);
@@ -244,7 +248,7 @@ function FilledCard({
             onPress={onEdit}
             hitSlop={8}
             style={qStyles.actionBtn}
-            {...a11y('რედაქტირება', 'სერტიფიკატის რედაქტირება', 'button')}
+            {...a11y(t('common.edit'), t('qualifications.editHint'), 'button')}
           >
             <Pencil size={15} color={theme.colors.ink} strokeWidth={1.6} />
           </Pressable>
@@ -252,7 +256,7 @@ function FilledCard({
             onPress={onDelete}
             hitSlop={8}
             style={qStyles.actionBtn}
-            {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')}
+            {...a11y(t('common.delete'), t('qualifications.deleteHint'), 'button')}
           >
             <Trash2 size={15} color={theme.colors.danger} strokeWidth={1.6} />
           </Pressable>
@@ -266,6 +270,7 @@ function FilledCard({
 }
 
 function EmptyCard({ label, onPress }: { label: string; onPress: () => void }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
 
@@ -273,11 +278,11 @@ function EmptyCard({ label, onPress }: { label: string; onPress: () => void }) {
     <Pressable
       onPress={onPress}
       style={qStyles.cardEmpty}
-      {...a11y(label, 'სერტიფიკატის ატვირთვა', 'button')}
+      {...a11y(label, t('qualifications.uploadHint'), 'button')}
     >
       <View style={qStyles.thumbEmpty}>
         <CloudUpload size={24} color={theme.colors.inkFaint} strokeWidth={1.5} />
-        <Text style={qStyles.uploadHint}>ატვირთვა</Text>
+        <Text style={qStyles.uploadHint}>{t('qualifications.uploadHint')}</Text>
       </View>
       <View style={qStyles.footer}>
         <Text style={qStyles.cardNameEmpty} numberOfLines={1}>{label}</Text>
@@ -318,6 +323,7 @@ function DeleteModal({
   onConfirm: () => void;
   title: string;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const qStyles = useMemo(() => getqStyles(theme), [theme]);
 
@@ -341,7 +347,7 @@ function DeleteModal({
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={StyleSheet.absoluteFillObject}>
         <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.55)', opacity: fade }]}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} {...a11y('გაუქმება', 'დიალოგის დახურვა', 'button')} />
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} {...a11y(t('common.cancel'), t('a11y.cancelHint'), 'button')} />
         </Animated.View>
 
         <View style={qStyles.modalWrap}>
@@ -350,12 +356,12 @@ function DeleteModal({
               <View style={qStyles.iconCircle}>
                 <Trash2 size={28} color={theme.colors.danger} strokeWidth={1.5} />
               </View>
-              <Text style={qStyles.modalTitle}>წაშლა?</Text>
+              <Text style={qStyles.modalTitle}>{t('qualifications.deleteTitle')}</Text>
               <Text style={qStyles.modalBody}>{title}</Text>
             </View>
             <View style={{ gap: 10, marginTop: 8 }}>
-              <Button title="გაუქმება" variant="secondary" onPress={onClose} {...a11y('გაუქმება', undefined, 'button')} />
-              <Button title="წაშლა" variant="danger" onPress={onConfirm} iconLeft={<Trash2 size={18} color={theme.colors.danger} strokeWidth={1.5} />} {...a11y('წაშლა', 'სერტიფიკატის წაშლა', 'button')} />
+              <Button title={t('common.cancel')} variant="secondary" onPress={onClose} {...a11y(t('common.cancel'), undefined, 'button')} />
+              <Button title={t('common.delete')} variant="danger" onPress={onConfirm} iconLeft={<Trash2 size={18} color={theme.colors.danger} strokeWidth={1.5} />} {...a11y(t('common.delete'), t('a11y.deleteSigner'), 'button')} />
             </View>
           </View>
         </View>

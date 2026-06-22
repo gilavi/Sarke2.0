@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   Modal,
@@ -7,10 +7,11 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useSheetKeyboardMargin } from '../../../lib/useSheetKeyboardMargin';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SheetLayout } from '../../../components/SheetLayout';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus, ChevronRight, Check } from 'lucide-react-native';
 import { Button, Screen } from '../../../components/ui';
@@ -25,16 +26,16 @@ import { useToast } from '../../../lib/toast';
 import { useTheme } from '../../../lib/theme';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
-import { toErrorMessage } from '../../../lib/logError';
 import { friendlyError } from '../../../lib/errorMap';
 import { useTemplate, useProjects, qk } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Project, Questionnaire, Template } from '../../../types/models';
+import type { Project } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
 import { ErrorScreen } from '../../../components/ErrorScreen';
 
 export default function StartTemplateScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -65,7 +66,7 @@ export default function StartTemplateScreen() {
         : (await questionnairesApi.create({ projectId: selected, templateId: template.id })).id;
       router.replace(routeForInspection(template.category, newId, false) as any);
     } catch (e) {
-      toast.error(friendlyError(e, 'შემოწმების აქტი ვერ შეიქმნა'));
+      toast.error(friendlyError(e, t('errors.inspectionCreateFailed')));
     } finally {
       setBusy(false);
     }
@@ -83,13 +84,13 @@ export default function StartTemplateScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'ახალი შემოწმების აქტი', presentation: 'modal' }} />
+      <Stack.Screen options={{ headerShown: true, title: t('inspections.newModalTitle'), presentation: 'modal' }} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <InspectionTypeAvatar category={template?.category} size={56} />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.eyebrow}>შაბლონი</Text>
+              <Text style={styles.eyebrow}>{t('inspections.templateLabel')}</Text>
               {template ? (
                 <Text style={styles.templateName}>{inspectionDisplayName(template.name)}</Text>
               ) : (
@@ -99,19 +100,19 @@ export default function StartTemplateScreen() {
           </View>
 
           <View style={{ gap: 4, marginTop: 20 }}>
-            <Text style={styles.eyebrow}>აირჩიეთ პროექტი</Text>
+            <Text style={styles.eyebrow}>{t('inspections.chooseProjectRequired')}</Text>
           </View>
 
-          <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y('ახალი პროექტი', 'ახალი პროექტის შექმნა', 'button')}>
+          <Pressable onPress={() => setShowingCreate(true)} style={styles.newTile} {...a11y(t('projects.addProject'), t('flowProjectPicker.newProjectA11y'), 'button')}>
             <View style={styles.newIcon}>
               <Plus size={22} color={theme.colors.accent} strokeWidth={1.5} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: theme.colors.ink }}>
-                ახალი პროექტი
+                {t('projects.addProject')}
               </Text>
               <Text style={{ fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 }}>
-                შექმნი ახლავე
+                {t('inspections.createNow')}
               </Text>
             </View>
             <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
@@ -142,7 +143,7 @@ export default function StartTemplateScreen() {
                       isSelected && styles.projectRowSelected,
                       attempted && !selected && { borderColor: theme.colors.danger },
                     ]}
-                    {...a11y(p.company_name || p.name, 'პროექტის არჩევა', 'radio')}
+                    {...a11y(p.company_name || p.name, t('inspections.chooseProjectRequired'), 'radio')}
                   >
                     <View style={[styles.radio, isSelected && styles.radioOn]}>
                       {isSelected ? (
@@ -168,18 +169,18 @@ export default function StartTemplateScreen() {
             </View>
           ) : (
             <Text style={{ color: theme.colors.inkSoft, fontSize: 13, textAlign: 'center', marginTop: 20 }}>
-              ჯერ არცერთი პროექტი არ გაქვს.{'\n'}დაიწყე ახლის შექმნით.
+              {t('inspections.noProjectsYet2')}
             </Text>
           )}
 
           {attempted && !selected ? (
-            <Text style={styles.selectionError}>აირჩიეთ პროექტი</Text>
+            <Text style={styles.selectionError}>{t('inspections.chooseProjectRequired')}</Text>
           ) : null}
         </ScrollView>
 
         <View style={styles.footer}>
           <Button
-            title="დაიწყე შემოწმების აქტი"
+            title={t('inspections.startButton')}
             onPress={() => guard(!!selected, start)}
             loading={busy}
           />
@@ -205,6 +206,7 @@ function CreateProjectSheet({
   onCreated: (p: Project) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const toast = useToast();
@@ -224,12 +226,12 @@ function CreateProjectSheet({
         companyName: company.trim(),
         address: address.trim() || null,
       }));
-      toast.success('პროექტი შეიქმნა');
+      toast.success(t('notifications.projectCreated'));
       setCompany('');
       setAddress('');
       onCreated(p);
     } catch (e) {
-      toast.error(friendlyError(e, 'ვერ შეიქმნა'));
+      toast.error(friendlyError(e, t('errors.createFailed')));
     } finally {
       setBusy(false);
     }
@@ -242,7 +244,7 @@ function CreateProjectSheet({
         <Pressable
           style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.4)' }]}
           onPress={onClose}
-          {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
+          {...a11y(t('a11y.close'), t('a11y.closeHint'), 'button')}
         />
         {/* Card - marginBottom rides the iOS keyboard 1:1 */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
@@ -250,25 +252,25 @@ function CreateProjectSheet({
           <SheetLayout
             insideBottomSheet
             maxHeightRatio={0.92}
-            header={{ title: 'ახალი პროექტი', onClose }}
+            header={{ title: t('projects.addProject'), onClose }}
             footer={
               <Button
-                title="შენახვა"
+                title={t('common.save')}
                 onPress={() => guard(!!company.trim(), save)}
                 loading={busy}
               />
             }
           >
             <FloatingLabelInput
-              label="კომპანია"
+              label={t('common.company')}
               required
               value={company}
               onChangeText={setCompany}
               autoFocus
-              error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
+              error={attempted && !company.trim() ? t('errors.requiredField') : undefined}
             />
             <FloatingLabelInput
-              label="მისამართი"
+              label={t('common.address')}
               value={address}
               onChangeText={setAddress}
             />

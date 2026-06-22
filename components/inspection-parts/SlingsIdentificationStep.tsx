@@ -12,6 +12,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { DateTimeField } from '../DateTimeField';
@@ -49,8 +50,8 @@ export interface SlingsIdentificationStepProps {
   }>) => void;
 }
 
-function summarizeTypes(selected: string[], other: string): string {
-  if (selected.length === 0) return 'აირჩიეთ ტიპი';
+function summarizeTypes(selected: string[], other: string, typeRequiredLabel: string): string {
+  if (selected.length === 0) return typeRequiredLabel;
   return selected
     .map(s => (s === LA_OTHER_EQUIPMENT_VALUE && other.trim() ? other.trim() : s))
     .join(', ');
@@ -68,6 +69,7 @@ export function SlingsIdentificationStep({
   nextInspectionDate,
   onUpdate,
 }: SlingsIdentificationStepProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const showSheet = useBottomSheet();
@@ -100,11 +102,11 @@ export function SlingsIdentificationStep({
       bottomOffset={120}
     >
       {/* Section: Type / Name */}
-      <Text style={styles.sectionHeader}>ტ-პი / სახ.</Text>
+      <Text style={styles.sectionHeader}>{t('slingsId.typeSectionHeader')}</Text>
       <Pressable
         onPress={openTypeSheet}
         style={styles.typeRow}
-        {...a11y('ტ-პი / სახ.', 'ტიპის არჩევა', 'button')}
+        {...a11y(t('slingsId.typeSectionHeader'), t('slingsId.typeRequired'), 'button')}
       >
         <Text
           style={[
@@ -113,43 +115,43 @@ export function SlingsIdentificationStep({
           ]}
           numberOfLines={2}
         >
-          {summarizeTypes(equipmentTypes, equipmentTypeOther)}
+          {summarizeTypes(equipmentTypes, equipmentTypeOther, t('slingsId.typeRequired'))}
         </Text>
         <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
       </Pressable>
 
       {/* Section: Identification */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>იდენტიფიკაცია</Text>
+      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.identificationSection')}</Text>
       <View style={styles.fieldStack}>
         <FloatingLabelInput
-          label="სერ. NN / ID"
+          label={t('slingsId.serialIdLabel')}
           value={serialNumber}
           onChangeText={v => onUpdate({ serialNumber: v })}
         />
         <FloatingLabelInput
-          label="მწარმოებელი"
+          label={t('slingsId.manufacturerLabel')}
           value={manufacturer}
           onChangeText={v => onUpdate({ manufacturer: v })}
         />
       </View>
 
       {/* Section: Characteristics */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>მახასიათებლები</Text>
+      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.characteristicsSection')}</Text>
       <View style={styles.fieldStack}>
         <FloatingLabelInput
-          label="წ. წარმ."
+          label={t('slingsId.yearMadeLabel')}
           value={yearOfManufacture}
           onChangeText={v => onUpdate({ yearOfManufacture: v })}
           keyboardType="decimal-pad"
         />
         <FloatingLabelInput
-          label="WLL (კგ)"
+          label={t('slingsId.wllLabel')}
           value={wllKg}
           onChangeText={v => onUpdate({ wllKg: v })}
           keyboardType="decimal-pad"
         />
         <FloatingLabelInput
-          label="ერთ. რ-ბა"
+          label={t('slingsId.unitSafetyLabel')}
           value={unitCount}
           onChangeText={v => onUpdate({ unitCount: v })}
           keyboardType="decimal-pad"
@@ -157,7 +159,7 @@ export function SlingsIdentificationStep({
       </View>
 
       {/* Section: Marking */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>მარკირება</Text>
+      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.markingSection')}</Text>
       <View style={styles.chipsRow}>
         {(LA_MARKING_OPTIONS as unknown as string[]).map((opt, i) => {
           const active = markingStatus === opt;
@@ -194,7 +196,7 @@ export function SlingsIdentificationStep({
       </View>
 
       {/* Section: Next inspection */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>მომდევნო შემოწმება</Text>
+      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.nextInspectionSection')}</Text>
       <DateTimeField
         value={nextInspectionDate ? new Date(nextInspectionDate) : new Date()}
         onChange={d => onUpdate({ nextInspectionDate: d.toISOString().slice(0, 10) })}

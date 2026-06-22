@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { SheetLayout } from '../SheetLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,11 +24,6 @@ import { toErrorMessage } from '../../lib/logError';
 import { a11y } from '../../lib/accessibility';
 import { REQUIRED_TYPES } from '../../lib/qualificationTypes';
 import type { Qualification } from '../../types/models';
-
-const TYPES: { value: string; label: string }[] = [
-  ...REQUIRED_TYPES,
-  { value: 'general', label: 'სხვა' },
-];
 
 function formatDate(d: Date) {
   return d.toLocaleDateString('ka', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -50,9 +46,15 @@ export default function AddQualificationSheet({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { pickPhoto: pickPhotoFromLibrary } = usePhotoPicker();
+
+  const TYPES: { value: string; label: string }[] = [
+    ...REQUIRED_TYPES,
+    { value: 'general', label: t('qualifications.other') },
+  ];
 
   const [type, setType] = useState(initialType ?? 'xaracho_specialist');
   const [number, setNumber] = useState('');
@@ -105,7 +107,7 @@ export default function AddQualificationSheet({
     setBusy(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('არ ხართ შესული');
+      if (!user) throw new Error(t('common.error'));
       // Keep the existing photo when editing without picking a new one.
       let filePath: string | null = existing?.file_url ?? null;
       if (photoUri) {
@@ -124,7 +126,7 @@ export default function AddQualificationSheet({
       });
       onSaved();
     } catch (e) {
-      Alert.alert('შეცდომა', toErrorMessage(e));
+      Alert.alert(t('common.error'), toErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -132,69 +134,73 @@ export default function AddQualificationSheet({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={onClose} {...a11y('დახურვა', 'ფანჯრის დახურვა', 'button')}>
+      <Pressable style={styles.backdrop} onPress={onClose} {...a11y(t('common.close'), t('a11y.closeSheetHint'), 'button')}>
         <Pressable style={styles.sheet} onPress={() => {}}>
           <View style={styles.handle} />
           <SheetLayout
-            header={{ title: existing ? 'სერტიფიკატის რედაქტირება' : 'ახალი სერტიფიკატი', onClose }}
+            header={{ title: existing ? t('qualifications.editTitle') : t('qualifications.newCertTitle'), onClose }}
             footer={
               <View style={{ gap: 10 }}>
                 <Button
                   title={
                     photoUri
-                      ? '✓ ფოტო არჩეულია - შეცვლა'
+                      ? t('qualifications.photoSelected')
                       : existing?.file_url
-                        ? 'ფოტოს შეცვლა'
-                        : 'სერტიფიკატის ფოტო'
+                        ? t('qualifications.changePhotoLabel')
+                        : t('qualifications.addCertPhoto')
                   }
                   variant="secondary"
                   onPress={pickPhoto}
                 />
-                <Button title="შენახვა" onPress={save} loading={busy} />
+                <Button title={t('common.save')} onPress={save} loading={busy} />
               </View>
             }
           >
-            <Field label="ტიპი">
+            <Field label={t('qualifications.typeLabel')}>
               <View style={{ gap: 8 }}>
-                {TYPES.map(t => (
+                {TYPES.map(typeOption => (
                   <Pressable
-                    key={t.value}
-                    onPress={() => setType(t.value)}
-                    style={[styles.typeRow, type === t.value && styles.typeRowActive]}
-                    {...a11y(t.label, 'სერტიფიკატის ტიპის არჩევა', 'radio')}
+                    key={typeOption.value}
+                    onPress={() => setType(typeOption.value)}
+                    style={[styles.typeRow, type === typeOption.value && styles.typeRowActive]}
+                    {...a11y(typeOption.label, t('qualifications.selectTypeHint'), 'radio')}
                   >
-                    <View style={[styles.radio, type === t.value && styles.radioActive]}>
-                      {type === t.value && <Check size={13} color={theme.colors.white} strokeWidth={2} />}
+                    <View style={[styles.radio, type === typeOption.value && styles.radioActive]}>
+                      {type === typeOption.value && <Check size={13} color={theme.colors.white} strokeWidth={2} />}
                     </View>
-                    <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{t.label}</Text>
+                    <Text style={{ fontWeight: '600', color: theme.colors.ink }}>{typeOption.label}</Text>
                   </Pressable>
                 ))}
               </View>
             </Field>
 
             <FloatingLabelInput
-              label="ნომერი"
+              label={t('qualifications.numberLabel')}
               value={number}
               onChangeText={setNumber}
             />
 
-            <Field label="გაცემის თარიღი">
-              <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y('გაცემის თარიღი', 'გაცემის თარიღის არჩევა', 'button')}>
+            <Field label={t('qualifications.issuedDate')}>
+              <Pressable onPress={() => setPicker('issued')} style={styles.dateBtn} {...a11y(t('qualifications.issuedDate'), t('qualifications.issuedDate'), 'button')}>
                 <Calendar size={18} color={theme.colors.accent} strokeWidth={1.5} />
                 <Text style={styles.dateBtnText}>{formatDate(issued)}</Text>
                 <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>
             </Field>
 
-            <Field label="ვადის გასვლის თარიღი">
-              <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn} {...a11y('ვადის გასვლის თარიღი', 'ვადის გასვლის თარიღის არჩევა', 'button')}>
+            <Field label={t('qualifications.expiryDate')}>
+              <Pressable onPress={() => setPicker('expires')} style={styles.dateBtn} {...a11y(t('qualifications.expiryDate'), t('qualifications.expiryDate'), 'button')}>
                 <Calendar size={18} color={theme.colors.accent} strokeWidth={1.5} />
                 <Text style={styles.dateBtnText}>{formatDate(expires)}</Text>
                 <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>
               <View style={styles.chips}>
-                {[{ label: '+1 წელი', months: 12 }, { label: '+3 წელი', months: 36 }, { label: '+5 წელი', months: 60 }].map(c => (
-                  <Pressable key={c.label} style={styles.chip} {...a11y(c.label, 'ვადის სწრაფად დამატება', 'button')} onPress={() => {
+                {[
+                  { label: t('qualifications.yearPlus1'), months: 12 },
+                  { label: t('qualifications.yearPlus3'), months: 36 },
+                  { label: t('qualifications.yearPlus5'), months: 60 },
+                ].map(c => (
+                  <Pressable key={c.label} style={styles.chip} {...a11y(c.label, t('qualifications.expiryQuickHint'), 'button')} onPress={() => {
                     const d = new Date(issued);
                     d.setMonth(d.getMonth() + c.months);
                     setExpires(d);
@@ -209,15 +215,15 @@ export default function AddQualificationSheet({
       </Pressable>
 
       <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
-        <Pressable style={styles.backdrop} onPress={() => setPicker(null)} {...a11y('დახურვა', 'თარიღის არჩევის გაუქმება', 'button')}>
+        <Pressable style={styles.backdrop} onPress={() => setPicker(null)} {...a11y(t('common.close'), t('a11y.closeSheetHint'), 'button')}>
           <Pressable style={styles.dateSheet} onPress={e => e.stopPropagation()}>
             <View style={styles.handle} />
             <View style={styles.header}>
               <Text style={styles.title}>
-                {picker === 'issued' ? 'გაცემის თარიღი' : 'ვადის გასვლა'}
+                {picker === 'issued' ? t('qualifications.issuedDate') : t('qualifications.expiryDateShort')}
               </Text>
-              <Pressable onPress={() => setPicker(null)} hitSlop={12} {...a11y('მზადაა', 'თარიღის არჩევის დადასტურება', 'button')}>
-                <Text style={{ color: theme.colors.accent, fontWeight: '700', fontSize: 15 }}>მზადაა</Text>
+              <Pressable onPress={() => setPicker(null)} hitSlop={12} {...a11y(t('qualifications.readyBtn'), t('qualifications.readyBtn'), 'button')}>
+                <Text style={{ color: theme.colors.accent, fontWeight: '700', fontSize: 15 }}>{t('qualifications.readyBtn')}</Text>
               </Pressable>
             </View>
             <DateTimePicker

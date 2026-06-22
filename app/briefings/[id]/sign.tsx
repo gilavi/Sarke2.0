@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
@@ -15,6 +16,7 @@ import { SkeletonListCard } from '../../../components/Skeleton';
 import { a11y } from '../../../lib/accessibility';
 
 export default function BriefingSignScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const insets = useSafeAreaInsets();
@@ -40,7 +42,7 @@ export default function BriefingSignScreen() {
 
   const header = (
     <FlowHeader
-      flowTitle="ინსტრუქტაჟი"
+      flowTitle={t('briefings.flowTitle')}
       project={s.project}
       step={3}
       totalSteps={3}
@@ -74,21 +76,21 @@ export default function BriefingSignScreen() {
         <View style={styles.interstitial}>
           <CircleAlert size={48} color={theme.colors.ink} strokeWidth={1.5} />
           <Text style={styles.interstitialTitle}>
-            {s.skippedCount} მუშაკი გამოტოვებული
+            {t('briefings.skippedCountLabel', { count: s.skippedCount })}
           </Text>
           <Text style={styles.interstitialBody}>
-            შეგიძლიათ დაუბრუნდეთ მათ ან გააგრძელოთ ინსპექტორის ხელმოწერაზე.
+            {t('briefings.skippedInterstitialBody')}
           </Text>
           <View style={styles.interstitialActions}>
             <Button
-              title="გამოტოვებულზე დაბრუნება"
+              title={t('briefings.backToSkipped')}
               variant="secondary"
               size="lg"
               onPress={s.goToFirstSkipped}
               style={{ flex: 1 }}
             />
             <Button
-              title="გააგრძელე →"
+              title={t('briefings.continueButton')}
               size="lg"
               onPress={s.continueFromInterstitial}
               style={{ flex: 1 }}
@@ -107,9 +109,9 @@ export default function BriefingSignScreen() {
         {header}
         {chipStrip}
         <SignatureStage
-          eyebrow="ინსპექტორის ხელმოწერა"
-          name={s.briefing.inspectorName || 'ინსპექტორი'}
-          caption="გთხოვთ მოაწეროთ ხელი"
+          eyebrow={t('briefings.inspectorEyebrow')}
+          name={s.briefing.inspectorName || t('briefings.inspectorFallbackName')}
+          caption={t('briefings.inspectorSignPrompt')}
           canvasKey="inspector"
           canvasRef={s.canvasRef}
           hasStroke={s.hasStroke}
@@ -118,17 +120,17 @@ export default function BriefingSignScreen() {
           onOK={s.handleOK}
         />
         {attempted && !s.hasStroke && (
-          <Text style={styles.signatureError}>გთხოვთ, ხელი მოაწეროთ</Text>
+          <Text style={styles.signatureError}>{t('briefings.signError')}</Text>
         )}
         <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
           {s.hasStroke && (
-            <Pressable onPress={s.handleClear} style={styles.skipBtn} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
+            <Pressable onPress={s.handleClear} style={styles.skipBtn} {...a11y(t('briefings.clearBtn'), t('briefings.clearBtnA11y'), 'button')}>
               <RefreshCw size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-              <Text style={styles.skipBtnText}>გასუფთავება</Text>
+              <Text style={styles.skipBtnText}>{t('briefings.clearBtn')}</Text>
             </Pressable>
           )}
           <Button
-            title={s.saving ? 'იტვირთება...' : 'დასრულება და PDF გენერირება'}
+            title={s.saving ? t('briefings.loadingLabel') : t('briefings.completeAndPdf')}
             size="lg"
             onPress={() => guard(s.hasStroke, s.handleConfirm)}
             disabled={s.saving}
@@ -146,9 +148,9 @@ export default function BriefingSignScreen() {
       {header}
       {chipStrip}
       <SignatureStage
-        eyebrow="ხელს აწერს"
+        eyebrow={t('briefings.workerEyebrow')}
         name={s.workerName}
-        caption={`${s.currentIdx + 1} / ${s.totalWorkers}${s.alreadySigned ? ' · უკვე მოწერილია - გადაწერა' : ''}`}
+        caption={`${s.currentIdx + 1} / ${s.totalWorkers}${s.alreadySigned ? ` · ${t('briefings.alreadySigned')}` : ''}`}
         canvasKey={s.currentIdx}
         canvasRef={s.canvasRef}
         hasStroke={s.hasStroke}
@@ -157,14 +159,14 @@ export default function BriefingSignScreen() {
         onOK={s.handleOK}
       />
       {attempted && !s.hasStroke && (
-        <Text style={styles.signatureError}>გთხოვთ, ხელი მოაწეროთ</Text>
+        <Text style={styles.signatureError}>{t('briefings.signError')}</Text>
       )}
       <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Pressable
           onPress={s.handleClear}
           disabled={!s.hasStroke}
           style={[styles.iconBtn, !s.hasStroke && { opacity: 0.3 }]}
-          {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}
+          {...a11y(t('briefings.clearBtn'), t('briefings.clearBtnA11y'), 'button')}
         >
           <RefreshCw size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
         </Pressable>
@@ -172,12 +174,12 @@ export default function BriefingSignScreen() {
           onPress={s.handleSkip}
           disabled={s.saving}
           style={[styles.skipBtn, s.saving && { opacity: 0.3 }]}
-          {...a11y('გამოტოვება', 'ამ მუშაკის გამოტოვება', 'button')}
+          {...a11y(t('briefings.skipAction'), t('briefings.skipWorkerTitle'), 'button')}
         >
-          <Text style={styles.skipBtnText}>გამოტოვება</Text>
+          <Text style={styles.skipBtnText}>{t('briefings.skipAction')}</Text>
         </Pressable>
         <Button
-          title={s.saving ? 'ინახება...' : 'დადასტურება →'}
+          title={s.saving ? t('briefings.savingLabel') : t('briefings.confirmButton')}
           size="lg"
           onPress={() => guard(s.hasStroke, s.handleConfirm)}
           disabled={s.saving}

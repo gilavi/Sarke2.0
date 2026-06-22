@@ -1,10 +1,10 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -85,13 +85,13 @@ function parseResult(raw: string): number {
   return isNaN(n) ? 0 : Math.max(0, n);
 }
 
-function daysSince(iso: string): string {
+function daysSince(iso: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Math.floor(
     (Date.now() - new Date(iso).getTime()) / 86400000,
   );
-  if (diff === 0) return 'დღეს';
-  if (diff === 1) return '1 დ.';
-  return `${diff} დ.`;
+  if (diff === 0) return t('breathalyzer.relToday');
+  if (diff === 1) return t('breathalyzer.relDay1');
+  return t('breathalyzer.relDayN', { count: diff });
 }
 
 function initials(name: string) {
@@ -109,6 +109,7 @@ export default function BreathalizerJournalScreen() {
   const { id: projectId, logId: paramLogId } =
     useLocalSearchParams<{ id: string; logId?: string }>();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -189,7 +190,7 @@ export default function BreathalizerJournalScreen() {
       setLog(loaded);
       if (loaded) setSerialInput(loaded.deviceSerialNumber ?? '');
     } catch {
-      toast.error('ჟურნალის ჩატვირთვა ვერ მოხერხდა');
+      toast.error(t('breathalyzer.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -211,7 +212,7 @@ export default function BreathalizerJournalScreen() {
       setSerialInput('');
       invalidateLogsCache();
     } catch {
-      toast.error('ჟურნალის შექმნა ვერ მოხერხდა');
+      toast.error(t('breathalyzer.createFailed'));
     }
   }
 
@@ -297,7 +298,7 @@ export default function BreathalizerJournalScreen() {
         }, 300);
       }
     } catch {
-      toast.error('შენახვა ვერ მოხერხდა');
+      toast.error(t('breathalyzer.saveFailed'));
     } finally {
       setSavingEntry(false);
     }
@@ -313,7 +314,7 @@ export default function BreathalizerJournalScreen() {
           ...log,
           responsiblePerson: { name: respName.trim(), signature: respSig },
         },
-        projectName: project?.name ?? project?.company_name ?? 'პროექტი',
+        projectName: project?.name ?? project?.company_name ?? t('common.project'),
         companyName: project?.company_name ?? '',
       });
 
@@ -330,7 +331,7 @@ export default function BreathalizerJournalScreen() {
       setLog(updatedLog);
       invalidateLogsCache();
       setShowCloseShift(false);
-      toast.success('ცვლა დასრულდა');
+      toast.success(t('breathalyzer.shiftComplete'));
 
       // Generate and share PDF
       await generateAndSharePdf(
@@ -339,7 +340,7 @@ export default function BreathalizerJournalScreen() {
         undefined,
       );
     } catch {
-      toast.error('შეცდომა - გთხოვთ სცადოთ ხელახლა');
+      toast.error(t('breathalyzer.error'));
     } finally {
       setClosingShift(false);
     }
@@ -394,10 +395,10 @@ export default function BreathalizerJournalScreen() {
 
   const resultLabel =
     resultStatus === 'safe'
-      ? '✓ SAFE - სამუშაოდ დაშვება დაშვებულია'
+      ? t('breathalyzer.statusSafe')
       : resultStatus === 'warning'
-        ? '⚠ WARNING - საჭიროა ზედამხედველობა'
-        : '✗ FAIL - სამუშაოდ დაშვება აკრძალულია';
+        ? t('breathalyzer.statusWarning')
+        : t('breathalyzer.statusFail');
 
   // ── Entry can be saved ────────────────────────────────────────────────────
   const canSaveEntry =
@@ -423,7 +424,7 @@ export default function BreathalizerJournalScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: 'ალკოტესტი',
+          title: t('breathalyzer.title'),
           headerBackTitle: '',
           headerStyle: { backgroundColor: theme.colors.background },
           headerTintColor: theme.colors.ink,
@@ -431,7 +432,7 @@ export default function BreathalizerJournalScreen() {
           headerRight: () =>
             log?.status === 'closed' ? (
               <View style={styles.closedBadge}>
-                <Text style={styles.closedBadgeText}>დასრულებული</Text>
+                <Text style={styles.closedBadgeText}>{t('breathalyzer.closedBadge')}</Text>
               </View>
             ) : null,
         }}
@@ -451,17 +452,17 @@ export default function BreathalizerJournalScreen() {
           />
           <Text style={styles.emptyTitle}>
             {isTodayLog
-              ? 'დღეს ჯერ ჩანაწერი არ დაწყებულა'
-              : 'ჩანაწერი ვერ მოიძებნა'}
+              ? t('breathalyzer.noEntryToday')
+              : t('breathalyzer.entryNotFound')}
           </Text>
           {isTodayLog ? (
             <Pressable
               onPress={startLog}
               style={styles.startBtn}
-              {...a11y('ჩანაწერის დაწყება', undefined, 'button')}
+              {...a11y(t('breathalyzer.startEntry'), undefined, 'button')}
             >
               <Text style={styles.startBtnText}>
-                დღევანდელი ჩანაწერის დაწყება
+                {t('breathalyzer.startEntry')}
               </Text>
             </Pressable>
           ) : null}
@@ -511,7 +512,7 @@ export default function BreathalizerJournalScreen() {
             {log.entries.length === 0 ? (
               <View style={styles.emptyEntries}>
                 <Text style={styles.emptyEntriesText}>
-                  ჩანაწერი არ არის · დაიწყე +
+                  {t('breathalyzer.noEntry')}
                 </Text>
               </View>
             ) : (
@@ -522,6 +523,7 @@ export default function BreathalizerJournalScreen() {
                   index={idx}
                   theme={theme}
                   styles={styles}
+                  t={t}
                 />
               ))
             )}
@@ -532,10 +534,10 @@ export default function BreathalizerJournalScreen() {
                 <CircleAlert size={20} color={BL_RESULT_COLORS.fail.text} strokeWidth={1.5} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.repeatCardTitle, { color: BL_RESULT_COLORS.fail.text }]}>
-                    პირი ვერ დაიშვება სამუშაოდ
+                    {t('breathalyzer.personDenied')}
                   </Text>
                   <Text style={styles.repeatCardSub}>
-                    განმეორებითი ტესტი 15 წუთში
+                    {t('breathalyzer.repeatTest')}
                   </Text>
                 </View>
                 <Pressable
@@ -544,9 +546,9 @@ export default function BreathalizerJournalScreen() {
                     openAddEntry(repeatFor);
                   }}
                   style={styles.repeatCardBtn}
-                  {...a11y('განმეორებითი ტესტი', undefined, 'button')}
+                  {...a11y(t('breathalyzer.repeatTestCard'), undefined, 'button')}
                 >
-                  <Text style={styles.repeatCardBtnText}>↩ ტესტი</Text>
+                  <Text style={styles.repeatCardBtnText}>{t('breathalyzer.repeatTestCard')}</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -569,21 +571,21 @@ export default function BreathalizerJournalScreen() {
                     setShowCloseShift(true);
                   }}
                   style={styles.closeShiftBtn}
-                  {...a11y('ცვლის დასრულება', undefined, 'button')}
+                  {...a11y(t('breathalyzer.shiftEnd'), undefined, 'button')}
                 >
                   <Text style={styles.closeShiftBtnText}>
-                    ცვლის დასრულება
+                    {t('breathalyzer.shiftEnd')}
                   </Text>
                 </Pressable>
               )}
               <Pressable
                 onPress={() => openAddEntry()}
                 style={styles.addEntryBtn}
-                {...a11y('ჩანაწერის დამატება', undefined, 'button')}
+                {...a11y(t('breathalyzer.addEntry'), undefined, 'button')}
               >
                 <Plus size={22} color={theme.colors.white} strokeWidth={1.5} />
                 <Text style={styles.addEntryBtnText}>
-                  ჩანაწერის დამატება
+                  {t('breathalyzer.addEntry')}
                 </Text>
               </Pressable>
             </View>
@@ -603,7 +605,7 @@ export default function BreathalizerJournalScreen() {
                     const html = await buildBreathalizerLogPdfHtml({
                       log,
                       projectName:
-                        project?.name ?? project?.company_name ?? 'პროექტი',
+                        project?.name ?? project?.company_name ?? t('common.project'),
                       companyName: project?.company_name ?? '',
                     });
                     await generateAndSharePdf(
@@ -612,18 +614,18 @@ export default function BreathalizerJournalScreen() {
                       undefined,
                     );
                   } catch {
-                    toast.error('PDF გენერაცია ვერ მოხერხდა');
+                    toast.error(t('breathalyzer.pdfFailed'));
                   }
                 }}
                 style={styles.addEntryBtn}
-                {...a11y('PDF გაზიარება', undefined, 'button')}
+                {...a11y(t('breathalyzer.pdfShare'), undefined, 'button')}
               >
                 <Share2
                   size={20}
                   color={theme.colors.white}
                   strokeWidth={1.5}
                 />
-                <Text style={styles.addEntryBtnText}>PDF გაზიარება</Text>
+                <Text style={styles.addEntryBtnText}>{t('breathalyzer.pdfShare')}</Text>
               </Pressable>
             </View>
           )}
@@ -651,7 +653,7 @@ export default function BreathalizerJournalScreen() {
               }
               hitSlop={12}
               style={styles.modalBackBtn}
-              {...a11y(addStep > 1 ? 'უკან' : 'გაუქმება', undefined, 'button')}
+              {...a11y(addStep > 1 ? t('common.back') : t('common.cancel'), undefined, 'button')}
             >
               {addStep > 1 ? (
                 <ChevronLeft
@@ -669,12 +671,12 @@ export default function BreathalizerJournalScreen() {
             </Pressable>
             <Text style={styles.modalTitle}>
               {addStep === 1
-                ? 'პირი'
+                ? t('breathalyzer.stepPerson')
                 : addStep === 2
-                  ? 'ტესტის ტიპი'
+                  ? t('breathalyzer.stepTestType')
                   : addStep === 3
-                    ? 'შედეგი'
-                    : 'ხელმოწერა'}
+                    ? t('breathalyzer.stepResult')
+                    : t('breathalyzer.stepSignature')}
             </Text>
             <View style={styles.stepDots}>
               {[1, 2, 3, 4].map(s => (
@@ -705,7 +707,7 @@ export default function BreathalizerJournalScreen() {
                     setSearch(t);
                     setEntryName(t);
                   }}
-                  placeholder="სახელი / გვარი..."
+                  placeholder={t('breathalyzer.searchPlaceholder')}
                   placeholderTextColor={theme.colors.inkFaint}
                   autoFocus
                   returnKeyType="next"
@@ -731,7 +733,7 @@ export default function BreathalizerJournalScreen() {
                         </View>
                         {p.lastTestedAt ? (
                           <Text style={styles.suggestionDate}>
-                            {daysSince(p.lastTestedAt)}
+                            {daysSince(p.lastTestedAt, t)}
                           </Text>
                         ) : null}
                       </Pressable>
@@ -740,24 +742,24 @@ export default function BreathalizerJournalScreen() {
                 )}
 
                 <FloatingLabelInput
-                  label="სახელი / გვარი"
+                  label={t('breathalyzer.nameLabel')}
                   required
                   value={entryName}
                   onChangeText={setEntryName}
                   error={
                     entryAttempted && !entryName.trim()
-                      ? 'სავალდებულო ველი'
+                      ? t('errors.requiredField')
                       : undefined
                   }
                 />
                 <FloatingLabelInput
-                  label="პოზიცია"
+                  label={t('breathalyzer.positionLabel')}
                   required
                   value={entryPosition}
                   onChangeText={setEntryPosition}
                   error={
                     entryAttempted && !entryPosition.trim()
-                      ? 'სავალდებულო ველი'
+                      ? t('errors.requiredField')
                       : undefined
                   }
                 />
@@ -780,7 +782,7 @@ export default function BreathalizerJournalScreen() {
                         { color: theme.colors.accent },
                       ]}
                     >
-                      {entryName}-ის განმეორებითი ტესტი
+                      {t('breathalyzer.repeatTestOf', { name: entryName })}
                     </Text>
                   </View>
                 ) : null}
@@ -792,7 +794,7 @@ export default function BreathalizerJournalScreen() {
                       styles.typeChip,
                       entryTestType === 'primary' && styles.typeChipActive,
                     ]}
-                    {...a11y('პირველადი', undefined, 'button')}
+                    {...a11y(t('breathalyzer.primaryTest'), undefined, 'button')}
                   >
                     <Text
                       style={[
@@ -801,7 +803,7 @@ export default function BreathalizerJournalScreen() {
                           styles.typeChipTextActive,
                       ]}
                     >
-                      პირველადი
+                      {t('breathalyzer.primaryTest')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -810,7 +812,7 @@ export default function BreathalizerJournalScreen() {
                       styles.typeChip,
                       entryTestType === 'repeat' && styles.typeChipActive,
                     ]}
-                    {...a11y('განმეორებითი', undefined, 'button')}
+                    {...a11y(t('breathalyzer.repeatTestType'), undefined, 'button')}
                   >
                     <Text
                       style={[
@@ -818,7 +820,7 @@ export default function BreathalizerJournalScreen() {
                         entryTestType === 'repeat' && styles.typeChipTextActive,
                       ]}
                     >
-                      ↩ განმეორებითი
+                      {t('breathalyzer.repeatTestType')}
                     </Text>
                   </Pressable>
                 </View>
@@ -872,10 +874,10 @@ export default function BreathalizerJournalScreen() {
                           { color: BL_RESULT_COLORS.fail.text },
                         ]}
                       >
-                        პირი ვერ დაიშვება სამუშაოდ
+                        {t('breathalyzer.personDenied')}
                       </Text>
                       <Text style={styles.failWarningSub}>
-                        განმეორებითი ტესტი 15 წუთში
+                        {t('breathalyzer.repeatTest')}
                       </Text>
                     </View>
                   </View>
@@ -883,7 +885,7 @@ export default function BreathalizerJournalScreen() {
 
                 {entryAttempted && parseResult(entryResultRaw) < 0 && (
                   <Text style={styles.inlineError}>
-                    შეიყვანეთ სწორი მაჩვენებელი
+                    {t('breathalyzer.resultValid')}
                   </Text>
                 )}
               </View>
@@ -893,7 +895,7 @@ export default function BreathalizerJournalScreen() {
             {addStep === 4 && (
               <View style={{ gap: 16 }}>
                 <Text style={styles.sigPrompt}>
-                  {entryName}-მა ხელი მოაწეროს ტესტის შედეგს
+                  {t('breathalyzer.sigPrompt', { name: entryName })}
                 </Text>
 
                 <Pressable
@@ -907,7 +909,7 @@ export default function BreathalizerJournalScreen() {
                       ? { borderColor: theme.colors.accent }
                       : {},
                   ]}
-                  {...a11y('ხელმოწერა', 'ხელმოწერის დამატება', 'button')}
+                  {...a11y(t('breathalyzer.stepSignature'), t('a11y.saveSignatureHint'), 'button')}
                 >
                   {entrySignature ? (
                     <View style={styles.sigDone}>
@@ -923,7 +925,7 @@ export default function BreathalizerJournalScreen() {
                           marginTop: 4,
                         }}
                       >
-                        ხელმოწერა შენახულია
+                        {t('breathalyzer.sigSaved')}
                       </Text>
                     </View>
                   ) : (
@@ -940,7 +942,7 @@ export default function BreathalizerJournalScreen() {
                           fontSize: 13,
                         }}
                       >
-                        შეეხეთ ხელმოსაწერად
+                        {t('breathalyzer.tapToSign')}
                       </Text>
                     </View>
                   )}
@@ -953,7 +955,7 @@ export default function BreathalizerJournalScreen() {
                     if (!entryRefusedSig) setEntrySignature(null);
                   }}
                   style={styles.refuseRow}
-                  {...a11y('ხელმოწერაზე უარი', undefined, 'checkbox')}
+                  {...a11y(t('breathalyzer.refuseSignature'), undefined, 'checkbox')}
                 >
                   <View
                     style={[
@@ -969,13 +971,13 @@ export default function BreathalizerJournalScreen() {
                     )}
                   </View>
                   <Text style={styles.refuseText}>
-                    ხელმოწერაზე უარი
+                    {t('breathalyzer.refuseSignature')}
                   </Text>
                 </Pressable>
 
                 {entryAttempted && !canSaveEntry && (
                   <Text style={styles.inlineError}>
-                    საჭიროა ხელმოწერა ან უარის მონიშვნა
+                    {t('breathalyzer.sigOrRefuseRequired')}
                   </Text>
                 )}
               </View>
@@ -991,7 +993,7 @@ export default function BreathalizerJournalScreen() {
           >
             {addStep < 4 ? (
               <Button
-                title="შემდეგი →"
+                title={t('breathalyzer.nextStep')}
                 size="lg"
                 onPress={() =>
                   entryGuard(
@@ -1006,7 +1008,7 @@ export default function BreathalizerJournalScreen() {
               />
             ) : (
               <Button
-                title="შენახვა"
+                title={t('common.save')}
                 size="lg"
                 onPress={() => entryGuard(canSaveEntry, saveEntry)}
                 loading={savingEntry}
@@ -1034,11 +1036,11 @@ export default function BreathalizerJournalScreen() {
               onPress={() => setShowCloseShift(false)}
               hitSlop={12}
               style={styles.modalBackBtn}
-              {...a11y('გაუქმება', undefined, 'button')}
+              {...a11y(t('common.cancel'), undefined, 'button')}
             >
               <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
             </Pressable>
-            <Text style={styles.modalTitle}>ცვლის დასრულება</Text>
+            <Text style={styles.modalTitle}>{t('breathalyzer.shiftEnd')}</Text>
             <View style={{ width: 36 }} />
           </View>
 
@@ -1051,7 +1053,7 @@ export default function BreathalizerJournalScreen() {
             {log && (
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>
-                  სულ ტესტირებულია: {log.entries.length} პირი
+                  {t('breathalyzer.totalTested', { count: log.entries.length })}
                 </Text>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryChip}>
@@ -1092,13 +1094,13 @@ export default function BreathalizerJournalScreen() {
             )}
 
             <FloatingLabelInput
-              label="პასუხისმგებელი პირი"
+              label={t('breathalyzer.responsiblePerson')}
               required
               value={respName}
               onChangeText={setRespName}
               error={
                 closeAttempted && !respName.trim()
-                  ? 'სავალდებულო ველი'
+                  ? t('errors.requiredField')
                   : undefined
               }
             />
@@ -1112,7 +1114,7 @@ export default function BreathalizerJournalScreen() {
                 styles.sigPlaceholder,
                 respSig ? { borderColor: theme.colors.accent } : {},
               ]}
-              {...a11y('ხელმოწერა', 'ხელმოწერის დამატება', 'button')}
+              {...a11y(t('breathalyzer.stepSignature'), t('a11y.saveSignatureHint'), 'button')}
             >
               {respSig ? (
                 <View style={styles.sigDone}>
@@ -1159,7 +1161,7 @@ export default function BreathalizerJournalScreen() {
             ]}
           >
             <Button
-              title="დასრულება და PDF გენერაცია"
+              title={t('breathalyzer.finishAndPdf')}
               size="lg"
               onPress={() => closeGuard(!!respName.trim(), closeShift)}
               loading={closingShift}
@@ -1196,11 +1198,13 @@ function EntryRow({
   index,
   theme,
   styles,
+  t,
 }: {
   entry: BLEntry;
   index: number;
   theme: any;
   styles: ReturnType<typeof getStyles>;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const colors = BL_RESULT_COLORS[entry.resultStatus];
   const label =
@@ -1223,7 +1227,7 @@ function EntryRow({
       {/* Name + position */}
       <View style={{ flex: 1 }}>
         {entry.testType === 'repeat' && (
-          <Text style={styles.repeatLabelSmall}>↩ განმეორებითი</Text>
+          <Text style={styles.repeatLabelSmall}>{t('breathalyzer.repeatTestType')}</Text>
         )}
         <Text style={styles.entryName}>{entry.personName}</Text>
         <Text style={styles.entryPos}>

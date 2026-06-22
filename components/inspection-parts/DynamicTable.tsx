@@ -1,6 +1,7 @@
 import { memo, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CirclePlus, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
@@ -33,6 +34,7 @@ export function DynamicTable({
   minRows = 0,
   footer,
 }: DynamicTableProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -66,7 +68,7 @@ export function DynamicTable({
       ))}
 
       <Button
-        title="სტრიქონის დამატება"
+        title={t('generalEquipment.addRow')}
         variant="ghost"
         size="sm"
         leftIcon={CirclePlus}
@@ -98,6 +100,7 @@ const DynamicTableRow = memo(function DynamicTableRow({
   onChange,
   onDelete,
 }: RowProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -111,7 +114,7 @@ const DynamicTableRow = memo(function DynamicTableRow({
           <IconButton
             icon={X}
             onPress={onDelete}
-            a11yLabel="სტრიქონის წაშლა"
+            a11yLabel={t('generalEquipment.deleteRow')}
             variant="danger"
             size="sm"
           />

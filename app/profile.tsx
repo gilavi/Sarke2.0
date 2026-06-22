@@ -38,9 +38,11 @@ import { friendlyError } from '../lib/errorMap';
 import { a11y } from '../lib/accessibility';
 import { updateProfile, deleteAccount } from '../lib/profileService';
 import { useSubmitGuard } from '../hooks/useSubmitGuard';
+import { useTranslation } from 'react-i18next';
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
@@ -68,7 +70,7 @@ export default function ProfileScreen() {
     try {
       await updateProfile(userId, firstName.trim(), lastName.trim());
       await refreshUser();
-      toast.success('პროფილი განახლდა');
+      toast.success(t('profile.updated'));
       router.back();
     } catch (e) {
       toast.error(friendlyError(e));
@@ -80,19 +82,19 @@ export default function ProfileScreen() {
   const handleDelete = () => {
     if (deleting) return;
     Alert.alert(
-      'ანგარიშის წაშლა',
-      'დარწმუნებული ხართ? ეს მოქმედება შეუქცევადია.',
+      t('profile.deleteConfirmTitle'),
+      t('profile.deleteConfirmBody'),
       [
-        { text: 'უკან', style: 'cancel' },
+        { text: t('common.back'), style: 'cancel' },
         {
-          text: 'წაშლა',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             setDeleting(true);
             try {
               await deleteAccount();
               await signOut();
-              toast.success('ანგარიში წაიშალა');
+              toast.success(t('profile.deleted'));
               router.replace('/(auth)/login');
             } catch (e) {
               setDeleting(false);
@@ -106,7 +108,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Stack.Screen options={{ headerShown: true, title: 'პროფილი', headerBackTitle: 'უკან' }} />
+      <Stack.Screen options={{ headerShown: true, title: t('profile.title'), headerBackTitle: t('common.back') }} />
 
       <KeyboardSafeArea headerHeight={0} contentStyle={styles.content}>
         <ScrollView
@@ -117,31 +119,31 @@ export default function ProfileScreen() {
           {/* Name fields */}
           <View style={{ gap: 12 }}>
             <FloatingLabelInput
-              label="სახელი"
+              label={t('auth.firstName')}
               value={firstName}
               onChangeText={setFirstName}
               editable={!busy && !deleting}
               autoComplete="name-given"
               textContentType="givenName"
               required
-              error={attempted && !firstName.trim() ? 'სავალდებულო ველი' : undefined}
+              error={attempted && !firstName.trim() ? t('common.requiredField') : undefined}
             />
             <FloatingLabelInput
-              label="გვარი"
+              label={t('auth.lastName')}
               value={lastName}
               onChangeText={setLastName}
               editable={!busy && !deleting}
               autoComplete="name-family"
               textContentType="familyName"
               required
-              error={attempted && !lastName.trim() ? 'სავალდებულო ველი' : undefined}
+              error={attempted && !lastName.trim() ? t('common.requiredField') : undefined}
             />
-            <Text style={styles.helperText}>ელ-ფოსტა: {user?.email ?? '-'}</Text>
+            <Text style={styles.helperText}>{t('profile.emailDisplay', { email: user?.email ?? '-' })}</Text>
           </View>
 
           {/* Save button */}
           <Button
-            title="შენახვა"
+            title={t('common.save')}
             onPress={() => guard(!!firstName.trim() && !!lastName.trim(), handleSave)}
             disabled={busy}
             loading={busy}
@@ -156,7 +158,7 @@ export default function ProfileScreen() {
             {...a11y('პაროლის შეცვლა', undefined, 'button')}
           >
             <Key size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.rowLabel}>პაროლის შეცვლა</Text>
+            <Text style={styles.rowLabel}>{t('more.changePassword')}</Text>
             <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
           </Pressable>
 
@@ -174,7 +176,7 @@ export default function ProfileScreen() {
             ) : (
               <Trash2 size={18} color={theme.colors.danger} strokeWidth={1.5} />
             )}
-            <Text style={styles.deleteLabel}>ანგარიშის წაშლა</Text>
+            <Text style={styles.deleteLabel}>{t('profile.deleteAccountLabel')}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardSafeArea>

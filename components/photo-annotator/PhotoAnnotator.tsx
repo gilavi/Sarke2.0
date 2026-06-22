@@ -22,6 +22,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle as SvgCircle, G, Line, Path, Polygon, Rect, Text as SvgText } from 'react-native-svg';
 import { ArrowRight, Check, Circle, Move, Pencil, Square, Trash2, Type, Undo2, X } from 'lucide-react-native';
@@ -41,6 +42,7 @@ import { getstyles, getmodalStyles } from './styles';
 
 export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnnotatorProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const modalStyles = useMemo(() => getmodalStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
@@ -220,10 +222,10 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   }, []);
 
   const clearAll = useCallback(() => {
-    Alert.alert('ყველა მონიშვნის წაშლა', 'დარწმუნებული ხართ?', [
-      { text: 'გაუქმება', style: 'cancel' },
+    Alert.alert(t('photoAnnotator.clearTitle'), t('photoAnnotator.clearBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'წაშლა',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
           setAnnotations([]);
@@ -231,7 +233,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         },
       },
     ]);
-  }, []);
+  }, [t]);
 
   const addTextAnnotation = useCallback(() => {
     if (!textInput.trim()) {
@@ -270,7 +272,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
       });
       onSave(uri);
     } catch (e) {
-      Alert.alert('შენახვა ვერ მოხერხდა', 'სცადეთ თავიდან');
+      Alert.alert(t('photoAnnotator.saveFailed'), t('photoAnnotator.saveTryAgain'));
     } finally {
       setSaving(false);
     }
@@ -398,11 +400,11 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     <SafeAreaView style={styles.screen} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y('გაუქმება', 'შეეხეთ მონიშვნის გასაუქმებლად', 'button')}>
+        <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelA11yHint'), 'button')}>
           <X size={26} color={theme.colors.ink} strokeWidth={1.5} />
         </Pressable>
-        <Text style={styles.headerTitle}>ფოტოს მონიშვნა</Text>
-        <Pressable onPress={save} disabled={saving} hitSlop={12} style={styles.headerBtn} {...a11y('შენახვა', 'შეეხეთ დახატული ფოტოს შესანახად', 'button')}>
+        <Text style={styles.headerTitle}>{t('photoAnnotator.headerTitle')}</Text>
+        <Pressable onPress={save} disabled={saving} hitSlop={12} style={styles.headerBtn} {...a11y(t('common.save'), t('photoAnnotator.saveA11yHint'), 'button')}>
           {saving ? (
             <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>...</Text>
           ) : (
@@ -468,7 +470,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
                   { backgroundColor: c.value },
                   color === c.value && styles.colorBtnActive,
                 ]}
-                {...a11y(`ფერი: ${c.label}`, 'შეეხეთ ამ ფერის ასარჩევად', 'button')}
+                {...a11y(`${t('photoAnnotator.colorA11yPrefix')}${c.label}`, t('photoAnnotator.colorA11yHint'), 'button')}
               >
                 {c.value === '#FFFFFF' && <View style={styles.whiteBtnRing} />}
               </Pressable>
@@ -484,7 +486,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
                 key={key}
                 onPress={() => setTool(key)}
                 style={[styles.toolBtn, tool === key && styles.toolBtnActive]}
-                {...a11y(`ხელსაწყო: ${key}`, 'შეეხეთ ამ ხელსაწყოს ასარჩევად', 'button')}
+                {...a11y(`${t('photoAnnotator.toolA11yPrefix')}${key}`, t('photoAnnotator.toolA11yHint'), 'button')}
               >
                 <Icon
                   size={22}
@@ -494,14 +496,14 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               </Pressable>
             ))}
             <View style={styles.divider} />
-            <Pressable onPress={undo} disabled={annotations.length === 0} style={styles.toolBtn} {...a11y('უკან დაბრუნება', 'შეეხეთ ბოლო ნაბიჯის გასაუქმებლად', 'button')}>
+            <Pressable onPress={undo} disabled={annotations.length === 0} style={styles.toolBtn} {...a11y(t('photoAnnotator.undoA11y'), t('photoAnnotator.undoA11yHint'), 'button')}>
               <Undo2
                 size={22}
                 color={annotations.length === 0 ? theme.colors.hairline : theme.colors.ink}
                 strokeWidth={1.5}
               />
             </Pressable>
-            <Pressable onPress={clearAll} style={styles.toolBtn} {...a11y('ყველაფრის წაშლა', 'შეეხეთ ყველა მონიშვნის წასაშლელად', 'button')}>
+            <Pressable onPress={clearAll} style={styles.toolBtn} {...a11y(t('photoAnnotator.clearAllA11y'), t('photoAnnotator.clearAllA11yHint'), 'button')}>
               <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.5} />
             </Pressable>
           </ScrollView>
@@ -516,7 +518,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
                 onPress={() => setWidth(w)}
                 hitSlop={4}
                 style={[styles.widthBtn, width === w && styles.widthBtnActive]}
-                {...a11y(`სისქე: ${w}px`, 'შეეხეთ ამ სისქის ასარჩევად', 'button')}
+                {...a11y(`${t('photoAnnotator.widthA11yPrefix')}${w}px`, t('photoAnnotator.widthA11yHint'), 'button')}
               >
                 <View
                   style={{
@@ -535,8 +537,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         </View>
 
         {/* Save button */}
-        <Pressable onPress={save} disabled={saving} style={styles.saveBtn} {...a11y('შენახვა', 'შეეხეთ დახატული ფოტოს შესანახად', 'button')}>
-          <Text style={styles.saveBtnText}>{saving ? 'ინახება...' : 'შენახვა'}</Text>
+        <Pressable onPress={save} disabled={saving} style={styles.saveBtn} {...a11y(t('common.save'), t('photoAnnotator.saveA11yHint'), 'button')}>
+          <Text style={styles.saveBtnText}>{saving ? t('photoAnnotator.saving') : t('common.save')}</Text>
         </Pressable>
       </View>
 
@@ -551,7 +553,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
           <Pressable onPress={() => {}}>
             <View style={modalStyles.card}>
             <FloatingLabelInput
-              label="ტექსტის დამატება"
+              label={t('photoAnnotator.addText')}
               value={textInput}
               onChangeText={setTextInput}
               maxLength={60}
@@ -559,11 +561,11 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
               style={{ marginBottom: 0 }}
             />
             <View style={modalStyles.actions}>
-              <Pressable onPress={() => setTextModalVisible(false)} style={modalStyles.cancelBtn} {...a11y('გაუქმება', 'შეეხეთ ტექსტის დამატების გასაუქმებლად', 'button')}>
-                <Text style={modalStyles.cancelText}>გაუქმება</Text>
+              <Pressable onPress={() => setTextModalVisible(false)} style={modalStyles.cancelBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelTextA11yHint'), 'button')}>
+                <Text style={modalStyles.cancelText}>{t('common.cancel')}</Text>
               </Pressable>
-              <Pressable onPress={addTextAnnotation} style={modalStyles.confirmBtn} {...a11y('ტექსტის დამატება', 'შეეხეთ ტექსტის ფოტოზე დასამატებლად', 'button')}>
-                <Text style={modalStyles.confirmText}>დამატება</Text>
+              <Pressable onPress={addTextAnnotation} style={modalStyles.confirmBtn} {...a11y(t('photoAnnotator.addText'), t('photoAnnotator.addTextA11yHint'), 'button')}>
+                <Text style={modalStyles.confirmText}>{t('common.add')}</Text>
               </Pressable>
             </View>
           </View>

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Camera, Check, CircleX, Trash2, TriangleAlert, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { SuggestionPills } from '../SuggestionPills';
@@ -36,6 +37,7 @@ export const EquipmentRow = memo(function EquipmentRow({
   onAddPhoto,
   onDeletePhoto,
 }: Props) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -78,7 +80,7 @@ export const EquipmentRow = memo(function EquipmentRow({
               style={styles.deleteBtn}
               onPress={onDelete}
               hitSlop={10}
-              {...a11y('სტრიქონის წაშლა', undefined, 'button')}
+              {...a11y(t('generalEquipment.deleteRow'), undefined, 'button')}
             >
               <Trash2 size={16} color={theme.colors.danger} strokeWidth={1.5} />
             </Pressable>
@@ -87,7 +89,7 @@ export const EquipmentRow = memo(function EquipmentRow({
 
         {/* Name field */}
         <FloatingLabelInput
-          label="დასახელება *"
+          label={t('generalEquipment.nameLabel') + ' *'}
           value={nameDraft}
           onChangeText={text => {
             setNameDraft(text);
@@ -113,7 +115,7 @@ export const EquipmentRow = memo(function EquipmentRow({
         <View style={styles.twoCol}>
           <View style={styles.colHalf}>
             <FloatingLabelInput
-              label="მარკა / მოდელი"
+              label={t('generalEquipment.modelLabel')}
               value={modelDraft}
               onChangeText={text => {
                 setModelDraft(text);
@@ -137,7 +139,7 @@ export const EquipmentRow = memo(function EquipmentRow({
           </View>
           <View style={styles.colHalf}>
             <FloatingLabelInput
-              label="სერ. ნომერი"
+              label={t('generalEquipment.serialLabel')}
               value={serialDraft}
               onChangeText={text => {
                 setSerialDraft(text);
@@ -167,30 +169,30 @@ export const EquipmentRow = memo(function EquipmentRow({
             style={[styles.chip, goodActive ? styles.chipGoodActive : styles.chipGood]}
             onPress={() => setCondition('good')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('კარგი', '✓ კარგია', 'button', { selected: goodActive })}
+            {...a11y(t('generalEquipment.conditionGood'), t('generalEquipment.conditionGoodA11y'), 'button', { selected: goodActive })}
           >
             <Check size={13} color={goodActive ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
-            <Text style={[styles.chipLabel, goodActive ? styles.chipLabelGoodActive : styles.chipLabelGood]}>კარგი</Text>
+            <Text style={[styles.chipLabel, goodActive ? styles.chipLabelGoodActive : styles.chipLabelGood]}>{t('generalEquipment.conditionGood')}</Text>
           </Pressable>
 
           <Pressable
             style={[styles.chip, warnActive ? styles.chipWarnActive : styles.chipWarn]}
             onPress={() => setCondition('needs_service')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('საჭ. მომსახ.', '⚠ საჭ. მომსახ.', 'button', { selected: warnActive })}
+            {...a11y(t('generalEquipment.conditionService'), t('generalEquipment.conditionServiceFull'), 'button', { selected: warnActive })}
           >
             <TriangleAlert size={12} color={warnActive ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
-            <Text style={[styles.chipLabel, warnActive ? styles.chipLabelWarnActive : styles.chipLabelWarn]}>საჭ. მომს.</Text>
+            <Text style={[styles.chipLabel, warnActive ? styles.chipLabelWarnActive : styles.chipLabelWarn]}>{t('generalEquipment.conditionService')}</Text>
           </Pressable>
 
           <Pressable
             style={[styles.chip, badActive ? styles.chipBadActive : styles.chipBad]}
             onPress={() => setCondition('unusable')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('გამოუსადეგ.', '✗ გამოუსადეგარია', 'button', { selected: badActive })}
+            {...a11y(t('generalEquipment.conditionUnusable'), t('generalEquipment.conditionUnusableFull'), 'button', { selected: badActive })}
           >
             <X size={13} color={badActive ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
-            <Text style={[styles.chipLabel, badActive ? styles.chipLabelBadActive : styles.chipLabelBad]}>გამოუსადეგ.</Text>
+            <Text style={[styles.chipLabel, badActive ? styles.chipLabelBadActive : styles.chipLabelBad]}>{t('generalEquipment.conditionUnusable')}</Text>
           </Pressable>
         </View>
       </View>
@@ -203,7 +205,7 @@ export const EquipmentRow = memo(function EquipmentRow({
           style={[styles.accordion, accordionStyle]}
         >
           <FloatingLabelInput
-            label="შენიშვნა *"
+            label={t('generalEquipment.noteLabel') + ' *'}
             value={noteDraft}
             onChangeText={text => {
               setNoteDraft(text);
@@ -224,10 +226,10 @@ export const EquipmentRow = memo(function EquipmentRow({
             <Pressable
               style={styles.addPhoto}
               onPress={onAddPhoto}
-              {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
+              {...a11y(t('generalEquipment.addPhotoA11y'), t('generalEquipment.addPhotoHint'), 'button')}
             >
               <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
-              <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
+              <Text style={styles.addPhotoLabel}>{t('generalEquipment.addPhoto')}</Text>
             </Pressable>
           </ScrollView>
         </Animated.View>
@@ -243,6 +245,7 @@ const PhotoThumb = memo(function PhotoThumb({
   path: string;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const [uri, setUri] = useState('');
@@ -254,7 +257,7 @@ const PhotoThumb = memo(function PhotoThumb({
   return (
     <View style={styles.thumb}>
       <Image source={{ uri }} style={styles.thumbImg} contentFit="cover" transition={200} />
-      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y('ფოტოს წაშლა', undefined, 'button')}>
+      <Pressable style={styles.thumbDelete} onPress={onDelete} hitSlop={8} {...a11y(t('generalEquipment.deletePhotoA11y'), undefined, 'button')}>
         <CircleX size={18} color={theme.colors.white} strokeWidth={1.5} />
       </Pressable>
     </View>

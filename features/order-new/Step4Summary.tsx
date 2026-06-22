@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import type { OrderDocumentType, Project } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
@@ -22,13 +23,15 @@ export function Step4Summary({
   project: Project | null;
   s: OrderStyles;
 }) {
+  const { t } = useTranslation();
+
   const orderDate = new Date(form.orderDate).toLocaleDateString('ka-GE', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
 
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>შეჯამება</Text>
+      <Text style={s.stepTitle}>{t('orders.summary')}</Text>
 
       <View style={s.summaryCard}>
         {docType ? (
@@ -36,73 +39,73 @@ export function Step4Summary({
             {ORDER_DOCUMENT_TYPE_LABEL[docType]}
           </Text>
         ) : null}
-        <SummaryRow label="ბრძანება №" value={form.orderNumber || '-'} s={s} />
-        <SummaryRow label="ქალაქი" value={form.city || '-'} s={s} />
-        <SummaryRow label="თარიღი" value={orderDate} s={s} />
-        <SummaryRow label="კომპანია" value={form.companyName || '-'} s={s} />
+        <SummaryRow label={t('orders.orderNumberShort')} value={form.orderNumber || '-'} s={s} />
+        <SummaryRow label={t('orders.city')} value={form.city || '-'} s={s} />
+        <SummaryRow label={t('common.date')} value={orderDate} s={s} />
+        <SummaryRow label={t('common.company')} value={form.companyName || '-'} s={s} />
         {form.identificationCode ? (
-          <SummaryRow label="კოდი" value={form.identificationCode} s={s} />
+          <SummaryRow label={t('orders.code')} value={form.identificationCode} s={s} />
         ) : null}
         {form.legalAddress ? (
-          <SummaryRow label="მისამართი" value={form.legalAddress} s={s} />
+          <SummaryRow label={t('common.address')} value={form.legalAddress} s={s} />
         ) : null}
-        <SummaryRow label="დირექტორი" value={form.directorName || '-'} s={s} />
-        <SummaryRow label="ობიექტი" value={form.facilityName || '-'} s={s} />
+        <SummaryRow label={t('orders.director')} value={form.directorName || '-'} s={s} />
+        <SummaryRow label={t('orders.object')} value={form.facilityName || '-'} s={s} />
 
         {docType === 'labor_safety_specialist' ? (
           <>
-            <SummaryRow label="სპეციალისტი" value={form.specialistName || '-'} s={s} />
-            <SummaryRow label="პ/ნ" value={form.specialistPersonalId || '-'} s={s} />
-            <SummaryRow label="სერტიფიკატი №" value={form.certificateNumber || '-'} s={s} />
+            <SummaryRow label={t('orders.specialist')} value={form.specialistName || '-'} s={s} />
+            <SummaryRow label={t('orders.idNumber')} value={form.specialistPersonalId || '-'} s={s} />
+            <SummaryRow label={t('orders.certNumber')} value={form.certificateNumber || '-'} s={s} />
           </>
         ) : docType === 'fire_safety_order' ? (
           <>
-            <SummaryRow label="დანიშნული პირი" value={form.appointedName || '-'} s={s} />
-            <SummaryRow label="ტელეფონი" value={form.appointedPhone || '-'} s={s} />
-            <SummaryRow label="ობიექტი" value={form.objectName || '-'} s={s} />
-            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '-'} s={s} />
-            <SummaryRow label="პასუხისმ. ✓" value={form.appointedSignature ? 'ხელმოწერილია' : '-'} s={s} />
+            <SummaryRow label={t('orders.assignedPerson')} value={form.appointedName || '-'} s={s} />
+            <SummaryRow label={t('common.phone')} value={form.appointedPhone || '-'} s={s} />
+            <SummaryRow label={t('orders.object')} value={form.objectName || '-'} s={s} />
+            <SummaryRow label={t('orders.directorSigned')} value={form.directorSignature ? t('orders.signed') : '-'} s={s} />
+            <SummaryRow label={t('orders.responsibleSigned')} value={form.appointedSignature ? t('orders.signed') : '-'} s={s} />
           </>
         ) : docType === 'fire_safety_order_enterprise' ? (
           <>
-            <SummaryRow label="დანიშნული პირი" value={form.appointedName || '-'} s={s} />
-            <SummaryRow label="თანამდებობა" value={form.appointedPosition || '-'} s={s} />
-            <SummaryRow label="პ/ნ" value={form.appointedIdNumber || '-'} s={s} />
-            <SummaryRow label="ტელეფონი" value={form.appointedPhone || '-'} s={s} />
-            <SummaryRow label="ობიექტი" value={form.objectName || '-'} s={s} />
-            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '-'} s={s} />
-            <SummaryRow label="პასუხისმ. ✓" value={form.appointedSignature ? 'ხელმოწერილია' : '-'} s={s} />
+            <SummaryRow label={t('orders.assignedPerson')} value={form.appointedName || '-'} s={s} />
+            <SummaryRow label={t('orders.jobTitle')} value={form.appointedPosition || '-'} s={s} />
+            <SummaryRow label={t('orders.idNumber')} value={form.appointedIdNumber || '-'} s={s} />
+            <SummaryRow label={t('common.phone')} value={form.appointedPhone || '-'} s={s} />
+            <SummaryRow label={t('orders.object')} value={form.objectName || '-'} s={s} />
+            <SummaryRow label={t('orders.directorSigned')} value={form.directorSignature ? t('orders.signed') : '-'} s={s} />
+            <SummaryRow label={t('orders.responsibleSigned')} value={form.appointedSignature ? t('orders.signed') : '-'} s={s} />
           </>
         ) : docType === 'crane_operator_order' ? (
           <>
-            <SummaryRow label="ოპერატორი" value={form.craneOperatorName || '-'} s={s} />
-            <SummaryRow label="პ/ნ" value={form.craneOperatorPersonalId || '-'} s={s} />
-            <SummaryRow label="სერტ. №" value={form.craneOperatorCertNumber || '-'} s={s} />
-            <SummaryRow label="ამწე" value={form.craneModel || '-'} s={s} />
-            {form.craneMaxLoad ? <SummaryRow label="ტვირთი" value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
-            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '-'} s={s} />
-            <SummaryRow label="ოპერატორი ✓" value={form.operatorSignature ? 'ხელმოწერილია' : '-'} s={s} />
+            <SummaryRow label={t('orders.operator')} value={form.craneOperatorName || '-'} s={s} />
+            <SummaryRow label={t('orders.idNumber')} value={form.craneOperatorPersonalId || '-'} s={s} />
+            <SummaryRow label={t('orders.certNumberShort')} value={form.craneOperatorCertNumber || '-'} s={s} />
+            <SummaryRow label={t('orders.crane')} value={form.craneModel || '-'} s={s} />
+            {form.craneMaxLoad ? <SummaryRow label={t('orders.load')} value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
+            <SummaryRow label={t('orders.directorSigned')} value={form.directorSignature ? t('orders.signed') : '-'} s={s} />
+            <SummaryRow label={t('orders.operatorSigned')} value={form.operatorSignature ? t('orders.signed') : '-'} s={s} />
           </>
         ) : docType === 'crane_technical_order' ? (
           <>
-            <SummaryRow label="სპეციალისტი" value={form.craneOperatorName || '-'} s={s} />
-            <SummaryRow label="პ/ნ" value={form.craneOperatorPersonalId || '-'} s={s} />
-            <SummaryRow label="სერტ. №" value={form.craneOperatorCertNumber || '-'} s={s} />
-            <SummaryRow label="ამწე" value={form.craneModel || '-'} s={s} />
-            {form.craneMaxLoad ? <SummaryRow label="ტვირთი" value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
-            <SummaryRow label="დირექტორი ✓" value={form.directorSignature ? 'ხელმოწერილია' : '-'} s={s} />
-            <SummaryRow label="სპეციალისტი ✓" value={form.operatorSignature ? 'ხელმოწერილია' : '-'} s={s} />
+            <SummaryRow label={t('orders.specialist')} value={form.craneOperatorName || '-'} s={s} />
+            <SummaryRow label={t('orders.idNumber')} value={form.craneOperatorPersonalId || '-'} s={s} />
+            <SummaryRow label={t('orders.certNumberShort')} value={form.craneOperatorCertNumber || '-'} s={s} />
+            <SummaryRow label={t('orders.crane')} value={form.craneModel || '-'} s={s} />
+            {form.craneMaxLoad ? <SummaryRow label={t('orders.load')} value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
+            <SummaryRow label={t('orders.directorSigned')} value={form.directorSignature ? t('orders.signed') : '-'} s={s} />
+            <SummaryRow label={t('orders.specialistSigned')} value={form.operatorSignature ? t('orders.signed') : '-'} s={s} />
           </>
         ) : (
           <>
-            <SummaryRow label="პასუხისმგებელი" value={form.responsiblePersonName || '-'} s={s} />
-            <SummaryRow label="თანამდებობა" value={form.responsiblePersonPosition || '-'} s={s} />
-            <SummaryRow label="პ/ნ" value={form.responsiblePersonPersonalId || '-'} s={s} />
+            <SummaryRow label={t('orders.responsible')} value={form.responsiblePersonName || '-'} s={s} />
+            <SummaryRow label={t('orders.jobTitle')} value={form.responsiblePersonPosition || '-'} s={s} />
+            <SummaryRow label={t('orders.idNumber')} value={form.responsiblePersonPersonalId || '-'} s={s} />
           </>
         )}
 
         {project ? (
-          <SummaryRow label="პროექტი" value={project.name} s={s} />
+          <SummaryRow label={t('common.project')} value={project.name} s={s} />
         ) : null}
       </View>
     </View>

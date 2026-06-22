@@ -1,6 +1,9 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 
+// react-native-reanimated and react-native-worklets are aliased in vitest.config.ts
+// to their stubs/mocks so TurboModule init crashes don't occur in jsdom.
+
 // jsdom does not implement matchMedia or ResizeObserver; mock them for component
 // tests that check media queries or observe element sizes.
 Object.defineProperty(window, 'matchMedia', {

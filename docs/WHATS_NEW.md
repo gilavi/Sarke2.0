@@ -1,8 +1,21 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-22 | Branch: `develop`
+**Updated:** 2026-06-22 | Branch: `main`
 
 ---
+
+## 2026-06-22 — Home: pull-to-refresh wired up
+
+The Home tab now supports **pull-to-refresh**. A themed `RefreshControl` (refetching projects, templates, recent inspections, and qualifications) was already built on the screen but had never been attached to the scroll view — so dragging down did nothing. It's now passed to `Animated.ScrollView` via `refreshControl`. This also gives users a manual way to recover if a query stalls and the section skeletons would otherwise stay up. OTA-delivered.
+
+## 2026-06-22 — Mobile app: full i18n coverage
+
+Every hardcoded Georgian UI string in the mobile app is now wired through `react-i18next`, completing full translation coverage.
+
+- **~993 keys** across all namespaces (`common`, `auth`, `home`, `projects`, `inspections`, `qualifications`, `briefings`, `orders`, `more`, `incidents`, `profile`, `photoPicker`, `generalEquipment`, `harnessList`, `wizard`, `cargoPlatform`, `inputs`, `reports`, `slingsId`, `breathalyzer`, `inspectionDone`, `flowProjectPicker`, `photoAnnotator`) — all present in both `locales/ka.json` and `locales/en.json`.
+- **34 source files** updated — hardcoded Georgian strings replaced with `t()` calls (`useTranslation` hook in React components, `i18n.t()` for plain utilities like `lib/projectLogo.ts`).
+- **CMS synced** — `scripts/seed-ui-strings.mjs` re-run; all new keys inserted into `public.ui_strings` so the text CMS shows them for live editing.
+- **OTA-delivered** — no App Store review required; the update ships via EAS OTA.
 
 ## 2026-06-22 — Web dashboard: Google sign-in
 

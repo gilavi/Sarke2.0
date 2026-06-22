@@ -10,6 +10,7 @@
 // "ინსპექცია". Keep that out of every user-facing string here.
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { FileText, Home } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -38,9 +39,6 @@ export type InspectionDoneViewProps = {
   onViewPdf: () => void;
 };
 
-const SUBTITLE =
-  'ყველა მონაცემი შენახულია. PDF რეპორტის ჩამოტვირთვა და ხელმოწერა შეგიძლიათ აქტის გვერდიდან.';
-
 export function InspectionDoneView({
   loading,
   loaded,
@@ -51,6 +49,7 @@ export function InspectionDoneView({
   conclusion,
   onViewPdf,
 }: InspectionDoneViewProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
@@ -66,13 +65,13 @@ export function InspectionDoneView({
 
   return (
     <SuccessScreen
-      title="შემოწმების აქტი შენახულია!"
-      subtitle={SUBTITLE}
-      primary={{ title: 'PDF-ის ნახვა', icon: FileText, onPress: onViewPdf }}
+      title={t('inspectionDone.title')}
+      subtitle={t('inspectionDone.description')}
+      primary={{ title: t('inspectionDone.viewPdf'), icon: FileText, onPress: onViewPdf }}
       actions={[
         {
           icon: Home,
-          title: 'მთავარ გვერდზე დაბრუნება',
+          title: t('inspectionDone.backHome'),
           onPress: () => router.replace('/(tabs)/home' as any),
         },
       ]}
@@ -89,7 +88,7 @@ export function InspectionDoneView({
         </SkeletonCard>
       ) : loaded ? (
         <Card>
-          <Text style={styles.eyebrow}>შეჯამება</Text>
+          <Text style={styles.eyebrow}>{t('inspectionDone.summaryLabel')}</Text>
           <Text style={styles.actTitle}>{typeLabel}</Text>
           {projectName ? <Text style={styles.meta}>{projectName}</Text> : null}
           {dateText ? <Text style={styles.meta}>{dateText}</Text> : null}

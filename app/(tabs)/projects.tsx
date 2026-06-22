@@ -115,8 +115,8 @@ export default function ProjectsScreen() {
   const onDelete = useCallback((project: Project) => {
     showActionSheet(
       {
-        title: 'დარწმუნებული ხართ?',
-        options: ['დიახ, წაშლა', 'გაუქმება'],
+        title: t('common.areYouSure'),
+        options: [t('projects.deleteConfirmYes'), t('common.cancel')],
         cancelButtonIndex: 1,
         destructiveButtonIndex: 0,
       },
@@ -279,8 +279,8 @@ export default function ProjectsScreen() {
       <FabButton
         ref={fabRef}
         onPress={() => setCreating(true)}
-        a11yLabel="ახალი პროექტი"
-        a11yHint="შეეხეთ ახალი პროექტის შესაქმნელად"
+        a11yLabel={t('projects.fabA11yLabel')}
+        a11yHint={t('projects.fabA11yHint')}
         style={{ bottom: insets.bottom + 56 + 16 }}
       />
 
@@ -378,7 +378,7 @@ function CreateProjectSheet({
         <Pressable
           style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
           onPress={() => mapVisible ? setMapVisible(false) : onClose()}
-          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
+          {...a11y(t('common.close'), t('projects.closeBackdrop'), 'button')}
         />
         {/* Card - marginBottom rides the iOS keyboard so the card stops exactly at the keyboard top */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>
@@ -404,7 +404,7 @@ function CreateProjectSheet({
                     onEdit={onPickLogo}
                   />
                   {logo ? (
-                    <Pressable onPress={onPickLogo} hitSlop={13} {...a11y(t('projects.changePhoto'), 'შეეხეთ ლოგოს ასარჩევად', 'button')}>
+                    <Pressable onPress={onPickLogo} hitSlop={13} {...a11y(t('projects.changePhoto'), t('projects.changePhotoHint'), 'button')}>
                       <A11yText size="sm" weight="medium" color={theme.colors.ink}>
                         {t('projects.changePhoto')}
                       </A11yText>
@@ -417,7 +417,7 @@ function CreateProjectSheet({
                   required
                   value={company}
                   onChangeText={setCompany}
-                  error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
+                  error={attempted && !company.trim() ? t('errors.requiredField') : undefined}
                   autoFocus
                 />
 
@@ -431,7 +431,7 @@ function CreateProjectSheet({
                 />
 
                 <FloatingLabelInput
-                  label="საკონტაქტო ტელეფონი"
+                  label={t('projects.contactPhone')}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
@@ -447,7 +447,7 @@ function CreateProjectSheet({
               <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingVertical: 12 }}>
                 <View style={{ width: 38 }} />
                 <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
-                  მდებარეობის არჩევა
+                  {t('projects.chooseLocation')}
                 </Text>
                 <HeaderCloseButton onPress={() => setMapVisible(false)} />
               </View>
@@ -482,6 +482,7 @@ function MapPickerInline({
   onCancel: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [pin, setPin] = useState<LatLng | null>(initialPin);
   const [address, setAddress] = useState(initialAddress);
@@ -537,17 +538,17 @@ function MapPickerInline({
       >
         {attempted && !pin ? (
           <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
-            აირჩიეთ მდებარეობა რუკაზე
+            {t('projects.mapPickError')}
           </Text>
         ) : null}
         <Button
-          title="დადასტურება"
+          title={t('common.confirm')}
           size="lg"
           onPress={handleConfirm}
         />
         <Pressable onPress={onCancel} style={{ alignSelf: 'center', paddingVertical: 8 }} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft }}>
-            გაუქმება
+            {t('common.cancel')}
           </Text>
         </Pressable>
       </View>
@@ -582,11 +583,12 @@ function projectStatusLine(
   stats: { drafts: number; completed: number } | undefined,
   overdue: number,
   theme: any,
+  t: (key: string, opts?: Record<string, unknown>) => string,
 ): { text: string; color: string } {
-  if (overdue > 0) return { text: `⚠ ${overdue} ვადაგადაცილებული`, color: theme.colors.danger };
-  if ((stats?.drafts ?? 0) > 0) return { text: `✎ ${stats!.drafts} დრაფტი`, color: theme.colors.warn };
-  if ((stats?.completed ?? 0) > 0) return { text: `✓ ${stats!.completed} დასრულებული`, color: theme.colors.inkSoft };
-  return { text: 'შემოწმება არ არის', color: theme.colors.inkFaint };
+  if (overdue > 0) return { text: t('projects.overdueCount', { count: overdue }), color: theme.colors.danger };
+  if ((stats?.drafts ?? 0) > 0) return { text: t('projects.draftsCountBadge', { count: stats!.drafts }), color: theme.colors.warn };
+  if ((stats?.completed ?? 0) > 0) return { text: t('projects.completedCountBadge', { count: stats!.completed }), color: theme.colors.inkSoft };
+  return { text: t('projects.noInspections'), color: theme.colors.inkFaint };
 }
 
 const ProjectRow = memo(function ProjectRow({
@@ -617,7 +619,7 @@ const ProjectRow = memo(function ProjectRow({
 
   const city = extractCity(project.address);
   const subLine = city || null;
-  const status = projectStatusLine(stats, overdue, theme);
+  const status = projectStatusLine(stats, overdue, theme, t);
 
   const renderRightActions = () => (
     <Pressable onPress={onDelete} style={styles.swipeDelete}>
@@ -721,6 +723,7 @@ function ProjectsMapView({
   onProjectOpen: (id: string) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const mappedProjects = useMemo(
@@ -838,7 +841,7 @@ function ProjectsMapView({
         >
           <MapPin size={14} color="#fff" strokeWidth={1.5} />
           <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-            {unmappedCount} პროექტს ლოკაცია არ აქვს
+            {t('projects.unmappedCount', { count: unmappedCount })}
           </Text>
         </Pressable>
       )}
@@ -898,9 +901,10 @@ function ProjectMapCard({
   bottomInset: number;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const city = extractCity(project.address);
   const subLine = city || null;
-  const status = projectStatusLine(stats, overdue, theme);
+  const status = projectStatusLine(stats, overdue, theme, t);
 
   return (
     <View
@@ -957,10 +961,10 @@ function ProjectMapCard({
             paddingHorizontal: 14,
             paddingVertical: 9,
           }}
-          {...a11y('გახსნა', 'პროექტის გახსნა', 'button')}
+          {...a11y(t('projects.openButton'), t('projects.tapForDetails'), 'button')}
         >
           <A11yText size="sm" weight="semibold" color={theme.colors.white}>
-            გახსნა →
+            {t('projects.openProject')}
           </A11yText>
         </Pressable>
       </View>
@@ -980,6 +984,7 @@ function UnmappedSheet({
   onOpen: (id: string) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -1011,10 +1016,10 @@ function UnmappedSheet({
           </View>
           <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
             <A11yText size="lg" weight="bold">
-              ლოკაციის გარეშე
+              {t('projects.noLocation')}
             </A11yText>
             <A11yText size="sm" color={theme.colors.inkSoft} style={{ marginTop: 2 }}>
-              ამ პროექტებს კოორდინატები არ აქვთ
+              {t('projects.unmappedSheetSubtitle')}
             </A11yText>
           </View>
           <FlatList
