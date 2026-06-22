@@ -25,6 +25,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Inline classic script runs before ES modules, so `global` is defined
+         before any chunk that accesses it (react-native-reanimated worklets). -->
+    <script>globalThis.global = globalThis;</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
