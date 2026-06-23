@@ -260,7 +260,8 @@
     "quickBriefing": "ინსტრუქტაჟი",
     "quickReport": "რეპორტი",
     "newLabel": "ახალი",
-    "stepLabel": "ნაბიჯი {{step}}"
+    "stepLabel": "ნაბიჯი {{step}}",
+    "lastDraft": "ბოლო დრაფტი"
   },
   "projects": {
     "title": "პროექტები",

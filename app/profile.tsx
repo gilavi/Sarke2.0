@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardSafeArea } from '../components/layout/KeyboardSafeArea';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { Stack, useRouter } from 'expo-router';
 import { Key, ChevronRight, Trash2 } from 'lucide-react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
@@ -108,7 +109,8 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Stack.Screen options={{ headerShown: true, title: t('profile.title'), headerBackTitle: t('common.back') }} />
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title={t('profile.title')} />
 
       <KeyboardSafeArea headerHeight={0} contentStyle={styles.content}>
         <ScrollView

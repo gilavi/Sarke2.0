@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { Button } from '../../components/ui';
-import { HeaderBackButton } from '../../components/HeaderBackButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { useTheme } from '../../lib/theme';
 import { SkeletonPreview } from '../../components/Skeleton';
@@ -146,21 +146,15 @@ export default function ReportDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          title: reportDisplayName(report?.title),
-          headerBackVisible: false,
-          headerLeft: () => <HeaderBackButton onPress={() => router.back()} />,
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.accent,
-          headerTitleStyle: { color: theme.colors.ink, fontWeight: '700', fontSize: 17 },
-          headerRight: () => (
-            <Pressable onPress={onDelete} hitSlop={12} style={{ marginRight: 8 }}>
-              <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
-            </Pressable>
-          ),
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader
+        title={reportDisplayName(report?.title)}
+        onBack={() => router.back()}
+        right={
+          <Pressable onPress={onDelete} hitSlop={12} style={{ paddingHorizontal: 4 }}>
+            <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
+          </Pressable>
+        }
       />
 
       <ScrollView

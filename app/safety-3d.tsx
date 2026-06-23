@@ -1,33 +1,19 @@
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { useRouter, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { Screen } from '../components/ui';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { useTheme } from '../lib/theme';
 import { useMemo } from 'react';
-import { ArrowLeft } from 'lucide-react-native';
-import { Pressable } from 'react-native';
 
 export default function Safety3DScreen() {
-  const router = useRouter();
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
-    <Screen>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: '3D Safety Guide',
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTitleStyle: { color: theme.colors.ink, fontWeight: '700' },
-          headerTintColor: theme.colors.accent,
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} style={styles.backBtn}>
-              <ArrowLeft size={24} color={theme.colors.accent} strokeWidth={1.5} />
-            </Pressable>
-          ),
-        }}
-      />
+    <Screen edges={[]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title="3D Safety Guide" />
       <View style={styles.container}>
         <WebView
           source={{ uri: 'https://gilavi.github.io/Sarke2.0/app/#/safety-standalone' }}
@@ -57,11 +43,6 @@ function getStyles(theme: any) {
     webview: {
       flex: 1,
       backgroundColor: theme.colors.background,
-    },
-    backBtn: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      marginLeft: -4,
     },
     loader: {
       ...StyleSheet.absoluteFillObject,

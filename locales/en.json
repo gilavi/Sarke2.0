@@ -259,7 +259,8 @@
     "quickBriefing": "Briefing",
     "quickReport": "Report",
     "newLabel": "New",
-    "stepLabel": "Step {{step}}"
+    "stepLabel": "Step {{step}}",
+    "lastDraft": "Last draft"
   },
   "projects": {
     "title": "Projects",

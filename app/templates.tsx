@@ -3,6 +3,7 @@ import { FlatList, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { Card, Screen } from '../components/ui';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { A11yText } from '../components/primitives/A11yText';
 import { RefreshControl } from '../components/primitives';
 import { Skeleton } from '../components/Skeleton';
@@ -64,8 +65,9 @@ export default function TemplatesScreen() {
   ), [handleHelpPress]);
 
   return (
-    <Screen edgeToEdge>
-      <Stack.Screen options={{ headerShown: true, title: 'შაბლონები' }} />
+    <Screen edgeToEdge edges={[]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title="შაბლონები" />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <FlatList
           data={templates}

@@ -21,12 +21,11 @@ import {
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { Trash2, CloudUpload, Pencil, ChevronRight, FileText, Plus } from 'lucide-react-native';
 import { Button } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
-import { HeaderBackButton } from '../../components/HeaderBackButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { haptic } from '../../lib/haptics';
 import { isExpiringSoon, qualificationsApi, storageApi } from '../../lib/services';
 import { qk, useQualifications } from '../../lib/apiHooks';
@@ -120,13 +119,7 @@ export default function QualificationsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: theme.colors.background }}>
-        <View style={qStyles.header}>
-          <HeaderBackButton />
-          <Text style={qStyles.headerTitle} numberOfLines={1}>{t('qualifications.title')}</Text>
-          <View style={qStyles.headerSpacer} />
-        </View>
-      </SafeAreaView>
+      <ScreenHeader title={t('qualifications.title')} />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 40, gap: 12 }}
@@ -374,21 +367,6 @@ const CARD_RADIUS = 16;
 
 function getqStyles(theme: any) {
   return StyleSheet.create({
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      gap: 8,
-    },
-    headerTitle: {
-      flex: 1,
-      textAlign: 'center',
-      fontSize: 17,
-      fontWeight: '700',
-      color: theme.colors.ink,
-    },
-    headerSpacer: { width: 38 },
     customRow: {
       flexDirection: 'row',
       alignItems: 'center',

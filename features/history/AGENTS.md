@@ -20,7 +20,10 @@ all" links land here.
 - `InspectionHistoryTab.tsx` — the Inspections tab; keeps swipe-to-delete and
   the certificate-count badge. Completed-only (no status dot).
 - `RecordHistoryList.tsx` — generic per-tab scaffold: three-state guard,
-  per-type empty copy, pull-to-refresh, FlatList of rows.
+  per-type empty copy, pull-to-refresh, FlatList of rows. Used by the Orders /
+  Incidents / Briefings tabs. **The Reports tab instead uses
+  `ReportCardGrid`** (from `features/records`) — a 2-column grid of cover-photo
+  cards rather than rows.
 
 ## Gotchas
 

@@ -1,26 +1,27 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '../../lib/apiHooks';
 import {
   Animated,
   Dimensions,
+  FlatList,
   Keyboard,
   Modal,
   Pressable,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { RefreshControl } from '../../components/primitives';
 import { useSheetKeyboardMargin } from '../../lib/useSheetKeyboardMargin';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { List, LayoutGrid, MapPin, Trash2, ChevronRight, Building2 } from 'lucide-react-native';
-import { FlatList } from 'react-native';
+import { MapPin, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
+import { ProjectCard } from '../../components/home/ProjectCard';
 import { pickProjectLogo } from '../../lib/projectLogo';
-import { Button, Card } from '../../components/ui';
+import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { GeocodingAddressInput } from '../../components/inputs/GeocodingAddressInput';
 import { HeaderCloseButton } from '../../components/HeaderCloseButton';
@@ -28,13 +29,10 @@ import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { SheetLayout } from '../../components/SheetLayout';
-import { PressBounce } from '../../components/animations/PressBounce';
 import { a11y } from '../../lib/accessibility';
 import EmptyState from '../../components/EmptyState';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
-import { MapPreview } from '../../components/MapPreview';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { projectsApi } from '../../lib/services';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
@@ -45,8 +43,6 @@ import type { Project } from '../../types/models';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
 
-type Stats = Record<string, { drafts: number; completed: number }>;
-
 export default function ProjectsScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -56,59 +52,27 @@ export default function ProjectsScreen() {
   const showActionSheet = useBottomSheet();
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'map'>('list');
-  const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
   const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    AsyncStorage.getItem('projects_view_pref').then(v => {
-      if (v === 'grid' || v === 'map') setViewMode(v);
-    });
-  }, []);
-
-  const applyView = useCallback((mode: 'list' | 'grid' | 'map') => {
-    setViewMode(mode);
-    void AsyncStorage.setItem('projects_view_pref', mode);
-  }, []);
+  const { width: screenW } = useWindowDimensions();
+  const cardWidth = screenW - 40; // full-bleed map cards: 20 gutter each side
+  const openSwipeRefs = useRef(new Map<string, { close: () => void }>());
 
   // Tour refs
   const listRef = useRef<View>(null);
   const firstCardRef = useRef<View>(null);
   const fabRef = useRef<View>(null);
 
-  // Projects + stats now flow through React Query: 5-min staleTime means
-  // tab-switching is instant, and the AsyncStorage persister keeps the cache
-  // warm across app launches so the first tap after cold start doesn't have
-  // to wait for the network either.
+  // Projects flow through React Query: 5-min staleTime means tab-switching is
+  // instant, and the AsyncStorage persister keeps the cache warm across launches.
   const projectsQ = useQuery<Project[]>({
     queryKey: qk.projects.list,
     queryFn: () => projectsApi.list(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const statsQ = useQuery<Stats>({
-    queryKey: qk.projects.stats,
-    queryFn: () => projectsApi.stats(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Backed by the get_overdue_counts() RPC - one tiny query instead of three
-  // full-table SELECTs (useAllInspections + useAllBriefings + useTemplates)
-  // that used to fire on this screen via useCalendarEvents().
-  const overdueQ = useQuery<Record<string, number>>({
-    queryKey: qk.projects.overdueCounts,
-    queryFn: () => projectsApi.overdueCounts(),
-    staleTime: 5 * 60 * 1000,
-  });
-
   const projects = projectsQ.data ?? [];
-  const stats = statsQ.data ?? {};
-  const overdueByProject = overdueQ.data ?? {};
-  // Show the skeleton both on the very first fetch AND while a background
-  // refetch is replacing a stale empty result. Relying on `isPending && !data`
-  // would skip the skeleton whenever the cache already held `[]` from a
-  // previous race (e.g. a fetch fired before the JWT propagated), forcing the
-  // user to pull-to-refresh to discover their projects.
+  // Skeleton both on first fetch AND while a background refetch replaces a stale
+  // empty result (canonical three-state guard).
   const loading =
     (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
 
@@ -124,8 +88,6 @@ export default function ProjectsScreen() {
         if (idx !== 0) return;
         try {
           await projectsApi.remove(project.id);
-          // Optimistically prune the local cache; let stats refresh in the
-          // background so the badge counts reflect the deletion.
           qc.setQueryData<Project[]>(
             qk.projects.list,
             prev => prev?.filter(p => p.id !== project.id) ?? [],
@@ -166,114 +128,69 @@ export default function ProjectsScreen() {
   }, [projects.length, t]);
 
   const renderItem = useCallback(({ item, index }: { item: Project; index: number }) => (
-    <ProjectRow
-      project={item}
-      stats={stats[item.id]}
-      overdue={overdueByProject[item.id] ?? 0}
-      isGrid={viewMode === 'grid'}
-      cardRef={index === 0 ? firstCardRef : undefined}
-      onOpen={() => router.push(`/projects/${item.id}` as any)}
-      onDelete={() => onDelete(item)}
-      registerSwipeable={viewMode === 'list' ? (ref) => {
+    <Swipeable
+      ref={((ref: { close: () => void } | null) => {
         if (ref) openSwipeRefs.current.set(item.id, ref);
         else openSwipeRefs.current.delete(item.id);
-      } : undefined}
-      onSwipeOpen={viewMode === 'list' ? () => {
-        openSwipeRefs.current.forEach((ref, id) => {
-          if (id !== item.id) ref.close();
-        });
-      } : undefined}
-    />
-  ), [stats, overdueByProject, viewMode, firstCardRef, router, onDelete, openSwipeRefs]);
+      }) as never}
+      renderRightActions={() => (
+        <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y(t('common.delete'), undefined, 'button')}>
+          <Trash2 size={20} color={theme.colors.white} strokeWidth={2} />
+          <A11yText size="xs" weight="semibold" color={theme.colors.white}>{t('common.delete')}</A11yText>
+        </Pressable>
+      )}
+      overshootRight={false}
+      onSwipeableWillOpen={() => {
+        openSwipeRefs.current.forEach((ref, id) => { if (id !== item.id) ref.close(); });
+      }}
+    >
+      <View ref={index === 0 ? firstCardRef : undefined} collapsable={false}>
+        <ProjectCard
+          project={item}
+          width={cardWidth}
+          onPress={() => router.push(`/projects/${item.id}` as any)}
+        />
+      </View>
+    </Swipeable>
+  ), [onDelete, theme, t, cardWidth, router, styles]);
 
   return (
     <TourGuide tourId="homepage_v1" steps={tourSteps}>
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('projects.title')}</Text>
-        <View style={styles.viewToggle}>
-          <Pressable
-            onPress={() => applyView('list')}
-            hitSlop={8}
-            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-          >
-            <List
-              size={22}
-              color={viewMode === 'list' ? theme.colors.accent : theme.colors.inkSoft}
-              strokeWidth={1.5}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => applyView('grid')}
-            hitSlop={8}
-            style={[styles.toggleBtn, viewMode === 'grid' && styles.toggleBtnActive]}
-          >
-            <LayoutGrid
-              size={19}
-              color={viewMode === 'grid' ? theme.colors.accent : theme.colors.inkSoft}
-              strokeWidth={1.5}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => applyView('map')}
-            hitSlop={8}
-            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
-          >
-            <MapPin
-              size={20}
-              color={viewMode === 'map' ? theme.colors.accent : theme.colors.inkSoft}
-              strokeWidth={1.5}
-            />
-          </Pressable>
-        </View>
       </View>
       <View ref={listRef} collapsable={false} style={{ flex: 1 }}>
-      {viewMode === 'map' ? (
-        <ProjectsMapView
-          projects={projects}
-          stats={stats}
-          overdueByProject={overdueByProject}
-          onProjectOpen={id => router.push(`/projects/${id}` as any)}
+        <FlatList
+          data={projects}
+          keyExtractor={p => p.id}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120, gap: 14 }}
+          renderItem={renderItem}
+          initialNumToRender={6}
+          windowSize={7}
+          removeClippedSubviews
+          refreshControl={<RefreshControl queries={[projectsQ]} />}
+          ListEmptyComponent={
+            loading ? (
+              <View style={{ gap: 14 }}>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <ProjectCardSkeleton key={`skeleton-${i}`} width={cardWidth} />
+                ))}
+              </View>
+            ) : (
+              <EmptyState
+                type="projects"
+                title={t('projects.noProjects')}
+                subtitle={t('projects.noProjectsHint')}
+                action={{
+                  label: t('projects.createProject'),
+                  onPress: () => setCreating(true),
+                }}
+                backgroundPattern
+              />
+            )
+          }
         />
-      ) : (
-      <FlatList
-        key={viewMode}
-        data={projects}
-        keyExtractor={p => p.id}
-        numColumns={viewMode === 'grid' ? 2 : 1}
-        columnWrapperStyle={viewMode === 'grid' ? { gap: 10, paddingHorizontal: 24, marginBottom: 10 } : undefined}
-        contentContainerStyle={
-          viewMode === 'list'
-            ? { padding: 16, paddingBottom: 100, gap: 10 }
-            : { paddingTop: 12, paddingBottom: 100 }
-        }
-        renderItem={renderItem}
-        initialNumToRender={8}
-        windowSize={7}
-        removeClippedSubviews
-        refreshControl={<RefreshControl queries={[projectsQ, statsQ, overdueQ]} />}
-        ListEmptyComponent={
-          loading ? (
-            <View style={{ gap: 10 }}>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <ProjectRowSkeleton key={`skeleton-${i}`} />
-              ))}
-            </View>
-          ) : (
-            <EmptyState
-              type="projects"
-              title={t('projects.noProjects')}
-              subtitle={t('projects.noProjectsHint')}
-              action={{
-                label: t('projects.createProject'),
-                onPress: () => setCreating(true),
-              }}
-              backgroundPattern
-            />
-          )
-        }
-      />
-      )}
       </View>
 
       <FabButton
@@ -288,10 +205,6 @@ export default function ProjectsScreen() {
         visible={creating}
         onClose={() => setCreating(false)}
         onCreated={p => {
-          // Seed the cache directly so the new row appears instantly without
-          // a refetch round-trip. Stats will pick up the new project on its
-          // next natural refresh - a brand new project has no inspections so
-          // its badge would be 0/0 anyway.
           qc.setQueryData<Project[]>(
             qk.projects.list,
             prev => [p, ...((prev ?? []).filter(x => x.id !== p.id))],
@@ -303,6 +216,11 @@ export default function ProjectsScreen() {
     </SafeAreaView>
     </TourGuide>
   );
+}
+
+/** Full-width map-card skeleton, matching ProjectCard's height. */
+function ProjectCardSkeleton({ width }: { width: number }) {
+  return <Skeleton width={width} height={155} radius={16} />;
 }
 
 /**
@@ -556,576 +474,24 @@ function MapPickerInline({
   );
 }
 
-function ProjectRowSkeleton() {
-  const { theme } = useTheme();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-
-  return (
-    <Card padding={14}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Skeleton width={44} height={44} radius={12} />
-        <View style={{ flex: 1, gap: 8 }}>
-          <Skeleton width={'60%'} height={15} />
-          <Skeleton width={'40%'} height={11} />
-        </View>
-      </View>
-    </Card>
-  );
-}
-
-function extractCity(address: string | null): string | null {
-  if (!address) return null;
-  const comma = address.indexOf(',');
-  return (comma > 0 ? address.substring(0, comma) : address).trim() || null;
-}
-
-function projectStatusLine(
-  stats: { drafts: number; completed: number } | undefined,
-  overdue: number,
-  theme: any,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): { text: string; color: string } {
-  if (overdue > 0) return { text: t('projects.overdueCount', { count: overdue }), color: theme.colors.danger };
-  if ((stats?.drafts ?? 0) > 0) return { text: t('projects.draftsCountBadge', { count: stats!.drafts }), color: theme.colors.warn };
-  if ((stats?.completed ?? 0) > 0) return { text: t('projects.completedCountBadge', { count: stats!.completed }), color: theme.colors.inkSoft };
-  return { text: t('projects.noInspections'), color: theme.colors.inkFaint };
-}
-
-const ProjectRow = memo(function ProjectRow({
-  project,
-  stats,
-  overdue = 0,
-  isGrid = false,
-  onOpen,
-  onDelete,
-  registerSwipeable,
-  onSwipeOpen,
-  cardRef,
-}: {
-  project: Project;
-  stats?: { drafts: number; completed: number };
-  overdue?: number;
-  isGrid?: boolean;
-  onOpen: () => void;
-  onDelete: () => void;
-  registerSwipeable?: (ref: { close: () => void } | null) => void;
-  onSwipeOpen?: () => void;
-  cardRef?: React.RefObject<View | null>;
-}) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const swipeRef = useRef<any>(null);
-
-  const city = extractCity(project.address);
-  const subLine = city || null;
-  const status = projectStatusLine(stats, overdue, theme, t);
-
-  const renderRightActions = () => (
-    <Pressable onPress={onDelete} style={styles.swipeDelete}>
-      <Trash2 size={20} color={theme.colors.white} strokeWidth={2} />
-      <A11yText size="xs" weight="semibold" color={theme.colors.white}>{t('common.delete')}</A11yText>
-    </Pressable>
-  );
-
-  if (isGrid) {
-    return (
-      <View ref={cardRef} collapsable={false} style={{ flex: 1 }}>
-        <PressBounce onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
-          <Card padding={12}>
-            <View style={{ gap: 6 }}>
-              <ProjectAvatar project={project} size={36} />
-              <A11yText size="base" weight="bold" numberOfLines={2}>
-                {project.company_name || project.name}
-              </A11yText>
-              {subLine ? (
-                <A11yText
-                  size="xs"
-                  color={theme.colors.inkSoft}
-                  numberOfLines={1}
-                  style={{ marginTop: -2 }}
-                >
-                  {subLine}
-                </A11yText>
-              ) : null}
-              <Text style={[styles.statusText, { color: status.color }]}>
-                {status.text}
-              </Text>
-            </View>
-          </Card>
-        </PressBounce>
-      </View>
-    );
-  }
-
-  return (
-    <View ref={cardRef} collapsable={false}>
-      <Swipeable
-        ref={swipeRef as any}
-        onSwipeableOpen={() => registerSwipeable?.(swipeRef.current)}
-        renderRightActions={renderRightActions}
-        overshootRight={false}
-        onSwipeableWillOpen={onSwipeOpen}
-      >
-        <PressBounce onPress={onOpen} hapticOnPress="navigate" scaleTo={0.98}>
-          <Card padding={14}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <ProjectAvatar project={project} size={44} />
-              <View style={{ flex: 1 }}>
-                <A11yText size="base" weight="bold" numberOfLines={1}>
-                  {project.company_name || project.name}
-                </A11yText>
-                {subLine ? (
-                  <A11yText
-                    size="xs"
-                    color={theme.colors.inkSoft}
-                    style={{ marginTop: 2 }}
-                    numberOfLines={1}
-                  >
-                    {subLine}
-                  </A11yText>
-                ) : null}
-                <Text style={[styles.statusText, { color: status.color, marginTop: 4 }]}>
-                  {status.text}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
-            </View>
-          </Card>
-        </PressBounce>
-      </Swipeable>
-    </View>
-  );
-});
-
-// ── Map view ──────────────────────────────────────────────────────────────────
-
-function pinColor(
-  project: Project,
-  stats: Stats,
-  overdueByProject: Record<string, number>,
-  colors: any,
-): string {
-  if ((overdueByProject[project.id] ?? 0) > 0) return colors.danger;
-  if ((stats[project.id]?.drafts ?? 0) > 0) return colors.warn;
-  return colors.accent;
-}
-
-function ProjectsMapView({
-  projects,
-  stats,
-  overdueByProject,
-  onProjectOpen,
-}: {
-  projects: Project[];
-  stats: Stats;
-  overdueByProject: Record<string, number>;
-  onProjectOpen: (id: string) => void;
-}) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-
-  const mappedProjects = useMemo(
-    () => projects.filter(p => p.latitude != null && p.longitude != null),
-    [projects],
-  );
-  const unmappedCount = projects.length - mappedProjects.length;
-
-  const [selected, setSelected] = useState<Project | null>(null);
-  const [showUnmapped, setShowUnmapped] = useState(false);
-  const cardAnim = useRef(new Animated.Value(240)).current;
-
-  const openCard = useCallback((project: Project) => {
-    setSelected(project);
-    Animated.spring(cardAnim, { toValue: 0, useNativeDriver: true, tension: 70, friction: 12 }).start();
-  }, [cardAnim]);
-
-  const closeCard = useCallback(() => {
-    Animated.timing(cardAnim, { toValue: 240, duration: 200, useNativeDriver: true }).start(() =>
-      setSelected(null),
-    );
-  }, [cardAnim]);
-
-  const initialRegion = useMemo(() => {
-    if (mappedProjects.length === 0) {
-      return { latitude: 41.7151, longitude: 44.8271, latitudeDelta: 0.12, longitudeDelta: 0.12 };
-    }
-    const lats = mappedProjects.map(p => p.latitude!);
-    const lngs = mappedProjects.map(p => p.longitude!);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-    const pad = 0.06;
-    return {
-      latitude: (minLat + maxLat) / 2,
-      longitude: (minLng + maxLng) / 2,
-      latitudeDelta: Math.max(0.03, maxLat - minLat + pad * 2),
-      longitudeDelta: Math.max(0.03, maxLng - minLng + pad * 2),
-    };
-  }, [mappedProjects]);
-
-  return (
-    <View style={{ flex: 1 }}>
-      <MapView
-        provider={PROVIDER_DEFAULT}
-        style={StyleSheet.absoluteFill}
-        initialRegion={initialRegion}
-        onPress={closeCard}
-      >
-        {mappedProjects.map(project => {
-          const color = pinColor(project, stats, overdueByProject, theme.colors);
-          return (
-            <Marker
-              key={project.id}
-              coordinate={{ latitude: project.latitude!, longitude: project.longitude! }}
-              onPress={() => openCard(project)}
-              tracksViewChanges={false}
-            >
-              <View style={{ alignItems: 'center' }}>
-                <View
-                  style={{
-                    backgroundColor: color,
-                    borderRadius: 20,
-                    width: 32,
-                    height: 32,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.28,
-                    shadowRadius: 4,
-                    elevation: 5,
-                  }}
-                >
-                  <Building2 size={15} color={theme.colors.white} strokeWidth={1.5} />
-                </View>
-                {/* Pin tail */}
-                <View
-                  style={{
-                    width: 0,
-                    height: 0,
-                    borderLeftWidth: 5,
-                    borderRightWidth: 5,
-                    borderTopWidth: 7,
-                    borderLeftColor: 'transparent',
-                    borderRightColor: 'transparent',
-                    borderTopColor: color,
-                    marginTop: -1,
-                  }}
-                />
-              </View>
-            </Marker>
-          );
-        })}
-      </MapView>
-
-      {/* No-location pill */}
-      {unmappedCount > 0 && (
-        <Pressable
-          onPress={() => setShowUnmapped(true)}
-          hitSlop={8}
-          style={{
-            position: 'absolute',
-            bottom: insets.bottom + 100,
-            alignSelf: 'center',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: 'rgba(0,0,0,0.68)',
-            borderRadius: 999,
-            paddingHorizontal: 14,
-            paddingVertical: 8,
-          }}
-        >
-          <MapPin size={14} color="#fff" strokeWidth={1.5} />
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-            {t('projects.unmappedCount', { count: unmappedCount })}
-          </Text>
-        </Pressable>
-      )}
-
-      {/* Sliding project card */}
-      {selected && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            transform: [{ translateY: cardAnim }],
-          }}
-        >
-          <ProjectMapCard
-            project={selected}
-            stats={stats[selected.id]}
-            overdue={overdueByProject[selected.id] ?? 0}
-            onOpen={() => {
-              onProjectOpen(selected.id);
-              closeCard();
-            }}
-            onClose={closeCard}
-            bottomInset={insets.bottom}
-          />
-        </Animated.View>
-      )}
-
-      {/* Unmapped projects sheet */}
-      <UnmappedSheet
-        visible={showUnmapped}
-        projects={projects.filter(p => p.latitude == null || p.longitude == null)}
-        onClose={() => setShowUnmapped(false)}
-        onOpen={id => {
-          setShowUnmapped(false);
-          onProjectOpen(id);
-        }}
-      />
-    </View>
-  );
-}
-
-function ProjectMapCard({
-  project,
-  stats,
-  overdue = 0,
-  onOpen,
-  onClose,
-  bottomInset,
-}: {
-  project: Project;
-  stats?: { drafts: number; completed: number };
-  overdue?: number;
-  onOpen: () => void;
-  onClose: () => void;
-  bottomInset: number;
-}) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const city = extractCity(project.address);
-  const subLine = city || null;
-  const status = projectStatusLine(stats, overdue, theme, t);
-
-  return (
-    <View
-      style={{
-        backgroundColor: theme.colors.surface,
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
-        paddingHorizontal: 16,
-        paddingTop: 10,
-        paddingBottom: bottomInset + 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-        elevation: 12,
-      }}
-    >
-      {/* Drag handle */}
-      <Pressable onPress={onClose} hitSlop={12} style={{ alignItems: 'center', paddingBottom: 10 }}>
-        <View
-          style={{
-            width: 36,
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: theme.colors.hairline,
-          }}
-        />
-      </Pressable>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <ProjectAvatar project={project} size={44} />
-        <View style={{ flex: 1 }}>
-          <A11yText size="base" weight="bold" numberOfLines={1}>
-            {project.company_name || project.name}
-          </A11yText>
-          {subLine ? (
-            <A11yText
-              size="xs"
-              color={theme.colors.inkSoft}
-              numberOfLines={1}
-              style={{ marginTop: 2 }}
-            >
-              {subLine}
-            </A11yText>
-          ) : null}
-          <Text style={{ fontSize: 12, color: status.color, marginTop: 4 }}>{status.text}</Text>
-        </View>
-        <Pressable
-          onPress={onOpen}
-          hitSlop={8}
-          style={{
-            backgroundColor: theme.colors.accent,
-            borderRadius: 10,
-            paddingHorizontal: 14,
-            paddingVertical: 9,
-          }}
-          {...a11y(t('projects.openButton'), t('projects.tapForDetails'), 'button')}
-        >
-          <A11yText size="sm" weight="semibold" color={theme.colors.white}>
-            {t('projects.openProject')}
-          </A11yText>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function UnmappedSheet({
-  visible,
-  projects,
-  onClose,
-  onOpen,
-}: {
-  visible: boolean;
-  projects: Project[];
-  onClose: () => void;
-  onOpen: (id: string) => void;
-}) {
-  const { theme } = useTheme();
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
-          onPress={onClose}
-        />
-        <View
-          style={{
-            backgroundColor: theme.colors.surface,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingBottom: insets.bottom + 16,
-            maxHeight: '70%',
-          }}
-        >
-          {/* Handle */}
-          <View style={{ alignItems: 'center', paddingTop: 10, paddingBottom: 4 }}>
-            <View
-              style={{
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: theme.colors.hairline,
-              }}
-            />
-          </View>
-          <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-            <A11yText size="lg" weight="bold">
-              {t('projects.noLocation')}
-            </A11yText>
-            <A11yText size="sm" color={theme.colors.inkSoft} style={{ marginTop: 2 }}>
-              {t('projects.unmappedSheetSubtitle')}
-            </A11yText>
-          </View>
-          <FlatList
-            data={projects}
-            keyExtractor={p => p.id}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => onOpen(item.id)}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  backgroundColor: theme.colors.card,
-                  borderRadius: 12,
-                  padding: 12,
-                }}
-              >
-                <ProjectAvatar project={item} size={36} />
-                <View style={{ flex: 1 }}>
-                  <A11yText size="base" weight="semibold" numberOfLines={1}>
-                    {item.company_name || item.name}
-                  </A11yText>
-                </View>
-                <ChevronRight size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
-              </Pressable>
-            )}
-          />
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 function getstyles(theme: any) {
   return StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-  },
-  title: { fontSize: 28, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink },
-  subtitle: { fontSize: 11, color: theme.colors.inkSoft },
-  avatarBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.accentSoft,
-  },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: theme.colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.ink },
-  rowMeta: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 },
-  counter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 16,
-  },
-  swipeDelete: {
-    width: 96,
-    backgroundColor: theme.colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    marginLeft: 8,
-    borderRadius: theme.radius.lg,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '400',
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.subtleSurface,
-    borderRadius: 8,
-    padding: 3,
-  },
-  toggleBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toggleBtnActive: {
-    backgroundColor: theme.colors.card,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-});
+    header: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+    },
+    title: { fontSize: 28, fontWeight: '800', fontFamily: theme.typography.fontFamily.display, color: theme.colors.ink },
+    swipeDelete: {
+      width: 96,
+      backgroundColor: theme.colors.danger,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      marginLeft: 8,
+      borderRadius: theme.radius.lg,
+    },
+  });
 }
-
-

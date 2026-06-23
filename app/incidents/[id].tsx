@@ -42,6 +42,7 @@ import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { Incident, Project } from '../../types/models';
 import { ErrorScreen } from '../../components/ErrorScreen';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   INCIDENT_TYPE_FULL_LABEL,
   INCIDENT_TYPE_LABEL,
@@ -237,31 +238,33 @@ export default function IncidentDetail() {
 
   if (!loaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16 }}>
-        <Stack.Screen options={{ headerShown: true, title: t('incidents.headerTitle') }} />
-        <SkeletonListCard rows={5} />
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScreenHeader title={t('incidents.headerTitle')} />
+        <View style={{ flex: 1, padding: 16 }}>
+          <SkeletonListCard rows={5} />
+        </View>
       </View>
     );
   }
 
   if (!incident) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <Stack.Screen options={{ headerShown: true, title: t('incidents.headerTitle') }} />
-        <CircleAlert size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
-        <Text style={{ color: theme.colors.inkFaint, fontSize: 15 }}>{t('incidents.notFound')}</Text>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScreenHeader title={t('incidents.headerTitle')} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <CircleAlert size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
+          <Text style={{ color: theme.colors.inkFaint, fontSize: 15 }}>{t('incidents.notFound')}</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('incidents.headerTitle'),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title={t('incidents.headerTitle')} />
 
       <ScrollView
         style={{ flex: 1 }}

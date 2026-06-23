@@ -14,6 +14,14 @@ export interface InspectionRowProps {
   category?: string | null;
   /** Draft vs completed — drives the avatar status ring. */
   status?: InspectionStatus | null;
+  /**
+   * Override the default category avatar (e.g. a `RecordAvatar` for
+   * report/order/briefing/incident rows). When set, `category`/`status` are
+   * ignored. Lets every record type reuse this row's exact layout + spacing.
+   */
+  leading?: ReactNode;
+  /** Hide the "შემოწმება" record-type pill (non-inspection rows). */
+  hidePill?: boolean;
   title: string;
   subtitle?: string | null;
   /**
@@ -54,6 +62,8 @@ export interface InspectionRowProps {
 export function InspectionRow({
   category,
   status,
+  leading,
+  hidePill,
   title,
   subtitle,
   trailing,
@@ -68,16 +78,15 @@ export function InspectionRow({
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
-    <View style={[styles.row, { paddingHorizontal: inset }, showBorder && styles.rowBorder]}>
+    <View style={[styles.row, { paddingHorizontal: inset }]}>
       <Pressable onPress={onPress} style={styles.pressArea} {...a11y}>
-        <InspectionListAvatar
-          category={category}
-          size={avatarSize}
-          status={status}
-          style={styles.avatar}
-        />
+        <View style={styles.avatar}>
+          {leading ?? (
+            <InspectionListAvatar category={category} size={avatarSize} status={status} />
+          )}
+        </View>
         <View style={styles.body}>
-          <RecordTypePill recordType="inspection" />
+          {!hidePill ? <RecordTypePill recordType="inspection" /> : null}
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
           {subtitle ? (
             <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
@@ -99,7 +108,7 @@ function makeStyles(theme: Theme) {
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
+      paddingVertical: 12,
       backgroundColor: 'transparent',
     },
     rowBorder: {

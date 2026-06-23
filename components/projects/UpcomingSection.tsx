@@ -42,7 +42,7 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
   }
 
   return (
-    <View style={[styles.sectionCard, { marginHorizontal: 16, marginTop: 12 }]}>
+    <View style={[styles.sectionCard, { marginHorizontal: 20, marginTop: 12 }]}>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Calendar size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />

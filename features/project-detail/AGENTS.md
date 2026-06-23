@@ -21,6 +21,14 @@ leftover signer-collection flow no longer in use. The `crew` column on
   screen tour, the map hero JSX (small inline `<MapView>` preview),
   the hero logo + info JSX, the quick actions row, and composes
   every section card. Renders the arch + scroll header.
+  The map hero mirrors the home `ProjectCard`: `liteMode` + all
+  `shows*={false}`, a `styles.mapDesaturate` overlay
+  (`#808080` / `mixBlendMode: 'saturation'`, scoped by `isolation:
+  'isolate'` on the hero) to strip colour, and a custom centred
+  breathing accent pin (`styles.mapDot` + the `breathe` shared value)
+  instead of a `<Marker>` — Markers don't render in `liteMode`. The
+  hero logo reuses the `ProjectAvatar` palette (electric-yellow fill,
+  black initials, black edit badge with white icon).
 - `ProjectArchHeader.tsx` — `useArchAnimation(loaded)` hook (mount +
   scroll-driven SVG bezier morph + logo fade-in) and
   `ProjectArchSvg({ archProps, fill })`. Owns the
@@ -81,10 +89,15 @@ leftover signer-collection flow no longer in use. The `crew` column on
 - **Sections are completed-only** (the records redesign): each section filters
   to `status === 'completed'` (drafts live in [`features/drafts/`](../drafts/),
   reached from the More tab) and carries no draft/completed status chrome.
-  `ReportsSection` / `BriefingsSection` render the shared status-free rows from
-  [`features/records/`](../records/) (`ReportRow` / `BriefingRow`);
-  `FilesAndOrdersSection` uses the shared `OrderRow`; `InspectionsSection` omits
-  the avatar status dot. Header counts reflect completed records only.
+  `BriefingsSection` renders the shared status-free `BriefingRow`;
+  `ReportsSection` renders a **full-bleed horizontal `ReportCardRail`** of
+  cover-photo cards (not rows) — and is the one section rendered **without** the
+  `sectionCard` wrapper (so the rail scrolls edge-to-edge to the screen; it owns
+  its own header padding + `bleed`/`gutter`). Overflow + "ყველას ნახვა" lead to
+  `/projects/[id]/reports` (a `ReportCardGrid`); `FilesAndOrdersSection` uses the
+  shared `OrderRow`;
+  `InspectionsSection` omits the avatar status dot. Header counts reflect
+  completed records only.
 - `ProjectDetail.tsx` is still over the 300-line target. The
   remaining bulk is the map hero JSX + logo/info hero JSX + several
   file/upload action handlers + the EditProjectSheet / CustomDropdown

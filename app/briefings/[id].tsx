@@ -2,6 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { ErrorScreen } from '../../components/ErrorScreen';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Share2, FileText } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
@@ -73,7 +74,8 @@ export default function BriefingDetailScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: true, title: 'ინსტრუქტაჟი' }} />
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScreenHeader title="ინსტრუქტაჟი" />
         <SkeletonPreview />
       </View>
     );
@@ -81,26 +83,24 @@ export default function BriefingDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: 'ინსტრუქტაჟის ოქმი',
-          headerRight: () => (
-            <Pressable
-              onPress={sharePdf}
-              disabled={sharing || !briefing || !project}
-              style={{ paddingHorizontal: 4 }}
-              hitSlop={11}
-              {...a11y('PDF გაზიარება', undefined, 'button')}
-            >
-              {sharing ? (
-                <ActivityIndicator size="small" color={theme.colors.accent} />
-              ) : (
-                <Share2 size={22} color={theme.colors.accent} strokeWidth={1.5} />
-              )}
-            </Pressable>
-          ),
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader
+        title="ინსტრუქტაჟის ოქმი"
+        right={
+          <Pressable
+            onPress={sharePdf}
+            disabled={sharing || !briefing || !project}
+            style={{ paddingHorizontal: 4 }}
+            hitSlop={11}
+            {...a11y('PDF გაზიარება', undefined, 'button')}
+          >
+            {sharing ? (
+              <ActivityIndicator size="small" color={theme.colors.accent} />
+            ) : (
+              <Share2 size={22} color={theme.colors.accent} strokeWidth={1.5} />
+            )}
+          </Pressable>
+        }
       />
 
       {/* Preview WebView */}

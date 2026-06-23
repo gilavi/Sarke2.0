@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { PROJECT_AVATAR_BG, PROJECT_AVATAR_FG } from '../../components/ProjectAvatar';
 
 export function getStyles(theme: any) {
   return StyleSheet.create({
@@ -18,7 +19,8 @@ export function getStyles(theme: any) {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: theme.colors.accent,
+    // Match the home-screen ProjectAvatar: electric-yellow fill, black initials.
+    backgroundColor: PROJECT_AVATAR_BG,
     borderWidth: 3,
     borderColor: theme.colors.background,
     alignItems: 'center',
@@ -37,8 +39,8 @@ export function getStyles(theme: any) {
   },
   logoInitials: {
     fontSize: 24,
-    fontWeight: '600',
-    color: theme.colors.white,
+    fontWeight: '900',
+    color: PROJECT_AVATAR_FG,
   },
   logoBadge: {
     position: 'absolute',
@@ -47,11 +49,39 @@ export function getStyles(theme: any) {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: theme.colors.accent,
+    // Black fill + white icon, matching the home ProjectAvatar edit badge.
+    backgroundColor: '#000000',
     borderWidth: 2,
     borderColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Strip the map's colour: a grey layer blended in 'saturation' mode leaves the
+  // map's hue/luminosity but zeroes its saturation — matches the home ProjectCard.
+  mapDesaturate: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#808080',
+    mixBlendMode: 'saturation',
+  },
+  // Custom location pin (matches home): accent dot, white ring, soft shadow.
+  // Centred because the map region is centred on the project coordinate.
+  mapDot: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginLeft: -7,
+    marginTop: -7,
+    backgroundColor: theme.colors.accent,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   // Floating pill buttons over map
   floatingBtn: {

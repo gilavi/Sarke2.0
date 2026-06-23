@@ -30,13 +30,28 @@ only a neutral per-type glyph for identity.
 - `ReportRow`, `BriefingRow`, `OrderRow` — status-free rows. (Inspections reuse
   `components/InspectionRow`; incidents reuse `IncidentRow` from
   `components/projects/ProjectRowHelpers` — its colored badge is incident
-  **type** identity, not status.)
+  **type** identity, not status.) `ReportRow` is now used **only by Drafts** —
+  completed reports render as cards (below).
+- **Reports are cards, not rows** (everywhere except Drafts):
+  - `ReportCard` — one media card: landscape cover-photo "sneak peek"
+    (`useReportCoverUri` → `reportCoverPath`) + slide-count chip + title + date.
+    `REPORT_CARD_WIDTH` is the rail default; pass `width` for the grid.
+  - `ReportCardRail` — horizontal scroller for the **section** surfaces (Home
+    reports widget, project-detail reports section). Bleeds `-16` to the
+    enclosing `sectionCard` gutter; renders skeleton/empty/cards + an optional
+    trailing "ყველას ნახვა" card (`onViewAll`). The host supplies the header.
+  - `ReportCardGrid` — full-screen 2-column grid for **History reports tab** and
+    a project's **all-reports** list. Carries the canonical three-state guard +
+    pull-to-refresh; optional `ListHeaderComponent`.
+  - `ReportThumb` — the small 16:9 avatar still used by the Drafts `ReportRow`.
 - `getRecordStyles(theme)` — section-card + row styles.
 
 ## Internal files
 
 - `styles.ts`, `recordTypes.ts`, `RecordWidget.tsx`, `ReportRow.tsx`,
-  `BriefingRow.tsx`, `OrderRow.tsx`, `index.ts`.
+  `ReportThumb.tsx`, `ReportCard.tsx`, `ReportCardRail.tsx`,
+  `ReportCardGrid.tsx`, `useReportCover.ts`, `BriefingRow.tsx`,
+  `BriefingTopicAvatar.tsx`, `OrderRow.tsx`, `topics.ts`, `index.ts`.
 
 ## Gotchas
 

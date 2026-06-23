@@ -4,6 +4,44 @@
 
 ---
 
+## 2026-06-23 — Reports as cover-photo cards (no longer list rows)
+
+Reports were list rows like every other record; they now render as **media cards** with a landscape cover-photo "sneak peek" (the first photo across the report's slides, annotated variant preferred) + a slide-count chip + title + date. Three shared building blocks in [`features/records/`](../features/records/AGENTS.md):
+
+- [`ReportCard`](../features/records/ReportCard.tsx) — the single card (cover + count chip + title + date), fixed width for rails, width-overridable for grids.
+- [`ReportCardRail`](../features/records/ReportCardRail.tsx) — a **full-bleed horizontal scrolling rail** of cards (cards scroll edge-to-edge to the screen, not clipped at a section-card border), with a trailing "ყველას ნახვა" card. Used by the **Home** reports widget and the **project-detail** reports section. Both render it **without** the usual `sectionCard` wrapper (the header stays gutter-aligned via `bleed`/`gutter` props; the rail cancels the enclosing horizontal padding with a negative margin).
+- [`ReportCardGrid`](../features/records/ReportCardGrid.tsx) — a **2-column grid** (full-screen browse) with the canonical three-state guard + pull-to-refresh. Used by the **History** reports tab and a project's **all-reports** list (`/projects/[id]/reports`). (A full screen with a lone horizontal rail would float in empty space, so History/all-reports use the grid form of the same card.)
+
+Cover resolution is centralized: `reportCoverPath(slides)` in [`lib/reportSlides.ts`](../lib/reportSlides.ts) + the `useReportCoverUri(report)` hook (also now backing the small `ReportThumb` avatar still used by the Drafts rows). Drafts keep the row layout (`ReportRow`).
+
+**Photo-less reports get a text sneak peek**, not a bare icon: when a report has no photos the cover shows the first slide's title + description (a mini document preview), so a text-only report still previews its content. Only truly empty reports fall back to the document glyph.
+
+OTA-deliverable (no native changes).
+
+---
+
+## 2026-06-23 — Flat screen headers (drop the iOS "glass" nav bar)
+
+Non-flow stacked screens used a native `<Stack.Screen headerShown title=… />` bar, which on iOS renders our circular back button inside a translucent system "glass" container. Replaced that across the app with a new in-content [`ScreenHeader`](../components/ScreenHeader.tsx) primitive (`SafeAreaView edges={['top']}` + the same `HeaderBackButton` + centered title + optional right control), paired with `headerShown: false`. Same back button, no system container.
+
+- Converted: History, the PDF-preview/detail screens (`inspections/[id]`, `reports/[id]`, `briefings/[id]`, `incidents/[id]`), profile, templates, breathalyzer, signer, safety-3d; `qualifications` (which inlined the same markup) now consumes the primitive too.
+- Modal-presented (`template/[id]/start`) and the `+not-found` edge screen are intentionally left on the native header — different/uncertain back affordance.
+
+OTA-deliverable (no native changes).
+
+---
+
+## 2026-06-23 — Records & Projects UI refinements
+
+Follow-up polish on the records redesign plus a Projects-tab rework:
+
+- **Projects tab is now a single vertical list of map cards** ([`ProjectCard`](../components/home/ProjectCard.tsx) — the same map-background card used on Home). The list/grid/map view toggles and the full-screen map view were removed; the card is the reusable unit for the whole list.
+- **List rows unified** — every record row (inspections / reports / orders / incidents / briefings) shares one layout via `InspectionRow` with a swappable leading avatar: a 48px circle for most types, a **16:9 photo thumbnail** for reports ([`ReportThumb`](../features/records/ReportThumb.tsx)), and **topic-icon avatars** for briefings ([`BriefingTopicAvatar`](../features/records/BriefingTopicAvatar.tsx); the row title is the topic names). Hairline dividers were removed — rows separate on whitespace now.
+- **Widget footers** — the Home per-type widgets dropped the header count and the top-right "view all"; overflow is a bottom **"ყველას ნახვა"** row with stacked, row-matching avatars (like the project sections, via the shared `ViewMoreRow`). The ბრძანებები section's file-upload button was removed.
+- **History tabs** are square + monochrome, and the per-type lists are a **swipeable pager** synced to the tab strip.
+
+OTA-deliverable (no native changes).
+
 ## 2026-06-23 — Records redesign: type-filtered History, Home widgets, Drafts split
 
 Completed records and drafts no longer share a list. Everywhere a list of records appears it is now split **by type** and shows **completed only**; drafts moved to one place.

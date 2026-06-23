@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen, FilterChipRow } from '../../components/ui';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { IncidentRow } from '../../components/projects/ProjectRowHelpers';
 import {
   useRecentReports,
@@ -15,7 +23,7 @@ import {
   RECENT_COMPLETED_LIMIT,
   DEFAULT_RECORD_TYPE,
   isRecordTypeKey,
-  ReportRow,
+  ReportCardGrid,
   OrderRow,
   BriefingRow,
   type RecordTypeKey,
@@ -23,24 +31,33 @@ import {
 import { RecordHistoryList } from './RecordHistoryList';
 import { InspectionHistoryTab } from './InspectionHistoryTab';
 
+const indexOfKey = (key: RecordTypeKey) => RECORD_TYPES.findIndex((r) => r.key === key);
+
 /**
- * Global History. Exactly one record type is shown at a time, chosen by the
- * chip strip (default Inspections) — there is no "all" view. Each type renders
- * only its COMPLETED records (drafts live in the Drafts screen). Deep-linkable
- * via `?type=<key>` (Home widgets' "view all" links land here).
+ * Global History. The five record types live side by side in a horizontal
+ * pager that is synced to the chip strip: swiping between lists moves the
+ * active tab, tapping a tab pages to its list — scroll + tab, one navigation.
+ * Each list is COMPLETED-only (drafts live in the Drafts screen). Deep-linkable
+ * via `?type=<key>`; the default landing tab is Inspections.
  */
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ type?: string }>();
+  const { width } = useWindowDimensions();
+  const pagerRef = useRef<ScrollView>(null);
+  const inited = useRef(false);
+  const [pagerH, setPagerH] = useState(0);
 
   const [active, setActive] = useState<RecordTypeKey>(
     isRecordTypeKey(params.type) ? params.type : DEFAULT_RECORD_TYPE,
   );
 
-  // Keep state in sync when the route param changes (deep link / back).
+  // Deep-link / back: when the route param changes externally, page to it.
   useEffect(() => {
-    if (isRecordTypeKey(params.type) && params.type !== active) setActive(params.type);
+    if (!isRecordTypeKey(params.type) || params.type === active) return;
+    setActive(params.type);
+    pagerRef.current?.scrollTo({ x: indexOfKey(params.type) * width, animated: false });
   }, [params.type]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chipItems = useMemo(
@@ -49,29 +66,63 @@ export default function HistoryScreen() {
   );
 
   const onChange = (key: string) => {
-    setActive(key as RecordTypeKey);
-    router.setParams({ type: key });
+    const k = key as RecordTypeKey;
+    setActive(k);
+    router.setParams({ type: k });
+    pagerRef.current?.scrollTo({ x: indexOfKey(k) * width, animated: true });
+  };
+
+  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.round(e.nativeEvent.contentOffset.x / width);
+    const key = RECORD_TYPES[i]?.key;
+    if (key && key !== active) {
+      setActive(key);
+      router.setParams({ type: key });
+    }
+  };
+
+  const onPagerLayout = (e: LayoutChangeEvent) => {
+    setPagerH(e.nativeEvent.layout.height);
+    if (!inited.current) {
+      inited.current = true;
+      const i = indexOfKey(active);
+      if (i > 0) pagerRef.current?.scrollTo({ x: i * width, animated: false });
+    }
   };
 
   return (
     <Screen edgeToEdge edges={[]}>
-      <Stack.Screen options={{ headerShown: true, title: t('history.title') }} />
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title={t('history.title')} />
       <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10 }}>
-        <FilterChipRow items={chipItems} activeKey={active} onChange={onChange} />
+        <FilterChipRow items={chipItems} activeKey={active} onChange={onChange} variant="square" />
       </View>
-      <View style={{ flex: 1 }}>
-        {active === 'inspections' ? (
-          <InspectionHistoryTab />
-        ) : active === 'reports' ? (
-          <ReportsTab />
-        ) : active === 'orders' ? (
-          <OrdersTab />
-        ) : active === 'incidents' ? (
-          <IncidentsTab />
-        ) : (
-          <BriefingsTab />
-        )}
-      </View>
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={onMomentumEnd}
+        onLayout={onPagerLayout}
+        scrollEventThrottle={16}
+        style={{ flex: 1 }}
+      >
+        {RECORD_TYPES.map((rt) => (
+          <View key={rt.key} style={{ width, height: pagerH }}>
+            {rt.key === 'inspections' ? (
+              <InspectionHistoryTab />
+            ) : rt.key === 'reports' ? (
+              <ReportsTab />
+            ) : rt.key === 'orders' ? (
+              <OrdersTab />
+            ) : rt.key === 'incidents' ? (
+              <IncidentsTab />
+            ) : (
+              <BriefingsTab />
+            )}
+          </View>
+        ))}
+      </ScrollView>
     </Screen>
   );
 }
@@ -82,15 +133,12 @@ function ReportsTab() {
   const q = useRecentReports({ status: 'completed', limit: RECENT_COMPLETED_LIMIT });
   const items = q.data ?? [];
   return (
-    <RecordHistoryList
+    <ReportCardGrid
       query={q}
-      items={items}
-      keyOf={(r) => r.id}
+      reports={items}
       refreshQueries={[q]}
       emptyText={t('records.emptyReports')}
-      renderRow={(r, isLast) => (
-        <ReportRow report={r} showBorder={!isLast} onPress={() => router.push(`/reports/${r.id}` as never)} />
-      )}
+      onPressReport={(r) => router.push(`/reports/${r.id}` as never)}
     />
   );
 }

@@ -25,7 +25,7 @@ import WebView from 'react-native-webview';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
-import { HeaderBackButton } from '../../components/HeaderBackButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { consumeCertsDirty } from '../../lib/certDirty';
 import {
   SignaturesScreen,
@@ -464,18 +464,9 @@ export default function InspectionResultScreen() {
 
   if (!loading && (notFound || loadError)) {
     return (
-      <Screen>
-        <Stack.Screen
-          options={{
-            headerShown: true,
-            title: 'შემოწმების აქტი',
-            headerBackVisible: false,
-            headerLeft: () => <HeaderBackButton />,
-            headerShadowVisible: false,
-            headerStyle: { backgroundColor: theme.colors.background },
-            headerTitleStyle: { color: theme.colors.ink },
-          }}
-        />
+      <Screen edges={['bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <ScreenHeader title="შემოწმების აქტი" />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ErrorState
             title={notFound ? 'შემოწმების აქტი ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
@@ -501,17 +492,8 @@ export default function InspectionResultScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: inspectionDisplayName(template?.name),
-          headerBackVisible: false,
-          headerLeft: () => <HeaderBackButton />,
-          headerShadowVisible: false,
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTitleStyle: { color: theme.colors.ink },
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader title={inspectionDisplayName(template?.name)} />
       <View style={styles.previewWrap}>
         {previewBusy && !previewHtml ? (
           <SkeletonPreview />

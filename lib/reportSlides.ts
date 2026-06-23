@@ -51,6 +51,24 @@ export function slideImagePaths(slide: ReportSlide): string[] {
     .filter((p): p is string => !!p);
 }
 
+/**
+ * The report's cover photo: the first photo across its slides (walked in slide
+ * order, annotated variant preferred), or null when the report has no photos
+ * yet. Canonical accessor for the list/card thumbnail "sneak peek" — don't
+ * re-walk slides by hand. Consumed by `features/records` (`ReportThumb`,
+ * `ReportCard`).
+ */
+export function reportCoverPath(slides: ReportSlide[] | undefined): string | null {
+  const ordered = [...(slides ?? [])].sort((a, b) => a.order - b.order);
+  for (const s of ordered) {
+    for (const img of slideImages(s)) {
+      const p = slideImagePath(img);
+      if (p) return p;
+    }
+  }
+  return null;
+}
+
 /** Number of photos currently on a slide (0–2). */
 export function slidePhotoCount(slide: ReportSlide): number {
   return slideImages(slide).length;

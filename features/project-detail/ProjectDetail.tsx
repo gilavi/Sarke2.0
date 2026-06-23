@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -6,14 +6,21 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import Reanimated from 'react-native-reanimated';
+import Reanimated, {
+  Easing,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Pencil, Plus } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
@@ -90,6 +97,22 @@ export default function ProjectDetail() {
   const [filesBusy, setFilesBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const mapModalState = useProjectMapModal(project);
+
+  // Gentle "breathing" pulse for the map location pin — matches the home ProjectCard.
+  const breathe = useSharedValue(1);
+  useEffect(() => {
+    if (project?.latitude == null || project?.longitude == null) return;
+    breathe.value = withRepeat(
+      withTiming(1.35, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true,
+    );
+  }, [project?.latitude, project?.longitude, breathe]);
+  const mapDotStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: breathe.value }],
+    opacity: interpolate(breathe.value, [1, 1.35], [1, 0.55]),
+  }));
+
   const [templatePickerVisible, setTemplatePickerVisible] = useState(false);
   const [templatePickerOptions, setTemplatePickerOptions] = useState<Template[]>([]);
 
@@ -369,38 +392,43 @@ export default function ProjectDetail() {
       >
 
         {/* Map hero - no parallax */}
-        <View ref={heroRef} collapsable={false} style={{ height: 220, overflow: 'hidden' }}>
-          <View style={StyleSheet.absoluteFill}>
-            {project?.latitude != null && project?.longitude != null ? (
-              <Pressable
+        <View ref={heroRef} collapsable={false} style={{ height: 220, overflow: 'hidden', isolation: 'isolate' }}>
+          {project?.latitude != null && project?.longitude != null ? (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={mapModalState.open}
+              {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}
+            >
+              <MapView
                 style={StyleSheet.absoluteFill}
-                onPress={mapModalState.open}
-                {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}
-              >
-                <MapView
-                  style={StyleSheet.absoluteFill}
-                  region={{
-                    latitude: project.latitude,
-                    longitude: project.longitude,
-                    latitudeDelta: 0.008,
-                    longitudeDelta: 0.008,
-                  }}
-                  scrollEnabled={false}
-                  zoomEnabled={false}
-                  pitchEnabled={false}
-                  rotateEnabled={false}
-                  provider={PROVIDER_DEFAULT}
-                >
-                  <Marker
-                    coordinate={{ latitude: project.latitude, longitude: project.longitude }}
-                    pinColor={theme.colors.accent}
-                  />
-                </MapView>
-              </Pressable>
-            ) : (
+                region={{
+                  latitude: project.latitude,
+                  longitude: project.longitude,
+                  latitudeDelta: 0.008,
+                  longitudeDelta: 0.008,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                pitchEnabled={false}
+                rotateEnabled={false}
+                showsCompass={false}
+                showsScale={false}
+                showsTraffic={false}
+                showsPointsOfInterest={false}
+                showsBuildings={false}
+                showsIndoors={false}
+                liteMode
+                provider={PROVIDER_DEFAULT}
+              />
+              {/* Desaturate the map + custom accent pin — same treatment as the home ProjectCard. */}
+              <View style={styles.mapDesaturate} pointerEvents="none" />
+              <Reanimated.View style={[styles.mapDot, mapDotStyle]} pointerEvents="none" />
+            </Pressable>
+          ) : (
+            <View style={StyleSheet.absoluteFill}>
               <SkeletonMap onAddLocation={() => setEditing(true)} />
-            )}
-          </View>
+            </View>
+          )}
 
           {/* SVG arch - morphs between flat and curved via Reanimated */}
           <ProjectArchSvg archProps={archProps} fill={theme.colors.background} />
@@ -454,15 +482,15 @@ export default function ProjectDetail() {
 
         {/* Quick actions - edgeInset matches parent paddingHorizontal to reach screen edges.
             Gutter is 16 so the first button's left edge lines up with the section cards below. */}
-        <View ref={quickActionsRef} collapsable={false} style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <QuickActions actions={quickActions} scrollable edgeInset={16} />
+        <View ref={quickActionsRef} collapsable={false} style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+          <QuickActions actions={quickActions} scrollable edgeInset={20} />
         </View>
 
         {/* Upcoming schedule */}
         <UpcomingSection projectId={id} />
 
         {/* ── Section cards ── */}
-        <View style={{ paddingHorizontal: 16, gap: 16, paddingTop: 8 }}>
+        <View style={{ paddingHorizontal: 20, gap: 16, paddingTop: 8 }}>
 
           {/* ── Inspections (generic + equipment) ── */}
           <View ref={questionnairesRef} collapsable={false} style={styles.sectionCard}>
@@ -486,10 +514,9 @@ export default function ProjectDetail() {
             <BriefingsSection id={id} briefings={briefings} loading={pending.briefings} />
           </View>
 
-          {/* ── რეპორტები ── */}
-          <View style={styles.sectionCard}>
-            <ReportsSection id={id} reports={reports} loading={pending.reports} />
-          </View>
+          {/* ── რეპორტები ── (no sectionCard wrapper: the report rail scrolls
+               full-bleed to the screen edge; ReportsSection owns its padding) */}
+          <ReportsSection id={id} reports={reports} loading={pending.reports} />
 
           {/* ── ბრძანებები ── */}
           <View style={styles.sectionCard}>

@@ -1,14 +1,15 @@
-import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
-import { ChevronRight, Megaphone } from 'lucide-react-native';
-import { A11yText as Text } from '../../components/primitives/A11yText';
+import { ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import { InspectionRow } from '../../components/InspectionRow';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { Briefing } from '../../types/models';
-import { getRecordStyles } from './styles';
+import { BriefingTopicAvatar } from './BriefingTopicAvatar';
+import { briefingTopicsLabel } from './topics';
 
-/** Status-free briefing row, reused by Home / History / Drafts. */
+/** Status-free briefing row. Leading avatar shows the topic icon(s); the title
+ *  is the topic name(s). Reused by Home / History / Drafts. */
 export function BriefingRow({
   briefing,
   onPress,
@@ -19,21 +20,18 @@ export function BriefingRow({
   showBorder?: boolean;
 }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getRecordStyles(theme), [theme]);
+  const { t } = useTranslation();
   return (
-    <Pressable
+    <InspectionRow
+      leading={<BriefingTopicAvatar topics={briefing.topics} />}
+      hidePill
+      title={briefingTopicsLabel(briefing.topics, t)}
+      subtitle={`${briefing.participants.length} მონაწილე · ${formatShortDateTime(briefing.dateTime)}`}
+      trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}
+      inset={0}
+      showBorder={showBorder}
       onPress={onPress}
-      style={[styles.listRow, showBorder && styles.listRowBorder]}
-      {...a11y('ინსტრუქტაჟი', 'დეტალების ნახვა', 'button')}
-    >
-      <View style={[styles.recordIcon, { backgroundColor: theme.colors.harnessSoft }]}>
-        <Megaphone size={16} color={theme.colors.harnessTint} strokeWidth={1.5} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.listRowTitle} numberOfLines={1}>{formatShortDateTime(briefing.dateTime)}</Text>
-        <Text style={styles.listRowSubtitle}>{briefing.participants.length} მონაწილე</Text>
-      </View>
-      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-    </Pressable>
+      a11y={a11y('ინსტრუქტაჟი', 'დეტალების ნახვა', 'button')}
+    />
   );
 }

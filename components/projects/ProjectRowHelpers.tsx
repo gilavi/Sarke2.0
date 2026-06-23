@@ -2,12 +2,15 @@
  * Small presentational components used by the project detail screen.
  * All self-contained - they call useTheme() internally so callers need no style props.
  */
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import { ChevronRight, File, FileText, TriangleAlert, User } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { InspectionTypeAvatar } from '../InspectionTypeAvatar';
+import { InspectionRow } from '../InspectionRow';
+import { RecordAvatar } from '../RecordAvatar';
 import { incidentColors } from '../../lib/statusColors';
 import { imageForDisplay } from '../../lib/imageUrl';
 import { useTheme } from '../../lib/theme';
@@ -91,47 +94,60 @@ export const FileThumbnail = memo(function FileThumbnail({ file }: { file: Proje
 
 // ── ViewMoreRow ───────────────────────────────────────────────────────────────
 
+/**
+ * "View all" footer row: a stack of avatars + the text "ყველას ნახვა" (no
+ * count). Pass `avatars` (pre-rendered, row-matching nodes) for the home
+ * widgets so the stack mirrors the list's own avatars; otherwise the
+ * category-based circles are derived from `items` (project sections).
+ */
 export function ViewMoreRow({
-  items, total, onPress,
+  items, onPress, avatars,
 }: {
-  items: { category?: string | null }[];
-  total: number;
+  items?: { category?: string | null }[];
+  /** @deprecated count is no longer shown; kept for call-site compatibility. */
+  total?: number;
   onPress: () => void;
+  avatars?: ReactNode[];
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const rowStyles = useMemo(() => getRowStyles(theme), [theme]);
 
   return (
     <Pressable
       onPress={onPress}
       style={rowStyles.listRow}
-      {...a11y(`+ ${total} მეტი`, 'სრული სიის გახსნა', 'button')}
+      {...a11y(t('records.viewAll'), 'სრული სიის გახსნა', 'button')}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        {items.slice(0, 3).map((item, idx) =>
-          item.category != null ? (
-            <View key={idx} style={{ marginLeft: idx === 0 ? 0 : -10 }}>
-              <InspectionTypeAvatar category={item.category} size={32} />
-            </View>
-          ) : (
-            <View
-              key={idx}
-              style={{
-                width: 32, height: 32, borderRadius: 16,
-                backgroundColor: theme.colors.surface,
-                borderWidth: 1.5, borderColor: theme.colors.border,
-                alignItems: 'center', justifyContent: 'center',
-                marginLeft: idx === 0 ? 0 : -10,
-                shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-              }}
-            >
-              <File size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            </View>
-          ),
-        )}
+        {avatars
+          ? avatars.slice(0, 3).map((node, idx) => (
+              <View key={idx} style={{ marginLeft: idx === 0 ? 0 : -12 }}>{node}</View>
+            ))
+          : (items ?? []).slice(0, 3).map((item, idx) =>
+              item.category != null ? (
+                <View key={idx} style={{ marginLeft: idx === 0 ? 0 : -10 }}>
+                  <InspectionTypeAvatar category={item.category} size={32} />
+                </View>
+              ) : (
+                <View
+                  key={idx}
+                  style={{
+                    width: 32, height: 32, borderRadius: 16,
+                    backgroundColor: theme.colors.surface,
+                    borderWidth: 1.5, borderColor: theme.colors.border,
+                    alignItems: 'center', justifyContent: 'center',
+                    marginLeft: idx === 0 ? 0 : -10,
+                    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+                  }}
+                >
+                  <File size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
+                </View>
+              ),
+            )}
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={rowStyles.listRowTitle}>+ {total} მეტი</Text>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={rowStyles.listRowTitle}>{t('records.viewAll')}</Text>
       </View>
       <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
     </Pressable>
@@ -149,35 +165,24 @@ export function IncidentRow({
   showBorder?: boolean;
 }) {
   const { theme, isDark } = useTheme();
-  const rowStyles = useMemo(() => getRowStyles(theme), [theme]);
   const palette = incidentColors(isDark);
   const badge = palette[incident.type as IncidentType] ?? palette.minor;
+  const typeLabel = INCIDENT_TYPE_LABEL[incident.type as IncidentType] ?? incident.type;
 
+  // Same row layout + circle avatar as every other record type. Severity is
+  // carried by the avatar colour + the subtitle label (no separate status box).
   return (
-    <Pressable onPress={onPress} style={[rowStyles.listRow, showBorder && rowStyles.listRowBorder]}>
-      <View style={[rowStyles.statusIcon, { backgroundColor: badge.bg, borderWidth: 1, borderColor: badge.border }]}>
-        <TriangleAlert size={13} color={badge.text} strokeWidth={1.5} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <View style={{ backgroundColor: badge.bg, borderRadius: 4, borderWidth: 1, borderColor: badge.border, paddingHorizontal: 6, paddingVertical: 2 }}>
-            <Text style={{ fontSize: 10, fontWeight: '700', color: badge.text }}>
-              {INCIDENT_TYPE_LABEL[incident.type as IncidentType] ?? incident.type}
-            </Text>
-          </View>
-          {incident.status === 'draft' && (
-            <View style={{ backgroundColor: theme.colors.warnSoft, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 }}>
-              <Text style={{ fontSize: 10, fontWeight: '700', color: theme.colors.certTint }}>დრაფტი</Text>
-            </View>
-          )}
-        </View>
-        <Text style={[rowStyles.listRowTitle, { marginTop: 3 }]} numberOfLines={1}>
-          {incident.location || incident.description || '-'}
-        </Text>
-        <Text style={rowStyles.listRowSubtitle}>{formatShortDateTime(incident.date_time)}</Text>
-      </View>
-      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-    </Pressable>
+    <InspectionRow
+      leading={<RecordAvatar icon={TriangleAlert} tint={badge.text} bg={badge.bg} />}
+      hidePill
+      title={incident.location || incident.description || '-'}
+      subtitle={`${typeLabel} · ${formatShortDateTime(incident.date_time)}`}
+      trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}
+      inset={0}
+      showBorder={showBorder}
+      onPress={onPress}
+      a11y={a11y(typeLabel, 'ინციდენტის ნახვა', 'button')}
+    />
   );
 }
 

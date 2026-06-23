@@ -1,18 +1,15 @@
-import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
 import { ChevronRight, FileText } from 'lucide-react-native';
-import { A11yText as Text } from '../../components/primitives/A11yText';
+import { InspectionRow } from '../../components/InspectionRow';
+import { RecordAvatar } from '../../components/RecordAvatar';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { formatShortDateTime } from '../../lib/formatDate';
 import { ORDER_DOCUMENT_TYPE_LABEL, type Order } from '../../types/models';
-import { getRecordStyles } from './styles';
 
 /**
  * Status-free brdzaneba (order) row, reused by Home / History / Drafts.
- *
- * Orders have no per-order detail/edit screen on mobile (only `new` +
- * `[id]/success`), so the row is display-only unless an `onPress` is given.
+ * Orders have no per-order detail/edit screen on mobile, so the row is
+ * display-only (no chevron / tap) unless an `onPress` is supplied.
  */
 export function OrderRow({
   order,
@@ -24,31 +21,18 @@ export function OrderRow({
   showBorder?: boolean;
 }) {
   const { theme } = useTheme();
-  const styles = useMemo(() => getRecordStyles(theme), [theme]);
   const label = ORDER_DOCUMENT_TYPE_LABEL[order.documentType] ?? order.documentType;
-  const body = (
-    <>
-      <View style={[styles.recordIcon, { backgroundColor: theme.colors.certSoft }]}>
-        <FileText size={16} color={theme.colors.certTint} strokeWidth={1.5} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.listRowTitle} numberOfLines={1}>{label}</Text>
-        <Text style={styles.listRowSubtitle}>{formatShortDateTime(order.createdAt)}</Text>
-      </View>
-    </>
-  );
-
-  if (!onPress) {
-    return <View style={[styles.listRow, showBorder && styles.listRowBorder]}>{body}</View>;
-  }
   return (
-    <Pressable
+    <InspectionRow
+      leading={<RecordAvatar icon={FileText} tint={theme.colors.certTint} bg={theme.colors.certSoft} />}
+      hidePill
+      title={label}
+      subtitle={formatShortDateTime(order.createdAt)}
+      trailing={onPress ? <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} /> : null}
+      inset={0}
+      showBorder={showBorder}
       onPress={onPress}
-      style={[styles.listRow, showBorder && styles.listRowBorder]}
-      {...a11y(label, 'ბრძანების ნახვა', 'button')}
-    >
-      {body}
-      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-    </Pressable>
+      a11y={a11y(label, 'ბრძანება', 'button')}
+    />
   );
 }

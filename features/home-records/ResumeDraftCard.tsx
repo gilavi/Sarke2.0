@@ -72,6 +72,7 @@ export function ResumeDraftCard() {
     return () => sub.remove();
   }, [loadStep]);
 
+  const [isDeleted, setIsDeleted] = useState(false);
   const swipeableRef = useRef<Swipeable>(null);
   const deleteOpacity = useRef(new RNAnimated.Value(1)).current;
   const deleteScale = useRef(new RNAnimated.Value(1)).current;
@@ -85,23 +86,24 @@ export function ResumeDraftCard() {
         RNAnimated.timing(deleteScale, { toValue: 0.94, duration: 160, useNativeDriver: true }),
       ]).start(() => resolve());
     });
+    setIsDeleted(true);
     try {
       await deleteInspectionBySource(tpl?.category ?? undefined, draft.id);
       await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
     } catch {
       Alert.alert(t('common.error'), t('common.deleteFailed'));
+      setIsDeleted(false);
+      deleteOpacity.setValue(1);
+      deleteScale.setValue(1);
     }
-    deleteOpacity.setValue(1);
-    deleteScale.setValue(1);
   }, [draft, tpl?.category, qc, t, deleteOpacity, deleteScale]);
 
-  if (!draft) return null;
+  if (isDeleted || !draft) return null;
 
   const totalSteps = STEP_TOTALS[tpl?.category ?? ''] ?? 0;
-  const showProgress = totalSteps > 0 && step > 0;
 
   return (
-    <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 4 }}>
+    <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 }}>
       <RNAnimated.View style={{ opacity: deleteOpacity, transform: [{ scale: deleteScale }] }}>
         <Swipeable
           ref={swipeableRef}
@@ -121,21 +123,22 @@ export function ResumeDraftCard() {
             style={styles.resumeCard}
             padding="none"
           >
-            <View style={styles.resumeAccent} />
             <View style={styles.resumeContent}>
               <View style={styles.resumeTopRow}>
-                <Text style={styles.resumeTitle} numberOfLines={1}>{inspectionDisplayName(tpl?.name)}</Text>
-                <View style={styles.resumePill}><Text style={styles.resumePillText}>{t('common.draft')}</Text></View>
+                <View style={styles.resumePill}><Text style={styles.resumePillText}>{t('home.lastDraft')}</Text></View>
+                <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
               </View>
-              {showProgress ? (
+              <Text style={styles.resumeTitle} numberOfLines={1}>{inspectionDisplayName(tpl?.name)}</Text>
+              {totalSteps > 0 ? (
                 <View style={styles.progressTrack}>
                   <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as `${number}%` }]} />
                 </View>
               ) : null}
-              <View style={styles.resumeBottomRow}>
-                {step > 0 ? <Text style={styles.resumeStepLabel}>{t('home.stepLabel', { step })}</Text> : <View />}
-                <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
-              </View>
+              {step > 0 ? (
+                <View style={styles.resumeBottomRow}>
+                  <Text style={styles.resumeStepLabel}>{t('home.stepLabel', { step })}</Text>
+                </View>
+              ) : null}
             </View>
           </Card>
         </Swipeable>
@@ -147,27 +150,24 @@ export function ResumeDraftCard() {
 function getStyles(theme: Theme) {
   return StyleSheet.create({
     resumeCard: {
-      flexDirection: 'row',
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.hairline,
       overflow: 'hidden',
     },
-    resumeAccent: { width: 4, backgroundColor: '#FF6D2E' },
-    resumeContent: { flex: 1, padding: 14, gap: 8 },
-    resumeTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    resumeTitle: { flex: 1, color: theme.colors.ink, fontSize: 15, fontWeight: '800' },
-    resumePill: { backgroundColor: theme.colors.neutral[900], borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+    resumeContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, gap: 0 },
+    resumeTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '800', marginTop: 10 },
+    resumePill: { alignSelf: 'flex-start', backgroundColor: theme.colors.neutral[900], borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+    resumeTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     resumePillText: {
       color: theme.colors.highlight, fontSize: 10, fontWeight: '700',
-      textTransform: 'uppercase', letterSpacing: 0.5,
     },
-    resumeBottomRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    resumeBottomRow: { flexDirection: 'row', marginTop: 6 },
     resumeStepLabel: { color: theme.colors.inkSoft, fontSize: 11, fontWeight: '600' },
     resumeMeta: { color: theme.colors.inkSoft, fontSize: 11 },
     progressTrack: {
-      height: 2, borderRadius: 1, backgroundColor: withOpacity(theme.colors.ink, 0.1), overflow: 'hidden',
+      height: 4, borderRadius: 2, backgroundColor: withOpacity(theme.colors.ink, 0.1), overflow: 'hidden', marginTop: 12,
     },
-    progressFill: { height: 2, borderRadius: 1, backgroundColor: withOpacity(theme.colors.ink, 0.35) },
+    progressFill: { height: 4, borderRadius: 2, backgroundColor: withOpacity(theme.colors.ink, 0.35) },
     deleteAction: {
       backgroundColor: theme.colors.danger, justifyContent: 'center', alignItems: 'center',
       width: 72, borderRadius: 14, marginLeft: 8, marginRight: 20, marginVertical: 2, gap: 4,

@@ -64,20 +64,13 @@ export function FilesAndOrdersSection({
           <Text style={styles.sectionTitle}>ბრძანებები</Text>
           <Text style={styles.sectionCount}>{files.length + completedOrders.length}</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <Pressable
-            onPress={() => router.push(`/orders/new?projectId=${id}` as any)}
-            hitSlop={16}
-            {...a11y('ბრძანების შექმნა', 'ახალი ბრძანების შექმნა', 'button')}
-          >
-            <Text style={styles.sectionAddLink}>+ ბრძანება</Text>
-          </Pressable>
-          <Pressable onPress={onUpload} disabled={filesBusy} hitSlop={16}>
-            <Text style={[styles.sectionAddLink, filesBusy && { opacity: 0.5 }]}>
-              {filesBusy ? 'იტვირთება…' : '+ ატვირთვა'}
-            </Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => router.push(`/orders/new?projectId=${id}` as any)}
+          hitSlop={16}
+          {...a11y('ბრძანების შექმნა', 'ახალი ბრძანების შექმნა', 'button')}
+        >
+          <Text style={styles.sectionAddLink}>+ ბრძანება</Text>
+        </Pressable>
       </View>
 
       {/* Generated orders (ბრძანებები) — completed only */}

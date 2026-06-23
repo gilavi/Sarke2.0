@@ -16,8 +16,8 @@ export function getRecordStyles(theme: any) {
       backgroundColor: theme.colors.surface,
       borderRadius: 16,
       paddingHorizontal: 16,
-      paddingTop: 14,
-      paddingBottom: 6,
+      paddingTop: 16,
+      paddingBottom: 12,
       overflow: 'hidden',
     },
     sectionHeader: {

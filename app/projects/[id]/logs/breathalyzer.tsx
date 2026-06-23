@@ -40,6 +40,7 @@ import { A11yText as Text } from '../../../../components/primitives/A11yText';
 import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
 import { SignatureCanvas } from '../../../../components/SignatureCanvas';
+import { ScreenHeader } from '../../../../components/ScreenHeader';
 import { useTheme } from '../../../../lib/theme';
 import { useToast } from '../../../../lib/toast';
 import { a11y } from '../../../../lib/accessibility';
@@ -421,21 +422,16 @@ export default function BreathalizerJournalScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: t('breathalyzer.title'),
-          headerBackTitle: '',
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerTintColor: theme.colors.ink,
-          headerTitleStyle: { fontWeight: '700', color: theme.colors.ink },
-          headerRight: () =>
-            log?.status === 'closed' ? (
-              <View style={styles.closedBadge}>
-                <Text style={styles.closedBadgeText}>{t('breathalyzer.closedBadge')}</Text>
-              </View>
-            ) : null,
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader
+        title={t('breathalyzer.title')}
+        right={
+          log?.status === 'closed' ? (
+            <View style={styles.closedBadge}>
+              <Text style={styles.closedBadgeText}>{t('breathalyzer.closedBadge')}</Text>
+            </View>
+          ) : undefined
+        }
       />
 
       {loading ? (

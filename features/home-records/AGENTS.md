@@ -9,8 +9,13 @@ the route file orchestration-only. Two pieces:
   orange resume card. This is the ONLY draft surface on Home; every other draft
   lives in the Drafts screen (More tab).
 - `HomeRecordsSection` — the per-type **completed**-record widgets (one
-  `RecordWidget` each: Inspections, Reports, Brdzaneba, Incidents, Briefings),
-  4 items each, "view all" → `/history?type=<key>`.
+  `RecordWidget` each: Inspections, Brdzaneba, Incidents, Briefings),
+  4 items each, "view all" → `/history?type=<key>`. **Reports are the
+  exception**: that widget renders a **full-bleed** horizontal `ReportCardRail`
+  of cover-photo cards (from [`features/records/`](../../features/records/)) —
+  no `sectionCard` wrapper, so cards scroll edge-to-edge to the screen; just a
+  gutter-aligned header + the rail (`bleed=20`, `gutter=36`) with a trailing
+  "ყველას ნახვა" card → History.
 
 ## Public API
 

@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Trash2, Check, Pencil, X } from 'lucide-react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
 import { Button, Field, Screen } from '../../../components/ui';
+import { ScreenHeader } from '../../../components/ScreenHeader';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { projectsApi } from '../../../lib/services';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
@@ -137,18 +138,17 @@ export default function SignerForm() {
   };
 
   return (
-    <Screen>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: editing ? t('projectSigner.editTitle') : t('projectSigner.newTitle'),
-          headerRight: () =>
-            editing ? (
-              <Pressable onPress={remove} hitSlop={12}>
-                <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.5} />
-              </Pressable>
-            ) : null,
-        }}
+    <Screen edges={[]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScreenHeader
+        title={editing ? t('projectSigner.editTitle') : t('projectSigner.newTitle')}
+        right={
+          editing ? (
+            <Pressable onPress={remove} hitSlop={12}>
+              <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.5} />
+            </Pressable>
+          ) : undefined
+        }
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <KeyboardAvoidingView
