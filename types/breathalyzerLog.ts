@@ -47,12 +47,6 @@ export function resultStatusFromValue(value: number): BLResultStatus {
   return 'safe';
 }
 
-export const BL_RESULT_COLORS = {
-  safe:    { bg: '#D1FAE5', text: '#065F46', border: '#6EE7B7' },
-  warning: { bg: '#FEF3C7', text: '#92400E', border: '#FCD34D' },
-  fail:    { bg: '#FEE2E2', text: '#991B1B', border: '#FCA5A5' },
-};
-
 export function countsByStatus(entries: BLEntry[]): Record<BLResultStatus, number> {
   return entries.reduce(
     (acc, e) => { acc[e.resultStatus] += 1; return acc; },

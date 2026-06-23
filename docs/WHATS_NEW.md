@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-06-23 — Breathalyzer log (ჟურნალები) rebuilt on canonical patterns
+
+The breathalyzer log (ალკოტესტის ჟურნალი / the project "ჟურნალები" section) was one 1,727-line route file that reinvented the app's primitives — a custom step-dot modal wizard, accent-colored chips, raw `Pressable` buttons, a direct `KeyboardAvoidingView` (a banned import), and an off-brand green/amber/red hex palette baked into `types/`. It now matches the inspection flow: thin route shells (`app/projects/[id]/logs/breathalyzer/{index,add,close}.tsx`) delegating to a new [`features/breathalyzer-log/`](../features/breathalyzer-log/AGENTS.md) module.
+
+- **Full-screen add-test wizard** using `FlowHeader` + `WizardStepTransition` + `KeyboardAwareScrollView`/`KeyboardStickyView`, `StatusChip` for the test-type select, `FloatingLabelInput`, `Button`, and `useSubmitGuard` (enabled button + on-press error reveal) — the same chrome as the inspection wizard. Close-shift is its own pushed screen.
+- **Monochrome results.** Safe/warning/fail now read from icon + label only ([`ResultStatus`](../features/breathalyzer-log/ResultStatus.tsx)), sourced from theme ink tokens — dark-mode-correct and on-brand. `BL_RESULT_COLORS` removed from `types/`; the project-detail section's FAIL pill went monochrome too.
+- **Data via React Query** (`useBreathalyzerLog` / `useBreathalyzerLogByDate` + the three-state skeleton guard) instead of an imperative `useEffect` fetch. The FAIL → repeat-test prompt is now derived from the log data, so it survives reloads.
+- Preserved: the DB schema, `breathalyzerLogApi`, the people-pool autocomplete, the PDF builder, and signature persistence (the alcohol-test signature is the legal record).
+
+OTA-deliverable (no native changes).
+
+---
+
 ## 2026-06-23 — Drop the redundant "შემოწმება" type label from inspection rows
 
 Inspection list rows carried a small "შემოწმება" record-type overline (`RecordTypePill`) above the title. Now that records are grouped under per-type sections/widgets/History tabs, that per-row label was redundant — every inspection row already sits under an Inspections header. Removed it from [`InspectionRow`](../components/InspectionRow.tsx) (Home widgets, project-detail inspections, History, Drafts), and dropped the now-dead `hidePill` prop + its pass-throughs in the report/order/briefing/incident wrapper rows. `RecordTypePill` itself stays as a catalog primitive (Storybook); it's just no longer consumed by any row.

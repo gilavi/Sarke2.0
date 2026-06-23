@@ -119,6 +119,9 @@ export const qk = {
   },
   breathalyzerLog: {
     byProject: (projectId: string) => ['breathalyzerLog', 'byProject', projectId] as const,
+    byId: (id: string) => ['breathalyzerLog', 'byId', id] as const,
+    byDate: (projectId: string, date: string) =>
+      ['breathalyzerLog', 'byDate', projectId, date] as const,
   },
   qualifications: {
     list: ['qualifications', 'list'] as const,
@@ -610,6 +613,27 @@ export function useBreathalizerLogsByProject(projectId: string | undefined) {
       projectId
         ? breathalyzerLogApi.listByProject(projectId)
         : Promise.resolve([]),
+    enabled: !!projectId,
+  });
+}
+
+/** A single breathalyzer log by id (historical / deep-linked view). */
+export function useBreathalyzerLog(logId: string | undefined) {
+  return useQuery<BreathalizerLog | null>({
+    queryKey: logId ? qk.breathalyzerLog.byId(logId) : ['breathalyzerLog', 'byId', 'none'],
+    queryFn: () => (logId ? breathalyzerLogApi.getById(logId) : Promise.resolve(null)),
+    enabled: !!logId,
+  });
+}
+
+/** The breathalyzer log for a project on a given date (today's log on the main screen). */
+export function useBreathalyzerLogByDate(projectId: string | undefined, date: string) {
+  return useQuery<BreathalizerLog | null>({
+    queryKey: projectId
+      ? qk.breathalyzerLog.byDate(projectId, date)
+      : ['breathalyzerLog', 'byDate', 'none'],
+    queryFn: () =>
+      projectId ? breathalyzerLogApi.getByProjectAndDate(projectId, date) : Promise.resolve(null),
     enabled: !!projectId,
   });
 }

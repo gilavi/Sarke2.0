@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { BookOpen, ChevronRight } from 'lucide-react-native';
+import { BookOpen, ChevronRight, CircleX } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
@@ -10,7 +10,7 @@ import { ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
 import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
-import { BL_RESULT_COLORS, countsByStatus, formatBlDate } from '../../../types/breathalyzerLog';
+import { countsByStatus, formatBlDate } from '../../../types/breathalyzerLog';
 import type { BreathalizerLog } from '../../../types/breathalyzerLog';
 import { getStyles } from '../styles';
 
@@ -66,18 +66,8 @@ export function BreathalyzerSection({
                 style={[styles.listRow, showBorder && styles.listRowBorder]}
                 {...a11y('ალკოტესტის ჟურნალი', 'დეტალების სანახავად დააჭირეთ', 'button')}
               >
-                <View style={[styles.statusIcon, {
-                  backgroundColor: log.status === 'closed'
-                    ? theme.colors.semantic.successSoft
-                    : theme.colors.semantic.warningSoft,
-                }]}>
-                    <BookOpen
-                    size={14}
-                    color={log.status === 'closed'
-                      ? theme.colors.semantic.success
-                      : theme.colors.certTint}
-                    strokeWidth={1.5}
-                  />
+                <View style={[styles.statusIcon, { backgroundColor: theme.colors.subtleSurface }]}>
+                  <BookOpen size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.listRowTitle}>
@@ -90,19 +80,19 @@ export function BreathalyzerSection({
                 </View>
                 {hasFail ? (
                   <View style={{
-                    backgroundColor: BL_RESULT_COLORS.fail.bg,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: theme.colors.surface,
                     borderRadius: 8,
                     paddingHorizontal: 6,
                     paddingVertical: 2,
                     borderWidth: 1,
-                    borderColor: BL_RESULT_COLORS.fail.border,
+                    borderColor: theme.colors.border,
                   }}>
-                    <Text style={{
-                      fontSize: 11,
-                      fontWeight: '700',
-                      color: BL_RESULT_COLORS.fail.text,
-                    }}>
-                      ⚠ {logCounts.fail} FAIL
+                    <CircleX size={12} color={theme.colors.inkSoft} strokeWidth={1.5} />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: theme.colors.ink }}>
+                      {logCounts.fail}
                     </Text>
                   </View>
                 ) : null}

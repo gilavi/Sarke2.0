@@ -15,7 +15,6 @@
 
 import { escHtml, fmtDate } from './pdfShared';
 import {
-  BL_RESULT_COLORS,
   countsByStatus,
   type BreathalizerLog,
   type BLEntry,
