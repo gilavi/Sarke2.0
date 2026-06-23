@@ -19,6 +19,9 @@ export function InspectionTypeIcon({
   className?: string;
 }) {
   const meta = inspectionTypeMeta(type);
+  // Public assets live under Vite's base ('/app/' in prod, '/' in dev). A bare
+  // '/ilu/x.png' would resolve to the domain root and 404 under /app/.
+  const src = import.meta.env.BASE_URL + meta.image;
   return (
     <div
       className={cn(
@@ -27,7 +30,7 @@ export function InspectionTypeIcon({
         className,
       )}
     >
-      <img src={meta.image} alt="" aria-hidden="true" className={cn('object-contain', IMG[size])} />
+      <img src={src} alt="" aria-hidden="true" className={cn('object-contain', IMG[size])} />
     </div>
   );
 }

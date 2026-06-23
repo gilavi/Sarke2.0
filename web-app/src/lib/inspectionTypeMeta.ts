@@ -27,17 +27,17 @@ export interface InspectionTypeMeta {
 }
 
 export const INSPECTION_TYPE_META: Record<InspectionType, InspectionTypeMeta> = {
-  harness:            { label: 'დამცავი ქამარი',         image: '/ilu/harness.png' },
-  xaracho:            { label: 'ფასადის ხარაჩო',          image: '/ilu/scaffolding.png' },
-  mobile_scaffold:    { label: 'მობ. ხარაჩო',             image: '/ilu/mobile-staircase.png' },
-  mobile_scaffold_n3: { label: 'მობ. ხარაჩო N3',          image: '/ilu/mobile-staircase.png' },
-  bobcat:             { label: 'ციცხვიანი დამტვირთველი',   image: '/ilu/bulldozer-sm.png' },
-  excavator:          { label: 'ექსკავატორი',             image: '/ilu/excavator.png' },
-  general:            { label: 'ტექ. აღჭურვილობა',         image: '/ilu/clamp.png' },
-  cargo_platform:     { label: 'ტვირთის პლატფორმა',        image: '/ilu/cargo.png' },
+  harness:            { label: 'დამცავი ქამარი',         image: 'ilu/harness.png' },
+  xaracho:            { label: 'ფასადის ხარაჩო',          image: 'ilu/scaffolding.png' },
+  mobile_scaffold:    { label: 'მობ. ხარაჩო',             image: 'ilu/mobile-staircase.png' },
+  mobile_scaffold_n3: { label: 'მობ. ხარაჩო N3',          image: 'ilu/mobile-staircase.png' },
+  bobcat:             { label: 'ციცხვიანი დამტვირთველი',   image: 'ilu/bulldozer-sm.png' },
+  excavator:          { label: 'ექსკავატორი',             image: 'ilu/excavator.png' },
+  general:            { label: 'ტექ. აღჭურვილობა',         image: 'ilu/clamp.png' },
+  cargo_platform:     { label: 'ტვირთის პლატფორმა',        image: 'ilu/cargo.png' },
 };
 
-const FALLBACK: InspectionTypeMeta = { label: 'შემოწმება', image: '/ilu/clamp.png' };
+const FALLBACK: InspectionTypeMeta = { label: 'შემოწმება', image: 'ilu/clamp.png' };
 
 /** Resolve type meta with a safe fallback for unknown/legacy template categories. */
 export function inspectionTypeMeta(type: string | null | undefined): InspectionTypeMeta {
