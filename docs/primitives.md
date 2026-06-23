@@ -22,6 +22,16 @@ Use `<Button variant="primary" size="lg" title="..." onPress={...} style={{ widt
 
 **Icon-only** controls (delete ✕, close, overflow, back, inline "add") use [`components/primitives/IconButton.tsx`](../components/primitives/IconButton.tsx): `<IconButton icon={X} a11yLabel="..." variant="outline|danger|ghost|plain|overlay" size="sm|md|lg|xl" shape="circle|square" onPress={...} />`. `overlay` = deletes on top of images (white icon + dark scrim); `outline` = bordered, monochrome (the canonical back/close affordance, and the inline "add" button beside inputs). `shape="square"` (rounded-square, radius = `radii.input`) + `size="xl"` (56px) lines a button up flush next to a `FloatingLabelInput` — used for the witness "+" control in the incident form. The circular back button [`HeaderBackButton`](../components/HeaderBackButton.tsx) is just `IconButton variant="outline"` + ChevronLeft. **Don't** hand-roll a `Pressable` + `<Icon>` for these (was duplicated in PhotoSection/QualDoc/DynamicTable). The old text "< Back" pill (`HeaderBackPill`) was **removed** — one back style only. The web-app mirror is [`web-app/src/components/ui/icon-button.tsx`](../web-app/src/components/ui/icon-button.tsx) (same variants; CSS `active:scale` + back-out easing approximates the bounce). The remaining dashed "create new" tiles (New project, Add photo) are an intentional separate affordance — candidates for a future `AddTile` primitive, not `Button`.
 
+## Single-select chip row (filters)
+
+One component: [`components/ui/FilterChipRow.tsx`](../components/ui/FilterChipRow.tsx) — a horizontal row of pills where exactly one is active at a time (no "all" affordance unless the caller adds it). Driven by `{ key, label, icon? }[]` + `activeKey` + `onChange`.
+
+Use it for any single-select chip filter. The History type-filter uses it, fed by the 5-type descriptor in [`features/records/recordTypes.ts`](../features/records/recordTypes.ts). **Don't** copy the old inline `FilterChip` that used to live in the per-project list screens — it was promoted to this shared component (and the draft/completed variants were removed when those lists went completed-only).
+
+## Record section rows + widgets
+
+One module: [`features/records/`](../features/records/) owns the per-type record UI reused across Home, History, the Drafts screen, and the project-detail sections — `RecordWidget` (the Home "section card" chrome), the status-free rows `ReportRow` / `OrderRow` / `BriefingRow` (inspections reuse [`components/InspectionRow`](../components/InspectionRow.tsx), incidents reuse `IncidentRow` from `components/projects/ProjectRowHelpers`), and `recordTypes.ts` (the single ordered descriptor — label/icon/key per type). Rows here carry a neutral type glyph only — **never** a draft/completed status badge. Completed-only is the caller's contract (`useRecent*({ status: 'completed' })`); drafts live in [`features/drafts/`](../features/drafts/). The card/row styles in `features/records/styles.ts` mirror the section subset of `features/project-detail/styles.ts` on purpose — keep them in sync.
+
 ## Form selector (option picker)
 
 One component: [`components/ui/Selector.tsx`](../components/ui/Selector.tsx) — the canonical single/multi option picker.

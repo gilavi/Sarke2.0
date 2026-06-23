@@ -1,16 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Swipeable } from 'react-native-gesture-handler';
+import { useMemo, useState } from 'react';
 import {
-  Alert,
-  Animated as RNAnimated,
-  AppState,
   Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated from 'react-native-reanimated';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
@@ -18,16 +13,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   CloudOff, CloudUpload, TriangleAlert, ChevronRight,
-  Plus, CirclePlus, Trash2, EllipsisVertical,
-  Play, Eye, ShieldCheck,
+  Plus, CirclePlus, ShieldCheck,
 } from 'lucide-react-native';
 import { useSession } from '../../lib/session';
-import { isExpiringSoon, questionnairesApi } from '../../lib/services';
-import { deleteInspectionBySource } from '../../lib/inspectionDelete';
+import { isExpiringSoon } from '../../lib/services';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useProjects,
-  useRecentInspections,
   useQualifications,
   useTemplates,
 } from '../../lib/apiHooks';
@@ -39,52 +31,22 @@ import { Card } from '../../components/ui';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions } from '../../components/QuickActions';
 import { Skeleton } from '../../components/Skeleton';
-import { routeForInspection } from '../../lib/inspectionRouting';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useToast } from '../../lib/toast';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project, Template } from '../../types/models';
 import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
-import { InspectionRow } from '../../components/InspectionRow';
 import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { ProjectCard } from '../../components/home/ProjectCard';
 import { ProjectPickerSheet } from '../../components/home/ProjectPickerSheet';
 import {
   greetingFor,
   todayFormatted,
-  relativeTime,
   tipOfTheDay,
-  groupByDate,
   PROJECT_SKELETONS,
-  RECENT_SKELETONS,
 } from '../../lib/homeUtils';
-
-// Equipment flows where project selection is the first in-flow step (created
-// lazily once a project is chosen - see app/inspections/new.tsx). Starting these
-// from Home routes into that screen instead of the project-picker sheet.
-// All template categories now defer project selection to the first step of the
-// inspection wizard (see `app/inspections/new.tsx`). Kept as a list-less marker
-// for searchability; the previous category-gated branch was removed because
-// non-equipment templates were freezing the app via stacked BottomSheets.
-
-function stepKeyFor(category: string | null | undefined, id: string): string {
-  const map: Record<string, string> = {
-    xaracho: 'wizard', mobile_scaffold: 'wizard',
-    harness: 'harness-wizard',
-    bobcat: 'bobcat-wizard', excavator: 'excavator-wizard',
-    general_equipment: 'ge-wizard', cargo_platform: 'cargo-platform-wizard',
-    safety_net_inspection: 'safety-net-wizard',
-    mobile_ladder_inspection:       'mobile-ladder-wizard',
-    fall_protection_inspection:     'fall-protection-wizard-v2',
-    lifting_accessories_inspection: 'lifting-accessories-wizard',
-    forklift_inspection:            'forklift-wizard',
-  };
-  return `${map[category ?? ''] ?? 'wizard'}:${id}:step`;
-}
-
-const STEP_TOTALS: Record<string, number> = {
-  harness: 3, bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6, safety_net_inspection: 6, mobile_ladder_inspection: 5, fall_protection_inspection: 4, lifting_accessories_inspection: 6, forklift_inspection: 3,
-};
+import { ResumeDraftCard } from '../../features/home-records/ResumeDraftCard';
+import { HomeRecordsSection } from '../../features/home-records/HomeRecordsSection';
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
@@ -110,16 +72,14 @@ export default function HomeScreen() {
   const toast = useToast();
   const certsQ = useQualifications();
   const templatesQ = useTemplates();
-  const recentQ = useRecentInspections(10);
   const projectsQ = useProjects();
 
   const certs = certsQ.data ?? [];
   const templates = templatesQ.data ?? [];
-  const recent = recentQ.data ?? [];
   const projects = projectsQ.data ?? [];
 
-  const loaded = !certsQ.isLoading && !templatesQ.isLoading && !recentQ.isLoading && !projectsQ.isLoading;
-  const loadError = certsQ.isError && templatesQ.isError && recentQ.isError && projectsQ.isError;
+  const loaded = !certsQ.isLoading && !templatesQ.isLoading && !projectsQ.isLoading;
+  const loadError = certsQ.isError && templatesQ.isError && projectsQ.isError;
 
   // Per-section "show skeleton" flags. We can't rely on `isLoading` alone:
   // it only flips true on the very first fetch and stays false during background
@@ -130,11 +90,7 @@ export default function HomeScreen() {
   // the very first render where `isFetching` may not have flipped on yet.
   const projectsLoading =
     (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
-  const recentLoading =
-    (recentQ.isFetching || !recentQ.isFetched) && recent.length === 0;
 
-
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
   const [tplPickerVisible, setTplPickerVisible] = useState(false);
@@ -156,71 +112,8 @@ export default function HomeScreen() {
   const firstName = user?.first_name ?? '';
   const greeting = greetingFor(firstName, t);
   const expiringCount = useMemo(() => certs.filter(isExpiringSoon).length, [certs]);
-  const allDrafts = useMemo(() => recent.filter(q => q.status === 'draft'), [recent]);
-  const [draftSteps, setDraftSteps] = useState<Record<string, number>>({});
-
-  const loadDraftSteps = useCallback(async () => {
-    const drafts = recent.filter(r => r.status === 'draft');
-    if (!drafts.length) return;
-    const pairs = await Promise.all(
-      drafts.map(async d => {
-        const tpl = templates.find(t => t.id === d.template_id);
-        const raw = await AsyncStorage.getItem(stepKeyFor(tpl?.category, d.id));
-        const n = raw ? parseInt(raw, 10) : 0;
-        return [d.id, n] as [string, number];
-      })
-    );
-    setDraftSteps(Object.fromEntries(pairs));
-  }, [recent, templates]);
   const showCertBanner = projects.length > 0 && (certs.length === 0 || expiringCount > 0);
   const tip = tipOfTheDay(t);
-
-  const recentGrouped = useMemo(
-    () => groupByDate(recent.slice(0, 10), i18n.language),
-    [recent, i18n.language],
-  );
-
-  const swipeableRef = useRef<Swipeable>(null);
-  const deleteOpacity = useRef(new RNAnimated.Value(1)).current;
-  const deleteScale = useRef(new RNAnimated.Value(1)).current;
-
-  const handleDraftDelete = useCallback(async (draftId: string) => {
-    swipeableRef.current?.close();
-    await new Promise<void>(resolve => {
-      RNAnimated.parallel([
-        RNAnimated.timing(deleteOpacity, { toValue: 0, duration: 160, useNativeDriver: true }),
-        RNAnimated.timing(deleteScale, { toValue: 0.94, duration: 160, useNativeDriver: true }),
-      ]).start(() => resolve());
-    });
-    try {
-      await questionnairesApi.remove(draftId);
-      await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
-    } catch {
-      Alert.alert(t('common.error'), t('common.deleteFailed'));
-    }
-    deleteOpacity.setValue(1);
-    deleteScale.setValue(1);
-  }, [deleteOpacity, deleteScale, qc, t]);
-
-  const deleteRecentDraft = useCallback(async (id: string, category: string | undefined) => {
-    try {
-      await deleteInspectionBySource(category, id);
-      await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
-    } catch {
-      Alert.alert(t('common.error'), t('common.deleteFailed'));
-    }
-  }, [qc, t]);
-
-
-  const templateName = useCallback((id: string) => inspectionDisplayName(templates.find((tpl) => tpl.id === id)?.name), [templates]);
-
-  useEffect(() => { void loadDraftSteps(); }, [loadDraftSteps]);
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', s => {
-      if (s === 'active') void loadDraftSteps();
-    });
-    return () => sub.remove();
-  }, [loadDraftSteps]);
 
   const insets = useSafeAreaInsets();
   const HEADER_HERO_BODY = 96;   // visible hero content height below status bar
@@ -234,11 +127,11 @@ export default function HomeScreen() {
     () => (
       <RefreshControl
         key={HEADER_FULL}
-        queries={[certsQ, templatesQ, recentQ, projectsQ]}
+        queries={[certsQ, templatesQ, projectsQ]}
         progressViewOffset={HEADER_FULL}
       />
     ),
-    [HEADER_FULL, certsQ, templatesQ, recentQ, projectsQ]
+    [HEADER_FULL, certsQ, templatesQ, projectsQ]
   );
 
   return (
@@ -269,7 +162,6 @@ export default function HomeScreen() {
 
       <Animated.ScrollView
         onScroll={scrollHandler}
-        onScrollBeginDrag={() => { if (openMenuId) setOpenMenuId(null); }}
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="never"
         refreshControl={refreshControl}
@@ -427,198 +319,14 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* ───────── RECENT ACTIVITY ───────── */}
-        {recentLoading ? (
-          <>
-            <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
-              <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
-            </View>
-            <View style={staticStyles.recentListMargin}>
-              {RECENT_SKELETONS.map((i) => (
-                <View key={`skeleton-${i}`} style={[styles.recentRow, i < RECENT_SKELETONS.length - 1 && styles.recentRowBorder]}>
-                  <Skeleton width={48} height={48} radius={12} style={{ marginRight: 14 }} />
-                  <View style={staticStyles.recentSkeletonMeta}>
-                    <Skeleton width={'70%'} height={14} />
-                    <Skeleton width={'35%'} height={11} />
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        ) : recent.length > 0 ? (
-          <>
-            <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
-              <Text style={styles.sectionHeader}>{t('home.recentActs')}</Text>
-              <Pressable onPress={() => router.push('/history' as any)} hitSlop={16} {...a11y('ყველა აქტივობის ნახვა', 'შეეხეთ ისტორიის სანახავად', 'button')}>
-                <Text style={styles.sectionLink}>{t('home.allActivity')}</Text>
-              </Pressable>
-            </View>
-            {allDrafts.length > 0 && (() => {
-              const draft = allDrafts[0];
-              const tpl = templates.find(t => t.id === draft.template_id);
-              const step = draftSteps[draft.id] ?? 0;
-              const totalSteps = STEP_TOTALS[tpl?.category ?? ''] ?? 0;
-              const showProgress = totalSteps > 0 && step > 0;
-              return (
-                <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
-                  <RNAnimated.View style={{ opacity: deleteOpacity, transform: [{ scale: deleteScale }] }}>
-                    <Swipeable
-                      ref={swipeableRef}
-                      friction={2}
-                      rightThreshold={40}
-                      overshootRight={false}
-                      renderRightActions={() => (
-                        <Pressable onPress={() => handleDraftDelete(draft.id)} style={styles.deleteAction}>
-                          <Trash2 size={22} color={theme.colors.white} strokeWidth={1.5} />
-                          <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
-                        </Pressable>
-                      )}
-                    >
-                      <Card
-                        onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as any)}
-                        a11y={a11y('შევსების გაგრძელება', 'შეეხეთ დრაფტის გასაგრძელებლად', 'button')}
-                        style={styles.resumeCard}
-                        padding="none"
-                      >
-                        <View style={styles.resumeAccent} />
-                        <View style={styles.resumeContent}>
-                          <View style={styles.resumeTopRow}>
-                            <Text style={styles.resumeTitle} numberOfLines={1}>{templateName(draft.template_id)}</Text>
-                            <View style={styles.resumePill}><Text style={styles.resumePillText}>{t('common.draft')}</Text></View>
-                          </View>
-                          {showProgress ? (
-                            <View style={styles.progressTrack}>
-                              <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as any }]} />
-                            </View>
-                          ) : null}
-                          <View style={styles.resumeBottomRow}>
-                            {step > 0 ? <Text style={styles.resumeStepLabel}>{t('home.stepLabel', { step })}</Text> : <View />}
-                            <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
-                          </View>
-                        </View>
-                      </Card>
-                    </Swipeable>
-                  </RNAnimated.View>
-                </View>
-              );
-            })()}
-            <View style={staticStyles.recentListMargin}>
-              {recentGrouped.map((group, gi) => {
-                const isLastGroup = gi === recentGrouped.length - 1;
-                return (
-                  <View key={group.label}>
-                    {group.items.map((q, i) => {
-                      const tpl = templates.find(t => t.id === q.template_id);
-                      const isLast = isLastGroup && i === group.items.length - 1;
-                      const isDraft = q.status === 'draft';
-                      const menuOpen = openMenuId === q.id;
-                      const rowContent = (
-                        <InspectionRow
-                          category={tpl?.category}
-                          status={isDraft ? 'draft' : 'completed'}
-                          title={templateName(q.template_id)}
-                          subtitle={(() => { const p = projects.find(pr => pr.id === q.project_id); return p ? (p.company_name || p.name) : ''; })()}
-                          trailing={relativeTime(q.created_at, t, i18n.language)}
-                          showBorder={!isLast}
-                          onPress={() => router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any)}
-                          actions={
-                            <View style={{ position: 'relative' }}>
-                            <Pressable
-                              hitSlop={8}
-                              onPress={() => setOpenMenuId(menuOpen ? null : q.id)}
-                              style={styles.kebabBtn}
-                            >
-                              <EllipsisVertical size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-                            </Pressable>
-                            {menuOpen && (
-                              <>
-                                <Pressable
-                                  style={StyleSheet.absoluteFillObject}
-                                  onPress={() => setOpenMenuId(null)}
-                                />
-                                <View style={[styles.rowMenu, { backgroundColor: theme.colors.card, borderColor: theme.colors.hairline }]}>
-                                  <Pressable
-                                    style={styles.rowMenuItem}
-                                    onPress={() => {
-                                      setOpenMenuId(null);
-                                      router.push(routeForInspection(tpl?.category, q.id, !isDraft) as any);
-                                    }}
-                                  >
-                                    {isDraft
-                                      ? <Play size={15} color={theme.colors.ink} strokeWidth={1.5} />
-                                      : <Eye size={15} color={theme.colors.ink} strokeWidth={1.5} />}
-                                    <Text style={[styles.rowMenuLabel, { color: theme.colors.ink }]}>
-                                      {isDraft ? t('common.continue') : t('common.viewAction')}
-                                    </Text>
-                                  </Pressable>
-                                  <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.hairline }} />
-                                  <Pressable
-                                    style={styles.rowMenuItem}
-                                    onPress={() => {
-                                      setOpenMenuId(null);
-                                      Alert.alert(t('inspections.deleteTitle'), t('common.areYouSure'), [
-                                        { text: t('common.cancel'), style: 'cancel' },
-                                        { text: t('common.delete'), style: 'destructive', onPress: () => deleteRecentDraft(q.id, tpl?.category ?? undefined) },
-                                      ]);
-                                    }}
-                                  >
-                                    <Trash2 size={15} color={theme.colors.danger} strokeWidth={1.5} />
-                                    <Text style={[styles.rowMenuLabel, { color: theme.colors.danger }]}>{t('common.delete')}</Text>
-                                  </Pressable>
-                                </View>
-                              </>
-                            )}
-                            </View>
-                          }
-                        />
-                      );
-                      // Don't wrap in Swipeable when the menu is open — Swipeable
-                      // clips absolutely-positioned children, hiding the dropdown.
-                      return q.status === 'draft' && !menuOpen ? (
-                        <Swipeable
-                          key={q.id}
-                          friction={2}
-                          rightThreshold={40}
-                          overshootRight={false}
-                          renderRightActions={() => (
-                            <Pressable
-                              onPress={() => deleteRecentDraft(q.id, tpl?.category ?? undefined)}
-                              style={styles.deleteAction}
-                            >
-                              <Trash2 size={22} color={theme.colors.white} strokeWidth={1.5} />
-                              <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
-                            </Pressable>
-                          )}
-                        >
-                          {rowContent}
-                        </Swipeable>
-                      ) : (
-                        <View key={q.id}>{rowContent}</View>
-                      );
-                    })}
-                  </View>
-                );
-              })}
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={[styles.sectionHeaderRow, staticStyles.sectionHeaderMargin]}>
-              <Text style={[styles.sectionHeader, { opacity: 0.3 }]}>{t('home.recentActs')}</Text>
-            </View>
-            <View style={[staticStyles.recentListMargin, { opacity: 0.25 }]} pointerEvents="none">
-              {[0, 1, 2].map(i => (
-                <View key={i} style={[styles.recentRow, i < 2 && styles.recentRowBorder]}>
-                  <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: theme.colors.hairline, marginRight: 14 }} />
-                  <View style={{ flex: 1, gap: 7 }}>
-                    <View style={{ width: i === 0 ? '70%' : i === 1 ? '55%' : '62%', height: 13, borderRadius: 6, backgroundColor: theme.colors.hairline }} />
-                    <View style={{ width: i === 0 ? '38%' : i === 1 ? '45%' : '30%', height: 10, borderRadius: 5, backgroundColor: theme.colors.hairline }} />
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
+        {/* ───────── DRAFTS (resume card) + RECORD WIDGETS ───────── */}
+        {/* Only the single most-recent inspection draft lives on Home, as the
+            resume card. Completed records are split into per-type widgets
+            (Inspections / Reports / Brdzaneba / Incidents / Briefings), each
+            linking to the type-filtered History screen. Every other draft lives
+            on the Drafts screen (More tab). */}
+        <ResumeDraftCard />
+        <HomeRecordsSection />
 
         {/* ───────── TIP OF THE DAY ───────── */}
         <View style={[styles.sectionWrap, staticStyles.tipMargin]}>

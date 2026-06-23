@@ -28,6 +28,7 @@ import {
   paymentRecordsApi,
 } from './services';
 import { briefingsApi } from './briefingsApi';
+import { ordersApi } from './ordersApi';
 import { bobcatApi } from './bobcatService';
 import { excavatorApi } from './excavatorService';
 import { generalEquipmentApi } from './generalEquipmentService';
@@ -53,6 +54,8 @@ import type {
   PaymentRecord,
   Report,
   Briefing,
+  Order,
+  RecentRecordsOpts,
 } from '../types/models';
 
 // ── Query Keys (stable, documented, invalidate-targets) ──────────────────────
@@ -77,7 +80,10 @@ export const qk = {
     questions: (id: string) => ['templates', 'questions', id] as const,
   },
   inspections: {
-    recent: (limit: number) => ['inspections', 'recent', limit] as const,
+    recent: (arg?: number | RecentRecordsOpts) => {
+      const o = typeof arg === 'number' ? { limit: arg } : (arg ?? {});
+      return ['inspections', 'recent', o.status ?? 'all', o.limit ?? 'all'] as const;
+    },
     byId: (id: string) => ['inspections', 'detail', id] as const,
     byProject: (projectId: string) => ['inspections', 'byProject', projectId] as const,
     unifiedByProject: (id: string) => ['inspections', 'unifiedByProject', id] as const,
@@ -125,14 +131,21 @@ export const qk = {
   incidents: {
     byId: (id: string) => ['incidents', 'detail', id] as const,
     byProject: (projectId: string) => ['incidents', 'byProject', projectId] as const,
+    recent: (opts?: RecentRecordsOpts) => ['incidents', 'recent', opts?.status ?? 'all', opts?.limit ?? 'all'] as const,
   },
   reports: {
     byId: (id: string) => ['reports', 'detail', id] as const,
     byProject: (projectId: string) => ['reports', 'byProject', projectId] as const,
+    recent: (opts?: RecentRecordsOpts) => ['reports', 'recent', opts?.status ?? 'all', opts?.limit ?? 'all'] as const,
   },
   briefings: {
     byId: (id: string) => ['briefings', 'detail', id] as const,
     byProject: (projectId: string) => ['briefings', 'byProject', projectId] as const,
+    recent: (opts?: RecentRecordsOpts) => ['briefings', 'recent', opts?.status ?? 'all', opts?.limit ?? 'all'] as const,
+  },
+  orders: {
+    byProject: (projectId: string) => ['orders', 'byProject', projectId] as const,
+    recent: (opts?: RecentRecordsOpts) => ['orders', 'recent', opts?.status ?? 'all', opts?.limit ?? 'all'] as const,
   },
   schedules: {
     list: ['schedules', 'list'] as const,
@@ -220,10 +233,11 @@ export function useTemplateQuestions(templateId: string | undefined) {
 
 // ── Inspections ──────────────────────────────────────────────────────────────
 
-export function useRecentInspections(limit = 10) {
+export function useRecentInspections(arg?: number | RecentRecordsOpts) {
+  const opts: RecentRecordsOpts = typeof arg === 'number' ? { limit: arg } : (arg ?? {});
   return useQuery<Inspection[]>({
-    queryKey: qk.inspections.recent(limit),
-    queryFn: () => inspectionsApi.recent(limit),
+    queryKey: qk.inspections.recent(opts),
+    queryFn: () => inspectionsApi.recent(opts),
   });
 }
 
@@ -400,6 +414,14 @@ export function useIncidentsByProject(projectId: string | undefined) {
   });
 }
 
+/** Cross-project recent incidents (RLS-scoped to the signed-in user). */
+export function useRecentIncidents(opts: RecentRecordsOpts = {}) {
+  return useQuery<Incident[]>({
+    queryKey: qk.incidents.recent(opts),
+    queryFn: () => incidentsApi.recent(opts),
+  });
+}
+
 // ── Reports ──────────────────────────────────────────────────────────────────
 
 export function useReport(id: string | undefined) {
@@ -418,6 +440,14 @@ export function useReportsByProject(projectId: string | undefined) {
   });
 }
 
+/** Cross-project recent reports (RLS-scoped to the signed-in user). */
+export function useRecentReports(opts: RecentRecordsOpts = {}) {
+  return useQuery<Report[]>({
+    queryKey: qk.reports.recent(opts),
+    queryFn: () => reportsApi.recent(opts),
+  });
+}
+
 // ── Briefings ─────────────────────────────────────────────────────────────────
 
 export function useBriefing(id: string | undefined) {
@@ -433,6 +463,32 @@ export function useBriefingsByProject(projectId: string | undefined) {
     queryKey: projectId ? qk.briefings.byProject(projectId) : ['briefings', 'byProject', 'none'],
     queryFn: () => (projectId ? briefingsApi.listByProject(projectId) : Promise.resolve([])),
     enabled: !!projectId,
+  });
+}
+
+/** Cross-project recent briefings (RLS-scoped to the signed-in user). */
+export function useRecentBriefings(opts: RecentRecordsOpts = {}) {
+  return useQuery<Briefing[]>({
+    queryKey: qk.briefings.recent(opts),
+    queryFn: () => briefingsApi.recent(opts),
+  });
+}
+
+// ── Orders (ბრძანება) ──────────────────────────────────────────────────────────
+
+export function useOrdersByProject(projectId: string | undefined) {
+  return useQuery<Order[]>({
+    queryKey: projectId ? qk.orders.byProject(projectId) : ['orders', 'byProject', 'none'],
+    queryFn: () => (projectId ? ordersApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+/** Cross-project recent orders/brdzaneba (RLS-scoped to the signed-in user). */
+export function useRecentOrders(opts: RecentRecordsOpts = {}) {
+  return useQuery<Order[]>({
+    queryKey: qk.orders.recent(opts),
+    queryFn: () => ordersApi.recent(opts),
   });
 }
 

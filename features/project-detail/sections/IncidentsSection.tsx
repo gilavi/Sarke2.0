@@ -25,8 +25,12 @@ export function IncidentsSection({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
 
+  // Completed-only — drafts live in the global Drafts screen (More tab).
   const sorted = useMemo(
-    () => [...incidents].sort((a, b) => +new Date(b.date_time) - +new Date(a.date_time)),
+    () =>
+      [...incidents]
+        .filter((i) => i.status === 'completed')
+        .sort((a, b) => +new Date(b.date_time) - +new Date(a.date_time)),
     [incidents],
   );
   const preview = useMemo(() => sorted.slice(0, 3), [sorted]);
@@ -38,19 +42,19 @@ export function IncidentsSection({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TriangleAlert size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>ინციდენტები</Text>
-          <Text style={styles.sectionCount}>{incidents.length}</Text>
+          <Text style={styles.sectionCount}>{sorted.length}</Text>
         </View>
         <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={16}>
           <Text style={styles.sectionAddLink}>+ დამატება</Text>
         </Pressable>
       </View>
 
-      {loading && incidents.length === 0 ? (
+      {loading && sorted.length === 0 ? (
         <View style={{ gap: 8, marginTop: 10 }}>
           <SkeletonRow />
           <SkeletonRow />
         </View>
-      ) : incidents.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <SectionEmptyState type="incidents" />
       ) : (
         <View style={{ marginTop: 4 }}>

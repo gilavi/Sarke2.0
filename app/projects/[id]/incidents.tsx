@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { FileText, Hourglass, ChevronRight } from 'lucide-react-native';
+import { FileText, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
@@ -14,7 +14,6 @@ import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
 import { INCIDENT_TYPE_LABEL } from '../../../types/models';
-import type { Incident, IncidentStatus, IncidentType } from '../../../types/models';
 import { incidentColors } from '../../../lib/statusColors';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -39,27 +38,10 @@ export default function ProjectIncidentsList() {
   const items = incidentsQ.data ?? [];
   // Canonical three-state guard (see CLAUDE.md): skeleton until the query
   // has produced a real answer; never flash empty state over a stale [].
-  const loading = (incidentsQ.isFetching || !incidentsQ.isFetched) && items.length === 0;
-  const [filter, setFilter] = useState<'all' | IncidentStatus>('all');
-
-  const counts = useMemo(
-    () => ({
-      all: items.length,
-      draft: items.filter(i => i.status === 'draft').length,
-      completed: items.filter(i => i.status === 'completed').length,
-    }),
-    [items],
-  );
-
-  const filtered = useMemo(
-    () => (filter === 'all' ? items : items.filter(i => i.status === filter)),
-    [items, filter],
-  );
-
-  const grouped = useMemo(
-    () => groupByDateDesc(filtered, inc => inc.date_time),
-    [filtered],
-  );
+  // Completed-only — drafts live in the global Drafts screen (More tab).
+  const completed = useMemo(() => items.filter((i) => i.status === 'completed'), [items]);
+  const loading = (incidentsQ.isFetching || !incidentsQ.isFetched) && completed.length === 0;
+  const grouped = useMemo(() => groupByDateDesc(completed, (inc) => inc.date_time), [completed]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -78,19 +60,13 @@ export default function ProjectIncidentsList() {
           ) : null}
         </View>
 
-        <View style={styles.filterRow}>
-          <FilterChip label={`ყველა · ${counts.all}`} active={filter === 'all'} onPress={() => setFilter('all')} theme={theme} />
-          <FilterChip label={`დრაფტი · ${counts.draft}`} active={filter === 'draft'} onPress={() => setFilter('draft')} theme={theme} />
-          <FilterChip label={`დასრულებული · ${counts.completed}`} active={filter === 'completed'} onPress={() => setFilter('completed')} theme={theme} />
-        </View>
-
         {loading ? (
           <View style={{ gap: 10 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
-        ) : filtered.length === 0 ? (
+        ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
@@ -102,37 +78,12 @@ export default function ProjectIncidentsList() {
               <View style={{ gap: 10 }}>
                 {group.items.map(inc => {
                   const badge = INCIDENT_BADGE_COLORS[inc.type] ?? INCIDENT_BADGE_COLORS.minor;
-                  const isCompleted = inc.status === 'completed';
                   return (
                     <Pressable
                       key={inc.id}
                       onPress={() => router.push(`/incidents/${inc.id}` as any)}
                       style={styles.listRow}
                     >
-                      <View
-                        style={[
-                          styles.statusIcon,
-                          {
-                            backgroundColor: isCompleted
-                              ? theme.colors.semantic.successSoft
-                              : theme.colors.semantic.warningSoft,
-                          },
-                        ]}
-                      >
-                        {isCompleted ? (
-                          <FileText
-                            size={14}
-                            color={theme.colors.semantic.success}
-                            strokeWidth={1.5}
-                          />
-                        ) : (
-                          <Hourglass
-                            size={14}
-                            color={theme.colors.certTint}
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </View>
                       <View style={{ flex: 1 }}>
                         <View style={styles.rowTitleRow}>
                           <View
@@ -163,37 +114,6 @@ export default function ProjectIncidentsList() {
         )}
       </ScrollView>
     </View>
-  );
-}
-
-function FilterChip({
-  label,
-  active,
-  onPress,
-  theme,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  theme: any;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        {
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          borderRadius: 999,
-          backgroundColor: active ? theme.colors.accent : theme.colors.subtleSurface,
-        },
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      <Text style={{ fontSize: 12, fontWeight: '600', color: active ? theme.colors.white : theme.colors.inkSoft }}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

@@ -21,11 +21,11 @@
 // queryClient.setQueryData.
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   useBreathalizerLogsByProject,
   useBriefingsByProject,
   useIncidentsByProject,
+  useOrdersByProject,
   useProject,
   useProjectFiles,
   useReportsByProject,
@@ -33,7 +33,6 @@ import {
   useUnifiedInspectionsByProject,
   type UnifiedInspectionPreview,
 } from '../../lib/apiHooks';
-import { ordersApi } from '../../lib/ordersApi';
 import type {
   Briefing,
   Incident,
@@ -62,11 +61,7 @@ export function useProjectDetailData(id: string | undefined) {
   const incidentsQ = useIncidentsByProject(id);
   const briefingsQ = useBriefingsByProject(id);
   const reportsQ = useReportsByProject(id);
-  const ordersQ = useQuery<Order[]>({
-    queryKey: ['orders', 'byProject', id],
-    queryFn: () => (id ? ordersApi.listByProject(id) : Promise.resolve([])),
-    enabled: !!id,
-  });
+  const ordersQ = useOrdersByProject(id);
   const breathalyzerLogsQ = useBreathalizerLogsByProject(id);
 
   // Read-only data consumed directly from the query cache (no local state needed)

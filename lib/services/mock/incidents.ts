@@ -1,6 +1,7 @@
-import type { Incident } from '../../../types/models';
+import type { Incident, RecentRecordsOpts } from '../../../types/models';
 
 export const incidentsApi = {
+  recent: async (_opts: RecentRecordsOpts = {}): Promise<Incident[]> => [],
   listByProject: async (_projectId: string): Promise<Incident[]> => [],
   getById: async (_id: string): Promise<Incident | null> => null,
   create: async (_args: Omit<Incident, 'user_id' | 'created_at'>): Promise<Incident> => {

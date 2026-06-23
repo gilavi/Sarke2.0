@@ -1,8 +1,18 @@
 import { supabase } from '../../supabase';
-import type { Incident } from '../../../types/models';
+import type { Incident, RecentRecordsOpts } from '../../../types/models';
 import { throwIfError } from './_shared';
 
 export const incidentsApi = {
+  recent: async (opts: RecentRecordsOpts = {}): Promise<Incident[]> => {
+    let q = supabase.from('incidents').select('*');
+    if (opts.status) q = q.eq('status', opts.status);
+    let t = q.order('created_at', { ascending: false });
+    if (opts.limit != null) t = t.limit(opts.limit);
+    const { data, error } = await t;
+    if (error) throw error;
+    return (data ?? []) as Incident[];
+  },
+
   listByProject: async (projectId: string): Promise<Incident[]> => {
     const { data, error } = await supabase
       .from('incidents')

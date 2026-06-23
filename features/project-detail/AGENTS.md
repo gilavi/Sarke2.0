@@ -78,6 +78,13 @@ leftover signer-collection flow no longer in use. The `crew` column on
 - `sections/BreathalyzerSection.tsx` — breathalyzer log card.
 
 ## Gotchas / non-obvious things
+- **Sections are completed-only** (the records redesign): each section filters
+  to `status === 'completed'` (drafts live in [`features/drafts/`](../drafts/),
+  reached from the More tab) and carries no draft/completed status chrome.
+  `ReportsSection` / `BriefingsSection` render the shared status-free rows from
+  [`features/records/`](../records/) (`ReportRow` / `BriefingRow`);
+  `FilesAndOrdersSection` uses the shared `OrderRow`; `InspectionsSection` omits
+  the avatar status dot. Header counts reflect completed records only.
 - `ProjectDetail.tsx` is still over the 300-line target. The
   remaining bulk is the map hero JSX + logo/info hero JSX + several
   file/upload action handlers + the EditProjectSheet / CustomDropdown

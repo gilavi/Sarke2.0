@@ -13,7 +13,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronRight, CalendarDays, Infinity, TriangleAlert, Moon, Languages, FileText, Box, ExternalLink, LogOut, Clock, Award, BookOpen } from 'lucide-react-native';
+import { ChevronRight, CalendarDays, Infinity, TriangleAlert, Moon, Languages, FileText, Box, ExternalLink, LogOut, Clock, Award, BookOpen, PencilLine } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Badge, Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
@@ -175,6 +175,15 @@ export default function MoreScreen() {
             primary={loaded ? `${counts.total}` : null}
             secondary={loaded ? (counts.latestCreatedAt ? `${t('more.lastInspection', { date: relativeTime(counts.latestCreatedAt, t, i18n.language) })}` : t('more.emptyLast')) : null}
             onPress={() => router.push('/history')}
+          />
+          <HubTile
+            title={t('more.drafts')}
+            icon={PencilLine}
+            tint={theme.colors.warn}
+            bg={theme.colors.warnSoft}
+            primary={loaded ? `${drafts}` : null}
+            secondary={loaded ? (drafts > 0 ? t('more.draftsPending') : t('more.draftsEmpty')) : null}
+            onPress={() => router.push('/drafts')}
           />
           <HubTile
             title={t('more.qualifications')}

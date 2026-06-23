@@ -70,7 +70,10 @@ export default function ProjectInspectionsList() {
       ...excavatorItems.map(e => ({ id: e.id, template_id: e.templateId ?? '', status: e.status, created_at: e.createdAt, source: 'excavator' as const })),
       ...geItems.map(g => ({ id: g.id, template_id: g.templateId ?? '', status: g.status, created_at: g.createdAt, source: 'general_equipment' as const })),
     ];
-    return all.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+    // Completed-only — drafts live in the global Drafts screen (More tab).
+    return all
+      .filter((x) => x.status === 'completed')
+      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
   }, [genericItems, bobcatItems, excavatorItems, geItems]);
 
   const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
@@ -109,25 +112,18 @@ export default function ProjectInspectionsList() {
               <Text style={styles.dateSep}>{formatGeorgianDate(group.key)}</Text>
               {group.items.map((item, i) => {
                 const tpl = templates.find(t => t.id === item.template_id);
-                const isCompleted = item.status === 'completed';
                 const isLast = i === group.items.length - 1;
                 const route = (() => {
                   if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
                   if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
                   if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
-                  return isCompleted ? `/inspections/${item.id}` : `/inspections/${item.id}/wizard`;
+                  return `/inspections/${item.id}`;
                 })();
                 const sourceKey = item.source === 'generic' ? (tpl?.category ?? null) : item.source;
                 return (
                   <RecentListRow
                     key={`${item.source}-${item.id}`}
-                    leading={
-                      <InspectionListAvatar
-                        category={sourceKey}
-                        size={40}
-                        status={isCompleted ? 'completed' : 'draft'}
-                      />
-                    }
+                    leading={<InspectionListAvatar category={sourceKey} size={40} />}
                     title={inspectionDisplayName(tpl?.name)}
                     subtitle={formatShortDateTime(item.created_at)}
                     isLast={isLast}

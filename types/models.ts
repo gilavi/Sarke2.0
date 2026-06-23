@@ -29,6 +29,19 @@ export type InspectionStatus = 'draft' | 'completed';
 /** @deprecated Use `InspectionStatus`. Kept so legacy imports compile. */
 export type QuestionnaireStatus = InspectionStatus;
 
+/**
+ * Options for the cross-project "recent records" fetchers — the `recent()`
+ * method on inspections / reports / incidents / briefings / orders.
+ *
+ * `status` pushes an `.eq('status', …)` filter to the DB so completed-only
+ * surfaces (Home widgets, History) and draft-only surfaces (the Drafts
+ * screen) each fetch exactly their slice instead of over-fetching and
+ * slicing client-side. `limit` caps the row count. All five record tables
+ * use the same `'draft' | 'completed'` lifecycle, and RLS scopes every read
+ * to the signed-in user, so these queries are safe across all projects.
+ */
+export type RecentRecordsOpts = { limit?: number; status?: InspectionStatus };
+
 export interface AppUser {
   id: string;
   email: string;

@@ -534,6 +534,23 @@
     "emptyHint": "დასრულებული შემოწმების აქტები გამოჩნდება აქ",
     "startInspection": "შემოწმების აქტის დაწყება"
   },
+  "records": {
+    "inspections": "შემოწმების აქტები",
+    "reports": "რეპორტები",
+    "orders": "ბრძანებები",
+    "incidents": "ინციდენტები",
+    "briefings": "ინსტრუქტაჟი",
+    "viewAll": "ყველას ნახვა",
+    "emptyInspections": "შემოწმების აქტი ჯერ არ შექმნილა",
+    "emptyReports": "რეპორტი ჯერ არ შექმნილა",
+    "emptyOrders": "ბრძანება ჯერ არ შექმნილა",
+    "emptyIncidents": "ინციდენტი არ დაფიქსირებულა",
+    "emptyBriefings": "ინსტრუქტაჟი ჯერ არ ჩატარებულა"
+  },
+  "drafts": {
+    "title": "დრაფტები",
+    "empty": "დრაფტები არ არის"
+  },
   "more": {
     "title": "მეტი",
     "projectsCount": "პროექტი",
@@ -542,6 +559,9 @@
     "history": "ისტორია",
     "lastInspection": "ბოლო: {{date}}",
     "emptyLast": "ცარიელია",
+    "drafts": "დრაფტები",
+    "draftsPending": "გასაგრძელებელი",
+    "draftsEmpty": "ცარიელია",
     "qualifications": "სერტიფიკატები",
     "expiringCount": "{{count}} იწურება",
     "uploadPrompt": "დააჭირეთ ასატვირთად",

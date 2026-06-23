@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { supabase, STORAGE_BUCKETS } from '../../supabase';
 import { logError } from '../../logError';
 import { isInspection } from '../../guards';
-import type { Inspection, InspectionAttachment } from '../../../types/models';
+import type { Inspection, InspectionAttachment, RecentRecordsOpts } from '../../../types/models';
 import { throwIfError, throwIfErrorMaybe } from './_shared';
 import { storageApi } from './storage';
 
@@ -18,12 +18,12 @@ function assertUuid(value: unknown, field: string): string {
 }
 
 export const inspectionsApi = {
-  recent: async (limit = 100): Promise<Inspection[]> => {
-    const { data, error } = await supabase
-      .from('inspections')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+  recent: async (opts: RecentRecordsOpts = {}): Promise<Inspection[]> => {
+    let q = supabase.from('inspections').select('*');
+    if (opts.status) q = q.eq('status', opts.status);
+    let t = q.order('created_at', { ascending: false });
+    if (opts.limit != null) t = t.limit(opts.limit);
+    const { data, error } = await t;
     if (error) throw error;
     return data ?? [];
   },

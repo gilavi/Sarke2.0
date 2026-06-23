@@ -1,16 +1,17 @@
 // Reports section of the project detail screen.
+// Completed-only — drafts live in the global Drafts screen (More tab) — and the
+// rows carry no status chrome (shared `ReportRow`).
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
-import { ChevronRight, FileText } from 'lucide-react-native';
+import { FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { ReportRow } from '../../records';
 import { useTheme } from '../../../lib/theme';
-import { a11y } from '../../../lib/accessibility';
-import { formatShortDateTime } from '../../../lib/formatDate';
 import type { Report } from '../../../types/models';
 import { getStyles } from '../styles';
 
@@ -27,12 +28,15 @@ export function ReportsSection({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
 
-  const sorted = useMemo(
-    () => [...reports].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)),
+  const completed = useMemo(
+    () =>
+      reports
+        .filter((r) => r.status === 'completed')
+        .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at)),
     [reports],
   );
-  const preview = useMemo(() => sorted.slice(0, 3), [sorted]);
-  const overflow = useMemo(() => sorted.slice(3), [sorted]);
+  const preview = useMemo(() => completed.slice(0, 3), [completed]);
+  const overflow = useMemo(() => completed.slice(3), [completed]);
 
   return (
     <>
@@ -40,7 +44,7 @@ export function ReportsSection({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FileText size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>რეპორტები</Text>
-          <Text style={styles.sectionCount}>{reports.length}</Text>
+          <Text style={styles.sectionCount}>{completed.length}</Text>
         </View>
         <Pressable
           onPress={() => id && router.push(`/reports/new?projectId=${id}` as any)}
@@ -50,48 +54,23 @@ export function ReportsSection({
         </Pressable>
       </View>
 
-      {loading && reports.length === 0 ? (
+      {loading && completed.length === 0 ? (
         <View style={{ gap: 8, marginTop: 10 }}>
           <SkeletonRow />
           <SkeletonRow />
         </View>
-      ) : reports.length === 0 ? (
+      ) : completed.length === 0 ? (
         <SectionEmptyState type="reports" />
       ) : (
         <View style={{ marginTop: 4 }}>
-          {preview.map((r, i) => {
-            const isCompleted = r.status === 'completed';
-            const showBorder = i < preview.length - 1 || overflow.length > 0;
-            return (
-              <Pressable
-                key={r.id}
-                onPress={() =>
-                  router.push(
-                    (isCompleted
-                      ? `/reports/${r.id}`
-                      : `/reports/${r.id}/edit`) as any,
-                  )
-                }
-                style={[styles.listRow, showBorder && styles.listRowBorder]}
-                {...a11y('რეპორტი', 'დეტალების სანახავად დააჭირეთ', 'button')}
-              >
-                <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>
-                  <FileText
-                    size={14}
-                    color={isCompleted ? theme.colors.semantic.success : theme.colors.certTint}
-                    strokeWidth={1.5}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.listRowTitle} numberOfLines={1}>{r.title}</Text>
-                  <Text style={styles.listRowSubtitle}>
-                    {r.slides.length} სლაიდი · {formatShortDateTime(r.created_at)}
-                  </Text>
-                </View>
-                <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-              </Pressable>
-            );
-          })}
+          {preview.map((r, i) => (
+            <ReportRow
+              key={r.id}
+              report={r}
+              showBorder={i < preview.length - 1 || overflow.length > 0}
+              onPress={() => router.push(`/reports/${r.id}` as any)}
+            />
+          ))}
           {overflow.length > 0 ? (
             <ViewMoreRow
               items={overflow.map(() => ({ category: null }))}

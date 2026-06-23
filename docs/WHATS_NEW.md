@@ -4,6 +4,21 @@
 
 ---
 
+## 2026-06-23 — Records redesign: type-filtered History, Home widgets, Drafts split
+
+Completed records and drafts no longer share a list. Everywhere a list of records appears it is now split **by type** and shows **completed only**; drafts moved to one place.
+
+- **History** ([`features/history/`](../features/history/)) is now a type filter — Inspections (default) · Reports · Brdzaneba · Incidents · Briefings — one type at a time, no "all" view. Deep-linkable via `?type=<key>`.
+- **Home** ([`features/home-records/`](../features/home-records/)) drops the monolithic "recent activity" list for per-type **widgets** (4 items each, "view all" → the filtered History), matching the project screen. The single most-recent draft stays pinned as the orange resume card — the only draft surface on Home.
+- **Drafts** ([`features/drafts/`](../features/drafts/), `app/drafts.tsx`) is a new screen reached from a More-tab tile, aggregating every type's drafts grouped by type.
+- **Everywhere else** — the project-detail sections and the per-project list pages (`app/projects/[id]/{inspections,reports,incidents,briefings}.tsx`) are completed-only now too, with the draft/completed status icons and filter chips removed.
+- **Shared building blocks** live in [`features/records/`](../features/records/) (`RecordWidget`, the status-free `ReportRow`/`OrderRow`/`BriefingRow`, and the single `recordTypes.ts` descriptor) plus a new `components/ui/FilterChipRow` primitive.
+- **Data layer:** each type's service gained a cross-project `recent({ limit, status })` (RLS-scoped); new `useRecent{Reports,Incidents,Briefings,Orders}` hooks + a `qk.orders` key namespace; the project-detail orders query moved off its hand-built key.
+
+OTA-deliverable (no native changes). New i18n keys (`records.*`, `drafts.*`, `more.drafts*`) ship in the bundled locale JSON.
+
+---
+
 ## 2026-06-23 — Equipment inspection flows: cleaner inputs, consistent endings
 
 A field-feedback pass across the equipment inspection wizards (mobile-ladder, forklift, lifting-accessories, safety-net + the shared result screen):

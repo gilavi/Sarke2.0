@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Order, OrderFormData, OrderDocumentType } from '../types/models';
+import type { Order, OrderFormData, OrderDocumentType, RecentRecordsOpts } from '../types/models';
 
 // ── DB ↔ model mapping ────────────────────────────────────────────────────────
 
@@ -43,6 +43,16 @@ function patchToDb(patch: Partial<Order>): Partial<DbRow> {
 // ── API ───────────────────────────────────────────────────────────────────────
 
 export const ordersApi = {
+  recent: async (opts: RecentRecordsOpts = {}): Promise<Order[]> => {
+    let q = supabase.from('orders').select('*');
+    if (opts.status) q = q.eq('status', opts.status);
+    let t = q.order('created_at', { ascending: false });
+    if (opts.limit != null) t = t.limit(opts.limit);
+    const { data, error } = await t;
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as DbRow[]).map(toModel);
+  },
+
   listByProject: async (projectId: string): Promise<Order[]> => {
     const { data, error } = await supabase
       .from('orders')

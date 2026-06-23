@@ -1,8 +1,18 @@
 import { supabase } from '../../supabase';
-import type { Report } from '../../../types/models';
+import type { Report, RecentRecordsOpts } from '../../../types/models';
 import { throwIfError } from './_shared';
 
 export const reportsApi = {
+  recent: async (opts: RecentRecordsOpts = {}): Promise<Report[]> => {
+    let q = supabase.from('reports').select('*');
+    if (opts.status) q = q.eq('status', opts.status);
+    let t = q.order('created_at', { ascending: false });
+    if (opts.limit != null) t = t.limit(opts.limit);
+    const { data, error } = await t;
+    if (error) throw error;
+    return (data ?? []) as Report[];
+  },
+
   listByProject: async (projectId: string): Promise<Report[]> => {
     const { data, error } = await supabase
       .from('reports')

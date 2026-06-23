@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { FileText, ShieldCheck, Hourglass, ChevronRight } from 'lucide-react-native';
+import { FileText, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
@@ -39,9 +39,10 @@ export default function ProjectBriefingsList() {
   const items = briefingsQ.data ?? [];
   // Canonical three-state guard (see CLAUDE.md): skeleton until the query has
   // produced a real answer; never flash the empty state over a stale [].
-  const loading = (briefingsQ.isFetching || !briefingsQ.isFetched) && items.length === 0;
-
-  const grouped = useMemo(() => groupByDateDesc(items, b => b.dateTime), [items]);
+  // Completed-only — drafts live in the global Drafts screen (More tab).
+  const completed = useMemo(() => items.filter((b) => b.status === 'completed'), [items]);
+  const loading = (briefingsQ.isFetching || !briefingsQ.isFetched) && completed.length === 0;
+  const grouped = useMemo(() => groupByDateDesc(completed, (b) => b.dateTime), [completed]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -65,7 +66,7 @@ export default function ProjectBriefingsList() {
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
-        ) : items.length === 0 ? (
+        ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
@@ -75,50 +76,23 @@ export default function ProjectBriefingsList() {
             <View key={group.key}>
               <Text style={styles.dateSep}>{formatGeorgianDate(group.key)}</Text>
               <View style={{ gap: 10 }}>
-                {group.items.map(b => {
-                  const isCompleted = b.status === 'completed';
-                  return (
-                    <Pressable
-                      key={b.id}
-                      onPress={() => router.push(`/briefings/${b.id}` as any)}
-                      style={styles.listRow}
-                    >
-                      <View
-                        style={[
-                          styles.statusIcon,
-                          {
-                            backgroundColor: isCompleted
-                              ? theme.colors.semantic.successSoft
-                              : theme.colors.semantic.warningSoft,
-                          },
-                        ]}
-                      >
-                        {isCompleted ? (
-                          <ShieldCheck
-                            size={14}
-                            color={theme.colors.semantic.success}
-                            strokeWidth={1.5}
-                          />
-                        ) : (
-                          <Hourglass
-                            size={14}
-                            color={theme.colors.certTint}
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle} numberOfLines={1}>
-                          {b.topics.map(topicLabel).join(', ') || '-'}
-                        </Text>
-                        <Text style={styles.listRowSubtitle}>
-                          {b.participants.length} მონაწილე · {formatShortDateTime(b.dateTime)}
-                        </Text>
-                      </View>
-                      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-                    </Pressable>
-                  );
-                })}
+                {group.items.map(b => (
+                  <Pressable
+                    key={b.id}
+                    onPress={() => router.push(`/briefings/${b.id}` as any)}
+                    style={styles.listRow}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listRowTitle} numberOfLines={1}>
+                        {b.topics.map(topicLabel).join(', ') || '-'}
+                      </Text>
+                      <Text style={styles.listRowSubtitle}>
+                        {b.participants.length} მონაწილე · {formatShortDateTime(b.dateTime)}
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
+                  </Pressable>
+                ))}
               </View>
             </View>
           ))

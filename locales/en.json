@@ -531,6 +531,23 @@
     "emptyHint": "Completed inspections will appear here",
     "startInspection": "Start inspection"
   },
+  "records": {
+    "inspections": "Inspections",
+    "reports": "Reports",
+    "orders": "Orders",
+    "incidents": "Incidents",
+    "briefings": "Briefings",
+    "viewAll": "View all",
+    "emptyInspections": "No inspections yet",
+    "emptyReports": "No reports yet",
+    "emptyOrders": "No orders yet",
+    "emptyIncidents": "No incidents reported",
+    "emptyBriefings": "No briefings yet"
+  },
+  "drafts": {
+    "title": "Drafts",
+    "empty": "No drafts"
+  },
   "more": {
     "title": "More",
     "projectsCount": "Projects",
@@ -539,6 +556,9 @@
     "history": "History",
     "lastInspection": "Last: {{date}}",
     "emptyLast": "Empty",
+    "drafts": "Drafts",
+    "draftsPending": "To continue",
+    "draftsEmpty": "Empty",
     "qualifications": "Qualifications",
     "expiringCount": "{{count}} expiring",
     "uploadPrompt": "Tap to upload",

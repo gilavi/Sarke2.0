@@ -45,8 +45,10 @@ export function InspectionsSection({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
 
-  const preview = useMemo(() => allInspections.slice(0, 3), [allInspections]);
-  const overflow = useMemo(() => allInspections.slice(3), [allInspections]);
+  // Completed-only — drafts live in the global Drafts screen (More tab).
+  const completed = useMemo(() => allInspections.filter((i) => i.status === 'completed'), [allInspections]);
+  const preview = useMemo(() => completed.slice(0, 3), [completed]);
+  const overflow = useMemo(() => completed.slice(3), [completed]);
 
   return (
     <>
@@ -54,26 +56,25 @@ export function InspectionsSection({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <ShieldCheck size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>{t('projects.questionnairesSection')}</Text>
-          <Text style={styles.sectionCount}>{allInspections.length}</Text>
+          <Text style={styles.sectionCount}>{completed.length}</Text>
         </View>
         <Pressable onPress={onAdd} hitSlop={16}>
           <Text style={styles.sectionAddLink}>+ დამატება</Text>
         </Pressable>
       </View>
 
-      {loading && allInspections.length === 0 ? (
+      {loading && completed.length === 0 ? (
         <View style={{ gap: 8, marginTop: 10 }}>
           <SkeletonRow />
           <SkeletonRow />
         </View>
-      ) : allInspections.length === 0 ? (
+      ) : completed.length === 0 ? (
         <EmptyState text={t('projects.noCompletedInspections')} />
       ) : (
         <View style={{ marginTop: 4 }}>
           {preview.map((item, i) => {
             const tpl = templates.find(tt => tt.id === item.template_id);
-            const isCompleted = item.status === 'completed';
-            const route = routeForInspection(item.source, item.id, isCompleted);
+            const route = routeForInspection(item.source, item.id, true);
             const isLast = i === preview.length - 1 && overflow.length === 0;
             return (
               <Swipeable
@@ -87,14 +88,13 @@ export function InspectionsSection({
               >
                 <InspectionRow
                   category={item.source ?? tpl?.category}
-                  status={isCompleted ? 'completed' : 'draft'}
                   title={inspectionDisplayName(tpl?.name)}
                   subtitle={formatShortDateTime(item.created_at)}
                   trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}
                   inset={0}
                   showBorder={!isLast}
                   onPress={() => router.push(route as any)}
-                  a11y={a11y(inspectionDisplayName(tpl?.name), isCompleted ? 'დასრულებული შემოწმების აქტს ნახვა' : 'დრაფტის გასაგრძელებლად დააჭირეთ', 'button')}
+                  a11y={a11y(inspectionDisplayName(tpl?.name), 'დასრულებული შემოწმების აქტს ნახვა', 'button')}
                 />
               </Swipeable>
             );

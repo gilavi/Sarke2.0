@@ -24,3 +24,5 @@ export { ErrorText } from './ErrorText';
 // Existing internal pieces of the ui folder
 export { CustomDropdown } from './CustomDropdown';
 export type { DropdownOption } from './CustomDropdown';
+export { FilterChipRow } from './FilterChipRow';
+export type { FilterChipItem } from './FilterChipRow';

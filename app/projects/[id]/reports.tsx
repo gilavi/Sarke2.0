@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -6,16 +6,14 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { FileText, Hourglass, ChevronRight } from 'lucide-react-native';
+import { FileText, ChevronRight } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useReportsByProject } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
-import type { Report, ReportStatus } from '../../../types/models';
-
-type Filter = 'all' | ReportStatus;
+import type { Report } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
   return new Date(isoDate).toLocaleDateString('ka-GE', {
@@ -38,24 +36,10 @@ export default function ProjectReportsList() {
   const items = reportsQ.data ?? [];
   // Canonical three-state guard (see CLAUDE.md): skeleton until the query
   // has produced a real answer; never flash empty state over a stale [].
-  const loading = (reportsQ.isFetching || !reportsQ.isFetched) && items.length === 0;
-  const [filter, setFilter] = useState<Filter>('all');
-
-  const filtered = useMemo(() => {
-    if (filter === 'all') return items;
-    return items.filter(r => r.status === filter);
-  }, [items, filter]);
-
-  const grouped = useMemo(() => groupByDateDesc(filtered, r => r.created_at), [filtered]);
-
-  const counts = useMemo(
-    () => ({
-      all: items.length,
-      draft: items.filter(r => r.status === 'draft').length,
-      completed: items.filter(r => r.status === 'completed').length,
-    }),
-    [items],
-  );
+  // Completed-only — drafts live in the global Drafts screen (More tab).
+  const completed = useMemo(() => items.filter((r) => r.status === 'completed'), [items]);
+  const loading = (reportsQ.isFetching || !reportsQ.isFetched) && completed.length === 0;
+  const grouped = useMemo(() => groupByDateDesc(completed, (r) => r.created_at), [completed]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -69,19 +53,13 @@ export default function ProjectReportsList() {
       >
         {project?.name ? <Text style={styles.pageSubtitle}>{project.name}</Text> : null}
 
-        <View style={styles.filterRow}>
-          <FilterChip label={`ყველა · ${counts.all}`} active={filter === 'all'} onPress={() => setFilter('all')} theme={theme} />
-          <FilterChip label={`დრაფტი · ${counts.draft}`} active={filter === 'draft'} onPress={() => setFilter('draft')} theme={theme} />
-          <FilterChip label={`დასრულებული · ${counts.completed}`} active={filter === 'completed'} onPress={() => setFilter('completed')} theme={theme} />
-        </View>
-
         {loading ? (
           <View style={{ gap: 10 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
-        ) : filtered.length === 0 ? (
+        ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
             <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
@@ -91,89 +69,30 @@ export default function ProjectReportsList() {
             <View key={group.key}>
               <Text style={styles.dateSep}>{formatGeorgianDate(group.key)}</Text>
               <View style={{ gap: 10 }}>
-                {group.items.map(r => {
-                  const isCompleted = r.status === 'completed';
-                  return (
-                    <Pressable
-                      key={r.id}
-                      onPress={() =>
-                        router.push(
-                          (isCompleted ? `/reports/${r.id}` : `/reports/${r.id}/edit`) as any,
-                        )
-                      }
-                      style={styles.listRow}
-                    >
-                      <View
-                        style={[
-                          styles.statusIcon,
-                          {
-                            backgroundColor: isCompleted
-                              ? theme.colors.semantic.successSoft
-                              : theme.colors.semantic.warningSoft,
-                          },
-                        ]}
-                      >
-                        {isCompleted ? (
-                          <FileText
-                            size={14}
-                            color={theme.colors.semantic.success}
-                            strokeWidth={1.5}
-                          />
-                        ) : (
-                          <Hourglass
-                            size={14}
-                            color={theme.colors.certTint}
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.listRowTitle} numberOfLines={1}>{r.title}</Text>
-                        <Text style={styles.listRowSubtitle}>
-                          {r.slides.length} სლაიდი · {formatShortDateTime(r.created_at)}
-                        </Text>
-                      </View>
-                      <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
-                    </Pressable>
-                  );
-                })}
+                {group.items.map(r => (
+                  <Pressable
+                    key={r.id}
+                    onPress={() => router.push(`/reports/${r.id}` as any)}
+                    style={styles.listRow}
+                  >
+                    <View style={[styles.statusIcon, { backgroundColor: theme.colors.accentSoft }]}>
+                      <FileText size={14} color={theme.colors.accent} strokeWidth={1.5} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.listRowTitle} numberOfLines={1}>{r.title}</Text>
+                      <Text style={styles.listRowSubtitle}>
+                        {r.slides.length} სლაიდი · {formatShortDateTime(r.created_at)}
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />
+                  </Pressable>
+                ))}
               </View>
             </View>
           ))
         )}
       </ScrollView>
     </View>
-  );
-}
-
-function FilterChip({
-  label,
-  active,
-  onPress,
-  theme,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  theme: any;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        {
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          borderRadius: 999,
-          backgroundColor: active ? theme.colors.accent : theme.colors.subtleSurface,
-        },
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      <Text style={{ fontSize: 12, fontWeight: '600', color: active ? theme.colors.white : theme.colors.inkSoft }}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

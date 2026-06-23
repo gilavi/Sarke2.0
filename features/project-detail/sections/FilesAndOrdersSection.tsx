@@ -11,17 +11,17 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { Award, ChevronRight, FileText, Trash2 } from 'lucide-react-native';
+import { Award, ChevronRight, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { FileThumbnail, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { OrderRow } from '../../records';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import type { Order, ProjectFile } from '../../../types/models';
-import { ORDER_DOCUMENT_TYPE_LABEL } from '../../../types/models';
 import { getStyles } from '../styles';
 
 export function FilesAndOrdersSection({
@@ -53,6 +53,8 @@ export function FilesAndOrdersSection({
   );
   const filesPreview = useMemo(() => filesSorted.slice(0, 3), [filesSorted]);
   const overflowFiles = useMemo(() => filesSorted.slice(3), [filesSorted]);
+  // Completed-only — draft orders live in the global Drafts screen (More tab).
+  const completedOrders = useMemo(() => orders.filter((o) => o.status === 'completed'), [orders]);
 
   return (
     <>
@@ -60,7 +62,7 @@ export function FilesAndOrdersSection({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Award size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>ბრძანებები</Text>
-          <Text style={styles.sectionCount}>{files.length + orders.length}</Text>
+          <Text style={styles.sectionCount}>{files.length + completedOrders.length}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Pressable
@@ -78,48 +80,29 @@ export function FilesAndOrdersSection({
         </View>
       </View>
 
-      {/* Generated orders (ბრძანებები) */}
-      {orders.length > 0 ? (
+      {/* Generated orders (ბრძანებები) — completed only */}
+      {completedOrders.length > 0 ? (
         <View style={{ marginTop: 4 }}>
-          {orders.map((order, i) => (
-            <View
+          {completedOrders.map((order, i) => (
+            <OrderRow
               key={order.id}
-              style={[
-                styles.listRow,
-                (i < orders.length - 1 || filesPreview.length > 0) && styles.listRowBorder,
-              ]}
-            >
-              <View style={{
-                width: 32, height: 32, borderRadius: 8,
-                backgroundColor: theme.colors.accentSoft,
-                alignItems: 'center', justifyContent: 'center',
-              }}>
-                <FileText size={17} color={theme.colors.accent} strokeWidth={1.5} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.listRowTitle} numberOfLines={1}>
-                  {ORDER_DOCUMENT_TYPE_LABEL[order.documentType] ?? order.documentType}
-                </Text>
-                <Text style={styles.listRowSubtitle}>
-                  {formatShortDateTime(order.createdAt)}
-                  {order.status === 'draft' ? ' · მონახაზი' : ''}
-                </Text>
-              </View>
-            </View>
+              order={order}
+              showBorder={i < completedOrders.length - 1 || filesPreview.length > 0}
+            />
           ))}
         </View>
       ) : null}
 
       {/* Uploaded files */}
-      {loading && files.length === 0 && orders.length === 0 ? (
+      {loading && files.length === 0 && completedOrders.length === 0 ? (
         <View style={{ gap: 8, marginTop: 10 }}>
           <SkeletonRow />
           <SkeletonRow />
         </View>
-      ) : files.length === 0 && orders.length === 0 ? (
+      ) : files.length === 0 && completedOrders.length === 0 ? (
         <SectionEmptyState type="documents" />
       ) : files.length === 0 ? null : (
-        <View style={{ marginTop: orders.length > 0 ? 0 : 4 }}>
+        <View style={{ marginTop: completedOrders.length > 0 ? 0 : 4 }}>
           {filesPreview.map((f, i) => (
             <Swipeable
               key={f.id}

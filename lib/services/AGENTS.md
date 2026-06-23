@@ -45,6 +45,14 @@ sites keep working unchanged after the split.
 - `mock/<domain>.ts` — matching mock implementation per domain.
 
 ## Gotchas / non-obvious things
+- **Cross-project `recent({ limit, status })`** lives on `inspectionsApi`,
+  `reportsApi`, and `incidentsApi` (real + mock); `briefingsApi` / `ordersApi`
+  expose the same in `lib/` (real-only — they bypass this dispatcher, so MOCK
+  mode hits Supabase for those two). The optional `status` pushes an
+  `.eq('status', …)` filter so the Home widgets + History (completed) and the
+  Drafts screen (draft) each fetch exactly their slice. RLS scopes every read to
+  the signed-in user, so dropping the `project_id` filter is safe. Hooks:
+  `useRecent{Inspections,Reports,Incidents,Briefings,Orders}` in `lib/apiHooks`.
 - The toggle is **module-load-time only**. Flipping `useMockData` in
   app.json requires a full app restart — the live binding to `src` is
   resolved when this module first imports.
