@@ -142,7 +142,8 @@ describe('useBriefingSigning - signerChips', () => {
     // firstPending = 0 → currentIdx 0, so A is the active signer.
     const chips = result.current.signerChips;
     expect(chips.map((c) => c.state)).toEqual(['active', 'skipped', 'done', 'pending']);
-    expect(chips[3].label).toBe('ინსპექტორი');
+    // i18n is unmocked here, so `t(key)` returns the key verbatim.
+    expect(chips[3].label).toBe('briefings.inspectorChipLabel');
   });
 
   it('marks the inspector chip done when the inspector has signed', async () => {
@@ -197,7 +198,8 @@ describe('useBriefingSigning - handleOK', () => {
 describe('useBriefingSigning - handleSkip', () => {
   function pressSkipButton() {
     const buttons = alertMock.mock.calls.at(-1)?.[2] as { text: string; onPress?: () => void }[];
-    const skip = buttons.find((b) => b.text === 'გამოტოვება');
+    // i18n is unmocked, so the confirm button's text is the raw key, not Georgian.
+    const skip = buttons.find((b) => b.text === 'briefings.skipAction');
     return skip?.onPress?.();
   }
 

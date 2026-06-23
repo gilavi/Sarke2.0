@@ -36,6 +36,16 @@ vi.mock('../../lib/theme', () => ({
       typography: {
         fontFamily: { body: 'System', bodyMedium: 'System', bodySemiBold: 'System' },
       },
+      // PressBounce (the trigger wrapper) reads theme.motion.spring.bouncy
+      // inside its bounce() handler. Without this the trigger press throws.
+      motion: {
+        spring: {
+          gentle: { damping: 20, stiffness: 180, mass: 1 },
+          bouncy: { damping: 12, stiffness: 200, mass: 1 },
+          stiff: { damping: 25, stiffness: 300, mass: 1 },
+          soft: { damping: 30, stiffness: 120, mass: 1 },
+        },
+      },
     },
   }),
 }));

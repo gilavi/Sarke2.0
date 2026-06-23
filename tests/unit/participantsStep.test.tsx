@@ -63,14 +63,20 @@ describe('ParticipantsStep', () => {
 
   it('removes the tapped participant by index', () => {
     const onRemove = vi.fn();
-    const { getByLabelText } = render(
+    // The redesign gives every chip's remove button the same static label
+    // 'წაშლა'; the participant name now lives in the accessibility hint
+    // ('<name> წაშლა'), not the label. So we select the remove buttons by their
+    // shared label and tap the second one — the chip for 'ბექა' at index 1.
+    const { getAllByLabelText } = render(
       <ParticipantsStep
         participants={[{ name: 'ანა' }, { name: 'ბექა' }] as any}
         onAdd={vi.fn()}
         onRemove={onRemove}
       />,
     );
-    fireEvent.click(getByLabelText('ბექა წაშლა'));
+    const removeButtons = getAllByLabelText('წაშლა');
+    expect(removeButtons).toHaveLength(2);
+    fireEvent.click(removeButtons[1]);
     expect(onRemove).toHaveBeenCalledWith(1);
   });
 });

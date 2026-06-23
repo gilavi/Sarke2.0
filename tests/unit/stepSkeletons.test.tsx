@@ -37,27 +37,30 @@ afterEach(() => {
 const count = (c: HTMLElement) => c.querySelectorAll('[data-skel]').length;
 
 describe('StepBodySkeleton', () => {
-  it('renders one bar per field for the form variant', () => {
+  it('renders one field group (label + input bar) per field for the form variant', () => {
     const { container } = render(<StepBodySkeleton variant="form" fields={4} />);
-    expect(count(container)).toBe(4);
+    // each FieldGroup = a label stub + an input bar → 2 skeletons per field.
+    expect(count(container)).toBe(8);
   });
 
   it('defaults to the form variant with 3 fields', () => {
     const { container } = render(<StepBodySkeleton />);
-    expect(count(container)).toBe(3);
+    // 3 field groups × (label + input) = 6 bars.
+    expect(count(container)).toBe(6);
   });
 
   it('falls back to form for an unknown variant', () => {
     const { container } = render(<StepBodySkeleton variant={'mystery' as never} />);
-    expect(count(container)).toBe(3);
+    // same as the default form: 3 field groups × 2 bars.
+    expect(count(container)).toBe(6);
   });
 
   it.each([
     ['keypad', 30], // plate + 2 chips + 27 keys
     ['checklist', 31], // legend + 6 rows × (2 text + 3 chips)
-    ['conclusion', 8],
-    ['table', 5],
-    ['question', 9],
+    ['conclusion', 10], // illustration + verdict label + 3 verdicts + notes label + notes box + photo strip (label + 2 tiles)
+    ['table', 13], // 3 row-cards × (number badge + delete + 2 input cells) + add button
+    ['question', 10], // illustration + 2 title lines + 2 answers + photo label + 2 photo tiles + notes label + notes box
   ] as const)('renders the %s variant placeholders', (variant, n) => {
     const { container } = render(<StepBodySkeleton variant={variant} />);
     expect(count(container)).toBe(n);
@@ -70,8 +73,8 @@ describe('InspectionShellSkeleton', () => {
       <InspectionShellSkeleton title="ექსკავატორი" variant="form" fields={2} />,
     );
     expect(getByTestId('flow-header')).toBeTruthy();
-    // 2 form bars + 1 footer skeleton.
-    expect(count(container)).toBe(3);
+    // 2 form field groups × (label + input) = 4 body bars + 1 footer skeleton.
+    expect(count(container)).toBe(5);
   });
 
   it('passes step+1 and totalSteps to the header when totalSteps is set', () => {

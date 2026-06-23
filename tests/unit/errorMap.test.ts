@@ -28,9 +28,9 @@ describe('errorMap', () => {
     });
 
     it('maps network errors', () => {
-      expect(friendlyError(new Error('Network error'))).toBe('ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი');
-      expect(friendlyError(new Error('fetch failed'))).toBe('ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი');
-      expect(friendlyError(new Error('timeout'))).toBe('ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი');
+      expect(friendlyError(new Error('Network error'))).toBe('ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი და სცადეთ თავიდან');
+      expect(friendlyError(new Error('fetch failed'))).toBe('ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი და სცადეთ თავიდან');
+      expect(friendlyError(new Error('timeout'))).toBe('ქსელის შეცდომა. შეამოწმეთ ინტერნეტ კავშირი და სცადეთ თავიდან');
     });
 
     it('maps not found errors', () => {

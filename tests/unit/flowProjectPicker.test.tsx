@@ -17,8 +17,12 @@ vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ b
 const routerReplace = vi.fn();
 vi.mock('expo-router', () => ({ Stack: { Screen: () => null }, useRouter: () => ({ replace: routerReplace }) }));
 
+// The picker paints its UI only once the projects query has settled (the
+// `(isFetching || !isFetched) && length===0` loading guard from CLAUDE.md); with
+// 0 settled projects there's a real (empty) list to show, so the picker renders.
+// `isFetched: true` + length !== 1 is what keeps `willAutoPick` false.
 vi.mock('../../lib/apiHooks', () => ({
-  useProjects: () => ({ data: [] }),
+  useProjects: () => ({ data: [], isFetched: true }),
   useTemplates: () => ({ data: [] }),
 }));
 vi.mock('../../components/FlowHeader', () => ({ FlowHeader: () => React.createElement('div', { 'data-testid': 'header' }) }));
@@ -55,28 +59,40 @@ function renderPicker(props: Partial<React.ComponentProps<typeof FlowProjectPick
 }
 
 describe('FlowProjectPicker', () => {
+  // i18n isn't initialised in this env, so `t(key)` returns the raw key. The
+  // redesigned component routes all its copy through `useTranslation`, so the
+  // dashed "new project" control is labelled with its key, not the literal
+  // Georgian string the pre-redesign component hard-coded.
+  const NEW_PROJECT_LABEL = 'flowProjectPicker.newProject';
+
   it('opens the create-project sheet from the dashed button', () => {
     const { getByLabelText, queryByTestId } = renderPicker();
     expect(queryByTestId('sheet')).toBeNull();
-    fireEvent.click(getByLabelText('ახალი პროექტი'));
+    fireEvent.click(getByLabelText(NEW_PROJECT_LABEL));
     expect(queryByTestId('sheet')).toBeTruthy();
   });
 
-  it('disables continue until a project is selected, then calls onPicked', () => {
+  // Redesign: "continue" is no longer disabled before a project is picked.
+  // Instead it's always enabled and gates inside its handler — pressing it with
+  // nothing selected surfaces an inline error (and a validation haptic) without
+  // calling `onPicked`; only after a selection does it forward the project.
+  it('gates continue on selection, then calls onPicked once a project is chosen', () => {
     const { getByTestId, onPicked } = renderPicker();
     const cont = getByTestId('continue') as HTMLButtonElement;
-    expect(cont.disabled).toBe(true);
+    expect(cont.disabled).toBe(false);
+
+    // Pressing with nothing selected must NOT advance the flow.
+    fireEvent.click(cont);
+    expect(onPicked).not.toHaveBeenCalled();
 
     fireEvent.click(getByTestId('pick'));
-    expect((getByTestId('continue') as HTMLButtonElement).disabled).toBe(false);
-
     fireEvent.click(getByTestId('continue'));
     expect(onPicked).toHaveBeenCalledWith({ id: 'p7', name: 'P7' });
   });
 
   it('redirects into the flow with the new project id on creation', () => {
     const { getByLabelText, getByTestId } = renderPicker({ action: 'briefing' });
-    fireEvent.click(getByLabelText('ახალი პროექტი'));
+    fireEvent.click(getByLabelText(NEW_PROJECT_LABEL));
     fireEvent.click(getByTestId('created'));
     expect(routerReplace).toHaveBeenCalledWith('/briefings/new?projectId=p9');
   });

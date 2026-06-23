@@ -8,6 +8,16 @@ import React from 'react';
 import { render, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 
+// Resolve the i18n keys this component reads to their real ka.json values so
+// the a11y labels match production ("რაოდენობა", "სხვა") rather than raw keys.
+vi.mock('react-i18next', () => {
+  const ka: Record<string, string> = {
+    'inputs.quantityLabel': 'რაოდენობა',
+    'inputs.otherA11y': 'სხვა',
+    'inputs.otherPlaceholder': 'სხვა',
+  };
+  return { useTranslation: () => ({ t: (k: string) => ka[k] ?? k }) };
+});
 vi.mock('../../lib/theme', async () => (await import('../mocks/rn-ui')).themeMock());
 vi.mock('../../lib/haptics', async () => (await import('../mocks/rn-ui')).hapticsMock());
 vi.mock('../../components/primitives/A11yText', async () => (await import('../mocks/rn-ui')).a11yTextMock());

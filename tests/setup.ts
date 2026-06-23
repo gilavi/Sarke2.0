@@ -1,4 +1,13 @@
 import '@testing-library/jest-dom/vitest';
+import { vi } from 'vitest';
+
+// lucide-react-native@1.20.0 ships a broken ESM internal import (its barrel
+// imports `LucideProvider` from ./context.mjs, which only exports
+// `useLucideContext`), so importing the real package throws under vitest. Mock
+// it globally to the icon stub so every component test that pulls in icons can
+// render. Per-file `vi.mock('lucide-react-native', …)` calls still take
+// precedence where a test needs the same stub. See tests/mocks/rn-ui.ts.
+vi.mock('lucide-react-native', async () => (await import('./mocks/rn-ui')).lucideMock());
 
 // React Native / react-native-web modules reference the global __DEV__ flag.
 if (typeof (globalThis as any).__DEV__ === 'undefined') {
