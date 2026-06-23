@@ -82,7 +82,7 @@ export default function QualificationsScreen() {
   }, [qualsQ.data]);
 
   const confirmRemove = (q: Qualification) => {
-    haptic.medium();
+    haptic.deleteConfirm();
     setDeleteTarget(q);
     setDeleteModalVisible(true);
   };

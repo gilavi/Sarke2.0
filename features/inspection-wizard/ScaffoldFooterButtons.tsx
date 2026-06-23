@@ -131,10 +131,7 @@ export function ScaffoldFooterButtons({
               title="შემდეგი"
               style={{ paddingVertical: 14 }}
               rightIcon={ChevronRight}
-              onPress={() => {
-                haptic.light();
-                onAdvance();
-              }}
+              onPress={onAdvance}
             />
           </Animated.View>
         ) : noneCol ? (

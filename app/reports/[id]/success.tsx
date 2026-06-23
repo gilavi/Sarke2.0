@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { AnimatedSuccessIcon, CelebrationBurst } from '../../../components/animations';
-import { haptic } from '../../../lib/haptics';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { FileText, Home } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { Button } from '../../../components/ui';
+import { SuccessScreen } from '../../../components/success';
+import { Screen } from '../../../components/ui';
 import { useTheme } from '../../../lib/theme';
 import { SkeletonCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
@@ -20,17 +19,14 @@ import { generatePdfName } from '../../../lib/pdfName';
 import { friendlyError } from '../../../lib/errorMap';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { useReport, useProject } from '../../../lib/apiHooks';
-import type { Report } from '../../../types/models';
-import { useTranslation } from 'react-i18next';
+import { ReportSlidePreview } from '../../../components/reports/ReportSlidePreview';
 
 export default function ReportSuccessScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const toast = useToast();
   const session = useSession();
-  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: report } = useReport(id);
@@ -40,10 +36,10 @@ export default function ReportSuccessScreen() {
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
-  useEffect(() => {
-    const t = setTimeout(() => haptic.inspectionComplete(), 400);
-    return () => clearTimeout(t);
-  }, []);
+  const slides = useMemo(
+    () => (report?.slides ?? []).slice().sort((a, b) => a.order - b.order),
+    [report],
+  );
 
   const inspectorName = useMemo(() => {
     if (session.state.status !== 'signedIn') return '';
@@ -95,70 +91,57 @@ export default function ReportSuccessScreen() {
 
   if (!report) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, padding: 16, justifyContent: 'center' }}>
-        <SkeletonCard />
-      </View>
+      <Screen edgeToEdge>
+        <View style={{ flex: 1, padding: 16, justifyContent: 'center' }}>
+          <SkeletonCard />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
-      <CelebrationBurst />
-
-      <View style={[styles.body, { paddingTop: insets.top + 40 }]}>
-        <AnimatedSuccessIcon />
-        <Text style={styles.title}>რეპორტი მზადაა!</Text>
-        <Text style={styles.subtitle}>
-          {report.slides.length} სლაიდი · {report.title}
-        </Text>
-      </View>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Button
-          title={pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
-          onPress={sharePdf}
-          loading={sharing}
-        />
-        <Pressable
-          onPress={() => router.replace(`/reports/${report.id}` as any)}
-          hitSlop={8}
-          style={({ pressed }) => [styles.secondaryBtn, pressed && { opacity: 0.7 }]}
-        >
-          <Text style={[styles.secondaryBtnText, { color: theme.colors.accent }]}>
-            რეპორტში დაბრუნება
-          </Text>
-        </Pressable>
-      </View>
+    <>
+      <SuccessScreen
+        title="რეპორტი მზადაა!"
+        subtitle={`${report.slides.length} სლაიდი · ${report.title}`}
+        primary={{
+          title: pdfUsage?.isLocked ? '🔒 PDF გენერაცია' : 'PDF გენერაცია',
+          icon: FileText,
+          onPress: sharePdf,
+          loading: sharing,
+        }}
+        actions={[
+          {
+            icon: Home,
+            title: 'მთავარ გვერდზე',
+            subtitle: 'დაბრუნდი საწყის გვერდზე',
+            onPress: () => router.replace('/(tabs)/home' as any),
+          },
+        ]}
+      >
+        {slides.length > 0 ? (
+          <View style={styles.slidesSection}>
+            <Text style={styles.sectionLabel}>სლაიდები</Text>
+            {slides.map((s, i) => (
+              <ReportSlidePreview key={s.id} slide={s} index={i} />
+            ))}
+          </View>
+        ) : null}
+      </SuccessScreen>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-    </View>
+    </>
   );
 }
 
 function makeStyles(theme: any) {
   return StyleSheet.create({
-    centered: { alignItems: 'center', justifyContent: 'center' },
-    body: { flex: 1, alignItems: 'center', paddingHorizontal: 24, gap: 16 },
-    title: {
-      fontSize: 22,
-      fontWeight: '800',
-      color: theme.colors.ink,
-      textAlign: 'center',
+    slidesSection: { gap: 12 },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.inkFaint,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
     },
-    subtitle: {
-      fontSize: 13,
-      color: theme.colors.inkSoft,
-      textAlign: 'center',
-    },
-    footer: {
-      paddingHorizontal: 24,
-      paddingTop: 12,
-      gap: 12,
-    },
-    secondaryBtn: {
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    secondaryBtnText: { fontSize: 14, fontWeight: '600' },
   });
 }

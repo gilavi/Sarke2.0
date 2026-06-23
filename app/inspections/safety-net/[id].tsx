@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -31,7 +31,6 @@ import {
   SN_VERDICT_LABEL,
   SAFETY_NET_TEMPLATE_ID,
   buildDefaultSNLoadTestRow,
-  computeSNVerdictSuggestion,
   snTotalWeight,
   type SafetyNetInspection,
   type SNVerdict,
@@ -40,11 +39,16 @@ import {
 } from '../../../types/safetyNet';
 
 // ── Step constants ────────────────────────────────────────────────────────────
-const NET_ID_STEP     = 1;
-const INSPECTION_STEP = 2;
-const CONCLUSION_STEP = 3;
-const DOCS_STEP       = 4;
-const TOTAL_STEPS     = 4;
+// Net identification is split across two screens (it had too many inputs for
+// one). The old single "inspection" step is split into the visual questionnaire
+// and the load-test sections. The old documents/photos step is gone — its
+// qual-doc + photo material moved onto the conclusion step.
+const NET_DATA_STEP   = 1; // net fields
+const NET_POSTS_STEP  = 2; // posts / anchors counts
+const VISUAL_STEP     = 3; // visual checklist (questionnaire)
+const LOAD_TEST_STEP  = 4; // load-test table + post-test checklist
+const CONCLUSION_STEP = 5; // verdict + comment + qual-doc + photos
+const TOTAL_STEPS     = 5;
 
 const SN_VERDICT_OPTIONS: VerdictOption<SNVerdict>[] = [
   { value: 'pass', label: SN_VERDICT_LABEL.pass, tone: 'success' },
@@ -74,8 +78,8 @@ export default function SafetyNetInspectionScreen() {
     complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<SafetyNetInspection>({
     id,
-    firstStep: NET_ID_STEP,
-    lastStep: DOCS_STEP,
+    firstStep: NET_DATA_STEP,
+    lastStep: CONCLUSION_STEP,
     persistPrefix: 'safety-net-wizard',
     templateId: SAFETY_NET_TEMPLATE_ID,
     schema: safetyNetSchema,
@@ -289,14 +293,6 @@ export default function SafetyNetInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
-  // ── Verdict auto-suggest ────────────────────────────────────────────────────
-
-  const suggestedVerdict = useMemo(
-    () => inspection ? computeSNVerdictSuggestion(inspection.items, inspection.postTestItems) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.items, inspection?.postTestItems],
-  );
-
   // ── Step navigation ─────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
@@ -307,7 +303,7 @@ export default function SafetyNetInspectionScreen() {
   }, [step, inspection]);
 
   const handleNext = useCallback(async () => {
-    if (step === DOCS_STEP) {
+    if (step === CONCLUSION_STEP) {
       await complete();
     } else {
       setStep(s => s + 1);
@@ -315,7 +311,7 @@ export default function SafetyNetInspectionScreen() {
   }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
-    if (step === NET_ID_STEP) {
+    if (step === NET_DATA_STEP) {
       await exit();
     } else {
       setStep(s => s - 1);
@@ -335,12 +331,11 @@ export default function SafetyNetInspectionScreen() {
         step={step - 1}
         totalSteps={TOTAL_STEPS}
         variant={
-          step === INSPECTION_STEP ? 'checklist'
+          step === VISUAL_STEP || step === LOAD_TEST_STEP ? 'checklist'
             : step === CONCLUSION_STEP ? 'conclusion'
-            : step === DOCS_STEP ? 'docsPhotos'
             : 'form'
         }
-        fields={8}
+        fields={5}
         verdicts={2}
         photos={false}
         onClose={() => router.back()}
@@ -380,7 +375,7 @@ export default function SafetyNetInspectionScreen() {
         direction={direction}
         animate={animateSteps}
         canGoNext={canGoNext}
-        isLastStep={step === DOCS_STEP}
+        isLastStep={step === CONCLUSION_STEP}
         completing={completing}
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onBlockedNext={markAttempted}
@@ -389,8 +384,8 @@ export default function SafetyNetInspectionScreen() {
         onClose={() => router.back()}
       >
 
-          {/* ── Step 1: Net ID ───────────────────────────────────────────────── */}
-          {step === NET_ID_STEP && (
+          {/* ── Step 1: Net data ─────────────────────────────────────────────── */}
+          {step === NET_DATA_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={styles.stepBody}
@@ -403,11 +398,6 @@ export default function SafetyNetInspectionScreen() {
                 fields={[
                   { label: 'მწარმოებელი', value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
                   { label: 'ბადის ზომა მ×მ', value: inspection.netSize, onChange: v => update('netSize', v) },
-                  { label: 'დგარის ზომა', value: inspection.postSize, onChange: v => update('postSize', v) },
-                  { label: 'დგარების რ-ბა', value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
-                  { label: 'დგარის სამაგრების რ-ბა', value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
-                  { label: 'სამაგრი წერტილების რ-ბა', value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
-                  { label: 'კიდის ბაგირების რ-ბა', value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
                   { label: 'უჯრედის მხარე', value: inspection.cellSide, onChange: v => update('cellSide', v) },
                   { label: 'სამუშაო მანძილი', value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
                   {
@@ -425,8 +415,31 @@ export default function SafetyNetInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 2: Inspection ───────────────────────────────────────────── */}
-          {step === INSPECTION_STEP && (
+          {/* ── Step 2: Posts & anchors ──────────────────────────────────────── */}
+          {step === NET_POSTS_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.stepBody}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <IdentificationGrid
+                fields={[
+                  { label: 'დგარის ზომა', value: inspection.postSize, onChange: v => update('postSize', v) },
+                  { label: 'დგარების რ-ბა', value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
+                  { label: 'დგარის სამაგრების რ-ბა', value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
+                  { label: 'სამაგრი წერტილების რ-ბა', value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
+                  { label: 'კიდის ბაგირების რ-ბა', value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
+                ]}
+                columns={1}
+              />
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step 3: Visual checklist (questionnaire) ─────────────────────── */}
+          {step === VISUAL_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 8 }}
@@ -462,7 +475,19 @@ export default function SafetyNetInspectionScreen() {
                 onAddPhoto={handleAddItemPhoto}
                 onDeletePhoto={handleDeleteItemPhoto}
               />
+            </KeyboardAwareScrollView>
+          )}
 
+          {/* ── Step 4: Load test + post-test checklist ──────────────────────── */}
+          {step === LOAD_TEST_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 8 }}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
               <Text style={styles.loadInstruction}>
                 180კგ-ის სიმძიმე 1მ სიმაღლიდან - №477 დადგენილება
               </Text>
@@ -511,51 +536,38 @@ export default function SafetyNetInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Conclusion ───────────────────────────────────────────── */}
+          {/* ── Step 5: Conclusion + docs & photos ───────────────────────────── */}
           {step === CONCLUSION_STEP && (
             <ConclusionStep
               verdict={inspection.verdict}
               verdictOptions={SN_VERDICT_OPTIONS}
               verdictError={attempted && !inspection.verdict}
               onVerdictChange={v => update('verdict', v as SNVerdict)}
-              suggestion={
-                suggestedVerdict && inspection.verdict !== suggestedVerdict
-                  ? {
-                      text: `შემოთავაზება: ${SN_VERDICT_LABEL[suggestedVerdict]}`,
-                      onApply: () => update('verdict', suggestedVerdict),
-                    }
-                  : null
-              }
               notes={inspection.verdictComment ?? ''}
               onNotesChange={v => update('verdictComment', v)}
               completing={completing}
+              photoSection={
+                <>
+                  <View style={styles.docBlock}>
+                    <Text style={styles.fieldLabel}>კვალიფიკაციის / სერტიფიკატის დოკუმენტი</Text>
+                    <QualDoc
+                      photoPath={inspection.qualDocPath}
+                      onAdd={handleAddQualDoc}
+                      onDelete={handleDeleteQualDoc}
+                    />
+                  </View>
+
+                  <View style={styles.docBlock}>
+                    <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
+                    <PhotoSection
+                      photoPaths={inspection.summaryPhotos}
+                      onAdd={handleAddSummaryPhoto}
+                      onDelete={handleDeleteSummaryPhoto}
+                    />
+                  </View>
+                </>
+              }
             />
-          )}
-
-          {/* ── Step 4: Documents & Photos ──────────────────────────────────── */}
-          {step === DOCS_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <Text style={styles.fieldLabel}>კვალიფიკაციის / სერტიფიკატის დოკუმენტი</Text>
-              <QualDoc
-                photoPath={inspection.qualDocPath}
-                onAdd={handleAddQualDoc}
-                onDelete={handleDeleteQualDoc}
-              />
-
-              <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
-              <PhotoSection
-                photoPaths={inspection.summaryPhotos}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-              />
-            </KeyboardAwareScrollView>
           )}
 
         </InspectionShell>
@@ -580,6 +592,7 @@ function getstyles(theme: Theme) {
     footer: { gap: 10, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, backgroundColor: theme.colors.card },
 
     fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
+    docBlock: { gap: 8 },
 
     loadInstruction: {
       fontSize: 11, color: theme.colors.inkSoft, fontStyle: 'italic',

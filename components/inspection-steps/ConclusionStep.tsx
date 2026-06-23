@@ -3,9 +3,9 @@
  * inspection flow (equipment routes, harness, and the scaffold wizard).
  *
  * Renders, in order: a conclusion illustration, an optional summary slot, an
- * optional harness-name field, an optional verdict-suggestion banner, the shared
- * icon-card VerdictSelector, a free-text "კომენტარი" box, optional suggestion
- * pills, and an optional photo strip. The shell/wizard owns the footer CTA.
+ * optional harness-name field, the shared icon-card VerdictSelector, a free-text
+ * "კომენტარი" box, optional notes-history suggestion pills, and an optional photo
+ * strip. The shell/wizard owns the footer CTA.
  */
 import { type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -17,7 +17,6 @@ import { QuestionAvatar } from '../QuestionAvatar';
 import { PhotoSection } from '../inspection-parts/PhotoSection';
 import { useTheme } from '../../lib/theme';
 import { VerdictSelector, type VerdictOption } from './VerdictSelector';
-import { VerdictSuggestionBanner } from './VerdictSuggestionBanner';
 import { getConclusionStyles } from './ConclusionStep.styles';
 
 export type { VerdictOption, VerdictTone } from './VerdictSelector';
@@ -28,8 +27,8 @@ export interface ConclusionStepProps<T extends string = string> {
   verdictOptions: VerdictOption<T>[];
   onVerdictChange: (v: T | null) => void;
   verdictError?: boolean;
-  /** Optional auto-computed verdict hint shown above the selector. */
-  suggestion?: { text: string; onApply?: () => void } | null;
+  /** Verdict-selector layout - 'row' (default) or 'vertical' for long labels. */
+  verdictLayout?: 'row' | 'vertical';
 
   // Free-text comment
   notes?: string;
@@ -66,7 +65,7 @@ export function ConclusionStep<T extends string = string>({
   verdictOptions,
   onVerdictChange,
   verdictError = false,
-  suggestion,
+  verdictLayout = 'row',
   notes,
   onNotesChange,
   notesLabel = 'კომენტარი',
@@ -112,15 +111,12 @@ export function ConclusionStep<T extends string = string>({
         />
       ) : null}
 
-      {suggestion ? (
-        <VerdictSuggestionBanner text={suggestion.text} onApply={suggestion.onApply} />
-      ) : null}
-
       {verdictOptions.length > 0 ? (
         <VerdictSelector
           value={verdict}
           options={verdictOptions}
           onChange={onVerdictChange}
+          layout={verdictLayout}
           showError={verdictError}
         />
       ) : null}

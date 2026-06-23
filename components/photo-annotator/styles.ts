@@ -48,12 +48,14 @@ export function getstyles(theme: any) {
   },
   row: {
     paddingHorizontal: 12,
+    overflow: 'visible',
   },
   rowContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 4,
+    overflow: 'visible',
   },
   colorBtn: {
     width: 32,

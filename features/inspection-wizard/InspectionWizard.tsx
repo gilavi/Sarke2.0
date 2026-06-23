@@ -171,13 +171,15 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   );
 
   const goNext = useCallback(() => {
-    haptic.light();
+    // No press haptic here — the control that calls goNext (the footer Button,
+    // ScaffoldFooterButtons, or HarnessListFlow) already fired one. This only
+    // emits the validation-error beat below when a measure step is invalid.
     const currentStep = steps[stepIndex];
     if (currentStep?.kind === 'question' && currentStep.question.type === 'measure') {
       const value = answers[currentStep.question.id]?.value_num ?? null;
       const err = measureError(currentStep.question, value);
       if (err) {
-        haptic.error();
+        haptic.validationError();
         toast.error(err);
         return;
       }
@@ -411,7 +413,8 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
                 disabled={finishing}
                 onPress={() => {
                   if (finishing) return;
-                  haptic.medium();
+                  // The Button (primary) already fires the Medium press beat;
+                  // saveConclusionAndGo owns the success / validation outcome.
                   saveConclusionAndGo();
                 }}
               />

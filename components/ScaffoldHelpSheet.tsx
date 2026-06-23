@@ -117,20 +117,20 @@ function makeStyles(theme: any) {
       color: theme.colors.accent,
     },
     icon: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
       borderWidth: 1.5,
-      borderColor: theme.colors.accent,
+      borderColor: theme.colors.inkFaint,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.colors.surface,
     },
     iconText: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: theme.colors.accent,
-      lineHeight: 18,
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.colors.inkSoft,
+      lineHeight: 14,
     },
   });
 }

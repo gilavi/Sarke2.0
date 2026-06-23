@@ -79,7 +79,8 @@ export const Input = React.forwardRef<TextInput, InputProps & { required?: boole
         }, delay);
         delay += 60;
       });
-      haptic.error();
+      // A field-level validation error is "needs attention", not a hard failure.
+      haptic.validationError();
     }
   }, [error]);
 

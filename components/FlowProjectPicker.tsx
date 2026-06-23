@@ -68,6 +68,19 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
     }
   }, [isFetched, projects, onPicked]);
 
+  // Don't paint the picker UI until we know there's a real choice to make.
+  // While the query is in-flight, or when there's exactly one project (the
+  // auto-pick effect above is about to fire `onPicked` and navigate away),
+  // render a blank background so the list never flashes on screen.
+  const willAutoPick = !isFetched || projects.length === 1 || autoPicked.current;
+  if (willAutoPick) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <Stack.Screen options={{ headerShown: false }} />
+      </View>
+    );
+  }
+
   const handleContinue = () => {
     if (!selected) {
       setAttempted(true);

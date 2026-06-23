@@ -10,7 +10,6 @@ import { Button } from '../../ui';
 import { useTheme } from '../../../lib/theme';
 import { useAccessibilitySettings } from '../../../lib/accessibility';
 import { FloatingLabelInput } from '../../inputs/FloatingLabelInput';
-import { haptic } from '../../../lib/haptics';
 import type { Answer, AnswerPhoto, GridValues, Question } from '../../../types/models';
 import { COMMENT_PREFIX, captionFor, componentColsFor, rowKey } from './_shared';
 import { getstyles } from './styles';
@@ -143,7 +142,7 @@ export function KamariDetailModal({
   };
 
   const handleSave = () => {
-    haptic.medium();
+    // The Save Button (primary) already fires the Medium press beat.
     const prevGrid = answer?.grid_values ?? {};
     const nextRow: Record<string, string> = {};
     for (const col of cols) {

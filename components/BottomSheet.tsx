@@ -124,7 +124,8 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
         overshootClamping: false,
         useNativeDriver: true,
       }).start(() => {
-        haptic.medium();
+        // Opening a sheet is a low-stakes "it's here" beat → Light.
+        haptic.light();
         isSheetOpen = true;
       });
     }
@@ -287,7 +288,8 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               <View key={item.originalIndex}>
                 <Pressable
                   onPress={() => {
-                    haptic.light();
+                    // Destructive rows (delete) get a Heavy tap; the rest Light.
+                    haptic[isDestructive ? 'heavy' : 'light']();
                     dismiss(item.originalIndex);
                   }}
                   style={({ pressed }) => [

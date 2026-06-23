@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import { FlatList } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, BookOpen } from 'lucide-react-native';
 import { QuestionAvatar } from './QuestionAvatar';
 import { HeaderBackButton } from './HeaderBackButton';
@@ -27,6 +27,27 @@ const { width: SCREEN_W } = Dimensions.get('window');
  * modal and is what the wizard uses to mark the tour seen.
  */
 export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      {/* A React Native Modal renders in its own native view hierarchy, so the
+          app's root safe-area provider is out of reach here — SafeAreaView /
+          useSafeAreaInsets would silently report a 0 top inset and the back +
+          ✕ buttons would render flush under the status bar. Wrapping the body
+          in a fresh SafeAreaProvider and applying the inset as manual padding
+          kills that bug class. See features/signatures/SignaturesScreen.tsx. */}
+      <SafeAreaProvider>
+        <ScaffoldTourBody visible={visible} onClose={onClose} />
+      </SafeAreaProvider>
+    </Modal>
+  );
+}
+
+function ScaffoldTourBody({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList<ScaffoldHelpEntry>>(null);
   const insets = useSafeAreaInsets();
@@ -62,16 +83,10 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
   const total = SCAFFOLD_HELP.length;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <View style={styles.root}>
-        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <View style={styles.root}>
+        <View style={{ flex: 1 }}>
           {/* Header: back (hidden on first slide) · "guide" pill · close (✕) */}
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
             <View style={styles.headerSide}>
               {index > 0 ? <HeaderBackButton onPress={goPrev} /> : null}
             </View>
@@ -122,7 +137,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
               <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
             ))}
           </View>
-        </SafeAreaView>
+        </View>
 
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
           <Pressable
@@ -137,8 +152,7 @@ export function ScaffoldTour({ visible, onClose }: { visible: boolean; onClose: 
             ) : null}
           </Pressable>
         </View>
-      </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -153,7 +167,6 @@ function makeStyles(theme: any) {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingTop: 12,
       paddingBottom: 8,
     },
     headerSide: {

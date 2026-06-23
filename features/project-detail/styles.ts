@@ -113,8 +113,9 @@ export function getStyles(theme: any) {
   sectionCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
     overflow: 'hidden',
   },
   sectionHeader: {
@@ -154,14 +155,17 @@ export function getStyles(theme: any) {
     marginTop: 14,
   },
 
-  // ── List Rows ──
+  // ── List Rows (flat, hairline-separated — matches the home screen + InspectionRow) ──
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
-    backgroundColor: theme.colors.surfaceSecondary,
-    borderRadius: 12,
+    paddingVertical: 14,
+    backgroundColor: 'transparent',
+  },
+  listRowBorder: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: theme.colors.hairline,
   },
   listRowTitle: {
     fontSize: 14,

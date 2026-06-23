@@ -196,7 +196,8 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
       onPanResponderRelease: () => {
         const t = toolRef.current;
         if (t === 'move') {
-          if (dragRef.current) haptic.light();
+          // Drop moment of a drag → Heavy.
+          if (dragRef.current) haptic.heavy();
           dragRef.current = null;
           return;
         }
@@ -228,8 +229,9 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
+          // Clearing every annotation is a destructive reset → Heavy.
           setAnnotations([]);
-          haptic.medium();
+          haptic.heavy();
         },
       },
     ]);
@@ -272,6 +274,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
       });
       onSave(uri);
     } catch (e) {
+      haptic.error();
       Alert.alert(t('photoAnnotator.saveFailed'), t('photoAnnotator.saveTryAgain'));
     } finally {
       setSaving(false);

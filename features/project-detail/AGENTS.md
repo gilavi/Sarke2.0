@@ -57,9 +57,18 @@ leftover signer-collection flow no longer in use. The `crew` column on
   view-more + swipe-delete for the unified inspection list. Rows are
   the shared `components/InspectionRow` (same component the home
   screen uses) rendered with `inset={0}` so they sit flat inside the
-  section card with full-width dividers, matching the home list. The
-  old `styles.listRow` surfaceSecondary card-rows were removed here
-  (other sections still use them).
+  section card with full-width dividers, matching the home list.
+- Row styling is now unified across **all** sections: `styles.listRow`
+  (and the twin in `components/projects/ProjectRowHelpers.tsx` +
+  `UpcomingSection`) is a flat, transparent row with a 0.5px
+  `listRowBorder` hairline divider — the same visual language as
+  `InspectionRow` and the home "recent activity" list. The old
+  `surfaceSecondary` rounded "pill" rows (the boxes-in-boxes look)
+  were removed. Each section draws the divider on every row except the
+  last visible one (`i < preview.length - 1 || overflow.length > 0`);
+  the trailing `ViewMoreRow` never draws one. `sectionCard` padding is
+  `16h / 14t / 6b` everywhere (project-detail + `UpcomingSection`), and
+  rows hang off the card's 16px gutter (no per-row horizontal padding).
 - `sections/IncidentsSection.tsx` — incidents card.
 - `sections/BriefingsSection.tsx` — briefings card.
 - `sections/ReportsSection.tsx` — reports card.

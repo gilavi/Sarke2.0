@@ -141,10 +141,12 @@ export function ViewMoreRow({
 // ── IncidentRow ───────────────────────────────────────────────────────────────
 
 export function IncidentRow({
-  incident, onPress,
+  incident, onPress, showBorder,
 }: {
   incident: Incident;
   onPress: () => void;
+  /** Draw a hairline bottom divider (omit on the last row of a group). */
+  showBorder?: boolean;
 }) {
   const { theme, isDark } = useTheme();
   const rowStyles = useMemo(() => getRowStyles(theme), [theme]);
@@ -152,7 +154,7 @@ export function IncidentRow({
   const badge = palette[incident.type as IncidentType] ?? palette.minor;
 
   return (
-    <Pressable onPress={onPress} style={rowStyles.listRow}>
+    <Pressable onPress={onPress} style={[rowStyles.listRow, showBorder && rowStyles.listRowBorder]}>
       <View style={[rowStyles.statusIcon, { backgroundColor: badge.bg, borderWidth: 1, borderColor: badge.border }]}>
         <TriangleAlert size={13} color={badge.text} strokeWidth={1.5} />
       </View>
@@ -183,7 +185,8 @@ export function IncidentRow({
 
 function getRowStyles(theme: any) {
   return StyleSheet.create({
-    listRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: theme.colors.surfaceSecondary, borderRadius: 12 },
+    listRow:         { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, backgroundColor: 'transparent' },
+    listRowBorder:   { borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline },
     listRowTitle:    { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
     listRowSubtitle: { fontSize: 12, color: theme.colors.inkSoft, marginTop: 2 },
     statusIcon:      { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

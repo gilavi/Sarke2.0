@@ -1,6 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo } from 'react';
 import {
-  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
@@ -8,7 +7,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { DateTimeField } from '../../../components/DateTimeField';
+import { Selector } from '../../../components/ui/Selector';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import { InspectionResultView } from '../../../components/InspectionResultView';
@@ -26,7 +25,6 @@ import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
@@ -37,7 +35,6 @@ import {
   CP_VERDICT_LABEL,
   CARGO_PLATFORM_TEMPLATE_ID,
   buildDefaultCargoRow,
-  computeCPVerdictSuggestion,
   cpTotalWeight,
   type CargoPlatformInspection,
   type CPVerdict,
@@ -49,10 +46,11 @@ import {
 // ── Step constants ────────────────────────────────────────────────────────────
 const INFO_STEP       = 0;
 const PLATFORM_STEP   = 1;
-const CARGO_STEP      = 2;
-const CHECKLIST_STEP  = 3;
-const CONCLUSION_STEP = 4;
-const TOTAL_STEPS     = 5;
+const GUARDRAIL_STEP  = 2;
+const CARGO_STEP      = 3;
+const CHECKLIST_STEP  = 4;
+const CONCLUSION_STEP = 5;
+const TOTAL_STEPS     = 6;
 
 const CP_VERDICT_OPTIONS: VerdictOption<CPVerdict>[] = [
   { value: 'approved',    label: CP_VERDICT_LABEL.approved,    tone: 'success' },
@@ -60,40 +58,16 @@ const CP_VERDICT_OPTIONS: VerdictOption<CPVerdict>[] = [
   { value: 'rejected',    label: CP_VERDICT_LABEL.rejected,    tone: 'danger'  },
 ];
 
-// ── Binary pill selector ──────────────────────────────────────────────────────
-function BinaryPills<T extends string>({
-  value,
-  options,
-  onSelect,
-  styles,
-  theme,
-}: {
-  value: T | null;
-  options: { value: T; label: string }[];
-  onSelect: (v: T | null) => void;
-  styles: ReturnType<typeof getstyles>;
-  theme: ReturnType<typeof useTheme>['theme'];
-}) {
-  return (
-    <View style={styles.pillRow}>
-      {options.map(opt => {
-        const active = value === opt.value;
-        return (
-          <Pressable
-            key={opt.value}
-            style={[styles.pill, active && styles.pillActive]}
-            onPress={() => {
-              haptic.light();
-              onSelect(active ? null : opt.value);
-            }}
-          >
-            <Text style={[styles.pillText, active && styles.pillTextActive]}>{opt.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
+// ── Guardrail selector options (DS Selector, chips presentation) ───────────────
+const GUARDRAIL_OPTIONS = [
+  { value: 'none',     label: 'არ გააჩნია' },
+  { value: 'complete', label: 'მოაჯირი სრულია' },
+];
+
+const GUARDRAIL_HEIGHT_OPTIONS = [
+  { value: 'non_standard', label: 'ვერ აკმ. სტანდარტს' },
+  { value: 'standard',     label: 'სტანდარტს აკმ.' },
+];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -123,7 +97,10 @@ export default function CargoPlatformInspectionScreen() {
     id,
     firstStep: PLATFORM_STEP,
     lastStep: CONCLUSION_STEP,
-    persistPrefix: 'cargo-platform-wizard',
+    // v2: 5-step layout (guardrails split into their own step). Bumped so old
+    // persisted positions from the 4-step layout don't restore onto the wrong
+    // new step — data still loads from the DB; only the step index resets.
+    persistPrefix: 'cargo-platform-wizard-v2',
     templateId: CARGO_PLATFORM_TEMPLATE_ID,
     schema: cargoPlatformSchema,
     api: cargoPlatformApi,
@@ -287,14 +264,6 @@ export default function CargoPlatformInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
-  // ── Verdict auto-suggest ────────────────────────────────────────────────────
-
-  const suggestedVerdict = useMemo(
-    () => inspection ? computeCPVerdictSuggestion(inspection.items) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.items],
-  );
-
   // ── Step navigation ─────────────────────────────────────────────────────────
 
   const canGoNext = useMemo(() => {
@@ -410,13 +379,6 @@ export default function CargoPlatformInspectionScreen() {
                 onChangeText={v => update('floorZone', v)}
               />
 
-              <DateTimeField
-                label="შემოწმების თარიღი"
-                value={new Date(inspection.inspectionDate)}
-                onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                mode="date"
-              />
-
               <FloatingLabelInput
                 label="პლატფორმის ტიპი / მოდელი"
                 value={inspection.platformTypeModel}
@@ -447,46 +409,46 @@ export default function CargoPlatformInspectionScreen() {
                 value={inspection.platformColorDesc}
                 onChangeText={v => update('platformColorDesc', v)}
               />
-
-              <View style={styles.binaryGroup}>
-                <Text style={styles.fieldLabel}>გვერდის დამცავი მოაჯირი</Text>
-                <BinaryPills
-                  value={inspection.sideGuardrail}
-                  options={[{ value: 'none', label: 'არ გააჩნია' }, { value: 'complete', label: 'მოაჯირი სრულია' }]}
-                  onSelect={v => update('sideGuardrail', v)}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-
-              <View style={styles.binaryGroup}>
-                <Text style={styles.fieldLabel}>წინა დამცავი მოაჯირი</Text>
-                <BinaryPills
-                  value={inspection.frontGuardrail}
-                  options={[{ value: 'none', label: 'არ გააჩნია' }, { value: 'complete', label: 'მოაჯირი სრულია' }]}
-                  onSelect={v => update('frontGuardrail', v)}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-
-              <View style={styles.binaryGroup}>
-                <Text style={styles.fieldLabel}>მოაჯირის სიმაღლე (სტანდ. 90–120 სმ)</Text>
-                <BinaryPills
-                  value={inspection.guardrailHeight}
-                  options={[
-                    { value: 'non_standard', label: 'ვერ აკმ. სტანდარტს' },
-                    { value: 'standard', label: 'სტანდარტს აკმ.' },
-                  ]}
-                  onSelect={v => update('guardrailHeight', v)}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 2: Cargo table ──────────────────────────────────────────── */}
+          {/* ── Step 2: Guardrails ───────────────────────────────────────────── */}
+          {step === GUARDRAIL_STEP && (
+            <KeyboardAwareScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.stepBody}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              showsVerticalScrollIndicator={false}
+              bottomOffset={120}
+            >
+              <Selector
+                label="გვერდის დამცავი მოაჯირი"
+                presentation="chips"
+                options={GUARDRAIL_OPTIONS}
+                value={inspection.sideGuardrail}
+                onChange={v => update('sideGuardrail', v as CargoPlatformInspection['sideGuardrail'])}
+              />
+
+              <Selector
+                label="წინა დამცავი მოაჯირი"
+                presentation="chips"
+                options={GUARDRAIL_OPTIONS}
+                value={inspection.frontGuardrail}
+                onChange={v => update('frontGuardrail', v as CargoPlatformInspection['frontGuardrail'])}
+              />
+
+              <Selector
+                label="მოაჯირის სიმაღლე (სტანდ. 90–120 სმ)"
+                presentation="chips"
+                options={GUARDRAIL_HEIGHT_OPTIONS}
+                value={inspection.guardrailHeight}
+                onChange={v => update('guardrailHeight', v as CargoPlatformInspection['guardrailHeight'])}
+              />
+            </KeyboardAwareScrollView>
+          )}
+
+          {/* ── Step 3: Cargo table ──────────────────────────────────────────── */}
           {step === CARGO_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -519,7 +481,7 @@ export default function CargoPlatformInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Checklist ────────────────────────────────────────────── */}
+          {/* ── Step 4: Checklist ────────────────────────────────────────────── */}
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -562,21 +524,14 @@ export default function CargoPlatformInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
+          {/* ── Step 5: Conclusion ───────────────────────────────────────────── */}
           {step === CONCLUSION_STEP && (
             <ConclusionStep
               verdict={inspection.verdict}
               verdictOptions={CP_VERDICT_OPTIONS}
+              verdictLayout="vertical"
               verdictError={attempted && !inspection.verdict}
               onVerdictChange={v => update('verdict', v as CPVerdict)}
-              suggestion={
-                suggestedVerdict && inspection.verdict !== suggestedVerdict
-                  ? {
-                      text: `შემოთავაზება: ${CP_VERDICT_LABEL[suggestedVerdict]}`,
-                      onApply: () => update('verdict', suggestedVerdict),
-                    }
-                  : null
-              }
               notes={inspection.verdictComment}
               onNotesChange={v => update('verdictComment', v)}
               notesRequired
@@ -611,20 +566,7 @@ function getstyles(theme: Theme) {
     footer: { gap: 10, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 16, backgroundColor: theme.colors.card },
 
 
-    fieldLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.inkSoft },
     sectionHint: { fontSize: 12, color: theme.colors.inkSoft, fontStyle: 'italic', lineHeight: 18 },
-
-    // Binary pills (platform guardrail selectors)
-    binaryGroup: { gap: 6 },
-    pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    pill: {
-      paddingHorizontal: 16, paddingVertical: 10,
-      borderRadius: 20, borderWidth: 1.5,
-      borderColor: theme.colors.hairline, backgroundColor: theme.colors.card,
-    },
-    pillActive: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentSoft },
-    pillText: { fontSize: 13, color: theme.colors.inkSoft },
-    pillTextActive: { color: theme.colors.accent, fontWeight: '700' },
 
     // Cargo total
     totalLabel: { fontSize: 14, fontWeight: '700', color: theme.colors.ink },

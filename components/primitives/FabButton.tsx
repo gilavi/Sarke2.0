@@ -32,7 +32,8 @@ export const FabButton = React.forwardRef<View, FabButtonProps>(function FabButt
 
   const handlePress = () => {
     bounce();
-    haptic.light();
+    // The FAB is the screen's primary create/add action → Medium.
+    haptic.medium();
     onPress();
   };
 

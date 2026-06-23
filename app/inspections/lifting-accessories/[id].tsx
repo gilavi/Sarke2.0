@@ -32,7 +32,6 @@ import {
   LA_VERDICT_LABELS,
   LA_CHECKLIST_OPTIONS,
   LIFTING_ACCESSORIES_TEMPLATE_ID,
-  computeLAVerdictSuggestion,
   buildDefaultLARemovedRow,
   type LiftingAccessoriesInspection,
   type LAVerdict,
@@ -258,13 +257,6 @@ export default function LiftingAccessoriesInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Verdict auto-suggest ────────────────────────────────────────────────────
-
-  const suggestedVerdict = useMemo(
-    () => inspection ? computeLAVerdictSuggestion(inspection.items, inspection.markingStatus) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.items, inspection?.markingStatus],
-  );
 
   // ── Step navigation ─────────────────────────────────────────────────────────
 
@@ -459,14 +451,6 @@ export default function LiftingAccessoriesInspectionScreen() {
               verdictOptions={LA_VERDICT_OPTIONS}
               verdictError={attempted && !inspection.verdict}
               onVerdictChange={v => update('verdict', v as LAVerdict)}
-              suggestion={
-                suggestedVerdict && inspection.verdict !== suggestedVerdict
-                  ? {
-                      text: `შემოთ.: ${LA_VERDICT_LABELS[suggestedVerdict]}`,
-                      onApply: () => update('verdict', suggestedVerdict),
-                    }
-                  : null
-              }
               notes={inspection.verdictComment ?? ''}
               onNotesChange={v => update('verdictComment', v)}
               completing={completing}

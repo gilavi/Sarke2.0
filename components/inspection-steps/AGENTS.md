@@ -74,10 +74,12 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   detail lives on the conclusion step).
 - `ConclusionStep` — the **single, shared "last step"** for every
   inspection flow (equipment routes, harness, the scaffold wizard via a
-  thin delegating wrapper, and — verdict only — fall-protection per
-  device). Renders, in order: a conclusion illustration (`showAvatar`,
+  thin delegating wrapper, and — per device, behind the device tab strip
+  — fall-protection's `დასკვნა` step). Pass `verdictLayout="vertical"`
+  to stack the verdict cards full-width (fall-protection's three
+  sentence-length verdicts). Renders, in order: a conclusion illustration (`showAvatar`,
   default true), an optional `summarySection` slot, an optional
-  harness-name field, a `VerdictSuggestionBanner` (`suggestion` prop),
+  harness-name field,
   the shared `VerdictSelector` (only when `verdictOptions` is non-empty),
   a `კომენტარი` notes box (`notesLabel`/`notesRequired`/`notesError`),
   optional suggestion pills, and a photo strip (`photoPaths`/`onAddPhoto`/
@@ -90,15 +92,21 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   scaffold's `გადაწყვეტილება` style. Icon resolves from an explicit
   `option.icon`, else a semantic `option.tone`
   (`success`/`caution`/`danger`), else by position (first = shield,
-  last = warning, middle = eye). Generic over the verdict value type.
+  last = warning, middle = eye). `layout='row'` (default) lays the cards
+  side by side; `layout='vertical'` stacks full-width rows (icon left,
+  left-aligned wrapping label) for long sentence-length labels. Generic
+  over the verdict value type.
   This replaced the bespoke per-flow selectors (the old pill chips in
   `ConclusionStep`, the local one in `features/inspection-wizard`, and
   the plain-pill `components/inspection-parts/VerdictSelector` — now
   deleted).
 - `VerdictSuggestionBanner` — shared `შემოთავაზება` hint (Lightbulb +
-  text) for the auto-computed verdict suggestion; pass `text` + optional
-  `onApply` (tappable to adopt). Consolidated the six inline copies that
-  lived in the equipment + fall-protection routes.
+  text) for an auto-computed verdict suggestion; pass `text` + optional
+  `onApply` (tappable to adopt). **No longer rendered on any conclusion
+  step** — the `suggestion` prop was removed from `ConclusionStep`
+  (2026-06-23, "don't need a suggestion on the last step"). The component
+  + the `compute*VerdictSuggestion` helpers are retained (still exercised
+  by the design-system story / unit tests) but unused by the live flows.
 
 ## Internal files
 - `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`

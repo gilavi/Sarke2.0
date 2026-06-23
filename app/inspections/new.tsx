@@ -91,6 +91,15 @@ export default function NewInspectionProjectStep() {
 
   if (!templateId) return null;
 
+  // Don't paint the picker until we know there's a real choice to make. While
+  // the query is in-flight, or when there's exactly one project (the auto-start
+  // effect above is about to create the inspection and route away), render a
+  // blank background so the picker never flashes on screen.
+  const willAutoStart = !projectsFetched || projects.length === 1 || autoStarted.current;
+  if (willAutoStart) {
+    return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
+  }
+
   const title = template?.name
     ? inspectionDisplayName(template.name)
     : 'შემოწმება';

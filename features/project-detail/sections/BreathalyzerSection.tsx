@@ -52,17 +52,18 @@ export function BreathalyzerSection({
       ) : breathalyzerLogs.length === 0 ? (
         <SectionEmptyState type="documents" subtitle="ალკოტესტი ჩაწერილი არ არის" />
       ) : (
-        <View style={{ gap: 8, marginTop: 10 }}>
-          {breathalyzerLogs.slice(0, 3).map(log => {
+        <View style={{ marginTop: 4 }}>
+          {breathalyzerLogs.slice(0, 3).map((log, i, arr) => {
             const logCounts = countsByStatus(log.entries);
             const hasFail = logCounts.fail > 0;
+            const showBorder = i < arr.length - 1 || breathalyzerLogs.length > 3;
             return (
               <Pressable
                 key={log.id}
                 onPress={() =>
                   router.push(`/projects/${id}/logs/breathalyzer?logId=${log.id}` as any)
                 }
-                style={styles.listRow}
+                style={[styles.listRow, showBorder && styles.listRowBorder]}
                 {...a11y('ალკოტესტის ჟურნალი', 'დეტალების სანახავად დააჭირეთ', 'button')}
               >
                 <View style={[styles.statusIcon, {

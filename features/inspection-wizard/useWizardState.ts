@@ -391,7 +391,7 @@ export function useWizardState(id: string | undefined) {
   }, [questionnaire, pickPhotosWithAnnotation, doUpload]);
 
   const deletePhoto = useCallback(async (photo: AnswerPhoto) => {
-    haptic.medium();
+    haptic.deletePhoto();
     const doDelete = async () => {
       try {
         if (!offline.isOnline) {
@@ -433,15 +433,18 @@ export function useWizardState(id: string | undefined) {
     if (!questionnaire) return;
     if (finishing) return;
     if (photoUploadCount > 0) {
+      haptic.validationError();
       toast.error(t('errors.photoSavingPending'));
       return;
     }
-    haptic.medium();
+    // The finish Button already fired the Medium press beat; here we only emit
+    // the validation-error outcome (or success, below).
     const missing: string[] = [];
     if (safetyVerdict === null) missing.push(t('inspections.missingSafetyStatus'));
     if (!conclusion.trim()) missing.push(t('inspections.missingConclusion'));
     if (template?.category === 'harness' && !harnessName.trim()) missing.push(t('inspections.missingHarnessName'));
     if (missing.length > 0) {
+      haptic.validationError();
       toast.error(t('errors.missingFields', { fields: missing.join(', ') }));
       return;
     }

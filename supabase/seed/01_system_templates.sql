@@ -151,7 +151,12 @@ insert into questions (template_id, section, "order", type, title, grid_rows, gr
    --  "Locking Hook","Rope Protector","Safety Rope","Locking Carabiner","Energy Absorber"]
    '["მხრის ღვედები","მკერდის ღვედი","გვერდითი D-ბეჭდები","ფეხის ღვედი","წელის ღვედი","ჩამკეტიანი კავი","თოკის დამცავი","დამცავი თოკი","ჩამკეტი კარაბინი","ენერგიის შთანთქმის მოწყობილობა"]'::jsonb);
 
--- Section 2: conclusion
+-- Section 3: photos (folded into the conclusion step as "საერთო ფოტოები")
 insert into questions (template_id, section, "order", type, title) values
- ('22222222-2222-2222-2222-222222222222', 3, 1, 'freetext',
+ ('22222222-2222-2222-2222-222222222222', 3, 1, 'photo_upload',
+   'ქამრების საერთო ფოტოები');
+
+-- Section 4: conclusion
+insert into questions (template_id, section, "order", type, title) values
+ ('22222222-2222-2222-2222-222222222222', 4, 1, 'freetext',
    'დასკვნითი ნაწილი');

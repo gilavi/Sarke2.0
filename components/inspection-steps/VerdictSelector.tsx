@@ -38,6 +38,13 @@ export interface VerdictSelectorProps<T extends string = string> {
   onChange: (v: T | null) => void;
   /** Caption above the buttons. Defaults to "გადაწყვეტილება". */
   title?: string;
+  /**
+   * 'row' (default) - icon-on-top cards laid out side by side (good for 2-4
+   * short labels). 'vertical' - full-width stacked rows with the icon on the
+   * left and a left-aligned label, so long sentence-length labels (e.g. the
+   * fall-protection verdicts) get the whole row width instead of ~1/n.
+   */
+  layout?: 'row' | 'vertical';
   showError?: boolean;
   errorText?: string;
 }
@@ -59,11 +66,13 @@ export function VerdictSelector<T extends string = string>({
   options,
   onChange,
   title = 'გადაწყვეტილება',
+  layout = 'row',
   showError = false,
   errorText = 'აუცილებლად აირჩიეთ სტატუსი.',
 }: VerdictSelectorProps<T>) {
   const { theme } = useTheme();
   const styles = getStyles(theme);
+  const vertical = layout === 'vertical';
 
   const press = (v: T, active: boolean) => {
     haptic.light();
@@ -73,7 +82,7 @@ export function VerdictSelector<T extends string = string>({
   return (
     <View style={styles.wrap}>
       <Text style={[styles.header, { color: theme.colors.inkSoft }]}>{title}</Text>
-      <View style={styles.row}>
+      <View style={vertical ? styles.column : styles.row}>
         {options.map((opt, i) => {
           const active = value === opt.value;
           const IconComp = opt.icon ?? (opt.tone ? TONE_ICON[opt.tone] : positionalIcon(i, options.length));
@@ -83,7 +92,7 @@ export function VerdictSelector<T extends string = string>({
               onPress={() => press(opt.value, active)}
               scaleTo={0.96}
               style={[
-                styles.button,
+                vertical ? styles.buttonVertical : styles.button,
                 active
                   ? { backgroundColor: theme.colors.subtleSurface, borderColor: theme.colors.ink }
                   : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
@@ -91,7 +100,12 @@ export function VerdictSelector<T extends string = string>({
               {...a11y(opt.label, undefined, 'button', { selected: active })}
             >
               <IconComp size={24} color={active ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.5} />
-              <Text style={[styles.label, { color: active ? theme.colors.ink : theme.colors.inkSoft }]}>
+              <Text
+                style={[
+                  vertical ? styles.labelVertical : styles.label,
+                  { color: active ? theme.colors.ink : theme.colors.inkSoft },
+                ]}
+              >
                 {opt.label}
               </Text>
             </PressBounce>
@@ -125,6 +139,19 @@ function getStyles(theme: ReturnType<typeof useTheme>['theme']) {
       gap: 8,
     },
     label: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+    // Vertical layout: full-width stacked rows, icon left + left-aligned label
+    // that wraps naturally - for long sentence-length verdict labels.
+    column: { gap: 8 },
+    buttonVertical: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      borderRadius: 16,
+      borderWidth: 2,
+      gap: 14,
+    },
+    labelVertical: { flex: 1, fontSize: 14, fontWeight: '700', textAlign: 'left' },
     error: { fontSize: 12, marginTop: 4 },
   });
 }

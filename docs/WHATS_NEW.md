@@ -1,8 +1,52 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-22 | Branch: `main`
+**Updated:** 2026-06-23 | Branch: `main`
 
 ---
+
+## 2026-06-23 — Project screen: one row language, aligned gutters, matched inspection picker
+
+The project-detail screen mixed two row styles — the inspections list used flat home-style rows while every other section (incidents, briefings, reports, files/orders, breathalyzer, upcoming) used heavy grey rounded "pill" rows inside the card, a boxes-in-boxes look that read as a quality gap next to the home screen. The whole screen now speaks one row language.
+
+- **Flat hairline rows everywhere** — `styles.listRow` (project-detail), its twin in [`ProjectRowHelpers`](../components/projects/ProjectRowHelpers.tsx), and [`UpcomingSection`](../components/projects/UpcomingSection.tsx) dropped the `surfaceSecondary` fill + `borderRadius` and became transparent rows separated by a 0.5px hairline divider — the same treatment as the shared [`InspectionRow`](../components/InspectionRow.tsx) and the home "recent activity" list. Each section draws the divider on every row except the last visible one; the trailing `+ N მეტი` row never draws one. Files-and-orders renders as one continuous list (the last order row borders into the first file row).
+- **Consistent card padding** — every section card (project-detail + upcoming) is now `16h / 14t / 6b`, replacing the old `14/12` vs `16` split, so rows hang off a single 16px gutter.
+- **Aligned gutters** — the quick-actions row moved from a 24px inset to 16px (`edgeInset=16`) so the first action button lines up with the section cards below it.
+- **Inspection-type picker matches home** — starting an inspection from a project opens the same [`CustomDropdown`](../components/ui/CustomDropdown.tsx) bottom sheet as the home screen, now with the identical big soft circular avatar (`size={52} circle muted`) instead of the smaller square tile, so the two entry points are visually identical.
+
+OTA-deliverable (no native changes).
+
+## 2026-06-23 — Cargo-platform inspection: lighter step 1, guardrails get their own step
+
+The cargo-platform (`პლატფორმის შემოწმება`) flow's first step was overloaded — six text inputs plus three button groups on one screen — and its three guardrail choices were a one-off `BinaryPills` widget. The flow is now **5 steps** (was 4) and reuses the canonical pickers, mirroring the fall-protection redesign.
+
+- **Step 1 trimmed to platform identification** — the `შემოწმების თარიღი` date picker was dropped (the field now defaults to the creation date and is still printed on the PDF, so nothing is lost), leaving the five identification inputs (`სართული/ზონა`, `ტიპი/მოდელი`, `სიგრძე`, `სიგანე`, `ვიზუალური აღწერა/ფერი`).
+- **New guardrails step** — `გვერდის დამცავი მოაჯირი`, `წინა დამცავი მოაჯირი`, and `მოაჯირის სიმაღლე` moved to their own step (step 2), rendered with the canonical [`Selector`](../components/ui/Selector.tsx) (`presentation="chips"`) instead of the bespoke `BinaryPills` — same horizontal pills, now with the shared press/selection motion and theming.
+- **Conclusion verdict goes vertical** — the three sentence-length verdicts now use `verdictLayout="vertical"` on the shared [`VerdictSelector`](../components/inspection-steps/VerdictSelector.tsx), so each gets a full-width stacked row instead of a cramped 1/3-width card (the `შემოთავაზება` hint was already removed in the conclusion-step cleanup below).
+
+OTA-deliverable (no native changes).
+
+## 2026-06-23 — Haptics pass: one vocabulary, weighted to intent
+
+A full audit of every haptic call aligned the app to one rule set (Light = toggle/select/open · Medium = primary button / confirm a step · Heavy = destructive + drag-drop drop · Success/Warning/Error = outcomes). Changes are concentrated in the canonical [`lib/haptics.ts`](../lib/haptics.ts) and the button primitives, so most screens inherit the fix.
+
+- **Wrapper fixes** ([`lib/haptics.ts`](../lib/haptics.ts)): `validationError` is now a **Warning** (was Error — validation isn't a hard failure); `networkError` is now an **Error** (was Warning); `deletePhoto`/`deleteConfirm` are now **Heavy** (destructive); `confirm` is **Medium** (was Heavy); `toggleOn` and `answerYes`/`answerNo` are **Light** (selections, matching every other answer surface). Added a `heavy` alias for destructive/drop moments.
+- **Primitives weight their own press** — [`Button`](../components/primitives/Button.tsx) fires `medium` for `primary`, `heavy` for `danger`, `light` otherwise; [`IconButton`](../components/primitives/IconButton.tsx) and [`ActionSheetItem`](../components/primitives/ActionSheetItem.tsx) fire `heavy` on their destructive variant; [`FabButton`](../components/primitives/FabButton.tsx) fires `medium`. A bottom sheet now opens with a `light` (was medium) and its destructive rows tap `heavy`.
+- **Removed double-buzzes** — handlers that wrapped a primitive Button while also firing their own press haptic were de-duplicated (wizard finish/next, `ScaffoldFooterButtons`, `DynamicTable` add/delete, `KamariDetailModal` save, harness advance/finish). The primitive now owns the press; the handler keeps only the success/validation/error *outcome*.
+- **Filled gaps** — added the missing validation-error beat to the inspection-conclusion and harness finish guards, an error beat to certificate save/delete, photo-annotator save, and PDF-generation failures, plus a warning when the PDF free-tier limit is hit. Re-typed two field-validation buzzes (`Input`, measure step) from Error → `validationError`. The photo-annotator drag **drop** and **clear-all** are now Heavy; `CertEditForm`'s post-delete beat is now Success (was a stray Warning).
+
+OTA-deliverable (no native changes).
+
+## 2026-06-23 — Fall-protection inspection: 4-step flow, matched to the rest
+
+The fall-protection (`დამჭერი მოწყობილობა`) flow was the only inspection that crammed the checklist **and** the verdict into one per-device step, used a custom finish label, and rendered a one-off four-state checklist. It's now restructured to match every other flow, with the fixes landing as **reusable-component** updates rather than one-offs.
+
+- **4 steps** (was 2): **info** (safety-leader name/phone + inspection type — both dates dropped; the legal PDF takes its date from the completion timestamp, and "next inspection" was an optional row that simply no longer prints), **equipment list** (`მოწყობილობების სია`), **checklist** (`კითხვარი`, per device via the tab strip), and **conclusion** (`დასკვნა`, per device) — checklist and conclusion are now their own steps like every other flow.
+- **Conclusion** now uses the shared [`ConclusionStep`](../components/inspection-steps/ConclusionStep.tsx) with a new `verdictLayout="vertical"` on the canonical [`VerdictSelector`](../components/inspection-steps/VerdictSelector.tsx) — the three sentence-length verdicts get full-width stacked rows instead of being squeezed into 1/3-width cards. The finish button drops its one-off `შემოწმება დასრულდა` for the canonical `შენახვა და დასრულება`.
+- **Checklist** moved from a bespoke four-state (`✓ ✗ Z N`) to the same three monochrome icon states as the other equipment flows (✓ safe / ⚠ minor / ✗ critical), and labels may now wrap to 4 lines (new `labelLines` prop on [`ChecklistItemRow`](../components/inspection-parts/ChecklistItemRow.tsx)) so long parameters stop truncating with `…`. The PDF's glyph catalog is untouched, so existing records still render.
+- **Equipment list** ([`DynamicTable`](../components/inspection-parts/DynamicTable.tsx)): delete is now a red `Trash2` icon (across all four table flows), and a new `titleColumnKey` shows the device id (`N1`) as the card title instead of duplicating it as both an ordinal `#1` badge and a readonly `ID` cell; the readonly divider was softened. Form labels de-abbreviated (`უსაფრთხოების ხელმძღვანელის სახელი/ტელეფონი`, `განთავსების ადგილი`).
+- **Verdict suggestion removed from every conclusion step.** The auto-computed `შემოთავაზება` hint was dropped from the shared [`ConclusionStep`](../components/inspection-steps/ConclusionStep.tsx) (`suggestion` prop removed), so it no longer appears on **any** flow's last step (fall-protection, cargo-platform, forklift, mobile-ladder, lifting-accessories, safety-net). The verdict is now an explicit choice with no nudge.
+
+OTA-deliverable (no native changes).
 
 ## 2026-06-22 — Project screen: wider widgets + shared inspection list
 

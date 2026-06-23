@@ -20,6 +20,7 @@ import { Selector } from '../../components/ui/Selector';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { IconButton } from '../../components/primitives/IconButton';
 import { FlowHeader } from '../../components/FlowHeader';
 import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { DateTimeField } from '../../components/DateTimeField';
@@ -716,9 +717,14 @@ function Step3({
               style={{ marginBottom: 0 }}
             />
           </View>
-          <Pressable onPress={onAddWitness} style={s.addWitnessBtn} hitSlop={2}>
-            <Plus size={20} color={theme.colors.accent} strokeWidth={1.5} />
-          </Pressable>
+          <IconButton
+            icon={Plus}
+            onPress={onAddWitness}
+            a11yLabel="მოწმის დამატება"
+            variant="outline"
+            shape="square"
+            size="xl"
+          />
         </View>
       </View>
 
@@ -977,15 +983,6 @@ function makeStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 8,
-    },
-    addWitnessBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      borderWidth: 1.5,
-      borderColor: theme.colors.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
 
     // photos

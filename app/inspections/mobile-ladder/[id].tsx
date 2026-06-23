@@ -31,7 +31,6 @@ import {
   ML_VERDICT_LABELS,
   ML_CHECKLIST_OPTIONS,
   MOBILE_LADDER_TEMPLATE_ID,
-  computeMLVerdictSuggestion,
   type MobileLadderInspection,
   type MLVerdict,
   type MLResult,
@@ -196,13 +195,6 @@ export default function MobileLadderInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
-  // ── Verdict auto-suggest ────────────────────────────────────────────────────
-
-  const suggestedVerdict = useMemo(
-    () => inspection ? computeMLVerdictSuggestion(inspection.items) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.items],
-  );
 
   const isSigned = !!(inspection?.signature.signature);
 
@@ -428,14 +420,6 @@ export default function MobileLadderInspectionScreen() {
               verdictOptions={ML_VERDICT_OPTIONS}
               verdictError={attempted && !inspection.verdict}
               onVerdictChange={v => update('verdict', v as MLVerdict)}
-              suggestion={
-                suggestedVerdict && inspection.verdict !== suggestedVerdict
-                  ? {
-                      text: `შემოთავაზება: ${ML_VERDICT_LABELS[suggestedVerdict]}`,
-                      onApply: () => update('verdict', suggestedVerdict),
-                    }
-                  : null
-              }
               notes={inspection.verdictComment}
               onNotesChange={v => update('verdictComment', v)}
               completing={completing}

@@ -452,9 +452,10 @@ export default function ProjectDetail() {
           ) : null}
         </View>
 
-        {/* Quick actions - edgeInset matches parent paddingHorizontal to reach screen edges */}
-        <View ref={quickActionsRef} collapsable={false} style={{ paddingHorizontal: 24, paddingBottom: 4 }}>
-          <QuickActions actions={quickActions} scrollable edgeInset={24} />
+        {/* Quick actions - edgeInset matches parent paddingHorizontal to reach screen edges.
+            Gutter is 16 so the first button's left edge lines up with the section cards below. */}
+        <View ref={quickActionsRef} collapsable={false} style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <QuickActions actions={quickActions} scrollable edgeInset={16} />
         </View>
 
         {/* Upcoming schedule */}
@@ -530,7 +531,7 @@ export default function ProjectDetail() {
         options={templatePickerOptions.map(tpl => ({
           label: inspectionDisplayName(tpl.name),
           value: tpl.id,
-          icon: <InspectionTypeAvatar category={tpl.category} size={36} />,
+          icon: <InspectionTypeAvatar category={tpl.category} size={52} circle muted />,
         }))}
         value={null}
         onChange={async (templateId) => {

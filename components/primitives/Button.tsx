@@ -49,7 +49,9 @@ export function Button({
   const handlePress = () => {
     if (disabled || loading) return;
     bounce();
-    haptic.light();
+    // Weight the tap to the button's role: destructive → Heavy, primary CTA →
+    // Medium, everything quieter (secondary/ghost/outline/link) → Light.
+    haptic[variant === 'danger' ? 'heavy' : variant === 'primary' ? 'medium' : 'light']();
     onPress?.();
   };
 

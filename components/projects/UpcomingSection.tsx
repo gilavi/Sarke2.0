@@ -56,15 +56,16 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
           <Text style={styles.sectionAddLink}>{t('common.all', 'ყველა')}</Text>
         </Pressable>
       </View>
-      <View style={{ gap: 8, marginTop: 10 }}>
-        {upcoming.map(event => {
+      <View style={{ marginTop: 4 }}>
+        {upcoming.map((event, i) => {
           const color = STATUS_DOT_COLOR[event.status as keyof typeof STATUS_DOT_COLOR] ?? theme.colors.inkSoft;
           const EventIcon = event.type === 'inspection' ? ShieldCheck : Users;
+          const showBorder = i < upcoming.length - 1;
           return (
             <Pressable
               key={event.id}
               onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}
-              style={styles.listRow}
+              style={[styles.listRow, showBorder && styles.listRowBorder]}
             >
               <View style={[styles.statusIcon, { backgroundColor: color + '20', width: 30, height: 30, borderRadius: 8 }]}>
                 <EventIcon size={16} color={color} strokeWidth={1.5} />
@@ -85,12 +86,13 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
 
 function getStyles(theme: any) {
   return StyleSheet.create({
-    sectionCard:    { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16 },
+    sectionCard:    { backgroundColor: theme.colors.surface, borderRadius: 16, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
     sectionHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     sectionTitle:   { fontSize: 16, fontWeight: '700', color: theme.colors.ink },
     sectionCount:   { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },
     sectionAddLink: { fontSize: 13, fontWeight: '600', color: theme.colors.accent },
-    listRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, backgroundColor: theme.colors.surfaceSecondary, borderRadius: 12 },
+    listRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, backgroundColor: 'transparent' },
+    listRowBorder:  { borderBottomWidth: 0.5, borderBottomColor: theme.colors.hairline },
     listRowTitle:   { fontSize: 14, fontWeight: '600', color: theme.colors.ink },
     statusIcon:     { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   });

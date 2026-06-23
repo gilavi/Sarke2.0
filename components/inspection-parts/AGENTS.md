@@ -18,14 +18,22 @@ renamed in Phase 1 of the refactor to distinguish from
   monochrome `StatusChip`s (2–4 options incl. N/A). Neutral by default,
   no per-row note/photo. Harness `ChipRow`, equipment `ChecklistRow`,
   and `ChecklistItem` are all thin adapters over it. `dense` for 3–4
-  options.
+  options; `labelLines` (default 2) raises the label truncation cap for
+  long item labels (fall-protection passes 4 so its sentence-length
+  parameters wrap instead of clipping with `…`).
 - `ChecklistLegend` — monochrome key (filled chip glyph + Georgian
   label) shown above a `ChecklistItemRow` list.
 - `ChecklistItem` — thin adapter over `ChecklistItemRow`: maps the 2–4
   state vocabulary (binary / three_state / four_state, incl. N/A) to
   result chips. Legacy comment/photo props are accepted but ignored.
 - `ChecklistSection` — a labelled group of `ChecklistItem`s.
-- `DynamicTable` — small data table for read-only summaries.
+- `DynamicTable` — repeated bordered row-cards (add/delete) for small
+  registries (fall-protection devices, cargo, removed accessories,
+  load-test rows). Delete is a red `Trash2` `IconButton`. By default the
+  card header is an ordinal `#n` badge; pass `titleColumnKey` to instead
+  show that column's value (e.g. `N1`) as the card title and drop it from
+  the field list — so a row that already carries a display id doesn't
+  render both a `#1` badge and a readonly `ID: N1` cell.
 - `IdentificationGrid` — label/value grid for inspection identification
   headers. `columns={1|2}` (use `1` to stack inputs one-per-row). Field
   `type`: `'text' | 'number' | 'chips' | 'select'`. `'select'` renders a

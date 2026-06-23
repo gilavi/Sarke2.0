@@ -58,9 +58,10 @@ export function ReportsSection({
       ) : reports.length === 0 ? (
         <SectionEmptyState type="reports" />
       ) : (
-        <View style={{ gap: 8, marginTop: 10 }}>
-          {preview.map(r => {
+        <View style={{ marginTop: 4 }}>
+          {preview.map((r, i) => {
             const isCompleted = r.status === 'completed';
+            const showBorder = i < preview.length - 1 || overflow.length > 0;
             return (
               <Pressable
                 key={r.id}
@@ -71,7 +72,7 @@ export function ReportsSection({
                       : `/reports/${r.id}/edit`) as any,
                   )
                 }
-                style={styles.listRow}
+                style={[styles.listRow, showBorder && styles.listRowBorder]}
                 {...a11y('რეპორტი', 'დეტალების სანახავად დააჭირეთ', 'button')}
               >
                 <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>

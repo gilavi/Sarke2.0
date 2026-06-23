@@ -437,10 +437,11 @@ export default function InspectionResultScreen() {
       // Captured signatures persist while the user remains on this screen
       // (so re-sharing keeps the same signature); they die when the screen
       // unmounts. No persistence path - see features/signatures/AGENTS.md.
-      haptic.success();
+      haptic.pdfGenerated();
       invalidatePdfUsage();
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
+      if (e instanceof PdfLimitReachedError) { haptic.warn(); setLimitNoticeVisible(true); return; }
+      haptic.error();
       toast.error(friendlyError(e, 'PDF-ის გენერირება ვერ მოხერხდა'));
     } finally {
       setDownloading(false);

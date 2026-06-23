@@ -53,11 +53,12 @@ export function IncidentsSection({
       ) : incidents.length === 0 ? (
         <SectionEmptyState type="incidents" />
       ) : (
-        <View style={{ gap: 8, marginTop: 10 }}>
-          {preview.map(inc => (
+        <View style={{ marginTop: 4 }}>
+          {preview.map((inc, i) => (
             <IncidentRow
               key={inc.id}
               incident={inc}
+              showBorder={i < preview.length - 1 || overflow.length > 0}
               onPress={() => router.push(`/incidents/${inc.id}` as any)}
             />
           ))}

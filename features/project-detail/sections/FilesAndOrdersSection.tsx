@@ -80,9 +80,15 @@ export function FilesAndOrdersSection({
 
       {/* Generated orders (ბრძანებები) */}
       {orders.length > 0 ? (
-        <View style={{ gap: 8, marginTop: 10 }}>
-          {orders.map(order => (
-            <View key={order.id} style={styles.listRow}>
+        <View style={{ marginTop: 4 }}>
+          {orders.map((order, i) => (
+            <View
+              key={order.id}
+              style={[
+                styles.listRow,
+                (i < orders.length - 1 || filesPreview.length > 0) && styles.listRowBorder,
+              ]}
+            >
               <View style={{
                 width: 32, height: 32, borderRadius: 8,
                 backgroundColor: theme.colors.accentSoft,
@@ -113,8 +119,8 @@ export function FilesAndOrdersSection({
       ) : files.length === 0 && orders.length === 0 ? (
         <SectionEmptyState type="documents" />
       ) : files.length === 0 ? null : (
-        <View style={{ gap: 8, marginTop: orders.length > 0 ? 8 : 10 }}>
-          {filesPreview.map(f => (
+        <View style={{ marginTop: orders.length > 0 ? 0 : 4 }}>
+          {filesPreview.map((f, i) => (
             <Swipeable
               key={f.id}
               renderRightActions={() => (
@@ -126,7 +132,10 @@ export function FilesAndOrdersSection({
             >
               <Pressable
                 onPress={() => onOpenFile(f)}
-                style={styles.listRow}
+                style={[
+                  styles.listRow,
+                  (i < filesPreview.length - 1 || overflowFiles.length > 0) && styles.listRowBorder,
+                ]}
                 {...a11y(f.name, 'ფაილის გახსნა', 'button')}
               >
                 <FileThumbnail file={f} />

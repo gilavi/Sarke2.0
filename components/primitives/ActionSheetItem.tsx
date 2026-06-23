@@ -31,7 +31,9 @@ export function ActionSheetItem({
   const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
 
   const handlePress = () => {
-    haptic.light();
+    // A destructive sheet row (delete / remove) gets a Heavy tap; default and
+    // highlight rows stay Light.
+    haptic[variant === 'destructive' ? 'heavy' : 'light']();
     onPress();
   };
 

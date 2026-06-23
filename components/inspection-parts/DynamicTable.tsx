@@ -1,13 +1,12 @@
 import { memo, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { CirclePlus, X } from 'lucide-react-native';
+import { CirclePlus, Trash2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
-import { haptic } from '../../lib/haptics';
 
 export interface DynamicTableColumn {
   key: string;
@@ -24,6 +23,14 @@ export interface DynamicTableProps {
   onBuildDefaultRow: () => Record<string, any>;
   minRows?: number;
   footer?: React.ReactNode;
+  /**
+   * When set, the row card header shows this column's value (e.g. "N1") as the
+   * card title instead of the ordinal "#1" number badge, and the column is not
+   * rendered again as a field below. Use for tables whose rows already carry a
+   * meaningful display id, so the badge + a readonly "ID" cell don't duplicate
+   * the same datum.
+   */
+  titleColumnKey?: string;
 }
 
 export function DynamicTable({
@@ -33,18 +40,19 @@ export function DynamicTable({
   onBuildDefaultRow,
   minRows = 0,
   footer,
+  titleColumnKey,
 }: DynamicTableProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
+  // The add Button and the danger delete IconButton each fire their own press
+  // haptic (Light / Heavy), so these handlers stay haptic-free.
   const handleAdd = () => {
-    haptic.light();
     onChange([...rows, onBuildDefaultRow()]);
   };
 
   const handleDelete = (idx: number) => {
-    haptic.light();
     onChange(rows.filter((_, i) => i !== idx));
   };
 
@@ -62,6 +70,7 @@ export function DynamicTable({
           columns={columns}
           row={row}
           canDelete={rows.length > minRows}
+          titleColumnKey={titleColumnKey}
           onChange={(key, value) => handleChange(idx, key, value)}
           onDelete={() => handleDelete(idx)}
         />
@@ -88,6 +97,7 @@ interface RowProps {
   columns: DynamicTableColumn[];
   row: Record<string, any>;
   canDelete: boolean;
+  titleColumnKey?: string;
   onChange: (key: string, value: any) => void;
   onDelete: () => void;
 }
@@ -97,6 +107,7 @@ const DynamicTableRow = memo(function DynamicTableRow({
   columns,
   row,
   canDelete,
+  titleColumnKey,
   onChange,
   onDelete,
 }: RowProps) {
@@ -104,15 +115,30 @@ const DynamicTableRow = memo(function DynamicTableRow({
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
+  // When a title column is configured, the row's own display id (e.g. "N1")
+  // becomes the card header and that column is dropped from the field list -
+  // so we don't show both the "#1" badge and a readonly "ID: N1" cell.
+  const titleValue =
+    titleColumnKey != null && row[titleColumnKey] != null
+      ? String(row[titleColumnKey])
+      : null;
+  const fieldColumns = titleColumnKey
+    ? columns.filter(c => c.key !== titleColumnKey)
+    : columns;
+
   return (
     <View style={styles.row}>
       <View style={styles.rowHeader}>
-        <View style={styles.numBadge}>
-          <Text style={styles.numText}>{index + 1}</Text>
-        </View>
+        {titleValue != null ? (
+          <Text style={styles.rowTitle}>{titleValue}</Text>
+        ) : (
+          <View style={styles.numBadge}>
+            <Text style={styles.numText}>{index + 1}</Text>
+          </View>
+        )}
         {canDelete && (
           <IconButton
-            icon={X}
+            icon={Trash2}
             onPress={onDelete}
             a11yLabel={t('generalEquipment.deleteRow')}
             variant="danger"
@@ -121,7 +147,7 @@ const DynamicTableRow = memo(function DynamicTableRow({
         )}
       </View>
 
-      {columns.map(col => {
+      {fieldColumns.map(col => {
         const rawVal = row[col.key];
 
         if (col.type === 'readonly') {
@@ -224,11 +250,10 @@ function getstyles(theme: Theme) {
       justifyContent: 'center',
     },
     numText: { fontSize: 11, fontWeight: '700', color: theme.colors.inkSoft },
+    rowTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.ink },
     readonlyField: {
       paddingHorizontal: 4,
       paddingVertical: 6,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.hairline,
     },
     readonlyLabel: { fontSize: 10, color: theme.colors.inkFaint, marginBottom: 2 },
     readonlyValue: { fontSize: 13, color: theme.colors.ink, fontWeight: '600' },

@@ -1,28 +1,26 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Check, TriangleAlert, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
-import { DateTimeField } from '../../../components/DateTimeField';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
+import { ConclusionStep } from '../../../components/inspection-steps';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
-  ChecklistItem,
+  ChecklistItemRow,
+  ChecklistLegend,
   ChipNavStrip,
   DynamicTable,
-  PhotoSection,
+  type ChecklistRowOption,
   type ChipNavItem,
   type DynamicTableColumn,
 } from '../../../components/inspection-parts';
-import {
-  VerdictSelector,
-  VerdictSuggestionBanner,
-  type VerdictOption,
-} from '../../../components/inspection-steps';
+import { type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { fallProtectionApi } from '../../../lib/fallProtectionService';
@@ -30,21 +28,15 @@ import { fallProtectionSchema } from '../../../lib/inspection/schemas/fallProtec
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
-import { a11y } from '../../../lib/accessibility';
-import { haptic } from '../../../lib/haptics';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import {
   FP_CHECKLIST_ITEMS,
-  FP_CHECKLIST_OPTIONS,
-  FP_CHIP_TO_RESULT,
-  FP_RESULT_TO_CHIP,
   FP_VERDICT_LABELS,
   FALL_PROTECTION_TEMPLATE_ID,
   computeFPTabState,
-  computeFPVerdictSuggestion,
   renumberDevices,
   syncDeviceData,
   buildDefaultFPDeviceRow,
@@ -62,18 +54,36 @@ const FP_VERDICT_OPTIONS: VerdictOption<FPVerdict>[] = [
   { value: 'banned', label: FP_VERDICT_LABELS.banned, tone: 'danger'  },
 ];
 
+// Per-item rating: 3 monochrome icon states (matches the other equipment flows).
+// The stored value IS the FPResult ('safe' | 'minor' | 'critical'); the PDF keeps
+// its own glyph catalog (FP_RESULT_TO_CHIP), so legacy 'na' rows still render.
+const FP_ROW_OPTIONS: ChecklistRowOption[] = [
+  { value: 'safe',     icon: Check,         a11yLabel: 'უსაფრთხოა' },
+  { value: 'minor',    icon: TriangleAlert, a11yLabel: 'მცირე დაზიანება' },
+  { value: 'critical', icon: X,             a11yLabel: 'კრიტიკული' },
+];
+
+const FP_LEGEND = [
+  { icon: Check,         label: 'უსაფრთხოა' },
+  { icon: TriangleAlert, label: 'მცირე დაზიანება' },
+  { icon: X,             label: 'კრიტიკული' },
+];
+
 // ── Step constants ────────────────────────────────────────────────────────────
 
-const REGISTRY_STEP   = 0;
-const DEVICES_STEP    = 1;
-const TOTAL_STEPS     = 2;
+const INFO_STEP       = 0;
+const REGISTRY_STEP   = 1;
+const CHECKLIST_STEP  = 2;
+const CONCLUSION_STEP = 3;
+const TOTAL_STEPS     = 4;
 
 // ── Device registry table columns ─────────────────────────────────────────────
+// `id` is the row title (titleColumnKey), so it isn't rendered again as a field.
 
 const REGISTRY_COLS: DynamicTableColumn[] = [
   { key: 'id',       label: 'ID',                  type: 'readonly', width: 44 },
   { key: 'type',     label: 'ტიპი / სახეობა',      type: 'text' },
-  { key: 'location', label: 'განთავს. ადგილი',      type: 'text' },
+  { key: 'location', label: 'განთავსების ადგილი',  type: 'text' },
   { key: 'floor',    label: 'სართული',              type: 'text' },
   { key: 'purpose',  label: 'ვისთვის / რისთვის',   type: 'text' },
   { key: 'comment',  label: 'კომენტარი',            type: 'text' },
@@ -98,7 +108,7 @@ export default function FallProtectionInspectionScreen() {
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks.
   const {
     inspection, setInspection, inspectionRef,
-    projectName, saving, loading, completing, celebrating, generatingPdf,
+    projectName, loading, completing, celebrating, generatingPdf,
     previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
@@ -106,9 +116,12 @@ export default function FallProtectionInspectionScreen() {
     complete, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<FallProtectionInspection>({
     id,
-    firstStep: REGISTRY_STEP,
-    lastStep: DEVICES_STEP,
-    persistPrefix: 'fall-protection-wizard',
+    firstStep: INFO_STEP,
+    lastStep: CONCLUSION_STEP,
+    // v2: 4-step layout. Bumped from 'fall-protection-wizard' so old persisted
+    // 2-step positions don't restore onto the wrong new step (data still loads
+    // from the DB; only the step index resets to INFO).
+    persistPrefix: 'fall-protection-wizard-v2',
     templateId: FALL_PROTECTION_TEMPLATE_ID,
     schema: fallProtectionSchema,
     api: fallProtectionApi,
@@ -195,24 +208,16 @@ export default function FallProtectionInspectionScreen() {
   );
 
   const handleChecklistChange = useCallback(
-    (devIdx: number, itemId: number, field: 'value' | 'comment', val: string | null) => {
+    (devIdx: number, itemId: number, val: string | null) => {
+      const result = (val as FPResult) ?? null;
       updateDeviceData(devIdx, data => {
         if (itemId === 0) {
-          // custom item
-          if (field === 'value') {
-            const result: FPResult | null = val ? (FP_CHIP_TO_RESULT[val] ?? null) : null;
-            return { ...data, customItem: { ...data.customItem, result } };
-          }
-          return { ...data, customItem: { ...data.customItem, comment: val } };
+          // custom item (13th)
+          return { ...data, customItem: { ...data.customItem, result } };
         }
-        const items = data.items.map(i => {
-          if (i.id !== itemId) return i;
-          if (field === 'value') {
-            const result: FPResult | null = val ? (FP_CHIP_TO_RESULT[val] ?? null) : null;
-            return { ...i, result };
-          }
-          return { ...i, comment: val };
-        });
+        const items = data.items.map(i =>
+          i.id === itemId ? { ...i, result } : i,
+        );
         return { ...data, items };
       });
     },
@@ -230,70 +235,7 @@ export default function FallProtectionInspectionScreen() {
     updateDeviceData(devIdx, data => ({ ...data, verdictComment: v }));
   }, [updateDeviceData]);
 
-  // ── Photos ──────────────────────────────────────────────────────────────────
-
-  const handleAddItemPhoto = useCallback(
-    async (devIdx: number, itemId: number) => {
-      const results = await pickPhotosWithAnnotation();
-      if (results.length === 0) return;
-      const insp = inspectionRef.current;
-      if (!insp) return;
-      for (const result of results) {
-        try {
-          const path = await fallProtectionApi.uploadPhoto(insp.id, devIdx, itemId, result.uri);
-          updateDeviceData(devIdx, data => {
-            if (itemId === 0) {
-              return {
-                ...data,
-                customItem: {
-                  ...data.customItem,
-                  photo_paths: [...(data.customItem.photo_paths ?? []), path],
-                },
-              };
-            }
-            const items = data.items.map(i =>
-              i.id === itemId
-                ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] }
-                : i,
-            );
-            return { ...data, items };
-          });
-        } catch (e) {
-          toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-        }
-      }
-    },
-    [pickPhotosWithAnnotation, updateDeviceData, toast, inspectionRef],
-  );
-
-  const handleDeleteItemPhoto = useCallback(
-    async (devIdx: number, itemId: number, path: string) => {
-      try {
-        await fallProtectionApi.deletePhoto(path);
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-        return;
-      }
-      updateDeviceData(devIdx, data => {
-        if (itemId === 0) {
-          return {
-            ...data,
-            customItem: {
-              ...data.customItem,
-              photo_paths: (data.customItem.photo_paths ?? []).filter(p => p !== path),
-            },
-          };
-        }
-        const items = data.items.map(i =>
-          i.id === itemId
-            ? { ...i, photo_paths: (i.photo_paths ?? []).filter(p => p !== path) }
-            : i,
-        );
-        return { ...data, items };
-      });
-    },
-    [updateDeviceData, toast],
-  );
+  // ── Device photos (item-level photos were never captured in this flow) ───────
 
   const handleAddDevicePhoto = useCallback(
     async (devIdx: number) => {
@@ -342,15 +284,13 @@ export default function FallProtectionInspectionScreen() {
 
   const canGoNext = useMemo(() => {
     if (!inspection) return false;
-    if (step === REGISTRY_STEP) {
-      return inspection.devices.length >= 1;
-    }
-    if (step === DEVICES_STEP) return allDevicesDone && !completing;
-    return true;
+    if (step === REGISTRY_STEP) return inspection.devices.length >= 1;
+    if (step === CONCLUSION_STEP) return allDevicesDone && !completing;
+    return true; // INFO + CHECKLIST are not hard-gated
   }, [step, inspection, allDevicesDone, completing]);
 
   const handleNext = useCallback(async () => {
-    if (step === DEVICES_STEP) {
+    if (step === CONCLUSION_STEP) {
       await complete();
     } else {
       setStep(s => s + 1);
@@ -358,7 +298,7 @@ export default function FallProtectionInspectionScreen() {
   }, [step, complete, setStep]);
 
   const handlePrev = useCallback(async () => {
-    if (step === REGISTRY_STEP) {
+    if (step === INFO_STEP) {
       await exit();
     } else {
       setStep(s => s - 1);
@@ -372,7 +312,7 @@ export default function FallProtectionInspectionScreen() {
   // missing a verdict so the red selector is in view.
   const handleBlockedNext = useCallback(() => {
     markAttempted();
-    if (step === DEVICES_STEP && inspection) {
+    if (step === CONCLUSION_STEP && inspection) {
       const idx = inspection.deviceData.findIndex(d => !d.verdict);
       if (idx >= 0) setActiveDeviceIdx(idx);
     }
@@ -387,7 +327,12 @@ export default function FallProtectionInspectionScreen() {
         projectName={projectName ?? ''}
         step={step}
         totalSteps={TOTAL_STEPS}
-        variant={step === DEVICES_STEP ? 'checklist' : 'table'}
+        variant={
+          step === CHECKLIST_STEP ? 'checklist'
+            : step === CONCLUSION_STEP ? 'conclusion'
+            : step === REGISTRY_STEP ? 'table'
+            : 'form'
+        }
         onClose={() => router.back()}
       />
     );
@@ -413,16 +358,32 @@ export default function FallProtectionInspectionScreen() {
     );
   }
 
-  // ── Device tab states ───────────────────────────────────────────────────────
+  // ── Device tab state (shared by checklist + conclusion steps) ────────────────
 
   const tabStates = inspection.deviceData.map(d => computeFPTabState(d));
   const safeDeviceIdx = Math.min(activeDeviceIdx, inspection.devices.length - 1);
   const currentDevice = inspection.devices[safeDeviceIdx];
   const currentDeviceData = inspection.deviceData[safeDeviceIdx];
 
-  const suggestedVerdict = currentDeviceData
-    ? computeFPVerdictSuggestion(currentDeviceData)
-    : null;
+  const deviceMeta = currentDevice
+    ? [currentDevice.type, currentDevice.location, currentDevice.floor]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
+
+  const deviceTabs = (
+    <ChipNavStrip
+      items={inspection.devices.map((d, idx): ChipNavItem => ({
+        key: d.id,
+        label: d.id,
+        state: tabStates[idx] ?? 'pending',
+        a11yHint: `${d.id} - ${d.type || 'მოწყობილობა'}`,
+      }))}
+      activeIndex={safeDeviceIdx}
+      onSelect={setActiveDeviceIdx}
+      tone="neutral"
+    />
+  );
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -436,10 +397,9 @@ export default function FallProtectionInspectionScreen() {
         direction={direction}
         animate={animateSteps}
         canGoNext={canGoNext}
-        isLastStep={step === DEVICES_STEP}
+        isLastStep={step === CONCLUSION_STEP}
         blockNext
         completing={completing}
-        finishLabel="შემოწმება დასრულდა"
         banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onBlockedNext={handleBlockedNext}
         onNext={handleNext}
@@ -447,226 +407,152 @@ export default function FallProtectionInspectionScreen() {
         onClose={() => router.back()}
       >
 
-          {/* ── Step 0: Equipment Registry ──────────────────────────────────── */}
-          {step === REGISTRY_STEP && (
-            <KeyboardAwareScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={styles.stepBody}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="interactive"
-              showsVerticalScrollIndicator={false}
-              bottomOffset={120}
-            >
-              <View style={styles.twoCol}>
-                <View style={styles.colHalf}>
-                  <Text style={styles.fieldLabel}>შემოწმების თარიღი</Text>
-                  <DateTimeField
-                    label="შემოწმების თარიღი"
-                    value={new Date(inspection.inspectionDate)}
-                    onChange={d => update('inspectionDate', d.toISOString().slice(0, 10))}
-                    mode="date"
-                  />
+        {/* ── Step 0: General info ─────────────────────────────────────────── */}
+        {step === INFO_STEP && (
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.stepBody}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            bottomOffset={120}
+          >
+            <FloatingLabelInput
+              label="უსაფრთხოების ხელმძღვანელის სახელი"
+              value={inspection.safetyLeaderName}
+              onChangeText={v => update('safetyLeaderName', v)}
+            />
+
+            <FloatingLabelInput
+              label="უსაფრთხოების ხელმძღვანელის ტელეფონი"
+              value={inspection.safetyLeaderPhone}
+              onChangeText={v => update('safetyLeaderPhone', v)}
+              keyboardType="phone-pad"
+            />
+
+            <IdentificationGrid
+              columns={1}
+              fields={[
+                {
+                  label: 'შემოწმების სახე',
+                  type: 'select',
+                  value: inspection.inspectionType ?? '',
+                  onChange: v => update('inspectionType', (v || null) as FPInspectionType | null),
+                  options: ['primary', 'secondary'],
+                  optionLabels: ['პირველადი', 'განმეორებითი'],
+                },
+              ]}
+            />
+          </KeyboardAwareScrollView>
+        )}
+
+        {/* ── Step 1: Equipment list ───────────────────────────────────────── */}
+        {step === REGISTRY_STEP && (
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.stepBody}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            bottomOffset={120}
+          >
+            <SectionHeader title="მოწყობილობების სია" />
+            <DynamicTable
+              columns={REGISTRY_COLS}
+              rows={inspection.devices}
+              onChange={handleDevicesChange}
+              onBuildDefaultRow={buildDefaultRow}
+              minRows={1}
+              titleColumnKey="id"
+            />
+          </KeyboardAwareScrollView>
+        )}
+
+        {/* ── Step 2: Checklist (კითხვარი), per device ─────────────────────── */}
+        {step === CHECKLIST_STEP && inspection.devices.length > 0 && (
+          <View style={{ flex: 1 }}>
+            {deviceTabs}
+            {currentDevice && currentDeviceData && (
+              <KeyboardAwareScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.deviceBody}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                showsVerticalScrollIndicator={false}
+                bottomOffset={120}
+              >
+                {deviceMeta ? <Text style={styles.deviceMeta}>{deviceMeta}</Text> : null}
+
+                <View style={{ paddingBottom: 2 }}>
+                  <ChecklistLegend items={FP_LEGEND} />
                 </View>
-                <View style={styles.colHalf}>
-                  <Text style={styles.fieldLabel}>მომდევნო შემოწმება</Text>
-                  <DateTimeField
-                    label="მომდევნო შემოწმება"
-                    value={
-                      inspection.nextInspectionDate
-                        ? new Date(inspection.nextInspectionDate)
-                        : new Date()
-                    }
-                    onChange={d => update('nextInspectionDate', d.toISOString().slice(0, 10))}
-                    mode="date"
-                  />
-                </View>
-              </View>
 
-              <FloatingLabelInput
-                label="უსაფრთხ. ხელმძღვ. სახელი"
-                value={inspection.safetyLeaderName}
-                onChangeText={v => update('safetyLeaderName', v)}
-              />
-
-              <FloatingLabelInput
-                label="უსაფრთხ. ხელმძღვ. ტელეფონი"
-                value={inspection.safetyLeaderPhone}
-                onChangeText={v => update('safetyLeaderPhone', v)}
-                keyboardType="phone-pad"
-              />
-
-              <IdentificationGrid
-                columns={1}
-                fields={[
-                  {
-                    label: 'შემოწმების სახე',
-                    type: 'select',
-                    value: inspection.inspectionType ?? '',
-                    onChange: v => update('inspectionType', (v || null) as FPInspectionType | null),
-                    options: ['primary', 'secondary'],
-                    optionLabels: ['პირველადი', 'განმეორებითი'],
-                  },
-                ]}
-              />
-
-              <View style={{ gap: 6 }}>
-                <SectionHeader title="მოწყობილობების რეესტრი" />
-                <DynamicTable
-                  columns={REGISTRY_COLS}
-                  rows={inspection.devices}
-                  onChange={handleDevicesChange}
-                  onBuildDefaultRow={buildDefaultRow}
-                  minRows={1}
-                />
-              </View>
-            </KeyboardAwareScrollView>
-          )}
-
-          {/* ── Step 1: Device-by-device inspection ─────────────────────────── */}
-          {step === DEVICES_STEP && inspection.devices.length > 0 && (
-            <View style={{ flex: 1 }}>
-
-              {/* Device tab strip */}
-              <ChipNavStrip
-                items={inspection.devices.map((d, idx): ChipNavItem => ({
-                  key: d.id,
-                  label: d.id,
-                  state: tabStates[idx] ?? 'pending',
-                  a11yHint: `${d.id} - ${d.type || 'მოწყობილობა'}`,
-                }))}
-                activeIndex={safeDeviceIdx}
-                onSelect={setActiveDeviceIdx}
-                tone="neutral"
-              />
-
-              {/* Device details */}
-              {currentDevice && currentDeviceData && (
-                <KeyboardAwareScrollView
-                  style={{ flex: 1 }}
-                  contentContainerStyle={{
-                    flexGrow: 1,
-                    paddingHorizontal: 16,
-                    paddingTop: 12,
-                    paddingBottom: 24,
-                    gap: 8,
-                  }}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="interactive"
-                  showsVerticalScrollIndicator={false}
-                  bottomOffset={120}
-                >
-                  {/* Device meta */}
-                  {(currentDevice.type || currentDevice.location) && (
-                    <Text style={styles.deviceMeta}>
-                      {[currentDevice.type, currentDevice.location, currentDevice.floor]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </Text>
-                  )}
-
-                  {/* Checklist */}
-                  <SectionHeader title="შემოწმების პარამეტრები" />
-                  <View style={{ gap: 1 }}>
-                    {FP_CHECKLIST_ITEMS.map(entry => {
-                      const state = currentDeviceData.items.find(i => i.id === entry.id)
-                        ?? { id: entry.id, result: null, comment: null, photo_paths: [] };
-                      return (
-                        <ChecklistItem
-                          key={entry.id}
-                          id={entry.id}
-                          label={entry.label}
-                          type="four_state"
-                          options={FP_CHECKLIST_OPTIONS}
-                          value={state.result ? FP_RESULT_TO_CHIP[state.result] : null}
-                          onChange={val =>
-                            handleChecklistChange(safeDeviceIdx, entry.id, 'value', val)
-                          }
-                          comment={state.comment ?? undefined}
-                          onCommentChange={text =>
-                            handleChecklistChange(safeDeviceIdx, entry.id, 'comment', text || null)
-                          }
-                          photoPaths={state.photo_paths ?? []}
-                          onAddPhoto={() => handleAddItemPhoto(safeDeviceIdx, entry.id)}
-                          onDeletePhoto={path =>
-                            handleDeleteItemPhoto(safeDeviceIdx, entry.id, path)
-                          }
-                        />
-                      );
-                    })}
-
-                    {/* Custom item 13 */}
-                    <View style={styles.customItemWrap}>
-                      <FloatingLabelInput
-                        label="სხვა (სახელი)"
-                        value={currentDeviceData.customItem.label}
-                        onChangeText={v =>
-                          updateDeviceData(safeDeviceIdx, d => ({
-                            ...d,
-                            customItem: { ...d.customItem, label: v },
-                          }))
-                        }
-                      />
-                      <ChecklistItem
-                        id={13}
-                        label={currentDeviceData.customItem.label || 'სხვა'}
-                        type="four_state"
-                        options={FP_CHECKLIST_OPTIONS}
-                        value={
-                          currentDeviceData.customItem.result
-                            ? FP_RESULT_TO_CHIP[currentDeviceData.customItem.result]
-                            : null
-                        }
-                        onChange={val =>
-                          handleChecklistChange(safeDeviceIdx, 0, 'value', val)
-                        }
-                        comment={currentDeviceData.customItem.comment ?? undefined}
-                        onCommentChange={text =>
-                          handleChecklistChange(safeDeviceIdx, 0, 'comment', text || null)
-                        }
-                        photoPaths={currentDeviceData.customItem.photo_paths ?? []}
-                        onAddPhoto={() => handleAddItemPhoto(safeDeviceIdx, 0)}
-                        onDeletePhoto={path =>
-                          handleDeleteItemPhoto(safeDeviceIdx, 0, path)
-                        }
-                      />
-                    </View>
-                  </View>
-
-                  {/* Verdict */}
-                  <SectionHeader title="დასკვნა" />
-                  {suggestedVerdict && currentDeviceData.verdict !== suggestedVerdict && (
-                    <VerdictSuggestionBanner
-                      text={`შემოთავაზება: ${FP_VERDICT_LABELS[suggestedVerdict]}`}
-                      onApply={() => handleVerdictChange(safeDeviceIdx, suggestedVerdict)}
+                {FP_CHECKLIST_ITEMS.map(entry => {
+                  const state = currentDeviceData.items.find(i => i.id === entry.id);
+                  return (
+                    <ChecklistItemRow
+                      key={entry.id}
+                      label={entry.label}
+                      options={FP_ROW_OPTIONS}
+                      value={state?.result ?? null}
+                      onChange={val => handleChecklistChange(safeDeviceIdx, entry.id, val)}
+                      labelLines={4}
+                      dense
                     />
-                  )}
-                  <VerdictSelector
-                    value={currentDeviceData.verdict}
-                    options={FP_VERDICT_OPTIONS}
-                    onChange={v => handleVerdictChange(safeDeviceIdx, v)}
-                    showError={attempted && !currentDeviceData.verdict}
-                  />
-                  <FloatingLabelInput
-                    label="კომენტარი"
-                    value={currentDeviceData.verdictComment}
-                    onChangeText={v => handleVerdictCommentChange(safeDeviceIdx, v)}
-                    multiline
-                    numberOfLines={4}
-                  />
+                  );
+                })}
 
-                  {/* Device photos */}
-                  <SectionHeader title={`${currentDevice.id} დამჭერი მოწყობილობის ფოტო`} />
-                  <PhotoSection
-                    photoPaths={currentDeviceData.photoPaths ?? []}
-                    onAdd={() => handleAddDevicePhoto(safeDeviceIdx)}
-                    onDelete={path => handleDeleteDevicePhoto(safeDeviceIdx, path)}
-                  />
-                </KeyboardAwareScrollView>
-              )}
-            </View>
-          )}
+                {/* Custom item 13 - editable label */}
+                <ChecklistItemRow
+                  label={currentDeviceData.customItem.label || 'სხვა'}
+                  editableLabel={{
+                    value: currentDeviceData.customItem.label,
+                    onChange: v =>
+                      updateDeviceData(safeDeviceIdx, d => ({
+                        ...d,
+                        customItem: { ...d.customItem, label: v },
+                      })),
+                    placeholder: 'სხვა (სახელი)…',
+                  }}
+                  options={FP_ROW_OPTIONS}
+                  value={currentDeviceData.customItem.result ?? null}
+                  onChange={val => handleChecklistChange(safeDeviceIdx, 0, val)}
+                  labelLines={4}
+                  dense
+                />
+              </KeyboardAwareScrollView>
+            )}
+          </View>
+        )}
 
-        </InspectionShell>
+        {/* ── Step 3: Conclusion (დასკვნა), per device ─────────────────────── */}
+        {step === CONCLUSION_STEP && inspection.devices.length > 0 && (
+          <View style={{ flex: 1 }}>
+            {deviceTabs}
+            {currentDevice && currentDeviceData && (
+              <ConclusionStep<FPVerdict>
+                showAvatar={false}
+                summarySection={
+                  deviceMeta ? <Text style={styles.deviceMeta}>{deviceMeta}</Text> : null
+                }
+                verdict={currentDeviceData.verdict}
+                verdictOptions={FP_VERDICT_OPTIONS}
+                verdictLayout="vertical"
+                onVerdictChange={v => handleVerdictChange(safeDeviceIdx, v)}
+                verdictError={attempted && !currentDeviceData.verdict}
+                notes={currentDeviceData.verdictComment}
+                onNotesChange={v => handleVerdictCommentChange(safeDeviceIdx, v)}
+                photoPaths={currentDeviceData.photoPaths ?? []}
+                onAddPhoto={() => handleAddDevicePhoto(safeDeviceIdx)}
+                onDeletePhoto={path => handleDeleteDevicePhoto(safeDeviceIdx, path)}
+                photoLabel={`${currentDevice.id} მოწყობილობის ფოტო (სურვ.)`}
+                completing={completing}
+              />
+            )}
+          </View>
+        )}
+
+      </InspectionShell>
 
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
       {celebrating && (
@@ -682,36 +568,18 @@ export default function FallProtectionInspectionScreen() {
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({
-    root:    { flex: 1, backgroundColor: theme.colors.background },
-    savingHint: {
-      textAlign: 'center', fontSize: 11,
-      color: theme.colors.inkFaint, paddingVertical: 2,
-    },
+    root: { flex: 1, backgroundColor: theme.colors.background },
     stepBody: {
       flexGrow: 1, paddingHorizontal: 16,
       paddingTop: 12, paddingBottom: 24, gap: 12,
     },
-    footer: {
-      paddingHorizontal: 16, paddingTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.hairline,
+    deviceBody: {
+      flexGrow: 1, paddingHorizontal: 16,
+      paddingTop: 12, paddingBottom: 24, gap: 8,
     },
-    twoCol:  { flexDirection: 'row', gap: 8 },
-    colHalf: { flex: 1, gap: 4 },
-    fieldLabel: {
-      fontSize: 12, fontWeight: '600',
-      color: theme.colors.inkSoft, marginBottom: 4,
-    },
-    // Device tabs
     deviceMeta: {
       fontSize: 11, color: theme.colors.inkSoft,
       paddingHorizontal: 2, marginBottom: 4,
-    },
-    customItemWrap: {
-      gap: 4,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.hairline,
-      paddingTop: 8, marginTop: 4,
     },
   });
 }

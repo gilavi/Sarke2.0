@@ -18,7 +18,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * Shares the canonical press bounce ({@link usePressBounce}) with every button.
  */
 export type IconButtonVariant = 'plain' | 'ghost' | 'danger' | 'overlay' | 'outline';
-export type IconButtonSize = 'sm' | 'md' | 'lg';
+export type IconButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+/** circle = pill/round (default) · square = rounded-square, for controls that
+ *  sit next to inputs or in a grid and should read as a box, not a chip. */
+export type IconButtonShape = 'circle' | 'square';
 
 interface IconButtonProps {
   icon: LucideIcon;
@@ -29,6 +32,8 @@ interface IconButtonProps {
   /** plain = transparent ink · ghost = subtle surface · danger = soft red · overlay = dark scrim over images · outline = bordered circle (back/close). */
   variant?: IconButtonVariant;
   size?: IconButtonSize;
+  /** circle (default) or square (rounded-square, aligns with text inputs). */
+  shape?: IconButtonShape;
   disabled?: boolean;
   hitSlop?: number;
   style?: StyleProp<ViewStyle>;
@@ -38,6 +43,9 @@ const SIZES: Record<IconButtonSize, { box: number; icon: number }> = {
   sm: { box: 28, icon: 16 },
   md: { box: 36, icon: 20 },
   lg: { box: 44, icon: 22 },
+  // xl matches the 56px single-line input height so a square IconButton lines
+  // up flush next to a FloatingLabelInput.
+  xl: { box: 56, icon: 22 },
 };
 
 export function IconButton({
@@ -47,6 +55,7 @@ export function IconButton({
   a11yHint,
   variant = 'plain',
   size = 'md',
+  shape = 'circle',
   disabled,
   hitSlop = 8,
   style,
@@ -55,6 +64,7 @@ export function IconButton({
   const styles = useMemo(() => getStyles(theme), [theme]);
   const { pressStyle, bounce } = usePressBounce();
   const dims = SIZES[size];
+  const borderRadius = shape === 'square' ? theme.radius.input : dims.box / 2;
 
   const iconColor =
     variant === 'danger'
@@ -68,7 +78,9 @@ export function IconButton({
   const handlePress = () => {
     if (disabled) return;
     bounce();
-    haptic.light();
+    // Destructive icon controls (delete / remove ✕) get a Heavy tap; the rest
+    // (close, back, overflow) stay Light.
+    haptic[variant === 'danger' ? 'heavy' : 'light']();
     onPress();
   };
 
@@ -79,7 +91,7 @@ export function IconButton({
       hitSlop={hitSlop}
       style={[
         styles.base,
-        { width: dims.box, height: dims.box, borderRadius: dims.box / 2 },
+        { width: dims.box, height: dims.box, borderRadius },
         styles[variant],
         disabled && styles.disabled,
         pressStyle,

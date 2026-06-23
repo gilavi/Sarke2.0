@@ -378,7 +378,7 @@ export default function HarnessInspectionScreen() {
   }, [pickPhotosWithAnnotation, doUpload]);
 
   const deletePhoto = useCallback(async (photo: AnswerPhoto) => {
-    haptic.medium();
+    haptic.deletePhoto();
     try {
       await answersApi.removePhoto(photo.id);
       setPhotos(prev => {
@@ -398,20 +398,24 @@ export default function HarnessInspectionScreen() {
   const handleComplete = useCallback(async () => {
     if (!inspection || completing) return;
     if (!harnessName.trim()) {
+      haptic.validationError();
       toast.error('შეავსეთ ღვედის დასახელება');
       setStep(INFO_STEP);
       return;
     }
     if (verdict === null) {
+      haptic.validationError();
       toast.error('შეავსეთ: დასკვნა');
       return;
     }
     if (!conclusion.trim()) {
+      haptic.validationError();
       toast.error('შეავსეთ: კომენტარი');
       return;
     }
+    // The footer Button (InspectionShell) already fired the press beat; below we
+    // emit only the success / failure outcome.
     setCompleting(true);
-    haptic.medium();
     try {
       await offline.enqueueQuestionnaireUpdate({
         id: inspection.id,
@@ -456,8 +460,8 @@ export default function HarnessInspectionScreen() {
   }, [step, harnessName, verdict, conclusion, completing]);
 
   const handleNext = useCallback(async () => {
+    // The footer "next" Button (InspectionShell) owns the advance press haptic.
     if (step < CONCLUSION_STEP) {
-      haptic.light();
       setStep(s => s + 1);
     } else {
       await handleComplete();

@@ -255,11 +255,6 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
     }
   };
 
-  const badCountThisRow = items.reduce(
-    (n, it) => (draftStateOf(it, row) === 'bad' ? n + 1 : n),
-    0,
-  );
-
   // Secondary navigation: one chip per harness, so the user can jump around
   // instead of only advancing linearly via "დადასტურება →".
   const harnessChips: ChipNavItem[] = rowLabels.map(r => {
@@ -309,10 +304,7 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
 
       <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Button
-          title={t('harnessList.confirmButton', {
-            n: safeRowIdx + 1,
-            suffix: badCountThisRow > 0 ? t('harnessList.problemsSuffix', { count: badCountThisRow }) : '',
-          })}
+          title={t('common.next')}
           variant="primary"
           size="lg"
           style={{ alignSelf: 'stretch' }}

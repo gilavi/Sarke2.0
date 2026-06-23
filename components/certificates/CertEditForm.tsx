@@ -113,6 +113,7 @@ export function CertEditForm({
       haptic.success();
       onSaved();
     } catch (e) {
+      haptic.error();
       toast.error(friendlyError(e));
     } finally {
       setBusy(false);
@@ -130,9 +131,10 @@ export function CertEditForm({
           setBusy(true);
           try {
             await inspectionAttachmentsApi.remove(existing.id);
-            haptic.warn();
+            haptic.success();
             onDeleted();
           } catch (e) {
+            haptic.error();
             toast.error(friendlyError(e));
           } finally {
             setBusy(false);

@@ -75,7 +75,7 @@ function stepKeyFor(category: string | null | undefined, id: string): string {
     general_equipment: 'ge-wizard', cargo_platform: 'cargo-platform-wizard',
     safety_net_inspection: 'safety-net-wizard',
     mobile_ladder_inspection:       'mobile-ladder-wizard',
-    fall_protection_inspection:     'fall-protection-wizard',
+    fall_protection_inspection:     'fall-protection-wizard-v2',
     lifting_accessories_inspection: 'lifting-accessories-wizard',
     forklift_inspection:            'forklift-wizard',
   };
@@ -83,7 +83,7 @@ function stepKeyFor(category: string | null | undefined, id: string): string {
 }
 
 const STEP_TOTALS: Record<string, number> = {
-  harness: 3, bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6, safety_net_inspection: 6, mobile_ladder_inspection: 5, fall_protection_inspection: 2, lifting_accessories_inspection: 6, forklift_inspection: 3,
+  harness: 3, bobcat: 4, excavator: 5, general_equipment: 3, cargo_platform: 6, safety_net_inspection: 6, mobile_ladder_inspection: 5, fall_protection_inspection: 4, lifting_accessories_inspection: 6, forklift_inspection: 3,
 };
 
 const staticStyles = StyleSheet.create({

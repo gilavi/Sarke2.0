@@ -55,14 +55,15 @@ export function BriefingsSection({
       ) : briefings.length === 0 ? (
         <SectionEmptyState type="briefings" />
       ) : (
-        <View style={{ gap: 8, marginTop: 10 }}>
-          {preview.map(b => {
+        <View style={{ marginTop: 4 }}>
+          {preview.map((b, i) => {
             const isCompleted = b.status === 'completed';
+            const showBorder = i < preview.length - 1 || overflow.length > 0;
             return (
               <Pressable
                 key={b.id}
                 onPress={() => router.push(`/briefings/${b.id}` as any)}
-                style={styles.listRow}
+                style={[styles.listRow, showBorder && styles.listRowBorder]}
                 {...a11y('ინსტრუქტაჟი', 'დეტალების სანახავად დააჭირეთ', 'button')}
               >
                 <View style={[styles.statusIcon, { backgroundColor: isCompleted ? theme.colors.semantic.successSoft : theme.colors.semantic.warningSoft }]}>

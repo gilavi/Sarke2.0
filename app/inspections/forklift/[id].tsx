@@ -38,7 +38,6 @@ import {
   FORKLIFT_COMPONENTS,
   FORKLIFT_TEMPLATE_ID,
   ENGINE_TYPE_LABEL,
-  computeForkliftVerdictSuggestion,
   forkliftSubcategoryCounts,
   type ForkliftInspection,
   type ForkliftItemState,
@@ -290,13 +289,6 @@ export default function ForkliftInspectionScreen() {
     [inspection],
   );
 
-  // ── Verdict suggestion ────────────────────────────────────────────────────────
-
-  const verdictSuggestion = useMemo(
-    () => inspection ? computeForkliftVerdictSuggestion(inspection.items) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [inspection?.items],
-  );
 
   // ── Step navigation ───────────────────────────────────────────────────────────
 
@@ -479,14 +471,6 @@ export default function ForkliftInspectionScreen() {
               verdictOptions={FORKLIFT_VERDICT_OPTIONS}
               verdictError={attempted && !inspection.verdict}
               onVerdictChange={v => update('verdict', v as ForkliftVerdict)}
-              suggestion={
-                verdictSuggestion && verdictSuggestion !== inspection.verdict
-                  ? {
-                      text: `შემოწმების შედეგები: «${FORKLIFT_VERDICT_LABEL[verdictSuggestion]}»`,
-                      onApply: () => update('verdict', verdictSuggestion),
-                    }
-                  : null
-              }
               notes={inspection.notes ?? ''}
               onNotesChange={v => update('notes', v || null)}
               completing={completing}

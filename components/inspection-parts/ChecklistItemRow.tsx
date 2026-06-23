@@ -32,6 +32,8 @@ export interface ChecklistItemRowProps {
   onHelp?: () => void;
   /** Compact chips for rows with 3–4 options so they fit a phone width. */
   dense?: boolean;
+  /** Max label lines before truncation. Default 2; raise for long item labels. */
+  labelLines?: number;
 }
 
 /**
@@ -51,6 +53,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
   onChange,
   onHelp,
   dense,
+  labelLines = 2,
 }: ChecklistItemRowProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -69,7 +72,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
             />
           ) : (
             <>
-              <Text style={styles.label} numberOfLines={2}>
+              <Text style={styles.label} numberOfLines={labelLines}>
                 {label}
               </Text>
               {onHelp ? <HelpIcon onPress={onHelp} /> : null}
@@ -115,6 +118,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
   prev.editableLabel?.onChange === next.editableLabel?.onChange &&
   prev.value === next.value &&
   prev.dense === next.dense &&
+  prev.labelLines === next.labelLines &&
   prev.onChange === next.onChange &&
   prev.onHelp === next.onHelp &&
   prev.options === next.options,
