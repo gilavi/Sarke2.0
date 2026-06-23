@@ -72,7 +72,12 @@ export function useStructuredInspection<T extends { id: string; status: string }
     enabled: !!projectId,
   });
 
-  const [step, setStep] = useState(0);
+  // On a draft, the specs/info step (step 0) was already filled during create on
+  // `/<type>/new`, so land on the first real step instead of re-showing it.
+  // (Back still reaches the specs step to edit it.)
+  const [step, setStep] = useState(() =>
+    !isNew && descriptor.steps[0]?.kind === 'specs' ? 1 : 0,
+  );
   const [direction, setDirection] = useState(1);
   const [signaturesSession, setSignaturesSession] = useState<SignaturesSectionData | null>(null);
 
