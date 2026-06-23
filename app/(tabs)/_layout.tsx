@@ -1,14 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { House, Folder, BookOpen, CalendarDays } from 'lucide-react-native';
+import { House, Folder, BookOpen } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, withOpacity } from '../../lib/theme';
 import { useTranslation } from 'react-i18next';
-import { useOverdueCount, qk } from '../../lib/apiHooks';
+import { qk } from '../../lib/apiHooks';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { useSession } from '../../lib/session';
 import { useOffline } from '../../lib/offline';
@@ -23,7 +23,6 @@ const TAB_CONFIG: Record<string, TabConfig> = {
   home: { name: 'tabs.home', Icon: House },
   projects: { name: 'tabs.projects', Icon: Folder },
   regulations: { name: 'tabs.regulations', Icon: BookOpen },
-  calendar: { name: 'tabs.calendar', Icon: CalendarDays },
 };
 
 // ─── Tab Icon ───────────────────────────────────────────────────
@@ -142,7 +141,6 @@ export default function TabsLayout() {
   const adjustedInsets = bannerVisible ? { ...insets, top: 0 } : insets;
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const overdueCount = useOverdueCount();
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
@@ -223,24 +221,6 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="calendar"
-          options={{
-            title: t('tabs.calendar'),
-            tabBarAccessibilityLabel: t('tabs.calendarA11y'),
-            tabBarBadge: overdueCount > 0 ? overdueCount : undefined,
-            tabBarBadgeStyle: {
-              backgroundColor: theme.colors.highlight,
-              color: theme.colors.neutral[900],
-              fontSize: 10,
-              fontWeight: '700',
-              minWidth: 18,
-              height: 18,
-              borderRadius: 9,
-              lineHeight: 18,
-            },
-          }}
-        />
-        <Tabs.Screen
           name="more"
           options={{
             title: t('tabs.more'),
@@ -253,7 +233,9 @@ export default function TabsLayout() {
             ),
           }}
         />
-        {/* Hidden routes */}
+        {/* Hidden routes — reachable via router.push, not shown in the bar.
+            Calendar moved into the More tab (overdue surfaces on its hub tile). */}
+        <Tabs.Screen name="calendar" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
         <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       </Tabs>
       </SafeAreaInsetsContext.Provider>

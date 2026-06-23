@@ -20,7 +20,9 @@ import { Skeleton } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import { isExpiringSoon } from '../../lib/services';
 import {
+  useCalendarEvents,
   useInspectionCounts,
+  useOverdueCount,
   usePaymentHistory,
   useProjects,
   useQualifications,
@@ -58,6 +60,9 @@ export default function MoreScreen() {
   const templatesQ = useTemplates();
   const projectsQ = useProjects();
   const paymentHistoryQ = usePaymentHistory();
+  const calendarEvents = useCalendarEvents();
+  const overdueCount = useOverdueCount();
+  const upcomingCount = calendarEvents.filter(e => !e.isPast).length;
 
   const counts = countsQ.data ?? { total: 0, drafts: 0, completed: 0, latestCreatedAt: null };
   const certs = certsQ.data ?? [];
@@ -152,6 +157,16 @@ export default function MoreScreen() {
 
         {/* Hub tiles */}
         <View style={styles.grid}>
+          <HubTile
+            title={t('tabs.calendar')}
+            icon={CalendarDays}
+            tint={theme.colors.semantic.success}
+            bg={theme.colors.semantic.successSoft}
+            primary={loaded ? `${upcomingCount}` : null}
+            secondary={loaded ? (overdueCount > 0 ? t('projects.overdueCount', { count: overdueCount }) : t('calendar.filterUpcoming')) : null}
+            badge={loaded && overdueCount > 0 ? t('projects.overdueCount', { count: overdueCount }) : undefined}
+            onPress={() => router.push('/(tabs)/calendar')}
+          />
           <HubTile
             title={t('more.history')}
             icon={Clock}

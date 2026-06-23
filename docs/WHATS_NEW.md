@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-06-23 — Calendar moved into the More tab
+
+The bottom tab bar carried five items (home, projects, regulations, calendar, more); calendar was the least-used and pushed the bar tight. It now lives in the **More** tab instead, freeing the bar to four items.
+
+- **Tab bar** ([`app/(tabs)/_layout.tsx`](../app/(tabs)/_layout.tsx)) — the `calendar` route is now a hidden tab (`tabBarButton: () => null`, like `certificates`), still reachable via `router.push('/(tabs)/calendar')`. The route file is unchanged.
+- **More tab hub tile** ([`app/(tabs)/more.tsx`](../app/(tabs)/more.tsx)) — a new green Calendar tile leads the hub grid. Its stat is the upcoming-event count; when something is overdue it shows the `⚠ N ვადაგადაცილებული` badge that used to sit on the tab icon (`useOverdueCount` moved here from the layout).
+
+OTA-deliverable (no native changes).
+
+## 2026-06-23 — Chip sub-navigation: bigger chips + a real transition when you switch items
+
+In every flow with an `N1 / N2 / N3` secondary nav (fall-protection devices, harness rows, briefing signers), tapping a chip swapped the body **instantly** — so users often didn't register that they'd moved to a different item. The switch is now a visible navigation.
+
+- **New body transition** — [`ChipSwitchTransition`](../components/inspection-parts/ChipSwitchTransition.tsx) wraps the per-item body so the incoming content slides+fades in (direction inferred from the chip-index delta) while the outgoing one fades out. The exact sibling of the top-level [`WizardStepTransition`](../components/wizard/WizardStepTransition.tsx), one altitude down: it tracks its own direction and skips the first-mount animation so it nests cleanly inside a step transition. `mode="fade"` is used for the briefing **signature canvas** (a horizontal shift would disrupt the WebView); `mode="slide"` (default) for the fall-protection checklist/conclusion and the harness checklist. Honours reduce-motion (→ cross-fade).
+- **Bigger, clearer chips** — [`ChipNavStrip`](../components/inspection-parts/ChipNavStrip.tsx) chips grew (label 13→15, taller pill + larger touch target, dot 7→9). The strip now **auto-scrolls the active chip into view**, so jumping to an off-screen item visibly moves the strip.
+- **Gradual state change** — the active chip springs ~6% larger (legible "where am I", and a switch shows a gentle grow/shrink), the status dot **tweens** its color (250ms) instead of snapping, and the existing 150ms border/fill tween + `done`-checkmark spring are kept. All in [`NavChip`](../components/inspection-parts/NavChip.tsx), reduce-motion aware.
+
+Applies everywhere the strip is used: `app/inspections/fall-protection`, `components/harness-list/HarnessListFlow`, and `app/briefings/[id]/sign`. OTA-deliverable (no native changes).
+
 ## 2026-06-23 — Project screen: one row language, aligned gutters, matched inspection picker
 
 The project-detail screen mixed two row styles — the inspections list used flat home-style rows while every other section (incidents, briefings, reports, files/orders, breathalyzer, upcoming) used heavy grey rounded "pill" rows inside the card, a boxes-in-boxes look that read as a quality gap next to the home screen. The whole screen now speaks one row language.
