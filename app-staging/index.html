@@ -22,17 +22,21 @@
         rel="stylesheet"
       />
     </noscript>
-    <script type="module" crossorigin src="/app-staging/assets/index-BkWPmHGR.js"></script>
-    <link rel="modulepreload" crossorigin href="/app-staging/assets/vendor-BfsXFn1x.js">
-    <link rel="modulepreload" crossorigin href="/app-staging/assets/threejs-DsWYiBl6.js">
-    <link rel="modulepreload" crossorigin href="/app-staging/assets/supabase-9NZ6MRFe.js">
-    <link rel="modulepreload" crossorigin href="/app-staging/assets/icons-B6HnT3dZ.js">
-    <link rel="modulepreload" crossorigin href="/app-staging/assets/leaflet-DtNId1PC.js">
+    <script type="module" crossorigin src="/app-staging/assets/index-DKu0PyxT.js"></script>
+    <link rel="modulepreload" crossorigin href="/app-staging/assets/vendor-slMgMVfi.js">
+    <link rel="modulepreload" crossorigin href="/app-staging/assets/rnw-DV1dMQhV.js">
+    <link rel="modulepreload" crossorigin href="/app-staging/assets/threejs-CayoVGJ0.js">
+    <link rel="modulepreload" crossorigin href="/app-staging/assets/supabase-3F7M63wK.js">
+    <link rel="modulepreload" crossorigin href="/app-staging/assets/icons-DNzCRuJf.js">
+    <link rel="modulepreload" crossorigin href="/app-staging/assets/leaflet-CWYvAB6D.js">
     <link rel="stylesheet" crossorigin href="/app-staging/assets/vendor-BvtcIYFo.css">
     <link rel="stylesheet" crossorigin href="/app-staging/assets/leaflet-Dgihpmma.css">
-    <link rel="stylesheet" crossorigin href="/app-staging/assets/index-CUS1cS_s.css">
+    <link rel="stylesheet" crossorigin href="/app-staging/assets/index-B-ofDopP.css">
   </head>
   <body>
     <div id="root"></div>
+    <!-- Inline classic script runs before ES modules, so `global` is defined
+         before any chunk that accesses it (react-native-reanimated worklets). -->
+    <script>globalThis.global = globalThis;</script>
   </body>
 </html>
