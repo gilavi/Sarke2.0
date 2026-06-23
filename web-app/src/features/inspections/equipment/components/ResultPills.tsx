@@ -16,12 +16,10 @@ export interface ResultOption<V extends string> {
   tone: ResultTone;
 }
 
-const TONE_SELECTED: Record<ResultTone, string> = {
-  good: 'border-brand-600 bg-brand-600 text-white',
-  warn: 'border-amber-600 bg-amber-600 text-white',
-  bad: 'border-red-600 bg-red-600 text-white',
-  neutral: 'border-neutral-500 bg-neutral-500 text-white',
-};
+// Monochrome selection (ink fill); the label carries the meaning, not colour —
+// matching the mobile StatusChip and the rest of the answer surfaces.
+const SELECTED =
+  'border-neutral-900 bg-neutral-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900';
 
 const UNSELECTED =
   'border-neutral-300 bg-white text-neutral-700 hover:border-brand-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-brand-500';
@@ -51,7 +49,7 @@ export function ResultPills<V extends string>({
             onClick={() => onSelect(selected ? null : option.value)}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-semibold transition',
-              selected ? TONE_SELECTED[option.tone] : UNSELECTED,
+              selected ? SELECTED : UNSELECTED,
               'disabled:cursor-not-allowed disabled:opacity-60',
             )}
           >

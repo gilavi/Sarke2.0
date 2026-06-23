@@ -911,8 +911,8 @@ function QuestionStepRenderer({
 
       {question.type === 'yesno' && (
         <div className="grid grid-cols-2 gap-3">
-          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" variant="yes" />
-          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" variant="no" />
+          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" />
+          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" />
         </div>
       )}
 
@@ -1048,8 +1048,8 @@ function SinglePageQuestion({
 
       {question.type === 'yesno' && (
         <div className="grid grid-cols-2 gap-3">
-          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" variant="yes" />
-          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" variant="no" />
+          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" />
+          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" />
         </div>
       )}
 
@@ -1186,12 +1186,14 @@ function ConclusionStepRenderer({
 
 /* ─── Answer Button ─── */
 
-function AnswerButton({ selected, onClick, icon, label, variant }: {
-  selected: boolean; onClick: () => void; icon: React.ReactNode; label: string; variant: 'yes' | 'no';
+function AnswerButton({ selected, onClick, icon, label }: {
+  selected: boolean; onClick: () => void; icon: React.ReactNode; label: string;
 }) {
-  const base = variant === 'yes'
-    ? selected ? 'bg-brand-500 text-white ring-2 ring-brand-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-brand-50 hover:text-brand-600 border border-neutral-200'
-    : selected ? 'bg-red-500 text-white ring-2 ring-red-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-red-50 hover:text-red-600 border border-neutral-200';
+  // Monochrome selection (ink fill + light content); the ✓/✗ icon carries
+  // yes/no, not colour — matching the mobile StatusChip.
+  const base = selected
+    ? 'bg-neutral-900 text-white ring-2 ring-neutral-900 ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:ring-neutral-100'
+    : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700';
   return (
     <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={onClick}
       className={`flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-sm font-semibold transition-all ${base} dark:ring-offset-neutral-900`}>

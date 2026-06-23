@@ -72,7 +72,9 @@ export default function History() {
           type,
           status: i.status,
           date: i.created_at ?? '',
-          href: `/inspections/${i.id}`,
+          // Generic harness/scaffold acts have no detail route (InspectionDetail
+          // was removed); open the rendered result instead of 404ing.
+          href: `/inspections/${i.id}/print?preview=1`,
         };
       }),
       ...(bobcats ?? []).map((i): Row => ({

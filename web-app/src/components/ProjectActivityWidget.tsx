@@ -64,7 +64,8 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
       // templates like "ციცხვიანი დამტვირთველი") stays on the generic
       // /inspections route so unknown templates don't break the harness
       // detail page.
-      const href = cat === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`;
+      // Generic harness/scaffold acts have no detail route; open the result.
+      const href = `/inspections/${i.id}/print?preview=1`;
       return { id: i.id, label: inspectionName(i.template_id), date: i.created_at ?? '', status: i.status, href, type };
     }),
     ...bobs.map(i  => ({ id: i.id, label: equipmentInspectionName('bobcat'),          date: i.createdAt, status: i.status, href: `/bobcat/${i.id}`,             type: 'bobcat' as const })),

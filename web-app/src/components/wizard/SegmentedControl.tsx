@@ -2,11 +2,16 @@
  * Shared segmented control used by the checklist rows (3 options) and the
  * conclusion verdict (2 options). All options render identically when
  * unselected (#F5F4F1 / #6B7280) - none ever looks "default selected".
+ *
+ * Selection is MONOCHROME (solid ink fill + inverted text), matching the mobile
+ * app's StatusChip — meaning is carried by the label/icon, not green/red/amber.
+ * `selectedBg` is retained on the type for callers but no longer tints selection.
  */
 export interface SegOption {
   label: string;
   value: string;
-  selectedBg: string;
+  /** @deprecated kept for callers; selection is monochrome ink now. */
+  selectedBg?: string;
 }
 
 export function SegmentedControl({
@@ -42,12 +47,13 @@ export function SegmentedControl({
             style={{
               height,
               fontSize,
-              fontWeight: 500,
               flex: fullWidth ? 1 : undefined,
               width: fullWidth ? undefined : 56,
               borderLeft: i > 0 ? '1px solid var(--border-default)' : undefined,
-              background: isSel ? o.selectedBg : 'var(--bg-hover)',
-              color: isSel ? '#fff' : 'var(--text-secondary)',
+              // Monochrome ink selection (flips with theme via the vars).
+              background: isSel ? 'var(--text-primary)' : 'var(--bg-hover)',
+              color: isSel ? 'var(--bg-card)' : 'var(--text-secondary)',
+              fontWeight: isSel ? 600 : 500,
               transition: 'background-color 0.12s, color 0.12s',
             }}
           >
