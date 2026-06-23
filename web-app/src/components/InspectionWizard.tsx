@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 import { CheckCircle2, X } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NumberInput } from '@mantine/core';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
 
 import PhotoUploadZone from '@/components/PhotoUploadZone';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { inspectionDisplayName } from '@/lib/documentNames';
 import { WizardFrame, WizardSidebar, SegmentedControl } from '@/components/wizard';
@@ -111,9 +112,6 @@ export default function InspectionWizard({
   /* ── Info form state (creation only) ── */
   const [projectId, setProjectId] = useState(defaultProjectId);
   const [templateId, setTemplateId] = useState(preset?.templateId ?? '');
-  const [harnessName, setHarnessName] = useState('');
-  const [department, setDepartment] = useState('');
-  const [inspectorName, setInspectorName] = useState('');
   const [creating, setCreating] = useState(false);
 
   /* ── Created inspection (after step 0) ── */
@@ -187,9 +185,6 @@ export default function InspectionWizard({
       hasResetRef.current = true;
       setProjectId(defaultProjectId);
       setTemplateId(preset?.templateId ?? '');
-      setHarnessName('');
-      setDepartment('');
-      setInspectorName('');
       setCreatedInspection(existingInspection ?? null);
       setQuestions(filterQuestions(initialQuestions));
       setAnswerMap(() => {
@@ -230,16 +225,21 @@ export default function InspectionWizard({
   }, [open, existingInspection, initialQuestions, initialAnswers, defaultProjectId, preset]);
 
   /* ── Step flattening ── */
+  const hasGrid = useMemo(() => questions.some((q) => q.type === 'component_grid'), [questions]);
+  // Non-grid questionnaires (e.g. façade scaffold) collapse into ONE scrollable
+  // point-and-click page rather than one step per question. The grid (harness)
+  // flow keeps its per-item stepping + sidebar.
+  const singlePageQuestions = questions.length > 0 && !hasGrid;
   const infoStepCount = mode === 'create' ? 1 : 0;
   const conclusionStepCount = 1;
-  const questionCount = questions.length;
-  const totalSteps = infoStepCount + questionCount + conclusionStepCount;
+  const questionStepCount = singlePageQuestions ? 1 : questions.length;
+  const totalSteps = infoStepCount + questionStepCount + conclusionStepCount;
 
   const isInfoStep = mode === 'create' && stepIndex === 0;
-  const isQuestionStep = stepIndex >= infoStepCount && stepIndex < infoStepCount + questionCount;
-  const isConclusionStep = stepIndex === infoStepCount + questionCount;
+  const isQuestionStep = stepIndex >= infoStepCount && stepIndex < infoStepCount + questionStepCount;
+  const isConclusionStep = stepIndex === infoStepCount + questionStepCount;
 
-  const currentQuestion = isQuestionStep ? questions[stepIndex - infoStepCount] : undefined;
+  const currentQuestion = !singlePageQuestions && isQuestionStep ? questions[stepIndex - infoStepCount] : undefined;
   const currentAnswer = currentQuestion ? answerMap[currentQuestion.id] : undefined;
   const isHarnessGridStep = isQuestionStep && currentQuestion?.type === 'component_grid';
 
@@ -339,6 +339,40 @@ export default function InspectionWizard({
       return;
     }
 
+    // Single-page questionnaire: persist every answered question, then advance
+    // to the conclusion in one go.
+    if (isQuestionStep && singlePageQuestions) {
+      try {
+        await Promise.all(
+          questions
+            .filter((q) => {
+              const a = answerMap[q.id];
+              return (
+                a &&
+                (a.value_bool != null || a.value_num != null || a.value_text != null || a.comment != null)
+              );
+            })
+            .map((q) => {
+              const a = answerMap[q.id]!;
+              return answerMutation.mutateAsync({
+                inspectionId: effectiveInspection!.id,
+                questionId: q.id,
+                valueBool: a.value_bool ?? null,
+                valueNum: a.value_num ?? null,
+                valueText: a.value_text ?? null,
+                comment: a.comment ?? null,
+              });
+            }),
+        );
+      } catch (e) {
+        toastError(e);
+        return;
+      }
+      setDirection(1);
+      setStepIndex((i) => Math.min(totalSteps - 1, i + 1));
+      return;
+    }
+
     if (isQuestionStep && currentQuestion && currentAnswer) {
       const hasValue =
         currentAnswer.value_bool !== undefined ||
@@ -368,9 +402,11 @@ export default function InspectionWizard({
         const created = await createInspection({
           projectId,
           templateId: createTemplateId,
-          harnessName: harnessName.trim() || null,
-          department: department.trim() || null,
-          inspectorName: preset ? (profileName ?? null) : (inspectorName.trim() || null),
+          // Name/department dropped from the create form; inspector defaults to
+          // the signed-in profile. (Per UX cleanup: only project + template.)
+          harnessName: null,
+          department: null,
+          inspectorName: profileName ?? null,
         });
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         const qs = await listQuestions(created.template_id);
@@ -394,9 +430,9 @@ export default function InspectionWizard({
     setDirection(1);
     setStepIndex((i) => Math.min(totalSteps - 1, i + 1));
   }, [
-    isConclusionStep, isQuestionStep, isInfoStep,
+    isConclusionStep, isQuestionStep, isInfoStep, singlePageQuestions, questions, answerMap,
     effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
-    projectId, templateId, harnessName, department, inspectorName,
+    projectId, templateId,
     answerMutation, qc, totalSteps, preset, profileName,
     onComplete, gridSummary, projectName, onClose, navigate,
     templates, defaultCategory, resolvedTemplateId,
@@ -416,10 +452,37 @@ export default function InspectionWizard({
     }));
   }, [currentQuestion]);
 
+  /* Single-page question helpers: change any answer by id, and lazily create an
+     answer row for photo_upload questions (PhotoUploadZone needs an answer id). */
+  const handleAnswerChangeById = useCallback((questionId: string, patch: Partial<Answer>) => {
+    setAnswerMap((prev) => ({ ...prev, [questionId]: { ...(prev[questionId] ?? {}), ...patch } }));
+  }, []);
+
+  const ensureAnswerId = useCallback(async (questionId: string): Promise<string | null> => {
+    const existing = answerMap[questionId];
+    if (existing?.id) return existing.id;
+    if (!effectiveInspection) return null;
+    const created = await upsertAnswer({ inspectionId: effectiveInspection.id, questionId });
+    setAnswerMap((prev) => ({ ...prev, [questionId]: created }));
+    return created.id;
+  }, [answerMap, effectiveInspection]);
+
   /* ── Step validation ── */
   const canGoNext = useMemo(() => {
     if (isConclusionStep) return conclusion.isSafe !== null && (!preset?.requireConclusionText || conclusion.text.trim().length > 0);
     if (isInfoStep) return !!projectId && !!resolvedTemplateId;
+    if (isQuestionStep && singlePageQuestions) {
+      return questions.every((q) => {
+        const a = answerMap[q.id];
+        if (!a) return false;
+        switch (q.type) {
+          case 'yesno': return a.value_bool !== null && a.value_bool !== undefined;
+          case 'measure': return a.value_num !== null && a.value_num !== undefined;
+          case 'freetext': return !!a.value_text;
+          default: return true; // photo_upload + anything else: not required
+        }
+      });
+    }
     if (!currentQuestion) return false;
     const a = answerMap[currentQuestion.id];
     if (!a) return false;
@@ -431,7 +494,7 @@ export default function InspectionWizard({
       case 'component_grid': return !!a.grid_values && Object.keys(a.grid_values).length > 0;
       default: return false;
     }
-  }, [isConclusionStep, isInfoStep, currentQuestion, answerMap, conclusion, projectId, templateId, resolvedTemplateId, preset]);
+  }, [isConclusionStep, isInfoStep, isQuestionStep, singlePageQuestions, questions, currentQuestion, answerMap, conclusion, projectId, templateId, resolvedTemplateId, preset]);
 
   /* ── Photo handling ── */
   const photosQ = useQuery({
@@ -544,11 +607,13 @@ export default function InspectionWizard({
         ? 'დასკვნა'
         : isHarnessGridStep
           ? `${harnessItemLabel} ${harnessActiveIdx + 1}`
-          : currentQuestion?.title ?? '';
+          : singlePageQuestions
+            ? 'შემოწმების კითხვები'
+            : currentQuestion?.title ?? '';
     return isInfoStep ? base : `${base} · ${stepIndex + 1}/${totalSteps}`;
   }, [
     isInfoStep, isConclusionStep, isHarnessGridStep, harnessItemLabel, harnessActiveIdx,
-    currentQuestion, stepIndex, totalSteps,
+    singlePageQuestions, currentQuestion, stepIndex, totalSteps,
   ]);
 
   /* ── Success modal handlers (only used for flows without a detail route) ── */
@@ -607,15 +672,19 @@ export default function InspectionWizard({
             setProjectId={setProjectId}
             templateId={templateId}
             setTemplateId={setTemplateId}
-            harnessName={harnessName}
-            setHarnessName={setHarnessName}
-            department={department}
-            setDepartment={setDepartment}
-            inspectorName={inspectorName}
-            setInspectorName={setInspectorName}
             lockTemplate={!!preset || (!!defaultCategory && !!resolvedTemplateId)}
             projects={projects ?? []}
             templates={templates ?? []}
+          />
+        )}
+
+        {isQuestionStep && singlePageQuestions && (
+          <AllQuestionsPage
+            questions={questions}
+            answerMap={answerMap}
+            onChange={handleAnswerChangeById}
+            ensureAnswerId={ensureAnswerId}
+            inspectionId={effectiveInspection!.id}
           />
         )}
 
@@ -674,19 +743,13 @@ export default function InspectionWizard({
 function InfoStep({
   projectId, setProjectId,
   templateId, setTemplateId,
-  harnessName, setHarnessName,
-  department, setDepartment,
-  inspectorName, setInspectorName,
   projects, templates,
   lockTemplate = false,
 }: {
   projectId: string; setProjectId: (v: string) => void;
   templateId: string; setTemplateId: (v: string) => void;
-  harnessName: string; setHarnessName: (v: string) => void;
-  department: string; setDepartment: (v: string) => void;
-  inspectorName: string; setInspectorName: (v: string) => void;
   projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
-  templates: { id: string; name: string; is_system?: boolean }[];
+  templates: { id: string; name: string; is_system?: boolean; category?: string | null }[];
   lockTemplate?: boolean;
 }) {
   if (lockTemplate) {
@@ -699,41 +762,58 @@ function InfoStep({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="space-y-2">
         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
         <ProjectCardGrid projects={projects} projectId={projectId} setProjectId={setProjectId} />
       </div>
 
-      <Select
-        label="შაბლონი"
-        required
-        value={templateId}
-        onChange={setTemplateId}
-        options={templates.map((t) => ({ value: t.id, label: t.name + (t.is_system ? ' (სისტემური)' : '') }))}
-        placeholder="აირჩიეთ შაბლონი"
-      />
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          შაბლონი <span className="text-red-500">*</span>
+        </p>
+        <TemplateCardGrid templates={templates} templateId={templateId} setTemplateId={setTemplateId} />
+      </div>
+    </div>
+  );
+}
 
-      <Input
-        label="დასახელება"
-        value={harnessName}
-        onChange={(e) => setHarnessName(e.target.value)}
-        placeholder="მაგ: ხარაჩო A"
-      />
+/* ─── Template card grid (icon selector — replaces the dropdown) ─── */
 
-      <Input
-        label="დეპარტამენტი"
-        value={department}
-        onChange={(e) => setDepartment(e.target.value)}
-        placeholder="დეპარტამენტის დასახელება"
-      />
-
-      <Input
-        label="ინსპექტორის სახელი"
-        value={inspectorName}
-        onChange={(e) => setInspectorName(e.target.value)}
-        placeholder="სახელი გვარი"
-      />
+function TemplateCardGrid({
+  templates, templateId, setTemplateId,
+}: {
+  templates: { id: string; name: string; is_system?: boolean; category?: string | null }[];
+  templateId: string;
+  setTemplateId: (v: string) => void;
+}) {
+  if (templates.length === 0) {
+    return <p className="text-sm text-neutral-400">შაბლონები ვერ მოიძებნა.</p>;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {templates.map((t) => {
+        const selected = templateId === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTemplateId(t.id)}
+            className="flex cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-colors"
+            style={{
+              border: selected ? '2px solid var(--brand-500)' : '1px solid var(--border-default)',
+              background: selected ? 'var(--brand-50)' : 'var(--bg-card)',
+            }}
+          >
+            <InspectionTypeIcon type={t.category} />
+            <div className="min-w-0">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {inspectionDisplayName(t.name)}
+              </div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -867,6 +947,140 @@ function QuestionStepRenderer({
         placeholder="დამატებითი შენიშვნა"
       />
     </div>
+  );
+}
+
+/* ─── Single-page questions (non-grid acts) ─── */
+
+function AllQuestionsPage({
+  questions, answerMap, onChange, ensureAnswerId, inspectionId,
+}: {
+  questions: Question[];
+  answerMap: Record<string, Partial<Answer>>;
+  onChange: (questionId: string, patch: Partial<Answer>) => void;
+  ensureAnswerId: (questionId: string) => Promise<string | null>;
+  inspectionId: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1">
+        <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">შემოწმების კითხვები</h3>
+        <p className="text-sm text-neutral-500">უპასუხეთ ყველა კითხვას</p>
+      </div>
+      <motion.div
+        className="space-y-3"
+        variants={staggerContainer(STAGGER.list)}
+        initial="hidden"
+        animate="visible"
+      >
+        {questions.map((q, i) => (
+          <SinglePageQuestion
+            key={q.id}
+            index={i}
+            question={q}
+            answer={answerMap[q.id]}
+            onChange={(patch) => onChange(q.id, patch)}
+            ensureAnswerId={ensureAnswerId}
+            inspectionId={inspectionId}
+          />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
+function SinglePageQuestion({
+  index, question, answer, onChange, ensureAnswerId, inspectionId,
+}: {
+  index: number;
+  question: Question;
+  answer?: Partial<Answer>;
+  onChange: (patch: Partial<Answer>) => void;
+  ensureAnswerId: (questionId: string) => Promise<string | null>;
+  inspectionId: string;
+}) {
+  const qc = useQueryClient();
+  const answerId = answer?.id;
+
+  // photo_upload needs a persisted answer row before uploads can attach.
+  useEffect(() => {
+    if (question.type === 'photo_upload' && !answerId) void ensureAnswerId(question.id);
+  }, [question.id, question.type, answerId, ensureAnswerId]);
+
+  const photosQ = useQuery({
+    queryKey: inspectionKeys.answerPhotos(answerId),
+    queryFn: () => listAnswerPhotos(answerId!),
+    enabled: question.type === 'photo_upload' && !!answerId,
+  });
+  const photoPaths = photosQ.data?.map((p) => p.storage_path) ?? [];
+
+  const handlePhotoAdd = async (path: string) => {
+    const id = answerId ?? (await ensureAnswerId(question.id));
+    if (!id) return;
+    await addAnswerPhoto(id, path, null);
+    qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(id) });
+  };
+  const handlePhotoRemove = async (path: string) => {
+    if (!answerId) return;
+    await removeAnswerPhoto(answerId, path);
+    qc.invalidateQueries({ queryKey: inspectionKeys.answerPhotos(answerId) });
+  };
+
+  return (
+    <motion.div
+      variants={fadeUpItem()}
+      className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+    >
+      <div className="mb-3 flex items-start gap-2.5">
+        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-600 dark:bg-brand-950/30 dark:text-brand-400">
+          {index + 1}
+        </span>
+        <h4 className="text-base font-semibold leading-snug text-neutral-900 dark:text-neutral-100">{question.title}</h4>
+      </div>
+
+      {question.type === 'yesno' && (
+        <div className="grid grid-cols-2 gap-3">
+          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" variant="yes" />
+          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" variant="no" />
+        </div>
+      )}
+
+      {question.type === 'measure' && (
+        <div className="flex items-center gap-2">
+          <NumberInput
+            value={answer?.value_num ?? ''}
+            onChange={(v) => onChange({ value_num: v === '' ? null : Number(v) })}
+            placeholder="მნიშვნელობა"
+            min={question.min_val ?? undefined}
+            max={question.max_val ?? undefined}
+            hideControls
+          />
+          {question.unit && <span className="shrink-0 text-sm text-neutral-500">{question.unit}</span>}
+        </div>
+      )}
+
+      {question.type === 'freetext' && (
+        <Textarea
+          value={answer?.value_text ?? ''}
+          onChange={(e) => onChange({ value_text: e.target.value })}
+          placeholder="შეიყვანეთ პასუხი..."
+          rows={3}
+        />
+      )}
+
+      {question.type === 'photo_upload' && (
+        <PhotoUploadZone paths={photoPaths} prefix="inspections" inspectionId={inspectionId} itemId={question.id} onAdd={handlePhotoAdd} onRemove={handlePhotoRemove} />
+      )}
+
+      <div className="mt-3">
+        <Input
+          label="კომენტარი (არასავალდებულო)"
+          value={answer?.comment ?? ''}
+          onChange={(e) => onChange({ comment: e.target.value })}
+          placeholder="დამატებითი შენიშვნა"
+        />
+      </div>
+    </motion.div>
   );
 }
 

@@ -2,8 +2,11 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ClipboardList } from 'lucide-react';
-import { Badge } from '@root/components/primitives';
 import DeleteButton from '@/components/DeleteButton';
+import StatusBadge from '@/components/StatusBadge';
+import { EmptyState } from '@/components/EmptyState';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
+import { inspectionTypeMeta, INSPECTION_TYPE_META, type InspectionType } from '@/lib/inspectionTypeMeta';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
 import { listBobcatInspections, deleteBobcatInspection } from '@/lib/data/bobcat';
 import { listExcavatorInspections, deleteExcavatorInspection } from '@/lib/data/excavator';
@@ -14,39 +17,11 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'დრაფტი',
-  completed: 'დასრულდა',
-  in_progress: 'მიმდინარე',
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  harness:            '🦺 დამცავი ქამარი',
-  xaracho:            '🏗️ ფასადის ხარაჩო',
-  mobile_scaffold:    '🏗️ მობ. ხარაჩო',
-  mobile_scaffold_n3: '🏗️ მობ. ხარაჩო N3',
-  bobcat:             '🚜 ციცხვ. დამტვირთ.',
-  excavator:          '🚧 ექსკავატორი',
-  general:            '⚙️ ტექ. აღჭურვილობა',
-  cargo_platform:     '📦 ტვირთის პლატფორმა',
-};
-
-const TYPE_IMAGE: Record<string, string> = {
-  harness:            '/ilu/harness.png',
-  xaracho:            '/ilu/scaffolding.png',
-  mobile_scaffold:    '/ilu/mobile-staircase.png',
-  mobile_scaffold_n3: '/ilu/mobile-staircase.png',
-  bobcat:             '/ilu/bulldozer-sm.png',
-  excavator:          '/ilu/excavator.png',
-  general:            '/ilu/clamp.png',
-  cargo_platform:     '/ilu/cargo.png',
-};
-
 interface Row {
   id: string;
   label: string;
   projectId: string;
-  type: keyof typeof TYPE_LABEL;
+  type: InspectionType;
   status: string;
   date: string;
   href: string;
@@ -89,7 +64,7 @@ export default function History() {
         // joined `template:templates(category)` and fall back to 'harness'.
         const tmpl = (i as { template?: { category?: string | null }[] | null }).template;
         const cat = Array.isArray(tmpl) ? tmpl[0]?.category ?? null : null;
-        const type: Row['type'] = (cat && cat in TYPE_LABEL ? (cat as Row['type']) : 'harness');
+        const type: Row['type'] = (cat && cat in INSPECTION_TYPE_META ? (cat as Row['type']) : 'harness');
         return {
           id: i.id,
           label: inspectionName(i.template_id),
@@ -196,10 +171,7 @@ export default function History() {
       {isLoading && <SkeletonList />}
 
       {!isLoading && allRows.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-800">
-          <ClipboardList size={32} className="text-neutral-300 dark:text-neutral-600" />
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">ჩანაწერები არ არის</p>
-        </div>
+        <EmptyState icon={ClipboardList} title="ჩანაწერები არ არის" />
       )}
 
       {!isLoading &&
@@ -215,9 +187,7 @@ export default function History() {
                   className="group flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-700/50"
                 >
                   <Link to={row.href} className="flex flex-1 items-center gap-3 min-w-0">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-950/20">
-                      <img src={TYPE_IMAGE[row.type] ?? '/ilu/clamp.png'} alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
-                    </div>
+                    <InspectionTypeIcon type={row.type} />
                     <div className="min-w-0">
                       <p className="truncate font-medium text-neutral-900 dark:text-neutral-100">{row.label}</p>
                       <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
@@ -228,10 +198,10 @@ export default function History() {
                     </div>
                   </Link>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Badge variant="default">{TYPE_LABEL[row.type]}</Badge>
-                    <Badge variant={row.status === 'completed' ? 'success' : 'warning'}>
-                      {STATUS_LABEL[row.status] ?? row.status}
-                    </Badge>
+                    <span className="hidden text-xs font-medium text-neutral-400 dark:text-neutral-500 sm:inline">
+                      {inspectionTypeMeta(row.type).label}
+                    </span>
+                    <StatusBadge status={row.status} />
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <DeleteButton iconOnly onDelete={() => handleDelete(row)} />
                     </div>
