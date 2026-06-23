@@ -24,7 +24,6 @@ export function BriefingRow({
   return (
     <InspectionRow
       leading={<BriefingTopicAvatar topics={briefing.topics} />}
-      hidePill
       title={briefingTopicsLabel(briefing.topics, t)}
       subtitle={`${briefing.participants.length} მონაწილე · ${formatShortDateTime(briefing.dateTime)}`}
       trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}

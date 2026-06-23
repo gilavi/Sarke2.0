@@ -480,8 +480,8 @@ export default function ProjectDetail() {
           ) : null}
         </View>
 
-        {/* Quick actions - edgeInset matches parent paddingHorizontal to reach screen edges.
-            Gutter is 16 so the first button's left edge lines up with the section cards below. */}
+        {/* Quick actions - edgeInset matches parent paddingHorizontal (20) to reach screen
+            edges, so the first button's left edge lines up with the flat sections below. */}
         <View ref={quickActionsRef} collapsable={false} style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
           <QuickActions actions={quickActions} scrollable edgeInset={20} />
         </View>
@@ -489,7 +489,7 @@ export default function ProjectDetail() {
         {/* Upcoming schedule */}
         <UpcomingSection projectId={id} />
 
-        {/* ── Section cards ── */}
+        {/* ── Sections (flat, flush to the 20px gutter) ── */}
         <View style={{ paddingHorizontal: 20, gap: 16, paddingTop: 8 }}>
 
           {/* ── Inspections (generic + equipment) ── */}
@@ -514,8 +514,8 @@ export default function ProjectDetail() {
             <BriefingsSection id={id} briefings={briefings} loading={pending.briefings} />
           </View>
 
-          {/* ── რეპორტები ── (no sectionCard wrapper: the report rail scrolls
-               full-bleed to the screen edge; ReportsSection owns its padding) */}
+          {/* ── რეპორტები ── (full-bleed rail; rendered without a wrapper View so
+               the rail can scroll edge-to-edge, resting its cards at the gutter) */}
           <ReportsSection id={id} reports={reports} loading={pending.reports} />
 
           {/* ── ბრძანებები ── */}

@@ -25,7 +25,6 @@ export function OrderRow({
   return (
     <InspectionRow
       leading={<RecordAvatar icon={FileText} tint={theme.colors.certTint} bg={theme.colors.certSoft} />}
-      hidePill
       title={label}
       subtitle={formatShortDateTime(order.createdAt)}
       trailing={onPress ? <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} /> : null}

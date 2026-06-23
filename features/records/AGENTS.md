@@ -24,9 +24,10 @@ only a neutral per-type glyph for identity.
   History chip order and the Home widget order), `RecordTypeKey`,
   `DEFAULT_RECORD_TYPE` (`'inspections'`), `isRecordTypeKey`, `recordTypeOf`,
   `historyHref(key)` (→ `/history?type=<key>`).
-- `RecordWidget` — the Home "section card" chrome (icon + title + count +
+- `RecordWidget` — the Home flat-section chrome (icon + title + count +
   "view all" link, with loading / empty / rows states). Caller maps items to
-  rows and passes them as `children`.
+  rows and passes them as `children`. `sectionCard` is an empty style (no box,
+  no inner padding): content sits flush at the host's 20px page gutter.
 - `ReportRow`, `BriefingRow`, `OrderRow` — status-free rows. (Inspections reuse
   `components/InspectionRow`; incidents reuse `IncidentRow` from
   `components/projects/ProjectRowHelpers` — its colored badge is incident
@@ -37,9 +38,11 @@ only a neutral per-type glyph for identity.
     (`useReportCoverUri` → `reportCoverPath`) + slide-count chip + title + date.
     `REPORT_CARD_WIDTH` is the rail default; pass `width` for the grid.
   - `ReportCardRail` — horizontal scroller for the **section** surfaces (Home
-    reports widget, project-detail reports section). Bleeds `-16` to the
-    enclosing `sectionCard` gutter; renders skeleton/empty/cards + an optional
-    trailing "ყველას ნახვა" card (`onViewAll`). The host supplies the header.
+    reports widget, project-detail reports section). Bleeds out by `bleed` to
+    cancel the page gutter (cards scroll edge-to-edge), then rests its cards at
+    `gutter` — set both to `20` so cards line up flush with the flat sections.
+    Renders skeleton/empty/cards + an optional trailing "ყველას ნახვა" card
+    (`onViewAll`). The host supplies the header.
   - `ReportCardGrid` — full-screen 2-column grid for **History reports tab** and
     a project's **all-reports** list. Carries the canonical three-state guard +
     pull-to-refresh; optional `ListHeaderComponent`.

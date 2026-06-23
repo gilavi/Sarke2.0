@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-06-23 — Drop the redundant "შემოწმება" type label from inspection rows
+
+Inspection list rows carried a small "შემოწმება" record-type overline (`RecordTypePill`) above the title. Now that records are grouped under per-type sections/widgets/History tabs, that per-row label was redundant — every inspection row already sits under an Inspections header. Removed it from [`InspectionRow`](../components/InspectionRow.tsx) (Home widgets, project-detail inspections, History, Drafts), and dropped the now-dead `hidePill` prop + its pass-throughs in the report/order/briefing/incident wrapper rows. `RecordTypePill` itself stays as a catalog primitive (Storybook); it's just no longer consumed by any row.
+
+OTA-deliverable (no native changes).
+
+---
+
+## 2026-06-23 — Flat sections, flush to the page gutter (Home + Project Detail)
+
+The per-type record widgets (Home) and the project-detail sections used to be **cards** (`sectionCard`: surface background + `paddingHorizontal: 16`). Sitting inside the page's `paddingHorizontal: 20` gutter, that meant their titles + list rows landed at **36px** while the rest of the page (quick actions, projects row, hero, the full-bleed report rails) sat at **20px** — a visible 16px misalignment ("page padding + the widget's own padding").
+
+Now the sections are **flat**: `sectionCard` is an empty style (no surface box, no inner horizontal padding), so titles and rows sit flush at the 20px gutter, lining up with everything else. Rows stay hairline-separated; sections stay separated by the host container's `gap: 16`. The report rails' `gutter` dropped to `20` (from `36`/`32`) so their cover-photo cards rest at the same gutter too.
+
+- Shared styles flattened: [`features/records/styles.ts`](../features/records/styles.ts) `sectionCard` (drives Home widgets via `RecordWidget` + the Drafts sections) and [`features/project-detail/styles.ts`](../features/project-detail/styles.ts) `sectionCard` (drives all project-detail sections).
+- Report headers dropped their manual `paddingHorizontal: 16` inset; `ReportCardRail` is now called with `bleed={20} gutter={20}` on both Home and project-detail.
+
+OTA-deliverable (no native changes).
+
+---
+
 ## 2026-06-23 — Reports as cover-photo cards (no longer list rows)
 
 Reports were list rows like every other record; they now render as **media cards** with a landscape cover-photo "sneak peek" (the first photo across the report's slides, annotated variant preferred) + a slide-count chip + title + date. Three shared building blocks in [`features/records/`](../features/records/AGENTS.md):

@@ -94,10 +94,10 @@ export function HomeRecordsSection() {
 
       {reports.length > 0 ? (
         // Full-bleed carousel: the rail escapes the 20px screen gutter so cards
-        // scroll edge to edge (no section-card border clipping them). Header
-        // stays indented to line up with the other widgets' titles.
+        // scroll edge to edge, then rests its first card back at the gutter so
+        // it lines up flush with the other widgets' titles and rows.
         <View>
-          <View style={[recordStyles.sectionHeader, { paddingHorizontal: 16 }]}>
+          <View style={recordStyles.sectionHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <FileText size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
               <Text style={recordStyles.sectionTitle}>{t('records.reports')}</Text>
@@ -109,7 +109,7 @@ export function HomeRecordsSection() {
             emptyText={t('records.emptyReports')}
             onViewAll={() => router.push(historyHref('reports') as never)}
             bleed={20}
-            gutter={36}
+            gutter={20}
           />
         </View>
       ) : null}

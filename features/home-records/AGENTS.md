@@ -14,8 +14,8 @@ the route file orchestration-only. Two pieces:
   exception**: that widget renders a **full-bleed** horizontal `ReportCardRail`
   of cover-photo cards (from [`features/records/`](../../features/records/)) —
   no `sectionCard` wrapper, so cards scroll edge-to-edge to the screen; just a
-  gutter-aligned header + the rail (`bleed=20`, `gutter=36`) with a trailing
-  "ყველას ნახვა" card → History.
+  gutter-aligned header + the rail (`bleed=20`, `gutter=20`, so cards rest flush
+  at the 20px page gutter) with a trailing "ყველას ნახვა" card → History.
 
 ## Public API
 

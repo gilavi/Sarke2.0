@@ -293,17 +293,17 @@ Usage pattern in any screen that calls `generateAndSharePdf`:
 
 ## Record type pill / type badge
 
-One file: [`components/RecordTypePill.tsx`](../components/RecordTypePill.tsx). Shows a small colored pill (icon + Georgian label) identifying an item's record type. Use it in any list row that could contain mixed record types, or anywhere an inspection subtype needs a text label.
+One file: [`components/RecordTypePill.tsx`](../components/RecordTypePill.tsx). Shows a small muted overline label identifying an item's record type. **Not currently consumed by any app row** — records are now grouped under per-type sections/widgets/History tabs, so the per-row "შემოწმება" type label became redundant and was dropped from `InspectionRow`. Kept as a catalog primitive (Storybook) for any future mixed-type list that needs an inline type label.
 
 | Export | Purpose |
 |---|---|
-| `RecordTypePill` | Label component. Props: `recordType` (`'inspection' \| 'incident' \| 'briefing' \| 'report'`), optional `label` override. Renders a small muted overline text (e.g. "შემოწმება", "ინციდენტი") above the item title so users can distinguish document types at a glance. |
+| `RecordTypePill` | Label component. Props: `recordType` (`'inspection' \| 'incident' \| 'briefing' \| 'report'`), optional `label` override. Renders a small muted overline text (e.g. "შემოწმება", "ინციდენტი"). |
 
-Always shows the top-level document type — never the inspection subtype (that's already visible from the avatar emoji and template name). Don't add inline type labels elsewhere; use this component.
+If you do reintroduce it, always show the top-level document type — never the inspection subtype (that's already visible from the avatar emoji and template name). Don't add ad-hoc inline type labels elsewhere; use this component.
 
 ## Inspection list row
 
-One file: [`components/InspectionRow.tsx`](../components/InspectionRow.tsx). The **canonical inspection list row** — gray category avatar (`InspectionListAvatar`) + `RecordTypePill` + title + subtitle + optional trailing slot. Shared by the home screen "recent activity" list (`app/(tabs)/home.tsx`) and the project-detail inspections section (`features/project-detail/sections/InspectionsSection.tsx`) so the two never diverge. Pure presentational — the caller owns navigation (`onPress`), swipe wrappers, and any trailing `actions` (kebab menu).
+One file: [`components/InspectionRow.tsx`](../components/InspectionRow.tsx). The **canonical inspection list row** — gray category avatar (`InspectionListAvatar`) + title + subtitle + optional trailing slot. Shared by the home screen "recent activity" list (`app/(tabs)/home.tsx`) and the project-detail inspections section (`features/project-detail/sections/InspectionsSection.tsx`) so the two never diverge. Pure presentational — the caller owns navigation (`onPress`), swipe wrappers, and any trailing `actions` (kebab menu).
 
 | Prop | Purpose |
 |---|---|
@@ -314,7 +314,7 @@ One file: [`components/InspectionRow.tsx`](../components/InspectionRow.tsx). The
 | `inset` | Horizontal padding. Default `20` (home, full-bleed). Pass `0` inside an already-padded card so the card's gutter is the only inset and dividers span the card's inner width. |
 | `showBorder` | Hairline bottom divider — omit on the last row of a group. |
 
-**Don't** re-inline an avatar + pill + title + time row in a screen file — that's the duplication this consolidated. Story: `design-system/stories/InspectionRow.stories.tsx`.
+**Don't** re-inline an avatar + title + time row in a screen file — that's the duplication this consolidated. Story: `design-system/stories/InspectionRow.stories.tsx`.
 
 ## Order (ბრძანება) PDF builder
 

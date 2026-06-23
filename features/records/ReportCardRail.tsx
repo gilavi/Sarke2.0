@@ -17,9 +17,10 @@ import { ReportCard, REPORT_CARD_WIDTH } from './ReportCard';
  *
  * Full-bleed scrolling: `bleed` is the total horizontal padding of the enclosing
  * containers — the rail cancels it with a negative margin so cards scroll
- * **edge to edge to the screen**, not clipped at a section-card border. `gutter`
- * is where the first/last card rest (align it with the section header). The host
- * supplies the header; this is only the scroller, so it stays reusable.
+ * **edge to edge to the screen**. `gutter` is where the first/last card rest;
+ * set it equal to the page gutter (20) so cards line up flush with the section
+ * header and the flat list rows. The host supplies the header; this is only the
+ * scroller, so it stays reusable.
  */
 export function ReportCardRail({
   reports,

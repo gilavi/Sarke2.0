@@ -86,7 +86,9 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
 
 function getStyles(theme: any) {
   return StyleSheet.create({
-    sectionCard:    { backgroundColor: theme.colors.surface, borderRadius: 16, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
+    // Flat section (no card box): content sits flush at the 20px gutter
+    // supplied by the inline `marginHorizontal: 20`, matching the other sections.
+    sectionCard:    {},
     sectionHeader:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     sectionTitle:   { fontSize: 16, fontWeight: '700', color: theme.colors.ink },
     sectionCount:   { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },

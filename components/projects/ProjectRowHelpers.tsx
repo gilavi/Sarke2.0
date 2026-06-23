@@ -174,7 +174,6 @@ export function IncidentRow({
   return (
     <InspectionRow
       leading={<RecordAvatar icon={TriangleAlert} tint={badge.text} bg={badge.bg} />}
-      hidePill
       title={incident.location || incident.description || '-'}
       subtitle={`${typeLabel} · ${formatShortDateTime(incident.date_time)}`}
       trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}

@@ -74,9 +74,11 @@ leftover signer-collection flow no longer in use. The `crew` column on
   `surfaceSecondary` rounded "pill" rows (the boxes-in-boxes look)
   were removed. Each section draws the divider on every row except the
   last visible one (`i < preview.length - 1 || overflow.length > 0`);
-  the trailing `ViewMoreRow` never draws one. `sectionCard` padding is
-  `16h / 14t / 6b` everywhere (project-detail + `UpcomingSection`), and
-  rows hang off the card's 16px gutter (no per-row horizontal padding).
+  the trailing `ViewMoreRow` never draws one. Sections are **flat** —
+  `sectionCard` is an empty style (no surface box, no inner padding); content
+  sits flush at the page gutter (the host wraps sections in
+  `paddingHorizontal: 20`), so titles/rows line up with the rest of the screen
+  (no per-row horizontal padding; sections separated by the host's `gap: 16`).
 - `sections/IncidentsSection.tsx` — incidents card.
 - `sections/BriefingsSection.tsx` — briefings card.
 - `sections/ReportsSection.tsx` — reports card.
@@ -91,9 +93,10 @@ leftover signer-collection flow no longer in use. The `crew` column on
   reached from the More tab) and carries no draft/completed status chrome.
   `BriefingsSection` renders the shared status-free `BriefingRow`;
   `ReportsSection` renders a **full-bleed horizontal `ReportCardRail`** of
-  cover-photo cards (not rows) — and is the one section rendered **without** the
-  `sectionCard` wrapper (so the rail scrolls edge-to-edge to the screen; it owns
-  its own header padding + `bleed`/`gutter`). Overflow + "ყველას ნახვა" lead to
+  cover-photo cards (not rows) — and is the one section rendered **without** a
+  wrapper View (so the rail scrolls edge-to-edge to the screen; a gutter-aligned
+  header + `bleed=20`/`gutter=20` rest the cards flush at the page gutter).
+  Overflow + "ყველას ნახვა" lead to
   `/projects/[id]/reports` (a `ReportCardGrid`); `FilesAndOrdersSection` uses the
   shared `OrderRow`;
   `InspectionsSection` omits the avatar status dot. Header counts reflect

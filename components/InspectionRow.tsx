@@ -2,7 +2,6 @@ import { ReactNode, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from './primitives/A11yText';
 import { InspectionListAvatar } from './InspectionListAvatar';
-import { RecordTypePill } from './RecordTypePill';
 import { useTheme, type Theme } from '../lib/theme';
 import type { InspectionStatus } from './StatusBadge';
 import type { a11y } from '../lib/accessibility';
@@ -20,8 +19,6 @@ export interface InspectionRowProps {
    * ignored. Lets every record type reuse this row's exact layout + spacing.
    */
   leading?: ReactNode;
-  /** Hide the "შემოწმება" record-type pill (non-inspection rows). */
-  hidePill?: boolean;
   title: string;
   subtitle?: string | null;
   /**
@@ -52,9 +49,9 @@ export interface InspectionRowProps {
 
 /**
  * Canonical inspection list row, matching the home-screen "recent activity"
- * list: gray category avatar, record-type pill, title + subtitle, and an
- * optional trailing slot (time text or chevron). Shared by the home screen
- * and the project-detail inspections section so the two never diverge.
+ * list: gray category avatar, title + subtitle, and an optional trailing slot
+ * (time text or chevron). Shared by the home screen and the project-detail
+ * inspections section so the two never diverge.
  *
  * Pure presentational component — no data fetching. The caller owns
  * navigation (`onPress`), swipe wrappers, and any `actions` (kebab menu).
@@ -63,7 +60,6 @@ export function InspectionRow({
   category,
   status,
   leading,
-  hidePill,
   title,
   subtitle,
   trailing,
@@ -86,7 +82,6 @@ export function InspectionRow({
           )}
         </View>
         <View style={styles.body}>
-          {!hidePill ? <RecordTypePill recordType="inspection" /> : null}
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
           {subtitle ? (
             <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>

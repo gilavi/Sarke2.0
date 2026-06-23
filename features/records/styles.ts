@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 /**
- * Shared styles for the per-type record "section card" widgets and their
+ * Shared styles for the per-type record "section" widgets and their
  * rows (Home widgets, and the building blocks reused by History / Drafts).
  *
  * These mirror the section + list-row subset of
@@ -12,14 +12,11 @@ import { StyleSheet } from 'react-native';
  */
 export function getRecordStyles(theme: any) {
   return StyleSheet.create({
-    sectionCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 12,
-      overflow: 'hidden',
-    },
+    // Flat section — no card box. The host wraps these in the page gutter
+    // (paddingHorizontal: 20), which is the ONLY horizontal padding, so titles
+    // and list rows line up flush with the rest of the page content. Sections
+    // are separated by the host's `gap`; rows by hairlines.
+    sectionCard: {},
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',

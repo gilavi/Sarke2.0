@@ -1,9 +1,9 @@
 // Reports section of the project detail screen.
 // Completed-only — drafts live in the global Drafts screen (More tab). Reports
 // render as a full-bleed horizontal rail of cover-photo cards (`ReportCardRail`),
-// not rows. NOTE: this section is rendered by ProjectDetail WITHOUT the usual
-// `sectionCard` wrapper so the rail can scroll edge-to-edge to the screen; it
-// owns its own header padding instead. Other sections keep the card.
+// not rows. The rail escapes the page gutter to scroll edge-to-edge, then rests
+// its first/last card back at the 20px gutter so the cards line up flush with
+// the section header and the flat list rows in the other sections.
 
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
@@ -41,7 +41,7 @@ export function ReportsSection({
 
   return (
     <View>
-      <View style={[styles.sectionHeader, { paddingHorizontal: 16 }]}>
+      <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FileText size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>რეპორტები</Text>
@@ -57,7 +57,7 @@ export function ReportsSection({
       </View>
 
       {completed.length === 0 ? (
-        <View style={{ paddingHorizontal: 16 }}>
+        <View>
           {loading ? (
             <View style={{ gap: 8, marginTop: 10 }}>
               <SkeletonRow />
@@ -73,8 +73,8 @@ export function ReportsSection({
           onPressReport={(r) => router.push(`/reports/${r.id}` as any)}
           emptyText=""
           onViewAll={() => router.push(`/projects/${id}/reports` as any)}
-          bleed={16}
-          gutter={32}
+          bleed={20}
+          gutter={20}
         />
       )}
     </View>

@@ -139,15 +139,12 @@ export function getStyles(theme: any) {
     backgroundColor: theme.colors.hairline,
   },
 
-  // ── Section Cards ──
-  sectionCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
-    overflow: 'hidden',
-  },
+  // ── Sections (flat) ──
+  // No card box: the host wraps sections in the page gutter
+  // (paddingHorizontal: 20), the only horizontal padding, so titles/rows align
+  // flush with the rest of the screen. Sections are separated by the host's
+  // `gap`; rows by hairlines.
+  sectionCard: {},
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

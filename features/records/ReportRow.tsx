@@ -21,7 +21,6 @@ export function ReportRow({
   return (
     <InspectionRow
       leading={<ReportThumb report={report} />}
-      hidePill
       title={report.title}
       subtitle={`${report.slides.length} სლაიდი · ${formatShortDateTime(report.created_at)}`}
       trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}
