@@ -271,6 +271,16 @@ function renderSectionVI(insp: MobileLadderInspection): string {
   `;
 }
 
+function renderSectionVII(insp: MobileLadderInspection, photos: PhotoMap): string {
+  const embeds = (insp.summaryPhotos ?? []).map(p => photos[p]).filter(Boolean);
+  if (embeds.length === 0) return '';
+  const imgs = embeds.map(e => `<span class="item-photo"><img src="${e}" /></span>`).join('');
+  return `
+    <div class="section-title">VII - ფოტო მასალა</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${imgs}</div>
+  `;
+}
+
 function renderFooterNote(): string {
   return `
     <div class="footer-note">
@@ -297,7 +307,8 @@ export const mobileLadderSchema: InspectionSchema<MobileLadderInspection> = {
     docDate: fmtDate(d.completedAt ?? d.inspectionDate),
   }),
 
-  collectPhotoPaths: (d) => d.items.flatMap((i) => i.photo_paths ?? []),
+  collectPhotoPaths: (d) =>
+    d.items.flatMap((i) => i.photo_paths ?? []).concat(d.summaryPhotos ?? []),
 
   blocks: [
     { kind: 'custom', render: () => renderRegulationBadge() },
@@ -307,6 +318,7 @@ export const mobileLadderSchema: InspectionSchema<MobileLadderInspection> = {
     { kind: 'custom', render: (d: MobileLadderInspection, photos: PhotoMap) => renderSectionIV(d, photos) },
     { kind: 'custom', render: (d: MobileLadderInspection) => renderSectionV(d) },
     { kind: 'custom', render: (d: MobileLadderInspection) => renderSectionVI(d) },
+    { kind: 'custom', render: (d: MobileLadderInspection, photos: PhotoMap) => renderSectionVII(d, photos) },
     { kind: 'custom', render: () => renderFooterNote() },
   ],
 };

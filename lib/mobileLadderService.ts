@@ -33,6 +33,7 @@ type DbRow = {
   items: MLItemState[];
   verdict: string | null;
   verdict_comment: string | null;
+  summary_photos: string[];
   signature: MLSignatory;
   completed_at: string | null;
   created_at: string;
@@ -71,6 +72,7 @@ function toModel(row: DbRow): MobileLadderInspection {
     items,
     verdict: (row.verdict as MobileLadderInspection['verdict']) ?? null,
     verdictComment: row.verdict_comment ?? '',
+    summaryPhotos: Array.isArray(row.summary_photos) ? row.summary_photos : [],
     signature: {
       name: sig.name ?? '',
       position: sig.position ?? '',
@@ -101,6 +103,7 @@ type MobileLadderPatch = Partial<{
   items: MLItemState[];
   verdict: MobileLadderInspection['verdict'];
   verdictComment: string;
+  summaryPhotos: string[];
   signature: MLSignatory;
 }>;
 
@@ -122,6 +125,7 @@ function toDb(patch: MobileLadderPatch): Record<string, unknown> {
   if ('items'               in patch) db.items                = patch.items;
   if ('verdict'             in patch) db.verdict              = patch.verdict;
   if ('verdictComment'      in patch) db.verdict_comment      = patch.verdictComment;
+  if ('summaryPhotos'       in patch) db.summary_photos       = patch.summaryPhotos;
   return db;
 }
 
@@ -154,4 +158,6 @@ export const mobileLadderApi = {
   deletePhoto: base.deletePhoto,
   uploadPhoto: (inspectionId: string, itemId: number, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),
+  uploadSummaryPhoto: (inspectionId: string, photoUri: string) =>
+    base.uploadPhotoAt(`${inspectionId}/summary`, photoUri),
 };

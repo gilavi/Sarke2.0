@@ -43,6 +43,8 @@ export interface MobileLadderInspection {
   // Section 5 - დასკვნა
   verdict: MLVerdict | null;
   verdictComment: string;
+  // General photos attached on the conclusion step
+  summaryPhotos: string[];
   // Section 6 - ხელმოწერა
   signature: MLSignatory;
   completedAt: string | null;
@@ -144,6 +146,7 @@ export function buildDefaultMLInspection(
     items: buildDefaultMLItems(),
     verdict: null,
     verdictComment: '',
+    summaryPhotos: [],
     signature: buildDefaultMLSignatory(),
     completedAt: null,
     createdAt: now,

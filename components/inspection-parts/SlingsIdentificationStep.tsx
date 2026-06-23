@@ -1,11 +1,11 @@
 // Step 1 of the slings / chains / lifting-accessories inspection.
 //
-// Five sections: type selector (opens SlingTypeSheet), იდენტიფიკაცია,
-// მახასიათებლები, მარკირება, მომდევნო შემოწმება.
+// Two sections: the equipment-type selector (opens SlingTypeSheet) and
+// იდენტიფიკაცია (serial number, manufacturer). Characteristics + marking now
+// live on SlingsCharacteristicsStep (step 2) so neither screen is overcrowded.
 //
-// Abbreviations in field labels and the equipment-type catalog are
-// preserved verbatim per the route's AGENTS.md - they come from the
-// paper form and must not be expanded. See
+// Field labels use full words, not paper-form abbreviations, per product
+// direction (the user found the abbreviations unreadable). See
 // `app/inspections/lifting-accessories/AGENTS.md`.
 
 import { useMemo } from 'react';
@@ -15,7 +15,6 @@ import { ChevronRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
-import { DateTimeField } from '../DateTimeField';
 import { SlingTypeSheet } from './SlingTypeSheet';
 import { useBottomSheet } from '../BottomSheet';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -24,7 +23,6 @@ import { a11y } from '../../lib/accessibility';
 import {
   LA_EQUIPMENT_TYPES,
   LA_OTHER_EQUIPMENT_VALUE,
-  LA_MARKING_OPTIONS,
 } from '../../types/liftingAccessories';
 
 export interface SlingsIdentificationStepProps {
@@ -32,21 +30,11 @@ export interface SlingsIdentificationStepProps {
   equipmentTypeOther: string;
   serialNumber: string;
   manufacturer: string;
-  yearOfManufacture: string;
-  wllKg: string;
-  unitCount: string;
-  markingStatus: string | null;
-  nextInspectionDate: string | null;
   onUpdate: (patch: Partial<{
     equipmentTypes: string[];
     equipmentTypeOther: string;
     serialNumber: string;
     manufacturer: string;
-    yearOfManufacture: string;
-    wllKg: string;
-    unitCount: string;
-    markingStatus: string;
-    nextInspectionDate: string;
   }>) => void;
 }
 
@@ -62,11 +50,6 @@ export function SlingsIdentificationStep({
   equipmentTypeOther,
   serialNumber,
   manufacturer,
-  yearOfManufacture,
-  wllKg,
-  unitCount,
-  markingStatus,
-  nextInspectionDate,
   onUpdate,
 }: SlingsIdentificationStepProps) {
   const { t } = useTranslation();
@@ -101,7 +84,7 @@ export function SlingsIdentificationStep({
       showsVerticalScrollIndicator={false}
       bottomOffset={120}
     >
-      {/* Section: Type / Name */}
+      {/* Section: Type / Kind */}
       <Text style={styles.sectionHeader}>{t('slingsId.typeSectionHeader')}</Text>
       <Pressable
         onPress={openTypeSheet}
@@ -121,7 +104,9 @@ export function SlingsIdentificationStep({
       </Pressable>
 
       {/* Section: Identification */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.identificationSection')}</Text>
+      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>
+        {t('slingsId.identificationSection')}
+      </Text>
       <View style={styles.fieldStack}>
         <FloatingLabelInput
           label={t('slingsId.serialIdLabel')}
@@ -134,74 +119,6 @@ export function SlingsIdentificationStep({
           onChangeText={v => onUpdate({ manufacturer: v })}
         />
       </View>
-
-      {/* Section: Characteristics */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.characteristicsSection')}</Text>
-      <View style={styles.fieldStack}>
-        <FloatingLabelInput
-          label={t('slingsId.yearMadeLabel')}
-          value={yearOfManufacture}
-          onChangeText={v => onUpdate({ yearOfManufacture: v })}
-          keyboardType="decimal-pad"
-        />
-        <FloatingLabelInput
-          label={t('slingsId.wllLabel')}
-          value={wllKg}
-          onChangeText={v => onUpdate({ wllKg: v })}
-          keyboardType="decimal-pad"
-        />
-        <FloatingLabelInput
-          label={t('slingsId.unitSafetyLabel')}
-          value={unitCount}
-          onChangeText={v => onUpdate({ unitCount: v })}
-          keyboardType="decimal-pad"
-        />
-      </View>
-
-      {/* Section: Marking */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.markingSection')}</Text>
-      <View style={styles.chipsRow}>
-        {(LA_MARKING_OPTIONS as unknown as string[]).map((opt, i) => {
-          const active = markingStatus === opt;
-          const isProb = active && i === 2;
-          const isWarn = active && i === 1;
-          return (
-            <Pressable
-              key={opt}
-              onPress={() => {
-                haptic.light();
-                onUpdate({ markingStatus: opt });
-              }}
-              style={[
-                styles.chip,
-                active && styles.chipActive,
-                isProb && styles.chipProblematic,
-                isWarn && styles.chipWarning,
-              ]}
-              {...a11y(opt, undefined, 'radio')}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  active && styles.chipTextActive,
-                  isProb && styles.chipTextProblematic,
-                  isWarn && styles.chipTextWarning,
-                ]}
-              >
-                {opt}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* Section: Next inspection */}
-      <Text style={[styles.sectionHeader, styles.sectionSpacing]}>{t('slingsId.nextInspectionSection')}</Text>
-      <DateTimeField
-        value={nextInspectionDate ? new Date(nextInspectionDate) : new Date()}
-        onChange={d => onUpdate({ nextInspectionDate: d.toISOString().slice(0, 10) })}
-        mode="date"
-      />
     </KeyboardAwareScrollView>
   );
 }
@@ -246,30 +163,5 @@ function getStyles(theme: Theme) {
       fontWeight: '400',
     },
     fieldStack: { gap: 12 },
-    chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 20,
-      borderWidth: 1.5,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.card,
-    },
-    chipActive: {
-      borderColor: theme.colors.accent,
-      backgroundColor: theme.colors.accentSoft,
-    },
-    chipProblematic: {
-      borderColor: theme.colors.danger,
-      backgroundColor: theme.colors.dangerSoft,
-    },
-    chipWarning: {
-      borderColor: theme.colors.warn,
-      backgroundColor: theme.colors.warnSoft,
-    },
-    chipText:            { fontSize: 13, color: theme.colors.inkSoft },
-    chipTextActive:      { color: theme.colors.accent, fontWeight: '700' },
-    chipTextProblematic: { color: theme.colors.danger, fontWeight: '700' },
-    chipTextWarning:     { color: theme.colors.warn,   fontWeight: '700' },
   });
 }

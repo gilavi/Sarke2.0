@@ -17,7 +17,6 @@ import {
   ChecklistSection,
   IdentificationGrid,
   PhotoSection,
-  QualDoc,
   type ChecklistItemData,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
@@ -68,7 +67,7 @@ export default function ForkliftInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const { pickPhotoWithAnnotation, pickPhotosWithAnnotation } = usePhotoPicker();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks.
@@ -233,38 +232,6 @@ export default function ForkliftInspectionScreen() {
       return next;
     });
   }, [scheduleSave, toast, setInspection]);
-
-  const handleAddQualDoc = useCallback(async () => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    try {
-      const path = await forkliftApi.uploadQualDoc(insp.id, result.uri);
-      setInspection(prev => {
-        if (!prev) return prev;
-        const next = { ...prev, qualDocPath: path };
-        scheduleSave(next);
-        return next;
-      });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-    }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeleteQualDoc = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp?.qualDocPath) return;
-    try {
-      await forkliftApi.deletePhoto(insp.qualDocPath);
-    } catch {}
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, qualDocPath: null };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, inspectionRef, setInspection]);
 
   // ── Checklist item data builders ─────────────────────────────────────────────
 
@@ -500,12 +467,6 @@ export default function ForkliftInspectionScreen() {
               }
               photoSection={
                 <>
-                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>კვალიფიკ. დოკ.</Text>
-                  <QualDoc
-                    photoPath={inspection.qualDocPath}
-                    onAdd={() => void handleAddQualDoc()}
-                    onDelete={() => void handleDeleteQualDoc()}
-                  />
                   <Text style={[styles.sectionLabel, { marginTop: 16 }]}>ფოტოები</Text>
                   <PhotoSection
                     photoPaths={inspection.summaryPhotos ?? []}

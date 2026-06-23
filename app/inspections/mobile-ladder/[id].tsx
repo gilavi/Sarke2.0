@@ -94,6 +94,7 @@ export default function MobileLadderInspectionScreen() {
       items: insp.items,
       verdict: insp.verdict,
       verdictComment: insp.verdictComment,
+      summaryPhotos: insp.summaryPhotos,
     }),
     validateMissing: (insp) => (insp.verdict ? [] : ['დასკვნა']),
     autofill: (insp, { inspectorName, project }) => {
@@ -194,6 +195,43 @@ export default function MobileLadderInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
+
+  // ── Summary photos (conclusion step) ─────────────────────────────────────────
+
+  const handleAddSummaryPhoto = useCallback(async () => {
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    for (const result of results) {
+      try {
+        const path = await mobileLadderApi.uploadSummaryPhoto(insp.id, result.uri);
+        setInspection(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
+          scheduleSave(next);
+          return next;
+        });
+      } catch (e) {
+        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      }
+    }
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
+
+  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
+    try {
+      await mobileLadderApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
+    setInspection(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, summaryPhotos: prev.summaryPhotos.filter(p => p !== path) };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave, toast, setInspection]);
 
   const isSigned = !!(inspection?.signature.signature);
 
@@ -395,6 +433,9 @@ export default function MobileLadderInspectionScreen() {
               notes={inspection.verdictComment}
               onNotesChange={v => update('verdictComment', v)}
               completing={completing}
+              photoPaths={inspection.summaryPhotos}
+              onAddPhoto={handleAddSummaryPhoto}
+              onDeletePhoto={handleDeleteSummaryPhoto}
             />
           )}
 

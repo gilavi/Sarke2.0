@@ -26,8 +26,8 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { CircleAlert, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
+import { Stack, useFocusEffect } from 'expo-router';
+import { CircleAlert, Pencil, Lock, Share2 } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
@@ -95,7 +95,6 @@ export function InspectionResultView(props: Props) {
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const router = useRouter();
 
   // Signatures state - local to this result view. Lost when it unmounts.
   const signatures = useSignaturesState();
@@ -109,12 +108,8 @@ export function InspectionResultView(props: Props) {
     [signatures.creatorSignature, signatures.additionalRows.length],
   );
 
-  const openCertificatesSheet = () => {
-    router.push(`/inspections/${inspectionId}/certificates` as never);
-  };
-
-  // Certificates is now a pushed screen. On return, rebuild the preview only if
-  // a cert was actually saved/deleted (skips the first focus on mount).
+  // Rebuild the preview when returning to this screen if a cert was saved/
+  // deleted elsewhere (skips the first focus on mount).
   const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
@@ -125,8 +120,6 @@ export function InspectionResultView(props: Props) {
       if (consumeCertsDirty(inspectionId)) onSheetSaved();
     }, [inspectionId, onSheetSaved]),
   );
-
-  const certBadge = attachmentCount > 0 ? `(${attachmentCount})` : '';
 
   return (
     <Screen edges={['bottom']}>
@@ -175,15 +168,6 @@ export function InspectionResultView(props: Props) {
         <View style={styles.bottomBar}>
           {!hideSheets && (
             <View style={styles.bottomBarRow}>
-              <Pressable
-                onPress={openCertificatesSheet}
-                style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-              >
-                <Paperclip size={18} color={theme.colors.ink} strokeWidth={1.5} />
-                <Text style={styles.bottomBtnText} numberOfLines={1}>
-                  სერტიფიკატები {certBadge}
-                </Text>
-              </Pressable>
               <Pressable
                 onPress={() => setSignaturesOpen(true)}
                 style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}

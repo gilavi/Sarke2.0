@@ -11,6 +11,7 @@ import {
   DynamicTable,
   PhotoSection,
   SlingsIdentificationStep,
+  SlingsCharacteristicsStep,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -41,11 +42,12 @@ import {
 
 // ── Step constants ────────────────────────────────────────────────────────────
 
-const IDENTIFICATION_STEP = 1;
-const CHECKLIST_STEP      = 2;
-const REMOVED_STEP        = 3;
-const CONCLUSION_STEP     = 4;
-const TOTAL_STEPS         = 4;
+const IDENTIFICATION_STEP  = 1;
+const CHARACTERISTICS_STEP = 2;
+const CHECKLIST_STEP       = 3;
+const REMOVED_STEP         = 4;
+const CONCLUSION_STEP      = 5;
+const TOTAL_STEPS          = 5;
 
 const LA_VERDICT_OPTIONS: VerdictOption<LAVerdict>[] = [
   { value: 'pass',   label: LA_VERDICT_LABELS.pass,   tone: 'success' },
@@ -308,7 +310,7 @@ export default function LiftingAccessoriesInspectionScreen() {
   if (loading || !inspection) {
     return (
       <InspectionShellSkeleton
-        title="სლინგ. / ჩამჭ. შემოწ."
+        title="სტროპები და ჩამჭერები"
         projectName={projectName ?? ''}
         step={step - 1}
         totalSteps={TOTAL_STEPS}
@@ -328,7 +330,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     return (
       <InspectionResultView
         inspectionId={inspection.id}
-        templateName="ამწე მოწყ. / სლინგი"
+        templateName="სტროპები და ჩამჭერები"
         previewHtml={previewHtml}
         previewBusy={previewBusy}
         previewError={null}
@@ -349,7 +351,7 @@ export default function LiftingAccessoriesInspectionScreen() {
   return (
     <View style={styles.root}>
       <InspectionShell
-        title="სლინგ. / ჩამჭ. შემოწ."
+        title="სტროპები და ჩამჭერები"
         projectName={projectName ?? ''}
         step={step - 1}
         totalSteps={TOTAL_STEPS}
@@ -372,16 +374,22 @@ export default function LiftingAccessoriesInspectionScreen() {
               equipmentTypeOther={inspection.equipmentTypeOther}
               serialNumber={inspection.serialNumber}
               manufacturer={inspection.manufacturer}
-              yearOfManufacture={inspection.yearOfManufacture}
-              wllKg={inspection.wllKg}
-              unitCount={inspection.unitCount}
-              markingStatus={inspection.markingStatus}
-              nextInspectionDate={inspection.nextInspectionDate}
               onUpdate={updateMany}
             />
           )}
 
-          {/* ── Step 2: Checklist ────────────────────────────────────────────── */}
+          {/* ── Step 2: Characteristics + Marking ───────────────────────────── */}
+          {step === CHARACTERISTICS_STEP && (
+            <SlingsCharacteristicsStep
+              yearOfManufacture={inspection.yearOfManufacture}
+              wllKg={inspection.wllKg}
+              unitCount={inspection.unitCount}
+              markingStatus={inspection.markingStatus}
+              onUpdate={updateMany}
+            />
+          )}
+
+          {/* ── Step 3: Checklist ────────────────────────────────────────────── */}
           {step === CHECKLIST_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -412,7 +420,7 @@ export default function LiftingAccessoriesInspectionScreen() {
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 3: Removed from service + photos ───────────────────────── */}
+          {/* ── Step 4: Removed from service ─────────────────────────────────── */}
           {step === REMOVED_STEP && (
             <KeyboardAwareScrollView
               style={{ flex: 1 }}
@@ -433,18 +441,10 @@ export default function LiftingAccessoriesInspectionScreen() {
                 onChange={handleRemovedRowsChange}
                 onBuildDefaultRow={buildDefaultLARemovedRow}
               />
-
-              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>საერთო ფოტო მასალა</Text>
-              <PhotoSection
-                photoPaths={inspection.summaryPhotos}
-                onAdd={handleAddSummaryPhoto}
-                onDelete={handleDeleteSummaryPhoto}
-                title=""
-              />
             </KeyboardAwareScrollView>
           )}
 
-          {/* ── Step 4: Conclusion ───────────────────────────────────────────── */}
+          {/* ── Step 5: Conclusion (verdict + comment + photos) ──────────────── */}
           {step === CONCLUSION_STEP && (
             <ConclusionStep
               verdict={inspection.verdict}
@@ -454,6 +454,17 @@ export default function LiftingAccessoriesInspectionScreen() {
               notes={inspection.verdictComment ?? ''}
               onNotesChange={v => update('verdictComment', v)}
               completing={completing}
+              photoSection={
+                <>
+                  <Text style={[styles.sectionLabel, { marginTop: 16 }]}>ფოტოები</Text>
+                  <PhotoSection
+                    photoPaths={inspection.summaryPhotos}
+                    onAdd={handleAddSummaryPhoto}
+                    onDelete={handleDeleteSummaryPhoto}
+                    title=""
+                  />
+                </>
+              }
             />
           )}
 

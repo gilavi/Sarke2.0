@@ -33,3 +33,5 @@ export type { SlingTypeSheetProps } from './SlingTypeSheet';
 
 export { SlingsIdentificationStep } from './SlingsIdentificationStep';
 export type { SlingsIdentificationStepProps } from './SlingsIdentificationStep';
+export { SlingsCharacteristicsStep } from './SlingsCharacteristicsStep';
+export type { SlingsCharacteristicsStepProps } from './SlingsCharacteristicsStep';

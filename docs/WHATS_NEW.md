@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-06-23 — Equipment inspection flows: cleaner inputs, consistent endings
+
+A field-feedback pass across the equipment inspection wizards (mobile-ladder, forklift, lifting-accessories, safety-net + the shared result screen):
+
+- **No more "მონაცემი ვერ დგინდება" checkboxes** — the mobile-ladder identification fields are now simply optional; the per-field "data cannot be determined" checkbox is gone and the PDF no longer renders the "unknown" pill. [`IdentificationGrid`](../components/inspection-parts/IdentificationGrid.tsx) dropped the `allowUnknown` feature.
+- **Next-inspection date removed** — the `მომდევნო შემოწმება` field is gone from every flow that showed it (mobile-ladder, lifting-accessories) and from the PDFs (mobile-ladder, lifting-accessories, fall-protection).
+- **Lifting-accessories: readable labels + a less-crowded flow** — the abbreviated identification labels are spelled out in full Georgian (`slingsId.*` in `locales/`), the screen title is `სტროპები და ჩამჭერები`, and the overloaded identification step is split into **Identification** and **Characteristics + Marking** ([`SlingsCharacteristicsStep`](../components/inspection-parts/SlingsCharacteristicsStep.tsx)). The marking field is now a full-width form selector ([`CustomDropdown`](../components/ui/CustomDropdown.tsx)) instead of three chips.
+- **Consistent conclusion step** — every flow's conclusion is now verdict + comment + a photo uploader. The qualification-doc block was removed from forklift and safety-net; mobile-ladder gained a summary-photos uploader (new `summary_photos` column, migration `20260623030000`). The **Certificates** entry-point was removed from the inspection result screen.
+
+OTA-deliverable (no native changes); the mobile-ladder `summary_photos` migration must be applied to live before shipping.
+
 ## 2026-06-23 — Calendar moved into the More tab
 
 The bottom tab bar carried five items (home, projects, regulations, calendar, more); calendar was the least-used and pushed the bar tight. It now lives in the **More** tab instead, freeing the bar to four items.

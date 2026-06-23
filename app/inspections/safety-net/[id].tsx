@@ -11,7 +11,6 @@ import {
   DynamicTable,
   PhotoSection,
   IdentificationGrid,
-  QualDoc,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -63,7 +62,7 @@ export default function SafetyNetInspectionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const { pickPhotoWithAnnotation, pickPhotosWithAnnotation } = usePhotoPicker();
+  const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Shared orchestration: loading, step+persist, autosave, complete, celebration,
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks so
@@ -224,39 +223,6 @@ export default function SafetyNetInspectionScreen() {
     });
   }, [scheduleSave, toast, setInspection]);
 
-  const handleAddQualDoc = useCallback(async () => {
-    const result = await pickPhotoWithAnnotation();
-    if (!result) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    try {
-      const path = await safetyNetApi.uploadPhoto(insp.id, 'qual-doc', result.uri);
-      setInspection(prev => {
-        if (!prev) return prev;
-        const next = { ...prev, qualDocPath: path };
-        scheduleSave(next);
-        return next;
-      });
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-    }
-  }, [pickPhotoWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeleteQualDoc = useCallback(async () => {
-    const insp = inspectionRef.current;
-    if (!insp?.qualDocPath) return;
-    try {
-      await safetyNetApi.deletePhoto(insp.qualDocPath);
-    } catch {
-      // best-effort
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, qualDocPath: null };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, inspectionRef, setInspection]);
 
   const handleAddSummaryPhoto = useCallback(async () => {
     const results = await pickPhotosWithAnnotation();
@@ -547,25 +513,14 @@ export default function SafetyNetInspectionScreen() {
               onNotesChange={v => update('verdictComment', v)}
               completing={completing}
               photoSection={
-                <>
-                  <View style={styles.docBlock}>
-                    <Text style={styles.fieldLabel}>კვალიფიკაციის / სერტიფიკატის დოკუმენტი</Text>
-                    <QualDoc
-                      photoPath={inspection.qualDocPath}
-                      onAdd={handleAddQualDoc}
-                      onDelete={handleDeleteQualDoc}
-                    />
-                  </View>
-
-                  <View style={styles.docBlock}>
-                    <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
-                    <PhotoSection
-                      photoPaths={inspection.summaryPhotos}
-                      onAdd={handleAddSummaryPhoto}
-                      onDelete={handleDeleteSummaryPhoto}
-                    />
-                  </View>
-                </>
+                <View style={styles.docBlock}>
+                  <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
+                  <PhotoSection
+                    photoPaths={inspection.summaryPhotos}
+                    onAdd={handleAddSummaryPhoto}
+                    onDelete={handleDeleteSummaryPhoto}
+                  />
+                </View>
               }
             />
           )}
