@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-06-23 — Lists refresh instantly after create / edit / delete (no more app-refresh)
+
+Home, History, and project-detail lists were going stale after mutations. The data layer is **invalidation-driven** (5-min `staleTime`, `refetchOnWindowFocus: false`, no in-app refetch-on-focus), but most record mutations weren't invalidating the shared list keys: inspection-create touched only `projects.list`, inspection-finish only `calendar.*`, reports only `setQueryData(byId)`, and orders / briefings / incidents nothing. So a newly added record didn't appear until the 5-min `staleTime` expired or the app was force-refreshed.
+
+- New canonical helper **`invalidateRecordLists(qc)`** ([`lib/apiHooks.ts`](../lib/apiHooks.ts)) broadly invalidates every record namespace, so one call refreshes Home + History + project-detail together. Wired into **all 20** create / finish / delete sites across inspections (including the shared equipment + harness + generic-wizard flow hooks), reports, orders, briefings, incidents, and the breathalyzer log. Documented in [`docs/primitives.md`](primitives.md) ("List freshness — invalidate after mutations").
+- **Foreground safety net:** [`lib/queryClient.ts`](../lib/queryClient.ts) now binds React Query's `focusManager` to React Native `AppState` and enables `refetchOnWindowFocus`, so reopening the app refreshes stale lists/details (gated by the 5-min `staleTime`, so in-app tab-switching stays instant).
+
+OTA-deliverable (no native changes).
+
+---
+
 ## 2026-06-23 — Breathalyzer log (ჟურნალები) rebuilt on canonical patterns
 
 The breathalyzer log (ალკოტესტის ჟურნალი / the project "ჟურნალები" section) was one 1,727-line route file that reinvented the app's primitives — a custom step-dot modal wizard, accent-colored chips, raw `Pressable` buttons, a direct `KeyboardAvoidingView` (a banned import), and an off-brand green/amber/red hex palette baked into `types/`. It now matches the inspection flow: thin route shells (`app/projects/[id]/logs/breathalyzer/{index,add,close}.tsx`) delegating to a new [`features/breathalyzer-log/`](../features/breathalyzer-log/AGENTS.md) module.

@@ -14,7 +14,7 @@ import { SkeletonListCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
 import { friendlyError } from '../../../lib/errorMap';
 import { reportsApi } from '../../../lib/services';
-import { useReport, useProject, qk } from '../../../lib/apiHooks';
+import { useReport, useProject, qk, invalidateRecordLists } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReportSlide } from '../../../types/models';
 
@@ -132,6 +132,7 @@ export default function ReportSlidesEditor() {
     try {
       const saved = await reportsApi.update(report.id, { status: 'completed' });
       queryClient.setQueryData(qk.reports.byId(saved.id), saved);
+      invalidateRecordLists(queryClient);
       router.replace(`/reports/${saved.id}/success` as any);
     } catch (e) {
       toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));

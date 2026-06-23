@@ -33,6 +33,8 @@ import { useToast } from '../../lib/toast';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { useScrollToError } from '../../hooks/useScrollToError';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
+import { queryClient } from '../../lib/queryClient';
+import { invalidateRecordLists } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { generatePdfName } from '../../lib/pdfName';
@@ -267,6 +269,7 @@ export default function NewIncident() {
         status: 'draft',
         pdf_url: null,
       });
+      invalidateRecordLists(queryClient);
       toast.success('ინციდენტი შენახულია');
       router.back();
     } catch (e) {
@@ -317,6 +320,7 @@ export default function NewIncident() {
         pdf_url: null,
       });
       savedId = saved.id;
+      invalidateRecordLists(queryClient);
       incidentCommitted = true;
 
       // 3. load signature data URL - strict so we never embed a signed URL

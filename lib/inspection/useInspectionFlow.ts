@@ -21,6 +21,8 @@ import { useSession } from '../session';
 import { usePdfUsage, useInvalidatePdfUsage } from '../usePdfUsage';
 import { projectsApi } from '../services';
 import { recordCompletion } from '../calendarSchedule';
+import { queryClient } from '../queryClient';
+import { invalidateRecordLists } from '../apiHooks';
 import { friendlyError } from '../errorMap';
 import { haptic } from '../haptics';
 import { generateAndSharePdf, PdfLimitReachedError } from '../pdfOpen';
@@ -255,6 +257,7 @@ export function useInspectionFlow<T extends BaseInspection>(
     try {
       await api.patch(insp.id, cfg.toPatch(insp));
       await api.complete(insp.id);
+      invalidateRecordLists(queryClient);
       const completedAt = new Date().toISOString();
       await recordCompletion(
         'inspections',

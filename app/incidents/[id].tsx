@@ -25,7 +25,8 @@ import { SkeletonListCard } from '../../components/Skeleton';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
-import { useIncident, useProject } from '../../lib/apiHooks';
+import { queryClient } from '../../lib/queryClient';
+import { useIncident, useProject, invalidateRecordLists } from '../../lib/apiHooks';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { generatePdfName } from '../../lib/pdfName';
@@ -179,6 +180,7 @@ export default function IncidentDetail() {
               ...(pdfHash ? { pdf_hash: pdfHash } : {}),
             });
             setIncident(updated);
+            invalidateRecordLists(queryClient);
             // Clean up the temp copy after successful upload
             FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
           } catch (e) {
@@ -220,6 +222,7 @@ export default function IncidentDetail() {
         onPress: async () => {
           try {
             await incidentsApi.remove(incident.id);
+            invalidateRecordLists(queryClient);
             toast.success(t('notifications.deleted'));
             router.back();
           } catch (e) {

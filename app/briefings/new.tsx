@@ -22,6 +22,8 @@ import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { briefingsApi } from '../../lib/briefingsApi';
+import { queryClient } from '../../lib/queryClient';
+import { invalidateRecordLists } from '../../lib/apiHooks';
 import { projectsApi } from '../../lib/services';
 import type { BriefingParticipant, Project } from '../../types/models';
 
@@ -111,6 +113,7 @@ export default function NewBriefingScreen() {
         participants,
         inspectorName,
       });
+      invalidateRecordLists(queryClient);
       router.replace(`/briefings/${briefing.id}/sign` as any);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

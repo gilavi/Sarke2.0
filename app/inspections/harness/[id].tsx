@@ -36,7 +36,7 @@ import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { recordCompletion } from '../../../lib/calendarSchedule';
 import { useQueryClient } from '@tanstack/react-query';
-import { qk } from '../../../lib/apiHooks';
+import { qk, invalidateRecordLists } from '../../../lib/apiHooks';
 import type {
   Answer,
   AnswerPhoto,
@@ -434,8 +434,7 @@ export default function HarnessInspectionScreen() {
         calCompletedAt,
         `${inspection.project_id}:${inspection.template_id}`,
       ).catch(() => {});
-      void queryClient.invalidateQueries({ queryKey: qk.calendar.schedules });
-      void queryClient.invalidateQueries({ queryKey: qk.calendar.allInspections });
+      invalidateRecordLists(queryClient);
       await Promise.all([
         AsyncStorage.removeItem(stepKey(inspection.id)),
         AsyncStorage.removeItem(countKey(inspection.id)),

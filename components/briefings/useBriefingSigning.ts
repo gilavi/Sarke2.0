@@ -23,7 +23,7 @@ import { type SignatureViewRef } from 'react-native-signature-canvas';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { projectsApi } from '../../lib/services';
 import { recordCompletion } from '../../lib/calendarSchedule';
-import { qk } from '../../lib/apiHooks';
+import { qk, invalidateRecordLists } from '../../lib/apiHooks';
 import { type ChipNavItem, type ChipNavState } from '../inspection-parts/ChipNavStrip';
 import type { Briefing, BriefingParticipant, Project } from '../../types/models';
 
@@ -171,8 +171,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
           await briefingsApi.update(id, { inspectorSignature: b64, status: 'completed' });
           // Record schedule entry (non-fatal).
           await recordCompletion('briefings', id, briefing.dateTime, briefing.projectId).catch(() => {});
-          void queryClient.invalidateQueries({ queryKey: qk.calendar.schedules });
-          void queryClient.invalidateQueries({ queryKey: qk.calendar.allBriefings });
+          invalidateRecordLists(queryClient);
           router.replace(`/briefings/${id}/done` as any);
         } else {
           // Worker signed - save signature, clear any prior skip, advance to next pending.

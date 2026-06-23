@@ -17,7 +17,8 @@ import { ProjectPickerSheet } from '../../components/home/ProjectPickerSheet';
 import { routeForInspection } from '../../lib/inspectionRouting';
 import { inspectionRegistry } from '../../lib/inspection/registry';
 import { questionnairesApi } from '../../lib/services';
-import { useProjects, useTemplates } from '../../lib/apiHooks';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProjects, useTemplates, invalidateRecordLists } from '../../lib/apiHooks';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
@@ -37,6 +38,7 @@ export default function NewInspectionProjectStep() {
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
+  const qc = useQueryClient();
   const { category, templateId } = useLocalSearchParams<{ category?: string; templateId: string }>();
   const { data: projects = [], isFetched: projectsFetched } = useProjects();
   const { data: templates = [] } = useTemplates();
@@ -69,6 +71,7 @@ export default function NewInspectionProjectStep() {
       const created = registryEntry
         ? await registryEntry.create({ projectId: project.id, templateId })
         : await questionnairesApi.create({ projectId: project.id, templateId });
+      invalidateRecordLists(qc);
       router.replace(routeForInspection(resolvedCategory, created.id, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, 'ვერ შეიქმნა'));

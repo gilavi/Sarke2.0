@@ -12,6 +12,7 @@ import {
   useTemplates,
   useProjects,
   useCertificateCounts,
+  invalidateRecordLists,
 } from '../../lib/apiHooks';
 import { inspectionsApi } from '../../lib/services';
 import { RECENT_COMPLETED_LIMIT } from '../records';
@@ -57,7 +58,7 @@ export function InspectionHistoryTab() {
           onPress: async () => {
             try {
               await inspectionsApi.remove(q.id);
-              qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
+              invalidateRecordLists(qc);
               toast.success(t('history.deleted'));
             } catch (e) {
               toast.error(friendlyError(e, t('history.deleteError')));

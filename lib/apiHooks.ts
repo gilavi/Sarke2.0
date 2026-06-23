@@ -11,7 +11,7 @@
  */
 
 import { useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   projectsApi,
   projectFilesApi,
@@ -160,6 +160,37 @@ export const qk = {
     schedules: ['calendar', 'schedules'] as const,
   },
 };
+
+/**
+ * Invalidate every list/preview query that surfaces records, so Home, History,
+ * and project-detail refresh after any create / finish / delete. Broad top-level
+ * keys (partial match) cover `recent`, `byProject`, `unifiedByProject`, `byId`,
+ * `list`, and `stats` for each namespace in a single call — a mutation never has
+ * to know which screens are mounted.
+ *
+ * This is the CANONICAL post-mutation step: call it after every record
+ * create / finish / delete. `invalidateQueries` refetches the currently-mounted
+ * lists immediately and marks the rest stale so they refetch on next view. Pair
+ * with the focusManager↔AppState binding in `lib/queryClient.ts`, which refreshes
+ * stale queries when the app returns to the foreground.
+ */
+export function invalidateRecordLists(qc: QueryClient): void {
+  const namespaces = [
+    'inspections',
+    'reports',
+    'orders',
+    'briefings',
+    'incidents',
+    'breathalyzerLog',
+    'certificates',
+    'projects',
+    'schedules',
+    'calendar',
+  ];
+  for (const ns of namespaces) {
+    void qc.invalidateQueries({ queryKey: [ns] });
+  }
+}
 
 // ── Projects ─────────────────────────────────────────────────────────────────
 

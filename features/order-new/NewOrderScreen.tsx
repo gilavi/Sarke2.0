@@ -26,6 +26,8 @@ import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { ordersApi } from '../../lib/ordersApi';
+import { queryClient } from '../../lib/queryClient';
+import { invalidateRecordLists } from '../../lib/apiHooks';
 import {
   buildAlcoholControlOrderHtml,
   buildCraneOperatorOrderHtml,
@@ -253,6 +255,7 @@ export default function NewOrderScreen() {
         status: 'completed',
       });
       savedId = saved.id;
+      invalidateRecordLists(queryClient);
 
       const projectName = project.company_name || project.name;
       const html = buildHtml(docType, form, projectName);

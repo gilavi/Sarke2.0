@@ -59,6 +59,16 @@ One component: [`components/primitives/RefreshControl.tsx`](../components/primit
 
 **Don't** re-implement the `const [refreshing, setRefreshing] = useState(false)` + `onRefresh` + `<RefreshControl tintColor={theme.colors.accent}>` boilerplate inline, and **don't** import `RefreshControl` from `react-native` directly — that duplicated pattern lived in ~13 screens, each free to drift on tint/haptic/error-handling. Consumers: `home`, `projects`, `certificates`, `more`, `incidents/[id]`, `reports/[id]`, `profile`, and the project detail sub-tabs.
 
+## List freshness — invalidate after mutations
+
+Record lists (Home recent widgets, History tabs, project-detail sections) are **invalidation-driven**: the QueryClient keeps a 5-min `staleTime` so tab-switching stays instant, and there is **no in-app refetch-on-focus** (it was removed to stop hammering Supabase). A list therefore only updates after a create / finish / delete when that mutation invalidates its query key.
+
+One helper: **`invalidateRecordLists(qc)`** in [`lib/apiHooks.ts`](../lib/apiHooks.ts). It broadly invalidates every record namespace (`inspections`, `reports`, `orders`, `briefings`, `incidents`, `breathalyzerLog`, `certificates`, `projects`, `schedules`, `calendar`), so one call refreshes Home + History + project-detail at once (`invalidateQueries` refetches the mounted lists immediately and marks the rest stale).
+
+**Call it after every record create / finish / delete** — don't hand-pick narrow keys (inspection-create touching only `projects.list`, finish only `calendar.*`, etc. is exactly how lists went stale and forced an app-refresh). In an event handler without a `useQueryClient()` in scope, import the `queryClient` singleton from [`lib/queryClient.ts`](../lib/queryClient.ts) and pass it.
+
+Foreground safety net: [`lib/queryClient.ts`](../lib/queryClient.ts) binds `focusManager` to React Native `AppState` with `refetchOnWindowFocus: true`, so reopening the app refreshes stale queries (gated by `staleTime` — tab-switching never refetches). This catches external / multi-device changes; it does **not** replace the explicit `invalidateRecordLists()` calls, which are what make in-app changes appear instantly.
+
 ## Storage images
 
 One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose so picking the right name picks the right defaults:

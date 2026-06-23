@@ -27,7 +27,7 @@ import { useTheme } from '../../../lib/theme';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 
 import { friendlyError } from '../../../lib/errorMap';
-import { useTemplate, useProjects, qk } from '../../../lib/apiHooks';
+import { useTemplate, useProjects, qk, invalidateRecordLists } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Project } from '../../../types/models';
 import { a11y } from '../../../lib/accessibility';
@@ -64,6 +64,7 @@ export default function StartTemplateScreen() {
       const newId = entry
         ? (await entry.create({ projectId: selected, templateId: template.id })).id
         : (await questionnairesApi.create({ projectId: selected, templateId: template.id })).id;
+      invalidateRecordLists(queryClient);
       router.replace(routeForInspection(template.category, newId, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, t('errors.inspectionCreateFailed')));

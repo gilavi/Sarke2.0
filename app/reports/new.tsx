@@ -12,6 +12,8 @@ import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
 import { projectsApi, reportsApi } from '../../lib/services';
+import { queryClient } from '../../lib/queryClient';
+import { invalidateRecordLists } from '../../lib/apiHooks';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import type { Project } from '../../types/models';
 
@@ -47,6 +49,7 @@ export default function NewReportTitleScreen() {
     setBusy(true);
     try {
       const created = await reportsApi.create({ projectId, title: trimmed });
+      invalidateRecordLists(queryClient);
       router.replace(`/reports/${created.id}/edit` as any);
     } catch (e) {
       toast.error(friendlyError(e, 'რეპორტის შექმნა ვერ მოხერხდა'));

@@ -30,7 +30,7 @@ import { useOffline, stripServerFields } from '../../lib/offline';
 import { logError, toErrorMessage } from '../../lib/logError';
 import { useToast } from '../../lib/toast';
 import { recordCompletion } from '../../lib/calendarSchedule';
-import { qk } from '../../lib/apiHooks';
+import { qk, invalidateRecordLists } from '../../lib/apiHooks';
 import type {
   Answer,
   AnswerPhoto,
@@ -464,8 +464,7 @@ export function useWizardState(id: string | undefined) {
       const calCompletedAt = new Date().toISOString();
       const calGroupKey = `${questionnaire.project_id}:${questionnaire.template_id}`;
       await recordCompletion('inspections', questionnaire.id, calCompletedAt, calGroupKey).catch(() => {});
-      void queryClient.invalidateQueries({ queryKey: qk.calendar.schedules });
-      void queryClient.invalidateQueries({ queryKey: qk.calendar.allInspections });
+      invalidateRecordLists(queryClient);
       await Promise.all([
         AsyncStorage.removeItem(conclusionKey(questionnaire.id)),
         AsyncStorage.removeItem(safetyKey(questionnaire.id)),
@@ -492,6 +491,7 @@ export function useWizardState(id: string | undefined) {
     setDeleteConfirmVisible(false);
     try {
       await inspectionsApi.remove(id);
+      invalidateRecordLists(queryClient);
       haptic.success();
       toast.success(t('notifications.deleted'));
       router.back();

@@ -32,7 +32,7 @@ import {
 } from '../../lib/services';
 import { inspectionRegistry } from '../../lib/inspection/registry';
 import { useQueryClient } from '@tanstack/react-query';
-import { qk, type UnifiedInspectionPreview } from '../../lib/apiHooks';
+import { qk, invalidateRecordLists, type UnifiedInspectionPreview } from '../../lib/apiHooks';
 import { deleteUnifiedInspection, type UnifiedInspection } from './unifiedInspections';
 import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
@@ -173,6 +173,7 @@ export default function ProjectDetail() {
       const newId = entry
         ? (await entry.create({ projectId, templateId: tpl.id })).id
         : (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
+      invalidateRecordLists(queryClient);
       router.push(routeForInspection(tpl.category, newId, false) as any);
     } catch (e) {
       toast.error(friendlyError(e, t('errors.createFailed')));
@@ -201,6 +202,7 @@ export default function ProjectDetail() {
               prev => prev?.filter(x => x.id !== removedId) ?? [],
             );
           });
+          invalidateRecordLists(queryClient);
           toast.success(t('notifications.deleted'));
         } catch (e) {
           toast.error(friendlyError(e, t('errors.deleteFailed')));

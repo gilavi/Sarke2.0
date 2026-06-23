@@ -30,7 +30,8 @@ import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
 import { formatShortDateTime } from '../../lib/formatDate';
-import { useReport, useProject } from '../../lib/apiHooks';
+import { queryClient } from '../../lib/queryClient';
+import { useReport, useProject, invalidateRecordLists } from '../../lib/apiHooks';
 import { ErrorScreen } from '../../components/ErrorScreen';
 import type { Report } from '../../types/models';
 
@@ -119,6 +120,7 @@ export default function ReportDetailScreen() {
         if (idx !== 0) return;
         try {
           await reportsApi.remove(report.id);
+          invalidateRecordLists(queryClient);
           toast.success('წაიშალა');
           router.back();
         } catch (e) {

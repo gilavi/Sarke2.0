@@ -22,6 +22,7 @@ import {
   useProjects,
   useQualifications,
   useTemplates,
+  invalidateRecordLists,
 } from '../../lib/apiHooks';
 // shareStoredPdf import removed - PDF sharing now lives on the inspection
 // detail screen (which fetches certificates list) post 0006 decoupling.
@@ -373,8 +374,7 @@ export default function HomeScreen() {
         onClose={() => setPickerVisible(false)}
         onCreated={async () => {
           // Invalidate caches so the new inspection/project appears immediately
-          await qc.invalidateQueries({ queryKey: ['projects', 'list'] });
-          await qc.invalidateQueries({ queryKey: ['inspections', 'recent'] });
+          invalidateRecordLists(qc);
         }}
         onProjectCreated={(id) => {
           setPickerVisible(false);
