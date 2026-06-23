@@ -4,7 +4,7 @@ import { A11yText as Text } from '../../components/primitives/A11yText';
 import { ErrorScreen } from '../../components/ErrorScreen';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Share2, FileText } from 'lucide-react-native';
+import { Share2, FileText, SquarePen } from 'lucide-react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../lib/theme';
@@ -14,13 +14,18 @@ import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { useBriefing, useProject } from '../../lib/apiHooks';
+import { queryClient } from '../../lib/queryClient';
+import { reopenDocument } from '../../lib/documents/reopen';
+import { haptic } from '../../lib/haptics';
 import { buildBriefingPreviewHtml, buildBriefingPdfHtml } from '../../lib/briefingPdf';
 import { generatePdfName } from '../../lib/pdfName';
 import { a11y } from '../../lib/accessibility';
+import { useTranslation } from 'react-i18next';
 import type { Briefing, Project } from '../../types/models';
 
 export default function BriefingDetailScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -35,6 +40,22 @@ export default function BriefingDetailScreen() {
   const invalidatePdfUsage = useInvalidatePdfUsage();
   const [webviewLoading, setWebviewLoading] = useState(true);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [reopening, setReopening] = useState(false);
+
+  // Reopen the briefing to draft and route into the create flow (edit mode);
+  // re-signing on the next screen re-completes it.
+  const onEdit = useCallback(async () => {
+    if (!briefing || reopening) return;
+    setReopening(true);
+    try {
+      haptic.medium();
+      await reopenDocument({ kind: 'briefing', id: briefing.id }, queryClient);
+      router.replace(`/briefings/new?editId=${briefing.id}&projectId=${briefing.projectId}` as any);
+    } catch {
+      Alert.alert(t('common.error'), t('briefings.createFailed'));
+      setReopening(false);
+    }
+  }, [briefing, reopening, router, t]);
 
   useEffect(() => {
     if (briefing && project) {
@@ -61,11 +82,11 @@ export default function BriefingDetailScreen() {
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
+      Alert.alert(t('common.error'), t('briefings.pdfGenerateFailed'));
     } finally {
       setSharing(false);
     }
-  }, [briefing, project, pdfUsage, invalidatePdfUsage]);
+  }, [briefing, project, pdfUsage, invalidatePdfUsage, t]);
 
   if (!id) {
     return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
@@ -75,7 +96,7 @@ export default function BriefingDetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ScreenHeader title="ინსტრუქტაჟი" />
+        <ScreenHeader title={t('briefings.flowTitle')} />
         <SkeletonPreview />
       </View>
     );
@@ -85,21 +106,32 @@ export default function BriefingDetailScreen() {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenHeader
-        title="ინსტრუქტაჟის ოქმი"
+        title={t('briefings.recordTitle')}
         right={
-          <Pressable
-            onPress={sharePdf}
-            disabled={sharing || !briefing || !project}
-            style={{ paddingHorizontal: 4 }}
-            hitSlop={11}
-            {...a11y('PDF გაზიარება', undefined, 'button')}
-          >
-            {sharing ? (
-              <ActivityIndicator size="small" color={theme.colors.accent} />
-            ) : (
-              <Share2 size={22} color={theme.colors.accent} strokeWidth={1.5} />
-            )}
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Pressable
+              onPress={onEdit}
+              disabled={reopening || !briefing}
+              style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
+              hitSlop={11}
+              {...a11y(t('common.edit'), undefined, 'button')}
+            >
+              <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
+            </Pressable>
+            <Pressable
+              onPress={sharePdf}
+              disabled={sharing || !briefing || !project}
+              style={{ paddingHorizontal: 4 }}
+              hitSlop={11}
+              {...a11y(t('briefings.pdfShare'), undefined, 'button')}
+            >
+              {sharing ? (
+                <ActivityIndicator size="small" color={theme.colors.accent} />
+              ) : (
+                <Share2 size={22} color={theme.colors.accent} strokeWidth={1.5} />
+              )}
+            </Pressable>
+          </View>
         }
       />
 
@@ -129,7 +161,7 @@ export default function BriefingDetailScreen() {
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <FileText size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
           <Text style={{ color: theme.colors.inkFaint, fontSize: 14 }}>
-            გადახედვა მიუწვდომელია
+            {t('briefings.previewUnavailable')}
           </Text>
         </View>
       )}
@@ -140,7 +172,7 @@ export default function BriefingDetailScreen() {
           onPress={sharePdf}
           disabled={sharing || !briefing || !project}
           style={[styles.shareBtn, (sharing || !briefing || !project) && { opacity: 0.5 }]}
-          {...a11y('PDF გაზიარება', 'ინსტრუქტაჟის PDF ფაილის გაზიარება', 'button')}
+          {...a11y(t('briefings.pdfShare'), t('briefings.pdfShareHint'), 'button')}
         >
           {sharing ? (
             <ActivityIndicator size="small" color={theme.colors.white} />
@@ -148,7 +180,7 @@ export default function BriefingDetailScreen() {
             <Share2 size={20} color={theme.colors.white} strokeWidth={1.5} />
           )}
           <Text style={styles.shareBtnText}>
-            {sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
+            {sharing ? t('briefings.pdfPreparing') : pdfUsage?.isLocked ? t('briefings.pdfShareLocked') : t('briefings.pdfShare')}
           </Text>
         </Pressable>
       </View>

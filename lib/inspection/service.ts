@@ -63,6 +63,13 @@ export interface InspectionService<T, P extends object> {
   listByProject: (projectId: string) => Promise<T[]>;
   patch: (id: string, patch: P) => Promise<void>;
   complete: (id: string) => Promise<void>;
+  /**
+   * Reopen a completed inspection back to draft so the wizard can edit it.
+   * Clears completed_at. Equipment tables carry their own status column and are
+   * not guarded by a freeze trigger, so this is a plain UPDATE. The document
+   * re-completes through the normal flow. See lib/documents/reopen.ts.
+   */
+  reopen: (id: string) => Promise<void>;
   /** Upload a photo at `<pathPrefix>/<subpath>/<uuid>.jpg`; returns the path. */
   uploadPhotoAt: (subpath: string, photoUri: string) => Promise<string>;
   deletePhoto: (path: string) => Promise<void>;
@@ -138,6 +145,14 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
       const db = cfg.toDb(patch);
       if (Object.keys(db).length === 0) return;
       const { error } = await supabase.from(table).update(db).eq('id', id);
+      if (error) throw new Error(error.message);
+    },
+
+    reopen: async (id) => {
+      const { error } = await supabase
+        .from(table)
+        .update({ status: 'draft', completed_at: null })
+        .eq('id', id);
       if (error) throw new Error(error.message);
     },
 

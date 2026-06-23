@@ -92,7 +92,7 @@ export default function CargoPlatformInspectionScreen() {
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<CargoPlatformInspection>({
     id,
     firstStep: PLATFORM_STEP,
@@ -338,6 +338,7 @@ export default function CargoPlatformInspectionScreen() {
         limitNoticeVisible={limitNoticeVisible}
         onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
+        onEdit={() => void reopen()}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />

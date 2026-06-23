@@ -6,20 +6,22 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Trash2, CircleCheck } from 'lucide-react-native';
+import { Trash2, CircleCheck, SquarePen } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { Button } from '../../components/ui';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import { useBottomSheet } from '../../components/BottomSheet';
 import { useTheme } from '../../lib/theme';
 import { SkeletonPreview } from '../../components/Skeleton';
 import { useToast } from '../../lib/toast';
 import { useSession } from '../../lib/session';
 import { reportDisplayName } from '../../lib/shared/documentName';
 import { friendlyError } from '../../lib/errorMap';
-import { reportsApi } from '../../lib/services';
+import { haptic } from '../../lib/haptics';
+import { reopenDocument } from '../../lib/documents/reopen';
+import { useReportDelete } from '../../features/records';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { pdfPhotoEmbed } from '../../lib/imageUrl';
 import { slideImagePaths } from '../../lib/reportSlides';
@@ -30,8 +32,7 @@ import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
 import { formatShortDateTime } from '../../lib/formatDate';
-import { queryClient } from '../../lib/queryClient';
-import { useReport, useProject, invalidateRecordLists } from '../../lib/apiHooks';
+import { useReport, useProject } from '../../lib/apiHooks';
 import { ErrorScreen } from '../../components/ErrorScreen';
 import type { Report } from '../../types/models';
 
@@ -42,8 +43,10 @@ export default function ReportDetailScreen() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const session = useSession();
-  const showSheet = useBottomSheet();
+  const queryClient = useQueryClient();
+  const confirmDelete = useReportDelete(() => router.back());
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [reopening, setReopening] = useState(false);
 
   const reportQ = useReport(id);
   const { data: report } = reportQ;
@@ -108,26 +111,22 @@ export default function ReportDetailScreen() {
   };
 
   const onDelete = () => {
-    if (!report) return;
-    showSheet(
-      {
-        title: 'რეპორტის წაშლა?',
-        options: ['დიახ, წაშლა', 'გაუქმება'],
-        cancelButtonIndex: 1,
-        destructiveButtonIndex: 0,
-      },
-      async idx => {
-        if (idx !== 0) return;
-        try {
-          await reportsApi.remove(report.id);
-          invalidateRecordLists(queryClient);
-          toast.success('წაიშალა');
-          router.back();
-        } catch (e) {
-          toast.error(friendlyError(e, 'წაშლა ვერ მოხერხდა'));
-        }
-      },
-    );
+    if (report) confirmDelete(report);
+  };
+
+  // Reopen the completed report back to draft and route into the existing
+  // slides editor; its "PDF გენერაცია" re-completes and regenerates the PDF.
+  const onEdit = async () => {
+    if (!report || reopening) return;
+    setReopening(true);
+    try {
+      haptic.medium();
+      await reopenDocument({ kind: 'report', id: report.id }, queryClient);
+      router.replace(`/reports/${report.id}/edit` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, 'რედაქტირება ვერ მოხერხდა'));
+      setReopening(false);
+    }
   };
 
   if (!id) {
@@ -153,9 +152,14 @@ export default function ReportDetailScreen() {
         title={reportDisplayName(report?.title)}
         onBack={() => router.back()}
         right={
-          <Pressable onPress={onDelete} hitSlop={12} style={{ paddingHorizontal: 4 }}>
-            <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            <Pressable onPress={onEdit} disabled={reopening} hitSlop={12} style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}>
+              <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
+            </Pressable>
+            <Pressable onPress={onDelete} hitSlop={12} style={{ paddingHorizontal: 4 }}>
+              <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
+            </Pressable>
+          </View>
         }
       />
 

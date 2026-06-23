@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Home, Folder } from 'lucide-react-native';
+import { Home, Folder, SquarePen } from 'lucide-react-native';
 import { Card } from '../../../components/ui';
 import { SuccessScreen } from '../../../components/success';
 import { useTheme } from '../../../lib/theme';
 import { ordersApi } from '../../../lib/ordersApi';
+import { reopenDocument } from '../../../lib/documents/reopen';
+import { queryClient } from '../../../lib/queryClient';
+import { haptic } from '../../../lib/haptics';
 import { ORDER_DOCUMENT_TYPE_LABEL, type Order, type OrderDocumentType } from '../../../types/models';
 
 const ORDER_SUCCESS_TITLE: Partial<Record<OrderDocumentType, string>> = {
@@ -24,10 +27,25 @@ export default function OrderSuccessScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
+  const [reopening, setReopening] = useState(false);
 
   useEffect(() => {
     if (id) ordersApi.getById(id).then(setOrder).catch(() => {});
   }, [id]);
+
+  // Reopen the order to draft and route into the wizard in edit mode (hydrated
+  // by ?editId). Re-generating the PDF re-completes it.
+  const onEdit = async () => {
+    if (!order || reopening) return;
+    setReopening(true);
+    try {
+      haptic.medium();
+      await reopenDocument({ kind: 'order', id: order.id }, queryClient);
+      router.replace(`/orders/new?editId=${order.id}&projectId=${order.projectId}` as any);
+    } catch {
+      setReopening(false);
+    }
+  };
 
   return (
     <SuccessScreen
@@ -39,6 +57,14 @@ export default function OrderSuccessScreen() {
         onPress: () => router.replace('/(tabs)/home' as any),
       }}
       actions={[
+        ...(order
+          ? [{
+              icon: SquarePen,
+              title: 'რედაქტირება',
+              subtitle: 'შეცვალე ბრძანების მონაცემები',
+              onPress: onEdit,
+            }]
+          : []),
         {
           icon: Folder,
           title: 'პროექტებზე დაბრუნება',

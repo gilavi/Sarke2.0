@@ -78,7 +78,7 @@ export default function ForkliftInspectionScreen() {
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<ForkliftInspection>({
     id,
     firstStep: INFO_STEP,
@@ -320,6 +320,7 @@ export default function ForkliftInspectionScreen() {
         limitNoticeVisible={limitNoticeVisible}
         onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
+        onEdit={() => void reopen()}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />

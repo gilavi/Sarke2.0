@@ -16,10 +16,12 @@ import { buildBriefingPdfHtml } from '../../../lib/briefingPdf';
 import { generatePdfName } from '../../../lib/pdfName';
 import { projectsApi } from '../../../lib/services';
 import { a11y } from '../../../lib/accessibility';
+import { useTranslation } from 'react-i18next';
 import type { Briefing, Project } from '../../../types/models';
 
 export default function BriefingDoneScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -59,11 +61,11 @@ export default function BriefingDoneScreen() {
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      Alert.alert('შეცდომა', 'PDF გენერირება ვერ მოხერხდა');
+      Alert.alert(t('common.error'), t('briefings.pdfGenerateFailed'));
     } finally {
       setSharing(false);
     }
-  }, [briefing, project, pdfUsage, invalidatePdfUsage]);
+  }, [briefing, project, pdfUsage, invalidatePdfUsage, t]);
 
   const goToProject = () => {
     if (briefing?.projectId) {
@@ -90,18 +92,18 @@ export default function BriefingDoneScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>ინსტრუქტაჟი დასრულდა ✓</Text>
+        <Text style={styles.title}>{t('briefings.doneTitle')}</Text>
 
         {briefing && (
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{briefing.participants.length}</Text>
-              <Text style={styles.statLabel}>მონაწილე</Text>
+              <Text style={styles.statLabel}>{t('briefings.statParticipants')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{briefing.topics.length}</Text>
-              <Text style={styles.statLabel}>თემა</Text>
+              <Text style={styles.statLabel}>{t('briefings.statTopics')}</Text>
             </View>
           </View>
         )}
@@ -128,7 +130,7 @@ export default function BriefingDoneScreen() {
       {/* Actions */}
       <View style={styles.footer}>
         <Button
-          title={sharing ? 'PDF მზადდება...' : pdfUsage?.isLocked ? '🔒 PDF გაზიარება' : 'PDF გაზიარება'}
+          title={sharing ? t('briefings.pdfPreparing') : pdfUsage?.isLocked ? t('briefings.pdfShareLocked') : t('briefings.pdfShare')}
           size="lg"
           leftIcon={Share2}
           onPress={sharePdf}
@@ -139,17 +141,17 @@ export default function BriefingDoneScreen() {
         <Pressable
           onPress={() => id && router.push(`/briefings/${id}` as any)}
           style={styles.secondaryBtn}
-          {...a11y('ოქმის ნახვა', 'ინსტრუქტაჟის დეტალების ნახვა', 'button')}
+          {...a11y(t('briefings.viewRecord'), t('briefings.viewRecordHint'), 'button')}
         >
           <FileText size={18} color={theme.colors.accent} strokeWidth={1.5} />
-          <Text style={styles.secondaryBtnText}>ოქმის ნახვა</Text>
+          <Text style={styles.secondaryBtnText}>{t('briefings.viewRecord')}</Text>
         </Pressable>
         <Pressable
           onPress={goToProject}
           style={styles.ghostBtn}
-          {...a11y('პროექტზე დაბრუნება', undefined, 'button')}
+          {...a11y(t('briefings.backToProject'), undefined, 'button')}
         >
-          <Text style={styles.ghostBtnText}>პროექტზე დაბრუნება</Text>
+          <Text style={styles.ghostBtnText}>{t('briefings.backToProject')}</Text>
         </Pressable>
       </View>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />

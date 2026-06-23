@@ -8,8 +8,9 @@ import { ORDER_DOCUMENT_TYPE_LABEL, type Order } from '../../types/models';
 
 /**
  * Status-free brdzaneba (order) row, reused by Home / History / Drafts.
- * Orders have no per-order detail/edit screen on mobile, so the row is
- * display-only (no chevron / tap) unless an `onPress` is supplied.
+ * Home/History pass `onPress` to open the order detail screen
+ * (`app/orders/[id].tsx`); without one the row is display-only (no chevron /
+ * tap) — e.g. the Drafts list.
  */
 export function OrderRow({
   order,

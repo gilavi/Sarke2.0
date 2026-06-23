@@ -4,12 +4,13 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useProject, useReportsByProject } from '../../../lib/apiHooks';
-import { ReportCardGrid } from '../../../features/records';
+import { ReportCardGrid, useReportDelete } from '../../../features/records';
 
 export default function ProjectReportsList() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
+  const confirmDelete = useReportDelete();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
@@ -33,6 +34,7 @@ export default function ProjectReportsList() {
         refreshQueries={[reportsQ]}
         emptyText="ჩანაწერები არ არის"
         onPressReport={(r) => router.push(`/reports/${r.id}` as any)}
+        onDeleteReport={(r) => confirmDelete(r)}
         ListHeaderComponent={
           project?.name ? <Text style={styles.pageSubtitle}>{project.name}</Text> : null
         }

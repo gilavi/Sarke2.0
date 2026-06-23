@@ -36,7 +36,8 @@ all" links land here.
 - **Inspections routing** uses the template category
   (`routeForInspection(tpl.category, id, true)`) — matches Home and the old
   History. Don't switch it to a `source`-based path.
-- Orders are display-only (no detail route) — `OrderRow` gets no `onPress`.
+- Orders open the read-only detail at `app/orders/[id].tsx` — `OrdersTab` passes
+  `OrderRow` an `onPress` routing to `/orders/${id}`.
 
 ## Canonical helpers consumed
 

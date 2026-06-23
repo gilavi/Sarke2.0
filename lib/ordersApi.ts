@@ -33,6 +33,7 @@ function toModel(row: DbRow): Order {
 
 function patchToDb(patch: Partial<Order>): Partial<DbRow> {
   const db: Partial<DbRow> = {};
+  if (patch.documentType !== undefined) db.document_type = patch.documentType;
   if (patch.formData !== undefined) db.form_data = patch.formData as unknown as Record<string, unknown>;
   if (patch.status   !== undefined) db.status    = patch.status;
   if (patch.pdfUrl   !== undefined) db.pdf_url   = patch.pdfUrl;

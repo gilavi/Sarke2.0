@@ -1,7 +1,7 @@
 // NewOrderScreen.tsx - orchestrator for the order wizard.
 // All step renderers, types, validation, and styles live in sibling files.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
@@ -113,7 +113,7 @@ export default function NewOrderScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId, editId } = useLocalSearchParams<{ projectId: string; editId?: string }>();
 
   const [step, setStep] = useState<Step>(1);
   // Enabled forward/submit button + on-press field errors (see useSubmitGuard).
@@ -141,6 +141,8 @@ export default function NewOrderScreen() {
     projectsApi.getById(projectId).then(p => {
       if (!p) return;
       setProject(p);
+      // Edit mode: keep the saved form values; don't autofill from the project.
+      if (editId) return;
       setForm(f => ({
         ...f,
         companyName: p.company_name || p.name,
@@ -150,7 +152,28 @@ export default function NewOrderScreen() {
         objectAddress: p.address ?? '',
       }));
     }).catch(() => null);
-  }, [projectId]);
+  }, [projectId, editId]);
+
+  // Edit mode: hydrate docType + form from the (reopened) order. buildFormData
+  // keeps identical field names, so the stored form_data maps straight back
+  // onto CombinedForm.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!editId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    let mounted = true;
+    (async () => {
+      try {
+        const order = await ordersApi.getById(editId);
+        if (!order || !mounted) return;
+        setDocType(order.documentType);
+        setForm(f => ({ ...f, ...(order.formData as Partial<CombinedForm>) }));
+      } catch {
+        // best-effort: leave the blank form if hydration fails
+      }
+    })();
+    return () => { mounted = false; };
+  }, [editId]);
 
   // Auto-generate order number when a crane order is selected
   useEffect(() => {
@@ -212,12 +235,21 @@ export default function NewOrderScreen() {
     if (!projectId || !docType) return;
     setSaving(true);
     try {
-      await ordersApi.create({
-        projectId,
-        documentType: docType,
-        formData: buildFormData(form, docType),
-        status: 'draft',
-      });
+      if (editId) {
+        await ordersApi.update(editId, {
+          documentType: docType,
+          formData: buildFormData(form, docType),
+          status: 'draft',
+        });
+      } else {
+        await ordersApi.create({
+          projectId,
+          documentType: docType,
+          formData: buildFormData(form, docType),
+          status: 'draft',
+        });
+      }
+      invalidateRecordLists(queryClient);
       toast.success('ბრძანება შენახულია');
       router.back();
     } catch (e) {
@@ -248,12 +280,18 @@ export default function NewOrderScreen() {
     setSaving(true);
     let savedId = '';
     try {
-      const saved = await ordersApi.create({
-        projectId,
-        documentType: docType,
-        formData: buildFormData(form, docType),
-        status: 'completed',
-      });
+      const saved = editId
+        ? await ordersApi.update(editId, {
+            documentType: docType,
+            formData: buildFormData(form, docType),
+            status: 'completed',
+          })
+        : await ordersApi.create({
+            projectId,
+            documentType: docType,
+            formData: buildFormData(form, docType),
+            status: 'completed',
+          });
       savedId = saved.id;
       invalidateRecordLists(queryClient);
 

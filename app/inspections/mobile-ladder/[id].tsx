@@ -68,7 +68,7 @@ export default function MobileLadderInspectionScreen() {
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, updateMany: updateIdentification, scheduleSave,
-    complete, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<MobileLadderInspection>({
     id,
     firstStep: IDENTIFICATION_STEP,
@@ -297,6 +297,7 @@ export default function MobileLadderInspectionScreen() {
         limitNoticeVisible={limitNoticeVisible}
         onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
+        onEdit={() => void reopen()}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />

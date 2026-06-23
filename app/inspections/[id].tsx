@@ -20,7 +20,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleAlert, CloudOff, Paperclip, Pencil, Lock, Share2 } from 'lucide-react-native';
+import { CircleAlert, CloudOff, Paperclip, Pencil, Lock, Share2, SquarePen } from 'lucide-react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -58,6 +59,8 @@ import {
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { recordRedirect, isOscillating } from '../../lib/navigationGuard';
+import { reopenDocument } from '../../lib/documents/reopen';
+import { routeForInspection } from '../../lib/inspectionRouting';
 import { friendlyError } from '../../lib/errorMap';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
@@ -102,6 +105,8 @@ export default function InspectionResultScreen() {
   const invalidatePdfUsage = useInvalidatePdfUsage();
   const [redirectBlocked, setRedirectBlocked] = useState(false);
   const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const [reopening, setReopening] = useState(false);
+  const queryClient = useQueryClient();
   const mountedRef = useRef(true);
 
   // Signatures state - local to this result screen. Dies when the screen
@@ -347,6 +352,24 @@ export default function InspectionResultScreen() {
     }, [inspection, refreshAfterSheetSave]),
   );
 
+  // Reopen the completed inspection back to draft and route into the wizard,
+  // which re-hydrates the existing answers/photos/conclusion. Re-completing on
+  // the result screen regenerates the PDF and re-captures the signature.
+  const onEdit = useCallback(async () => {
+    if (!inspection || reopening) return;
+    setReopening(true);
+    try {
+      haptic.medium();
+      await reopenDocument({ kind: 'genericInspection', id: inspection.id }, queryClient);
+      // Canonical draft route for the category (harness → /inspections/harness/[id],
+      // generic/xaracho → /inspections/[id]/wizard).
+      router.replace(routeForInspection(template?.category, inspection.id, false) as any);
+    } catch (e) {
+      toast.error(friendlyError(e, 'რედაქტირება ვერ მოხერხდა'));
+      setReopening(false);
+    }
+  }, [inspection, reopening, queryClient, router, toast]);
+
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
@@ -493,7 +516,20 @@ export default function InspectionResultScreen() {
   return (
     <Screen edges={['bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader title={inspectionDisplayName(template?.name)} />
+      <ScreenHeader
+        title={inspectionDisplayName(template?.name)}
+        right={
+          <Pressable
+            onPress={onEdit}
+            disabled={reopening}
+            hitSlop={12}
+            accessibilityLabel="რედაქტირება"
+            style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
+          >
+            <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
+          </Pressable>
+        }
+      />
       <View style={styles.previewWrap}>
         {previewBusy && !previewHtml ? (
           <SkeletonPreview />

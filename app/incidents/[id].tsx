@@ -13,7 +13,7 @@ import { hashPdf } from '../../lib/pdfSecurity';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, Share2, FileText, type LucideIcon } from 'lucide-react-native';
+import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, Share2, FileText, SquarePen, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
@@ -40,6 +40,8 @@ import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import * as FileSystem from 'expo-file-system/legacy';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
+import { haptic } from '../../lib/haptics';
+import { reopenDocument } from '../../lib/documents/reopen';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { Incident, Project } from '../../types/models';
 import { ErrorScreen } from '../../components/ErrorScreen';
@@ -70,6 +72,7 @@ export default function IncidentDetail() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfPhase, setPdfPhase] = useState<string | null>(null);
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
@@ -212,6 +215,21 @@ export default function IncidentDetail() {
     }
   };
 
+  // Reopen the incident back to draft and route into the create form in edit
+  // mode (hydrated by ?editId). Re-completing regenerates the PDF.
+  const onEdit = async () => {
+    if (!incident || reopening) return;
+    setReopening(true);
+    try {
+      haptic.medium();
+      await reopenDocument({ kind: 'incident', id: incident.id }, queryClient);
+      router.replace(`/incidents/new?editId=${incident.id}&projectId=${incident.project_id}` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, t('common.error')));
+      setReopening(false);
+    }
+  };
+
   const deleteIncident = () => {
     if (!incident) return;
     Alert.alert(t('incidents.deleteTitle'), t('incidents.deleteBody'), [
@@ -267,7 +285,20 @@ export default function IncidentDetail() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader title={t('incidents.headerTitle')} />
+      <ScreenHeader
+        title={t('incidents.headerTitle')}
+        right={
+          <Pressable
+            onPress={onEdit}
+            disabled={reopening}
+            hitSlop={12}
+            accessibilityLabel={t('common.edit')}
+            style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
+          >
+            <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         style={{ flex: 1 }}

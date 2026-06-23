@@ -78,7 +78,7 @@ export default function LiftingAccessoriesInspectionScreen() {
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, updateMany, scheduleSave,
-    complete, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<LiftingAccessoriesInspection>({
     id,
     firstStep: IDENTIFICATION_STEP,
@@ -340,6 +340,7 @@ export default function LiftingAccessoriesInspectionScreen() {
         limitNoticeVisible={limitNoticeVisible}
         onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
+        onEdit={() => void reopen()}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../components/primitives/A11yText';
+import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -90,6 +91,7 @@ const HOTSPOTS: { key: PartKey; x: number; y: number; w: number; h: number }[] =
 
 export default function GuideScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<PartKey | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -133,7 +135,7 @@ export default function GuideScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
           <ChevronLeft size={24} color="#cbd5e1" strokeWidth={1.5} />
         </Pressable>
-        <Text style={styles.headerTitle}>ხარაჩო 3D გიდი</Text>
+        <Text style={styles.headerTitle}>{t('guide.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -142,7 +144,7 @@ export default function GuideScreen() {
         {!selected && (
           <View style={styles.hintPill}>
             <Text style={styles.hintText}>
-              🖐 Tap any part to see instructions / დააჭირეთ ნაწილს ინსტრუქციის სანახავად
+              {t('guide.hint')}
             </Text>
           </View>
         )}

@@ -123,6 +123,7 @@ export const generalEquipmentApi = {
   listByProject: base.listByProject,
   patch: base.patch,
   complete: base.complete,
+  reopen: base.reopen,
   deletePhoto: base.deletePhoto,
   uploadPhoto: (inspectionId: string, context: 'equipment' | 'summary', itemId: string, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/${context}/${itemId}`, photoUri),

@@ -10,9 +10,11 @@ import { useIncident, useProject } from '../../../lib/apiHooks';
 import { INCIDENT_TYPE_FULL_LABEL } from '../../../types/models';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { incidentColors } from '../../../lib/statusColors';
+import { useTranslation } from 'react-i18next';
 
 export default function IncidentSuccessScreen() {
   const { theme, isDark } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -24,25 +26,25 @@ export default function IncidentSuccessScreen() {
 
   return (
     <SuccessScreen
-      title="ინციდენტი შენახულია!"
-      subtitle="ყველა მონაცემი შენახულია. PDF ოქმის ნახვა და გაზიარება შეგიძლიათ ინციდენტის გვერდიდან."
+      title={t('incidents.successTitle')}
+      subtitle={t('incidents.successSubtitle')}
       primary={{
-        title: 'ინციდენტის ნახვა',
+        title: t('incidents.viewIncident'),
         icon: FileText,
         onPress: () => router.replace(`/incidents/${id}` as any),
       }}
       actions={[
         {
           icon: Home,
-          title: 'მთავარ გვერდზე',
-          subtitle: 'დაბრუნდი საწყის გვერდზე',
+          title: t('tabs.backToHome'),
+          subtitle: t('incidents.backToHomeSubtitle'),
           onPress: () => router.replace('/(tabs)/home' as any),
         },
       ]}
     >
       {incident ? (
         <Card>
-          <Text style={styles.eyebrow}>შეჯამება</Text>
+          <Text style={styles.eyebrow}>{t('incidents.summaryLabel')}</Text>
           {badge ? (
             <View style={[styles.typeBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
               <Text style={[styles.typeBadgeText, { color: badge.text }]}>

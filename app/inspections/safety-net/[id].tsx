@@ -74,7 +74,7 @@ export default function SafetyNetInspectionScreen() {
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, buildPreview, exit, creatorName,
   } = useInspectionFlow<SafetyNetInspection>({
     id,
     firstStep: NET_DATA_STEP,
@@ -323,6 +323,7 @@ export default function SafetyNetInspectionScreen() {
         limitNoticeVisible={limitNoticeVisible}
         onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
+        onEdit={() => void reopen()}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => void buildPreview()}
       />

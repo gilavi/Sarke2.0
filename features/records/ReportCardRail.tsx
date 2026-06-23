@@ -25,6 +25,7 @@ import { ReportCard, REPORT_CARD_WIDTH } from './ReportCard';
 export function ReportCardRail({
   reports,
   onPressReport,
+  onDeleteReport,
   loading = false,
   emptyText,
   onViewAll,
@@ -34,6 +35,8 @@ export function ReportCardRail({
 }: {
   reports: Report[];
   onPressReport: (report: Report) => void;
+  /** When provided, each card becomes deletable (long-press + trash button). */
+  onDeleteReport?: (report: Report) => void;
   loading?: boolean;
   emptyText: string;
   onViewAll?: () => void;
@@ -86,7 +89,12 @@ export function ReportCardRail({
       contentContainerStyle={contentStyle}
     >
       {shown.map((r) => (
-        <ReportCard key={r.id} report={r} onPress={() => onPressReport(r)} />
+        <ReportCard
+          key={r.id}
+          report={r}
+          onPress={() => onPressReport(r)}
+          onDelete={onDeleteReport ? () => onDeleteReport(r) : undefined}
+        />
       ))}
       {showViewAll ? (
         <PressBounce

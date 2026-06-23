@@ -27,6 +27,7 @@ import {
   getRecordStyles,
   RECENT_COMPLETED_LIMIT,
   historyHref,
+  useReportDelete,
 } from '../records';
 import { formatShortDateTime } from '../../lib/formatDate';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
@@ -49,6 +50,7 @@ export function HomeRecordsSection() {
   const recordStyles = useMemo(() => getRecordStyles(theme), [theme]);
   const templates = useTemplates().data ?? [];
   const incidentPalette = incidentColors(isDark);
+  const confirmDeleteReport = useReportDelete();
 
   const inspQ = useRecentInspections({ status: 'completed', limit: RECENT_COMPLETED_LIMIT });
   const reportsQ = useRecentReports({ status: 'completed', limit: RECENT_COMPLETED_LIMIT });
@@ -106,6 +108,7 @@ export function HomeRecordsSection() {
           <ReportCardRail
             reports={reports}
             onPressReport={(r) => router.push(`/reports/${r.id}` as never)}
+            onDeleteReport={(r) => confirmDeleteReport(r)}
             emptyText={t('records.emptyReports')}
             onViewAll={() => router.push(historyHref('reports') as never)}
             bleed={20}
@@ -123,7 +126,7 @@ export function HomeRecordsSection() {
           viewAllHref={historyHref('orders')}
           keyOf={(o) => o.id}
           renderAvatar={() => <RecordAvatar icon={FileText} tint={theme.colors.certTint} bg={theme.colors.certSoft} size={STACK} />}
-          renderRow={(o, isLast) => <OrderRow order={o} showBorder={!isLast} />}
+          renderRow={(o, isLast) => <OrderRow order={o} showBorder={!isLast} onPress={() => router.push(`/orders/${o.id}` as never)} />}
         />
       ) : null}
 

@@ -26,6 +26,7 @@ import {
   ReportCardGrid,
   OrderRow,
   BriefingRow,
+  useReportDelete,
   type RecordTypeKey,
 } from '../records';
 import { RecordHistoryList } from './RecordHistoryList';
@@ -130,6 +131,7 @@ export default function HistoryScreen() {
 function ReportsTab() {
   const { t } = useTranslation();
   const router = useRouter();
+  const confirmDelete = useReportDelete();
   const q = useRecentReports({ status: 'completed', limit: RECENT_COMPLETED_LIMIT });
   const items = q.data ?? [];
   return (
@@ -139,12 +141,14 @@ function ReportsTab() {
       refreshQueries={[q]}
       emptyText={t('records.emptyReports')}
       onPressReport={(r) => router.push(`/reports/${r.id}` as never)}
+      onDeleteReport={(r) => confirmDelete(r)}
     />
   );
 }
 
 function OrdersTab() {
   const { t } = useTranslation();
+  const router = useRouter();
   const q = useRecentOrders({ status: 'completed', limit: RECENT_COMPLETED_LIMIT });
   const items = q.data ?? [];
   return (
@@ -154,7 +158,7 @@ function OrdersTab() {
       keyOf={(o) => o.id}
       refreshQueries={[q]}
       emptyText={t('records.emptyOrders')}
-      renderRow={(o, isLast) => <OrderRow order={o} showBorder={!isLast} />}
+      renderRow={(o, isLast) => <OrderRow order={o} showBorder={!isLast} onPress={() => router.push(`/orders/${o.id}` as never)} />}
     />
   );
 }

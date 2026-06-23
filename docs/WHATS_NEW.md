@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-06-24 — Edit finished documents (Acts, Reports, Orders, Incidents, Briefings)
+
+Completed documents were immutable — a typo in a finished inspection act or order meant redoing it. Now every record type has an **edit** action (✎) that reopens it to draft, reuses the existing wizard/form, and re-completes (regenerating the PDF and, for inspections, re-capturing the in-memory signature).
+
+- New **`reopenDocument(target, qc)`** ([`lib/documents/reopen.ts`](../lib/documents/reopen.ts)) un-completes a document and refreshes the record lists. It dispatches per regime: generic inspection → parent `inspections` row, equipment → `<type>_inspections` via the registry's new `reopen()`, and report/order/incident/briefing → their `update()`. See [`lib/documents/AGENTS.md`](../lib/documents/AGENTS.md).
+- Migration **`20260623150000_allow_inspection_reopen.sql`** relaxes the 0008/0010 freeze trigger to admit an explicit owner reopen and prevents schedule double-advance on re-completion.
+- Edit entry points added to the inspection result view (generic + 9 equipment types via `InspectionResultView.onEdit` / `useInspectionFlow.reopen`), the report / incident / briefing detail headers, and a **new read-only order detail screen** ([`app/orders/[id].tsx`](../app/orders/[id].tsx), reusing the wizard's `Step4Summary`) that Home/History order rows now open. The order/incident/briefing **"new" screens now double as edit screens** via a `?editId=` param. Mobile-only for now — web-app parity is a follow-up.
+
+Requires the new migration to be applied + a native build (freeze-trigger + new edit screens; not OTA-deliverable).
+
+---
+
+## 2026-06-23 — Delete reports straight from the list (long-press + trash button)
+
+Completed reports could only be deleted from the report-detail header, so deleting from a Home/History/project rail meant tapping in, deleting, tapping back. Report cards are now deletable in place: **long-press a card** or tap the small **trash button** overlaid on its cover.
+
+- New shared hook **`useReportDelete(onDeleted?)`** ([`features/records/useReportDelete.ts`](../features/records/useReportDelete.ts)) is now the single confirm-then-delete path (destructive bottom sheet → `reportsApi.remove` → `invalidateRecordLists`). `ReportCard` gained an optional `onDelete`; `ReportCardRail` / `ReportCardGrid` an optional `onDeleteReport`, wired on every report surface (Home rail, History reports tab, project-detail section, project all-reports). The report-detail header trash button was refactored onto the same hook so the confirm copy lives in one place.
+
+OTA-deliverable (no native changes).
+
+---
+
 ## 2026-06-23 — Lists refresh instantly after create / edit / delete (no more app-refresh)
 
 Home, History, and project-detail lists were going stale after mutations. The data layer is **invalidation-driven** (5-min `staleTime`, `refetchOnWindowFocus: false`, no in-app refetch-on-focus), but most record mutations weren't invalidating the shared list keys: inspection-create touched only `projects.list`, inspection-finish only `calendar.*`, reports only `setQueryData(byId)`, and orders / briefings / incidents nothing. So a newly added record didn't appear until the 5-min `staleTime` expired or the app was force-refreshed.

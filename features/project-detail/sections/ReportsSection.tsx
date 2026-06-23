@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { SkeletonRow } from '../../../components/Skeleton';
-import { ReportCardRail } from '../../records';
+import { ReportCardRail, useReportDelete } from '../../records';
 import { useTheme } from '../../../lib/theme';
 import { a11y } from '../../../lib/accessibility';
 import type { Report } from '../../../types/models';
@@ -30,6 +30,7 @@ export function ReportsSection({
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
+  const confirmDelete = useReportDelete();
 
   const completed = useMemo(
     () =>
@@ -71,6 +72,7 @@ export function ReportsSection({
         <ReportCardRail
           reports={completed}
           onPressReport={(r) => router.push(`/reports/${r.id}` as any)}
+          onDeleteReport={(r) => confirmDelete(r)}
           emptyText=""
           onViewAll={() => router.push(`/projects/${id}/reports` as any)}
           bleed={20}

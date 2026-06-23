@@ -410,6 +410,12 @@ Two consumers keep the address text and the map pin in sync:
 
 Used by all three project forms (`components/home/ProjectPickerSheet.tsx`, `app/(tabs)/projects.tsx`, `components/projects/EditProjectSheet.tsx`). **Don't** add a second debounced-geocode hook in a screen — render `GeocodingAddressInput` for the address field and let `MapPicker` own the in-map sync.
 
+## Reopen a finished document for editing
+
+One owner: [`lib/documents/reopen.ts`](../lib/documents/reopen.ts) — `reopenDocument(target, queryClient)`. Un-completes a finished document (inspection Act, report, order, incident, briefing) back to `draft` so the **existing** create/wizard/edit flow can edit it, then invalidates the record lists. The caller routes into the matching create/edit screen; re-completion goes through each family's normal completion path (regenerating the PDF, and for inspections re-capturing the in-memory signature).
+
+`target` is the `ReopenTarget` union — `genericInspection` flips the parent `inspections` row (freeze trigger relaxed in migration `20260623150000_allow_inspection_reopen.sql`), `equipmentInspection` flips the `<type>_inspections` row via `inspectionRegistry[source].reopen(id)`, the rest call `<api>.update(id, { status: 'draft' })`. **Don't** write `status: 'draft'` ad-hoc from a detail screen — go through `reopenDocument` so the regime split, list invalidation, and the equipment-vs-generic table choice stay in one place. See [`lib/documents/AGENTS.md`](../lib/documents/AGENTS.md).
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

@@ -148,6 +148,7 @@ export const excavatorApi = {
   listByProject: base.listByProject,
   patch: base.patch,
   complete: base.complete,
+  reopen: base.reopen,
   deletePhoto: base.deletePhoto,
   uploadPhoto: (inspectionId: string, section: string, itemId: number, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/${section}/${itemId}`, photoUri),

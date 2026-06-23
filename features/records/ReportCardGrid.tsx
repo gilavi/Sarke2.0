@@ -20,6 +20,7 @@ const GAP = 12;
 export function ReportCardGrid({
   reports,
   onPressReport,
+  onDeleteReport,
   query,
   refreshQueries,
   emptyText,
@@ -27,6 +28,8 @@ export function ReportCardGrid({
 }: {
   reports: Report[];
   onPressReport: (report: Report) => void;
+  /** When provided, each card becomes deletable (long-press + trash button). */
+  onDeleteReport?: (report: Report) => void;
   query: { isFetching: boolean; isFetched: boolean };
   emptyText: string;
   refreshQueries?: unknown[];
@@ -55,7 +58,12 @@ export function ReportCardGrid({
       ListHeaderComponent={ListHeaderComponent}
       refreshControl={refreshQueries ? <RefreshControl queries={refreshQueries as never[]} /> : undefined}
       renderItem={({ item }) => (
-        <ReportCard report={item} width={cardWidth} onPress={() => onPressReport(item)} />
+        <ReportCard
+          report={item}
+          width={cardWidth}
+          onPress={() => onPressReport(item)}
+          onDelete={onDeleteReport ? () => onDeleteReport(item) : undefined}
+        />
       )}
       initialNumToRender={8}
       windowSize={7}

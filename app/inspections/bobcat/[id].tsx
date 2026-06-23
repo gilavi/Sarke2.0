@@ -96,7 +96,7 @@ export default function BobcatInspectionScreen() {
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, reopen, handlePdf, buildPreview, exit,
     generatingPdf, creatorName,
   } = useInspectionFlow<BobcatInspection>({
     id,
@@ -355,6 +355,7 @@ export default function BobcatInspectionScreen() {
         limitNoticeVisible={limitNoticeVisible}
         onLimitNoticeClose={() => setLimitNoticeVisible(false)}
         creatorName={creatorName}
+        onEdit={() => void reopen()}
         onDownloadPdf={(sig) => void handlePdf(sig)}
         onSheetSaved={() => {
           inspectionAttachmentsApi.listByInspection(inspection.id)

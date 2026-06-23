@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -32,7 +32,7 @@ export default function NewBriefingScreen() {
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
-  const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
+  const { projectId: paramProjectId, editId } = useLocalSearchParams<{ projectId?: string; editId?: string }>();
   const router = useRouter();
   const session = useSession();
 
@@ -58,6 +58,34 @@ export default function NewBriefingScreen() {
   const [customTopic, setCustomTopic] = useState('');
   const [participants, setParticipants] = useState<BriefingParticipant[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // Edit mode: hydrate from the (reopened) briefing. Topics stored as raw keys
+  // with `custom:<text>` for the free-text one — reverse that into the Set + input.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!editId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    let mounted = true;
+    (async () => {
+      try {
+        const b = await briefingsApi.getById(editId);
+        if (!b || !mounted) return;
+        const topicSet = new Set<string>();
+        let custom = '';
+        for (const key of b.topics) {
+          if (key.startsWith('custom:')) { custom = key.slice('custom:'.length); topicSet.add('other'); }
+          else topicSet.add(key);
+        }
+        setDateTime(b.dateTime ? new Date(b.dateTime) : new Date());
+        setSelectedTopics(topicSet);
+        setCustomTopic(custom);
+        setParticipants(b.participants ?? []);
+      } catch {
+        // best-effort: leave the blank form if hydration fails
+      }
+    })();
+    return () => { mounted = false; };
+  }, [editId]);
 
   // ── Inspector name from session ──
   const inspectorName = useMemo(() => {
@@ -106,22 +134,30 @@ export default function NewBriefingScreen() {
     if (!projectId || !canStart) return;
     setBusy(true);
     try {
-      const briefing = await briefingsApi.create({
-        projectId,
-        dateTime: dateTime.toISOString(),
-        topics: builtTopics,
-        participants,
-        inspectorName,
-      });
+      // Edit mode updates the reopened draft in place; signing re-completes it.
+      const briefingId = editId
+        ? (await briefingsApi.update(editId, {
+            dateTime: dateTime.toISOString(),
+            topics: builtTopics,
+            participants,
+            inspectorName,
+          })).id
+        : (await briefingsApi.create({
+            projectId,
+            dateTime: dateTime.toISOString(),
+            topics: builtTopics,
+            participants,
+            inspectorName,
+          })).id;
       invalidateRecordLists(queryClient);
-      router.replace(`/briefings/${briefing.id}/sign` as any);
+      router.replace(`/briefings/${briefingId}/sign` as any);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       Alert.alert(t('common.error'), `${t('briefings.createFailed')}\n\n${msg}`);
     } finally {
       setBusy(false);
     }
-  }, [projectId, dateTime, participants, builtTopics, inspectorName, canStart, router]);
+  }, [projectId, dateTime, participants, builtTopics, inspectorName, canStart, router, editId, t]);
 
   const onBack = useCallback(() => {
     if (step === 2) setStep(1);

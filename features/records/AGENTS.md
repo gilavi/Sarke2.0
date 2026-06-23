@@ -36,16 +36,27 @@ only a neutral per-type glyph for identity.
 - **Reports are cards, not rows** (everywhere except Drafts):
   - `ReportCard` — one media card: landscape cover-photo "sneak peek"
     (`useReportCoverUri` → `reportCoverPath`) + slide-count chip + title + date.
-    `REPORT_CARD_WIDTH` is the rail default; pass `width` for the grid.
+    `REPORT_CARD_WIDTH` is the rail default; pass `width` for the grid. Pass
+    `onDelete` to make it deletable — long-pressing the card and the small trash
+    `IconButton` overlaid on the cover both fire it; omit on read-only surfaces.
+  - `useReportDelete(onDeleted?)` — the **one** confirm-then-delete path for
+    reports (`reportsApi.remove` + `invalidateRecordLists`, destructive bottom
+    sheet). Returns `(report) => void`. Every card surface (`ReportCardRail` /
+    `ReportCardGrid` via their `onDeleteReport` prop) and the report-detail
+    header trash button go through it — don't re-inline the delete logic.
+    `onDeleted` fires after success (detail passes `router.back`; lists omit it
+    since the invalidation already drops the row).
   - `ReportCardRail` — horizontal scroller for the **section** surfaces (Home
     reports widget, project-detail reports section). Bleeds out by `bleed` to
     cancel the page gutter (cards scroll edge-to-edge), then rests its cards at
     `gutter` — set both to `20` so cards line up flush with the flat sections.
     Renders skeleton/empty/cards + an optional trailing "ყველას ნახვა" card
-    (`onViewAll`). The host supplies the header.
+    (`onViewAll`). The host supplies the header. Optional `onDeleteReport(report)`
+    → forwards to each card's `onDelete`.
   - `ReportCardGrid` — full-screen 2-column grid for **History reports tab** and
     a project's **all-reports** list. Carries the canonical three-state guard +
-    pull-to-refresh; optional `ListHeaderComponent`.
+    pull-to-refresh; optional `ListHeaderComponent`. Optional
+    `onDeleteReport(report)` → forwards to each card's `onDelete`.
   - `ReportThumb` — the small 16:9 avatar still used by the Drafts `ReportRow`.
 - `getRecordStyles(theme)` — section-card + row styles.
 
@@ -53,16 +64,18 @@ only a neutral per-type glyph for identity.
 
 - `styles.ts`, `recordTypes.ts`, `RecordWidget.tsx`, `ReportRow.tsx`,
   `ReportThumb.tsx`, `ReportCard.tsx`, `ReportCardRail.tsx`,
-  `ReportCardGrid.tsx`, `useReportCover.ts`, `BriefingRow.tsx`,
+  `ReportCardGrid.tsx`, `useReportCover.ts`, `useReportDelete.ts`,
+  `BriefingRow.tsx`,
   `BriefingTopicAvatar.tsx`, `OrderRow.tsx`, `topics.ts`, `index.ts`.
 
 ## Gotchas
 
 - **Completed-only is the caller's job for data, the row's job for chrome.**
   Fetch with `useRecent*({ status: 'completed' })`; the rows render no status.
-- **Orders have no detail/edit route** (`app/orders/` is only `new` +
-  `[id]/success`). `OrderRow` is display-only unless an `onPress` is supplied —
-  Home/History pass none.
+- **Orders open a read-only detail** at `app/orders/[id].tsx` (reuses the
+  wizard's `Step4Summary`; header ✎ reopens via `reopenDocument` → edit mode).
+  `OrderRow` is display-only unless an `onPress` is supplied — Home/History pass
+  one (route to `/orders/${id}`); Drafts passes none.
 - **`styles.ts` mirrors the section subset of
   `features/project-detail/styles.ts`** — identical values on purpose so Home
   matches the project screen. Keep them in sync.

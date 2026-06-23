@@ -50,6 +50,7 @@ import { friendlyError } from '../../lib/errorMap';
 import { formatShortDateTime } from '../../lib/formatDate';
 import type { IncidentType, Project } from '../../types/models';
 import { INCIDENT_TYPE_FULL_LABEL } from '../../types/models';
+import { useTranslation } from 'react-i18next';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,12 @@ type Step = 1 | 2 | 3 | 4;
 
 interface IncidentPhoto {
   uri: string;
+  /**
+   * Storage path when the photo is already uploaded (edit mode). Such photos
+   * are kept as-is on save (never re-uploaded, never deleted on a failed
+   * commit). New photos picked in this session have no `existingPath`.
+   */
+  existingPath?: string;
 }
 
 interface FormData {
@@ -91,11 +98,12 @@ export default function NewIncident() {
   const insets = useSafeAreaInsets();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
   const { theme, isDark } = useTheme();
+  const { t } = useTranslation();
   const s = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
+  const { projectId: paramProjectId, editId } = useLocalSearchParams<{ projectId?: string; editId?: string }>();
   const [pickedProject, setPickedProject] = useState<Project | null>(null);
   const projectId = paramProjectId ?? pickedProject?.id;
 
@@ -110,8 +118,9 @@ export default function NewIncident() {
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
-  // stable incident id - lets us upload photos before the row is created
-  const incidentId = useRef(Crypto.randomUUID()).current;
+  // stable incident id - lets us upload photos before the row is created. In
+  // edit mode it's the existing record's id so save updates (not duplicates) it.
+  const incidentId = useRef(editId ?? Crypto.randomUUID()).current;
 
   // witness text input buffer
   const [witnessInput, setWitnessInput] = useState('');
@@ -135,6 +144,43 @@ export default function NewIncident() {
       .catch(() => null);
     return () => { mounted = false; };
   }, [projectId, project]);
+
+  // Edit mode: hydrate the form from the (reopened) incident. Existing photos
+  // carry their storage path so save keeps them without re-uploading.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!editId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    let mounted = true;
+    (async () => {
+      try {
+        const inc = await incidentsApi.getById(editId);
+        if (!inc || !mounted) return;
+        const photoEntries = await Promise.all(
+          (inc.photos ?? []).map(async path => ({
+            uri: await imageForDisplay(STORAGE_BUCKETS.incidentPhotos, path).catch(() => ''),
+            existingPath: path,
+          })),
+        );
+        if (!mounted) return;
+        setForm({
+          type: inc.type,
+          injuredName: inc.injured_name ?? '',
+          injuredRole: inc.injured_role ?? '',
+          dateTime: inc.date_time ? new Date(inc.date_time) : new Date(),
+          location: inc.location ?? '',
+          description: inc.description ?? '',
+          cause: inc.cause ?? '',
+          actionsTaken: inc.actions_taken ?? '',
+          witnesses: inc.witnesses ?? [],
+          photos: photoEntries.filter(p => p.uri),
+        });
+      } catch {
+        // best-effort: leave the blank form if hydration fails
+      }
+    })();
+    return () => { mounted = false; };
+  }, [editId]);
 
   // ── navigation ──────────────────────────────────────────────────────────────
 
@@ -219,9 +265,14 @@ export default function NewIncident() {
 
   // ── upload helpers ──────────────────────────────────────────────────────────
 
-  const uploadPhotos = async (): Promise<{ path: string }[]> => {
-    const results: { path: string }[] = [];
+  const uploadPhotos = async (): Promise<{ path: string; isNew: boolean }[]> => {
+    const results: { path: string; isNew: boolean }[] = [];
     for (const photo of form.photos) {
+      // Edit mode: an already-stored photo keeps its path (no re-upload).
+      if (photo.existingPath) {
+        results.push({ path: photo.existingPath, isNew: false });
+        continue;
+      }
       const photoId = Crypto.randomUUID();
       const ext = photo.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
       const path = `${incidentId}/${photoId}.${ext}`;
@@ -233,7 +284,7 @@ export default function NewIncident() {
           'image/jpeg',
           'incident',
         );
-        results.push({ path });
+        results.push({ path, isNew: true });
       } catch (e) {
         console.warn('[incident] photo upload failed', e);
       }
@@ -246,15 +297,13 @@ export default function NewIncident() {
   const saveDraft = async () => {
     if (!projectId) return;
     if (!form.type) {
-      toast.error('აირჩიეთ ინციდენტის ტიპი');
+      toast.error(t('incidents.selectTypeError'));
       return;
     }
     setSaving(true);
     try {
       const uploaded = await uploadPhotos();
-      await incidentsApi.create({
-        id: incidentId,
-        project_id: projectId,
+      const fields = {
         type: form.type,
         injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
         injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
@@ -266,14 +315,19 @@ export default function NewIncident() {
         witnesses: form.witnesses,
         photos: uploaded.map(u => u.path),
         inspector_signature: inspector.sigPath,
-        status: 'draft',
+        status: 'draft' as const,
         pdf_url: null,
-      });
+      };
+      if (editId) {
+        await incidentsApi.update(editId, fields);
+      } else {
+        await incidentsApi.create({ id: incidentId, project_id: projectId, ...fields });
+      }
       invalidateRecordLists(queryClient);
-      toast.success('ინციდენტი შენახულია');
+      toast.success(t('incidents.savedDraft'));
       router.back();
     } catch (e) {
-      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -283,28 +337,28 @@ export default function NewIncident() {
 
   const saveAndGeneratePdf = async () => {
     if (!projectId || !project) {
-      toast.error('პროექტი ვერ მოიძებნა');
+      toast.error(t('errors.notFoundProject'));
       return;
     }
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     if (!form.type) {
-      toast.error('აირჩიეთ ინციდენტის ტიპი');
+      toast.error(t('incidents.selectTypeError'));
       return;
     }
     setSaving(true);
     let savedId = incidentId;
     let incidentCommitted = false;
-    let uploadedPhotoPaths: string[] = [];
+    // Only NEW uploads are cleaned up on a failed commit; existing photos
+    // (edit mode) must never be deleted.
+    let newlyUploadedPaths: string[] = [];
     try {
       // 1. upload photos
       const uploaded = await uploadPhotos();
-      uploadedPhotoPaths = uploaded.map(u => u.path);
-      const photoPaths = uploadedPhotoPaths;
+      newlyUploadedPaths = uploaded.filter(u => u.isNew).map(u => u.path);
+      const photoPaths = uploaded.map(u => u.path);
 
-      // 2. create incident record
-      const saved = await incidentsApi.create({
-        id: incidentId,
-        project_id: projectId,
+      // 2. create or (edit mode) update the incident record
+      const fields = {
         type: form.type,
         injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
         injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
@@ -316,9 +370,12 @@ export default function NewIncident() {
         witnesses: form.witnesses,
         photos: photoPaths,
         inspector_signature: inspector.sigPath,
-        status: 'completed',
+        status: 'completed' as const,
         pdf_url: null,
-      });
+      };
+      const saved = editId
+        ? await incidentsApi.update(editId, fields)
+        : await incidentsApi.create({ id: incidentId, project_id: projectId, ...fields });
       savedId = saved.id;
       invalidateRecordLists(queryClient);
       incidentCommitted = true;
@@ -394,7 +451,7 @@ export default function NewIncident() {
                 payload: { incidentId: savedId, pdf_url: pdfPath, pdf_hash: pdfHash },
               },
             });
-            toast.info('PDF შენახულია ლოკალურად; სინქრონიზაცია მოხდება ქსელზე დაბრუნებისას');
+            toast.info(t('incidents.pdfSavedLocally'));
           }
         })();
       } else {
@@ -403,15 +460,16 @@ export default function NewIncident() {
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       if (!incidentCommitted) {
-        // Incident was never written to DB - clean up any photos that made it to storage
-        for (const path of uploadedPhotoPaths) {
+        // Incident was never written to DB - clean up only the photos uploaded
+        // this session (never the pre-existing ones in edit mode).
+        for (const path of newlyUploadedPaths) {
           storageApi.remove(STORAGE_BUCKETS.incidentPhotos, path).catch(() => {});
         }
-        toast.error(friendlyError(e, 'ინციდენტის შექმნა ვერ მოხერხდა'));
+        toast.error(friendlyError(e, t('incidents.createFailed')));
         return;
       }
       console.warn('[incident] PDF generation failed', e);
-      toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა - ინციდენტი შენახულია'));
+      toast.error(friendlyError(e, t('incidents.pdfCreateFailedSaved')));
       router.replace(`/incidents/${savedId}` as any);
     } finally {
       setSaving(false);
@@ -424,7 +482,7 @@ export default function NewIncident() {
   if (!projectId) {
     return (
       <FlowProjectPicker
-        flowTitle="ინციდენტი"
+        flowTitle={t('incidents.flowTitle')}
         action="incident"
         onBack={() => router.back()}
         onPicked={(p) => { setPickedProject(p); setProject(p); }}
@@ -437,7 +495,7 @@ export default function NewIncident() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
-        flowTitle="ინციდენტი"
+        flowTitle={t('incidents.flowTitle')}
         project={project}
         step={step}
         totalSteps={4}
@@ -450,7 +508,7 @@ export default function NewIncident() {
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }} scrollRef={scrollRef}>
-        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} isDark={isDark} s={s} attempted={attempted} />}
+        {step === 1 && <Step1 form={form} setForm={setForm} theme={theme} isDark={isDark} s={s} attempted={attempted} t={t} />}
         {step === 2 && (
           <Step2
             form={form}
@@ -459,6 +517,7 @@ export default function NewIncident() {
             s={s}
             attempted={attempted}
             registerField={registerField}
+            t={t}
           />
         )}
         {step === 3 && (
@@ -475,6 +534,7 @@ export default function NewIncident() {
             onRemoveWitness={removeWitness}
             onAddPhoto={addPhoto}
             onRemovePhoto={removePhoto}
+            t={t}
           />
         )}
         {step === 4 && (
@@ -486,6 +546,7 @@ export default function NewIncident() {
             theme={theme}
             isDark={isDark}
             s={s}
+            t={t}
           />
         )}
 
@@ -497,7 +558,7 @@ export default function NewIncident() {
         <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
           {step < 4 ? (
             <Button
-              title="შემდეგი"
+              title={t('common.next')}
               rightIcon={ArrowRight}
               onPress={handleAdvance}
               style={{ width: '100%' }}
@@ -505,14 +566,14 @@ export default function NewIncident() {
           ) : (
             <View style={{ gap: 10 }}>
               <Button
-                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
+                title={pdfUsage?.isLocked ? t('incidents.pdfGenerateLocked') : t('incidents.pdfGenerate')}
                 leftIcon={FileText}
                 loading={saving}
                 onPress={saveAndGeneratePdf}
                 style={{ width: '100%' }}
               />
               <Button
-                title="შენახვა ხელმოწერის გარეშე"
+                title={t('incidents.saveWithoutSignature')}
                 variant="link"
                 disabled={saving}
                 onPress={saveDraft}
@@ -530,7 +591,7 @@ export default function NewIncident() {
 // ─── Step 1 - type selection ──────────────────────────────────────────────────
 
 function Step1({
-  form, setForm, theme, isDark, s, attempted,
+  form, setForm, theme, isDark, s, attempted, t,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
@@ -538,6 +599,7 @@ function Step1({
   isDark: boolean;
   s: ReturnType<typeof makeStyles>;
   attempted: boolean;
+  t: (key: string) => string;
 }) {
   const types: IncidentType[] = ['minor', 'severe', 'fatal', 'mass', 'nearmiss'];
   const needsNotice = form.type === 'severe' || form.type === 'fatal';
@@ -545,7 +607,7 @@ function Step1({
 
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>რა სახის შემთხვევა?</Text>
+      <Text style={s.stepTitle}>{t('incidents.step1Title')}</Text>
 
       {/* Canonical Selector: bordered "type cards" with a leading severity dot and
           a check on the selected one (severity stays color-coded; chrome is monochrome). */}
@@ -554,24 +616,23 @@ function Step1({
         indicator="check"
         error={showError}
         value={form.type}
-        onChange={(t) => setForm(f => ({ ...f, type: t as IncidentType }))}
-        options={types.map(t => ({
-          value: t,
-          label: INCIDENT_TYPE_FULL_LABEL[t],
-          leading: <View style={[s.typeCardDot, { backgroundColor: incidentColors(isDark)[t].border }]} />,
+        onChange={(v) => setForm(f => ({ ...f, type: v as IncidentType }))}
+        options={types.map(type => ({
+          value: type,
+          label: INCIDENT_TYPE_FULL_LABEL[type],
+          leading: <View style={[s.typeCardDot, { backgroundColor: incidentColors(isDark)[type].border }]} />,
         }))}
       />
 
       {showError && (
-        <Text style={s.requiredError}>აირჩიეთ შემთხვევის ტიპი</Text>
+        <Text style={s.requiredError}>{t('incidents.selectTypeError')}</Text>
       )}
 
       {needsNotice && (
         <View style={s.warningBanner}>
           <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
           <Text style={s.warningBannerText}>
-            კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
-            განმავლობაში
+            {t('incidents.labourNoticeWarning')}
           </Text>
         </View>
       )}
@@ -582,7 +643,7 @@ function Step1({
 // ─── Step 2 - person + details ────────────────────────────────────────────────
 
 function Step2({
-  form, setForm, theme, s, attempted, registerField,
+  form, setForm, theme, s, attempted, registerField, t,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
@@ -590,30 +651,31 @@ function Step2({
   s: ReturnType<typeof makeStyles>;
   attempted: boolean;
   registerField: (key: string) => (e: LayoutChangeEvent) => void;
+  t: (key: string) => string;
 }) {
   const isNearMiss = form.type === 'nearmiss';
 
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>დაზარალებული და გარემოება</Text>
+      <Text style={s.stepTitle}>{t('incidents.step2Title')}</Text>
 
       {isNearMiss ? (
         <View style={s.nearMissNote}>
           <Info size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={s.nearMissNoteText}>
-            საშიში შემთხვევა - დაზიანება არ მომხდარა
+            {t('incidents.nearMissNoteShort')}
           </Text>
         </View>
       ) : (
         <>
           <FloatingLabelInput
-            label="დაზარალებული პირი"
+            label={t('incidents.fieldInjuredName')}
             value={form.injuredName}
             onChangeText={v => setForm(f => ({ ...f, injuredName: v }))}
           />
 
           <FloatingLabelInput
-            label="თანამდებობა"
+            label={t('incidents.fieldInjuredRole')}
             value={form.injuredRole}
             onChangeText={v => setForm(f => ({ ...f, injuredRole: v }))}
           />
@@ -621,7 +683,7 @@ function Step2({
       )}
 
       <DateTimeField
-        label="თარიღი და დრო"
+        label={t('incidents.fieldDateTime')}
         value={form.dateTime}
         onChange={d => setForm(f => ({ ...f, dateTime: d }))}
         mode="datetime"
@@ -631,11 +693,11 @@ function Step2({
       {/* Location */}
       <View onLayout={registerField('location')}>
         <FloatingLabelInput
-          label="ზუსტი ადგილი"
+          label={t('incidents.fieldLocationExact')}
           required
           value={form.location}
           onChangeText={v => setForm(f => ({ ...f, location: v }))}
-          error={attempted && !form.location.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !form.location.trim() ? t('errors.requiredField') : undefined}
         />
       </View>
     </View>
@@ -647,7 +709,7 @@ function Step2({
 function Step3({
   form, setForm, theme, s, attempted, registerField,
   witnessInput, setWitnessInput, onAddWitness, onRemoveWitness,
-  onAddPhoto, onRemovePhoto,
+  onAddPhoto, onRemovePhoto, t,
 }: {
   form: FormData;
   setForm: React.Dispatch<React.SetStateAction<FormData>>;
@@ -661,18 +723,19 @@ function Step3({
   onRemoveWitness: (i: number) => void;
   onAddPhoto: () => void;
   onRemovePhoto: (i: number) => void;
+  t: (key: string) => string;
 }) {
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>აღწერა და მიზეზი</Text>
+      <Text style={s.stepTitle}>{t('incidents.step3Title')}</Text>
 
       <View onLayout={registerField('description')}>
         <FloatingLabelInput
-          label="რა მოხდა"
+          label={t('incidents.fieldWhatHappened')}
           required
           value={form.description}
           onChangeText={v => setForm(f => ({ ...f, description: v }))}
-          error={attempted && !form.description.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !form.description.trim() ? t('errors.requiredField') : undefined}
           multiline
           numberOfLines={4}
         />
@@ -680,18 +743,18 @@ function Step3({
 
       <View onLayout={registerField('cause')}>
         <FloatingLabelInput
-          label="სავარაუდო მიზეზი"
+          label={t('incidents.fieldProbableCause')}
           required
           value={form.cause}
           onChangeText={v => setForm(f => ({ ...f, cause: v }))}
-          error={attempted && !form.cause.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !form.cause.trim() ? t('errors.requiredField') : undefined}
           multiline
           numberOfLines={3}
         />
       </View>
 
       <FloatingLabelInput
-        label="მიღებული ზომები"
+        label={t('incidents.fieldActionsTaken')}
         value={form.actionsTaken}
         onChangeText={v => setForm(f => ({ ...f, actionsTaken: v }))}
         multiline
@@ -700,7 +763,7 @@ function Step3({
 
       {/* Witnesses */}
       <View style={{ gap: 8 }}>
-        <Text style={s.fieldLabel}>მოწმეები</Text>
+        <Text style={s.fieldLabel}>{t('incidents.sectionWitnesses')}</Text>
         {form.witnesses.map((w, i) => (
           <View key={`${i}-${w}`} style={s.witnessRow}>
             <User size={15} color={theme.colors.inkSoft} strokeWidth={1.5} />
@@ -713,7 +776,7 @@ function Step3({
         <View style={s.witnessInputRow}>
           <View style={{ flex: 1 }}>
             <FloatingLabelInput
-              label="სახელი, გვარი"
+              label={t('incidents.fieldWitnessName')}
               value={witnessInput}
               onChangeText={setWitnessInput}
               onSubmitEditing={onAddWitness}
@@ -724,7 +787,7 @@ function Step3({
           <IconButton
             icon={Plus}
             onPress={onAddWitness}
-            a11yLabel="მოწმის დამატება"
+            a11yLabel={t('incidents.addWitnessA11y')}
             variant="outline"
             shape="square"
             size="xl"
@@ -734,7 +797,7 @@ function Step3({
 
       {/* Photos */}
       <View style={{ gap: 8 }}>
-        <Text style={s.fieldLabel}>ფოტო მასალა</Text>
+        <Text style={s.fieldLabel}>{t('incidents.sectionPhotos')}</Text>
         {form.photos.length > 0 && (
           <View style={s.photoGrid}>
             {form.photos.map((photo, i) => (
@@ -758,7 +821,7 @@ function Step3({
         )}
         <Pressable onPress={onAddPhoto} style={s.addPhotoBtn}>
           <Camera size={18} color={theme.colors.accent} strokeWidth={1.5} />
-          <Text style={s.addPhotoBtnText}>ფოტოს დამატება</Text>
+          <Text style={s.addPhotoBtnText}>{t('incidents.addPhoto')}</Text>
         </Pressable>
       </View>
     </View>
@@ -768,7 +831,7 @@ function Step3({
 // ─── Step 4 - summary + sign ──────────────────────────────────────────────────
 
 function Step4({
-  form, inspectorName, sigPath, project, theme, isDark, s,
+  form, inspectorName, sigPath, project, theme, isDark, s, t,
 }: {
   form: FormData;
   inspectorName: string;
@@ -777,6 +840,7 @@ function Step4({
   theme: any;
   isDark: boolean;
   s: ReturnType<typeof makeStyles>;
+  t: (key: string) => string;
 }) {
   const [sigDisplayUrl, setSigDisplayUrl] = useState<string | null>(null);
 
@@ -791,7 +855,7 @@ function Step4({
 
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>ხელმოწერა და დასრულება</Text>
+      <Text style={s.stepTitle}>{t('incidents.step4Title')}</Text>
 
       {/* Summary card */}
       <View style={s.summaryCard}>
@@ -805,34 +869,34 @@ function Step4({
         )}
 
         <SummaryRow
-          label="პროექტი"
+          label={t('common.project')}
           value={project?.name ?? '-'}
           theme={theme}
           s={s}
         />
         {form.type !== 'nearmiss' && form.injuredName ? (
           <SummaryRow
-            label="დაზარალებული"
+            label={t('incidents.summaryInjured')}
             value={`${form.injuredName}${form.injuredRole ? ` - ${form.injuredRole}` : ''}`}
             theme={theme}
             s={s}
           />
         ) : null}
         <SummaryRow
-          label="თარიღი"
+          label={t('common.date')}
           value={formatShortDateTime(form.dateTime.toISOString())}
           theme={theme}
           s={s}
         />
         <SummaryRow
-          label="ადგილი"
+          label={t('incidents.fieldLocation')}
           value={form.location || '-'}
           theme={theme}
           s={s}
         />
         {form.witnesses.length > 0 && (
           <SummaryRow
-            label="მოწმეები"
+            label={t('incidents.sectionWitnesses')}
             value={form.witnesses.join(', ')}
             theme={theme}
             s={s}
@@ -840,8 +904,8 @@ function Step4({
         )}
         {form.photos.length > 0 && (
           <SummaryRow
-            label="ფოტოები"
-            value={`${form.photos.length} ფოტო`}
+            label={t('incidents.summaryPhotos')}
+            value={`${form.photos.length} ${t('incidents.photosUnit')}`}
             theme={theme}
             s={s}
           />
@@ -862,12 +926,12 @@ function Step4({
           )}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={s.inspectorName}>{inspectorName || 'სპეციალისტი'}</Text>
-          <Text style={s.inspectorRole}>შრომის უსაფრთხოების სპეციალისტი</Text>
+          <Text style={s.inspectorName}>{inspectorName || t('incidents.specialistFallback')}</Text>
+          <Text style={s.inspectorRole}>{t('incidents.inspectorRole')}</Text>
         </View>
         <View style={s.signedChip}>
           <Check size={13} color={theme.colors.semantic.success} strokeWidth={1.5} />
-          <Text style={s.signedChipText}>ხელმოწერილია ✓</Text>
+          <Text style={s.signedChipText}>{t('incidents.signedChip')}</Text>
         </View>
       </View>
 
@@ -875,8 +939,7 @@ function Step4({
         <View style={s.warningBanner}>
           <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
           <Text style={s.warningBannerText}>
-            კანონის მოთხოვნით შრომის შემოწმების აქტი უნდა ეცნობოს 24 საათის
-            განმავლობაში
+            {t('incidents.labourNoticeWarning')}
           </Text>
         </View>
       )}

@@ -142,6 +142,7 @@ export const fallProtectionApi = {
   listByProject: base.listByProject,
   patch: base.patch,
   complete: base.complete,
+  reopen: base.reopen,
   deletePhoto: base.deletePhoto,
   uploadPhoto: (inspectionId: string, deviceIdx: number, itemId: number, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/device-${deviceIdx}/${itemId}`, photoUri),

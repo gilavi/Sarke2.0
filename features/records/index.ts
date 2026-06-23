@@ -11,6 +11,7 @@ export { ReportCard, REPORT_CARD_WIDTH } from './ReportCard';
 export { ReportCardRail } from './ReportCardRail';
 export { ReportCardGrid } from './ReportCardGrid';
 export { useReportCoverUri } from './useReportCover';
+export { useReportDelete } from './useReportDelete';
 export { BriefingTopicAvatar } from './BriefingTopicAvatar';
 export {
   RECORD_TYPES,

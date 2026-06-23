@@ -169,6 +169,7 @@ export const liftingAccessoriesApi = {
   listByProject: base.listByProject,
   patch: base.patch,
   complete: base.complete,
+  reopen: base.reopen,
   deletePhoto: base.deletePhoto,
   uploadPhoto: (inspectionId: string, itemId: number | 'summary', photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),

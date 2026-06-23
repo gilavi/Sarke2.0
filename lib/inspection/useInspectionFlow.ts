@@ -23,6 +23,7 @@ import { projectsApi } from '../services';
 import { recordCompletion } from '../calendarSchedule';
 import { queryClient } from '../queryClient';
 import { invalidateRecordLists } from '../apiHooks';
+import { reopenDocument } from '../documents/reopen';
 import { friendlyError } from '../errorMap';
 import { haptic } from '../haptics';
 import { generateAndSharePdf, PdfLimitReachedError } from '../pdfOpen';
@@ -107,6 +108,8 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   /** Debounced autosave for callers that mutate via setInspection themselves. */
   scheduleSave: (insp: T) => void;
   complete: () => Promise<boolean>;
+  /** Reopen a completed inspection back to draft (flips the view to its wizard). */
+  reopen: () => Promise<boolean>;
   handlePdf: (signatures?: SignaturesSnapshot | null) => Promise<void>;
   buildPreview: (signatures?: SignaturesSnapshot | null) => Promise<void>;
   /** Clear the persisted step and navigate back (used when leaving from step 1). */
@@ -281,6 +284,30 @@ export function useInspectionFlow<T extends BaseInspection>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [persistKey, toast]);
 
+  // ── Reopen (edit a completed inspection) ─────────────────────────────────────
+  // Equipment "completed" lives on the <type>_inspections row (no freeze
+  // trigger), so reopenDocument flips it to draft via the per-type service.
+  // The optimistic local flip re-renders the screen into its wizard with the
+  // already-loaded data; re-completing regenerates the PDF + re-signs.
+  const reopen = useCallback(async (): Promise<boolean> => {
+    const insp = inspectionRef.current;
+    if (!insp) return false;
+    try {
+      await reopenDocument(
+        { kind: 'equipmentInspection', id: insp.id, source: schema.category },
+        queryClient,
+      );
+      setInspection(prev => (prev ? ({ ...prev, status: 'draft', completedAt: null } as T) : prev));
+      setStep(cfg.firstStep);
+      haptic.medium();
+      return true;
+    } catch (e) {
+      toast.error(friendlyError(e, 'რედაქტირება ვერ მოხერხდა'));
+      return false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schema.category, toast]);
+
   // ── Signatures snapshot → PDF section data ───────────────────────────────────
   // The result screen owns useSignaturesState and passes its snapshot down
   // through handlePdf/buildPreview. No global state hop.
@@ -388,6 +415,6 @@ export function useInspectionFlow<T extends BaseInspection>(
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked: !!pdfUsage?.isLocked,
     update, updateMany, scheduleSave,
-    complete, handlePdf, buildPreview, exit,
+    complete, reopen, handlePdf, buildPreview, exit,
   };
 }

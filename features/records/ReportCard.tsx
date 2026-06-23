@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { FileText, Layers } from 'lucide-react-native';
+import { FileText, Layers, Trash2 } from 'lucide-react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { IconButton } from '../../components/primitives/IconButton';
 import { PressBounce } from '../../components/animations/PressBounce';
 import { useTheme, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -23,10 +24,17 @@ export const REPORT_CARD_WIDTH = 156;
 export function ReportCard({
   report,
   onPress,
+  onDelete,
   width = REPORT_CARD_WIDTH,
 }: {
   report: Report;
   onPress: () => void;
+  /**
+   * When provided, the card becomes deletable: long-pressing it and the small
+   * trash button overlaid on the cover both fire this. Omit on read-only
+   * surfaces. Caller owns the confirm (see {@link useReportDelete}).
+   */
+  onDelete?: () => void;
   width?: number;
 }) {
   const { theme } = useTheme();
@@ -44,7 +52,8 @@ export function ReportCard({
       hapticOnPress="light"
       style={[styles.card, { width }]}
       onPress={onPress}
-      {...a11y(report.title, 'რეპორტის ნახვა', 'button')}
+      onLongPress={onDelete}
+      {...a11y(report.title, onDelete ? 'რეპორტის ნახვა · ხანგრძლივი დაჭერა წასაშლელად' : 'რეპორტის ნახვა', 'button')}
     >
       <View style={[styles.cover, { height: coverHeight }]}>
         {uri ? (
@@ -72,6 +81,16 @@ export function ReportCard({
             <Layers size={11} color={theme.colors.white} strokeWidth={2} />
             <Text style={styles.countChipText}>{slideCount}</Text>
           </View>
+        ) : null}
+        {onDelete ? (
+          <IconButton
+            icon={Trash2}
+            onPress={onDelete}
+            variant="overlay"
+            size="sm"
+            a11yLabel="რეპორტის წაშლა"
+            style={styles.deleteBtn}
+          />
         ) : null}
       </View>
       <Text style={styles.title} numberOfLines={2}>{report.title}</Text>
@@ -118,6 +137,11 @@ function makeStyles(theme: Theme) {
       fontSize: 10,
       lineHeight: 13,
       color: theme.colors.inkSoft,
+    },
+    deleteBtn: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
     },
     countChip: {
       position: 'absolute',

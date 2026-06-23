@@ -27,7 +27,7 @@ import {
   View,
 } from 'react-native';
 import { Stack, useFocusEffect } from 'expo-router';
-import { CircleAlert, Pencil, Lock, Share2 } from 'lucide-react-native';
+import { CircleAlert, Pencil, Lock, Share2, SquarePen } from 'lucide-react-native';
 import WebView from 'react-native-webview';
 import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
@@ -66,6 +66,12 @@ type Props = {
   /** Inspection creator's full name, pulled from the user profile by the
    *  parent. Shown above the signature canvas; never editable here. */
   creatorName: string;
+  /**
+   * When provided, a header "edit" action is shown. The parent reopens the
+   * completed inspection back to draft (which flips this view back to its
+   * wizard); see lib/documents/reopen.ts + useInspectionFlow.reopen.
+   */
+  onEdit?: () => void;
   onLimitNoticeClose: () => void;
   /** Tap handler for the accent (orange) share button. Receives the current
    *  signatures snapshot; the parent passes it into its PDF builder. */
@@ -88,6 +94,7 @@ export function InspectionResultView(props: Props) {
     downloading,
     limitNoticeVisible,
     creatorName,
+    onEdit,
     onLimitNoticeClose,
     onDownloadPdf,
     onSheetSaved,
@@ -129,6 +136,18 @@ export function InspectionResultView(props: Props) {
           title: templateName ?? 'შემოწმების აქტი',
           headerBackVisible: false,
           headerLeft: () => <HeaderBackButton />,
+          headerRight: onEdit
+            ? () => (
+                <Pressable
+                  onPress={onEdit}
+                  hitSlop={12}
+                  accessibilityLabel="რედაქტირება"
+                  style={{ paddingHorizontal: 4 }}
+                >
+                  <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
+                </Pressable>
+              )
+            : undefined,
           headerShadowVisible: false,
           headerStyle: { backgroundColor: theme.colors.background },
           headerTitleStyle: { color: theme.colors.ink },

@@ -35,18 +35,20 @@ export interface InspectionRegistryEntry {
   schema: InspectionSchema<any>;
   /** Create a new inspection record; returns at least its id. */
   create: (args: { projectId: string; templateId: string; inspectorName?: string }) => Promise<{ id: string }>;
+  /** Reopen a completed inspection back to draft for editing (see lib/documents/reopen.ts). */
+  reopen: (id: string) => Promise<void>;
 }
 
 const ENTRIES: InspectionRegistryEntry[] = [
-  { schema: bobcatSchema, create: bobcatApi.create },
-  { schema: excavatorSchema, create: excavatorApi.create },
-  { schema: forkliftSchema, create: forkliftApi.create },
-  { schema: generalEquipmentSchema, create: generalEquipmentApi.create },
-  { schema: cargoPlatformSchema, create: cargoPlatformApi.create },
-  { schema: safetyNetSchema, create: safetyNetApi.create },
-  { schema: mobileLadderSchema, create: mobileLadderApi.create },
-  { schema: fallProtectionSchema, create: fallProtectionApi.create },
-  { schema: liftingAccessoriesSchema, create: liftingAccessoriesApi.create },
+  { schema: bobcatSchema, create: bobcatApi.create, reopen: bobcatApi.reopen },
+  { schema: excavatorSchema, create: excavatorApi.create, reopen: excavatorApi.reopen },
+  { schema: forkliftSchema, create: forkliftApi.create, reopen: forkliftApi.reopen },
+  { schema: generalEquipmentSchema, create: generalEquipmentApi.create, reopen: generalEquipmentApi.reopen },
+  { schema: cargoPlatformSchema, create: cargoPlatformApi.create, reopen: cargoPlatformApi.reopen },
+  { schema: safetyNetSchema, create: safetyNetApi.create, reopen: safetyNetApi.reopen },
+  { schema: mobileLadderSchema, create: mobileLadderApi.create, reopen: mobileLadderApi.reopen },
+  { schema: fallProtectionSchema, create: fallProtectionApi.create, reopen: fallProtectionApi.reopen },
+  { schema: liftingAccessoriesSchema, create: liftingAccessoriesApi.create, reopen: liftingAccessoriesApi.reopen },
 ];
 
 export const inspectionRegistry: Record<string, InspectionRegistryEntry> = Object.fromEntries(
