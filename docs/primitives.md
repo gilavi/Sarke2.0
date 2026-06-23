@@ -30,6 +30,17 @@ One component: [`components/ui/Selector.tsx`](../components/ui/Selector.tsx) —
 
 **Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated. Now built on `Selector`: `IdentificationGrid` (3 inline selectors), `TopicSelector`, `ProjectPickerStep`, `SlingTypeSheet`. `CustomDropdown` still owns the sheet-trigger case and shares `SelectorOption`.
 
+## Step & sub-item transitions
+
+Two owners, by altitude — don't reinvent a slide/fade for either case:
+
+| Use case | Owner |
+|----------|-------|
+| **Top-level wizard step** change (info → registry → checklist …) | [`components/wizard/WizardStepTransition.tsx`](../components/wizard/WizardStepTransition.tsx) — caller passes `direction` + `animate` (the wizard/flow state owns them). Used by `InspectionShell` and the scaffold wizard. |
+| **Sub-item / chip-nav body** change (fall-protection device N1→N2, harness row, briefing signer) | [`components/inspection-parts/ChipSwitchTransition.tsx`](../components/inspection-parts/ChipSwitchTransition.tsx) — `<ChipSwitchTransition activeKey={index} mode="slide\|fade">{body}</ChipSwitchTransition>`. Tracks its own direction from the key delta; first mount doesn't animate (so it nests cleanly inside a `WizardStepTransition`). |
+
+`ChipSwitchTransition` exists because switching `ChipNavStrip` chips used to swap the body instantly, so users didn't register that they'd navigated. Pair them: the strip (`ChipNavStrip`, which also auto-scrolls the active chip into view and grows it ~6% via an active-scale spring) renders **above** the transition; the per-item body is **inside** it; both get the same active index. Use `mode="fade"` for signature canvases / WebViews (a horizontal shift would disrupt them), `mode="slide"` (default) for checklist/conclusion bodies. Both honour reduce-motion (→ cross-fade). **Don't** wrap the chip strip itself in the transition (it must stay put), and **don't** add a third slide helper — fix one of these two.
+
 ## Pull-to-refresh
 
 One component: [`components/primitives/RefreshControl.tsx`](../components/primitives/RefreshControl.tsx), exported from `components/primitives`.

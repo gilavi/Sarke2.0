@@ -3,10 +3,11 @@
 // Each chip shows a status dot + label and highlights the active item; tapping
 // jumps to it. Originated as the fall-protection device tab strip, extracted so
 // other flows can reuse the same look + behaviour.
+import { useEffect, useRef } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
-import { a11y } from '../../lib/accessibility';
+import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
 import { NavChip } from './NavChip';
 
 export type ChipNavState = 'pending' | 'active' | 'done' | 'problem' | 'warning' | 'skipped';
@@ -73,14 +74,33 @@ export interface ChipNavStripProps {
 
 export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status', dotMode = 'color' }: ChipNavStripProps) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const styles = getStyles(theme);
   const neutral = tone === 'neutral';
+
+  // Keep the active chip scrolled into view so jumping to an off-screen item
+  // visibly moves the strip - reinforcing that navigation happened rather than
+  // leaving the user wondering whether anything changed.
+  const scrollRef = useRef<ScrollView>(null);
+  const offsets = useRef<number[]>([]);
+  const widths = useRef<number[]>([]);
+  const viewport = useRef(0);
+  useEffect(() => {
+    const x = offsets.current[activeIndex];
+    const w = widths.current[activeIndex];
+    if (x == null || w == null || viewport.current === 0) return;
+    const target = Math.max(0, x + w / 2 - viewport.current / 2);
+    scrollRef.current?.scrollTo({ x: target, animated: !reduceMotion });
+  }, [activeIndex, reduceMotion]);
+
   return (
     <ScrollView
+      ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.strip}
       style={styles.wrap}
+      onLayout={e => { viewport.current = e.nativeEvent.layout.width; }}
     >
       {items.map((item, idx) => {
         const isActive = idx === activeIndex;
@@ -106,9 +126,16 @@ export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status', do
             borderColor={borderColor}
             activeBg={activeBg}
             labelColor={labelColor}
-            dotStyle={dotMode === 'color' ? { backgroundColor: dotColor } : monoDot(item.state, theme, isActive)}
+            // Color mode tweens the dot fill (status changes read as gradual);
+            // mono/check pass a static ring/checkmark instead.
+            dotColor={dotMode === 'color' ? dotColor : undefined}
+            dotStyle={dotMode === 'color' ? undefined : monoDot(item.state, theme, isActive)}
             showCheck={showCheck}
             onPress={() => { haptic.light(); onSelect(idx); }}
+            onLayout={e => {
+              offsets.current[idx] = e.nativeEvent.layout.x;
+              widths.current[idx] = e.nativeEvent.layout.width;
+            }}
             styles={styles}
             theme={theme}
             a11yProps={a11y(item.label, item.a11yHint ?? item.label, 'tab')}
@@ -125,28 +152,28 @@ export function getStyles(theme: Theme) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,
-      maxHeight: 52,
+      maxHeight: 68,
     },
     strip: {
       flexDirection: 'row',
-      paddingHorizontal: 12,
-      gap: 6,
+      paddingHorizontal: 14,
+      gap: 8,
       alignItems: 'center',
-      paddingVertical: 8,
+      paddingVertical: 10,
     },
     tab: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 20,
+      gap: 7,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderRadius: 22,
       borderWidth: 1.5,
       borderColor: theme.colors.hairline,
       backgroundColor: theme.colors.card,
     },
-    dot: { width: 7, height: 7, borderRadius: 3.5 },
+    dot: { width: 9, height: 9, borderRadius: 4.5 },
     check: { marginRight: -1 },
-    label: { fontSize: 13, fontWeight: '600', color: theme.colors.inkSoft },
+    label: { fontSize: 15, fontWeight: '600', color: theme.colors.inkSoft },
   });
 }

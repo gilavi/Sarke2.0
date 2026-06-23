@@ -11,8 +11,20 @@ renamed in Phase 1 of the refactor to distinguish from
   that step through repeated indexed sub-items (fall-protection devices,
   harnesses). Props: `items` (`{key,label,state}[]` where state is
   `pending|active|done|problem|warning`), `activeIndex`, `onSelect`.
-  Used by `app/inspections/fall-protection` and
-  `components/harness-list/HarnessListFlow`.
+  Used by `app/inspections/fall-protection`,
+  `components/harness-list/HarnessListFlow`, and the briefing signing
+  route. Auto-scrolls the active chip into view on change (so an
+  off-screen jump visibly moves the strip).
+- `ChipSwitchTransition` — wraps the per-sub-item **body** of a
+  chip-navigated step so it slides+fades when the active chip changes
+  (the incoming body slides in directionally, the outgoing one fades).
+  This is the fix for "switching N1→N2→N3 was instant, so users didn't
+  notice they'd navigated." Props: `activeKey` (re-key trigger, pass the
+  active index for auto direction), `mode` (`'slide'` default, `'fade'`
+  for signature canvases). First mount doesn't animate (so it layers
+  cleanly under an outer step transition); honours reduce-motion.
+  Sibling of `components/wizard/WizardStepTransition` (top-level steps) —
+  see `docs/primitives.md`.
 - `ChecklistItemRow` — **canonical checklist row** for any "several
   items on one page" list: label + inline help `?` + a cluster of
   monochrome `StatusChip`s (2–4 options incl. N/A). Neutral by default,
@@ -59,8 +71,15 @@ values; the parent computes per-chip colors and passes them down).
   `inspection-steps` is the big wizard step shells. Don't mix the
   two — keep step shells in `inspection-steps/`, atoms here.
 - `ChipNavStrip` chips carry the canonical press squish ([`PressBounce`](../animations/PressBounce.tsx)
-  via `NavChip`) + a 150ms pill border/fill tween; the `done` checkmark springs in via
-  [`useSelectionPop`](../animations/useSelectionPop.ts). The status dot stays instant. Honours reduce-motion.
+  via `NavChip`) + a 150ms pill border/fill tween, a gentle active-scale spring
+  (the active chip sits ~6% larger so "where am I" is legible and a switch shows a
+  grow/shrink), and a 250ms status-dot color tween (color `dotMode` only); the
+  `done` checkmark springs in via [`useSelectionPop`](../animations/useSelectionPop.ts).
+  Honours reduce-motion.
+- Keep the strip and the body transition separate: `ChipNavStrip` is the chips,
+  `ChipSwitchTransition` wraps the body. The strip is rendered ABOVE the
+  transition (it must not slide with the body). Pass the same active index to
+  both (`activeIndex` / `activeKey`).
 
 ## Canonical helpers used
 - `lib/theme`, `lib/accessibility`.

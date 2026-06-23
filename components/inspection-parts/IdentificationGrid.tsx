@@ -1,11 +1,8 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { A11yText as Text } from '../primitives/A11yText';
+import { StyleSheet, View } from 'react-native';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { Selector, type SelectorOption } from '../ui/Selector';
 import { useTheme, type Theme } from '../../lib/theme';
-import { haptic } from '../../lib/haptics';
-import { a11y } from '../../lib/accessibility';
 
 export interface IdentificationField {
   label: string;
@@ -20,10 +17,6 @@ export interface IdentificationField {
   isProblematic?: boolean;
   /** Amber indicator when true (caller computes, e.g., partial/warning state) */
   isWarning?: boolean;
-  /** Whether this field's value is currently unknown (requires allowUnknown on the grid) */
-  unknown?: boolean;
-  /** Called when the "მონაცემი ვერ დგინდება" checkbox is toggled */
-  onUnknownChange?: (v: boolean) => void;
   // ── Multi-select (type='chips' only) ───────────────────────────────────────
   /** Allow multiple chips to be toggled simultaneously */
   multiSelect?: boolean;
@@ -42,8 +35,6 @@ export interface IdentificationField {
 export interface IdentificationGridProps {
   fields: IdentificationField[];
   columns?: 1 | 2;
-  /** Show a "მონაცემი ვერ დგინდება" checkbox beneath each text/number field */
-  allowUnknown?: boolean;
 }
 
 /** Build canonical Selector options from the parallel options/optionLabels arrays. */
@@ -56,7 +47,6 @@ function toOptions(field: IdentificationField): SelectorOption[] {
 export function IdentificationGrid({
   fields,
   columns = 2,
-  allowUnknown = false,
 }: IdentificationGridProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -106,26 +96,11 @@ export function IdentificationGrid({
               <View style={styles.textFieldWrap}>
                 <FloatingLabelInput
                   label={field.label}
-                  value={field.unknown ? '' : field.value}
+                  value={field.value}
                   onChangeText={field.onChange ?? (() => {})}
                   keyboardType={field.type === 'number' ? 'decimal-pad' : 'default'}
-                  editable={!field.unknown && !!field.onChange}
+                  editable={!!field.onChange}
                 />
-                {allowUnknown && field.onUnknownChange ? (
-                  <Pressable
-                    style={styles.unknownRow}
-                    onPress={() => {
-                      haptic.light();
-                      field.onUnknownChange?.(!field.unknown);
-                    }}
-                    {...a11y('მონაცემი ვერ დგინდება', undefined, 'checkbox')}
-                  >
-                    <View style={[styles.checkbox, field.unknown && styles.checkboxActive]}>
-                      {field.unknown && <View style={styles.checkboxInner} />}
-                    </View>
-                    <Text style={styles.unknownLabel}>მონაცემი ვერ დგინდება</Text>
-                  </Pressable>
-                ) : null}
               </View>
             )}
           </View>
@@ -148,33 +123,5 @@ function getstyles(theme: Theme) {
     },
     textFieldWrap: { gap: 2 },
     multiWrap: { gap: 12 },
-    unknownRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingVertical: 4,
-      paddingHorizontal: 2,
-    },
-    checkbox: {
-      width: 15,
-      height: 15,
-      borderRadius: 3,
-      borderWidth: 1.5,
-      borderColor: theme.colors.inkSoft,
-      backgroundColor: 'transparent',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    checkboxActive: {
-      backgroundColor: theme.colors.accent,
-      borderColor: theme.colors.accent,
-    },
-    checkboxInner: {
-      width: 7,
-      height: 7,
-      borderRadius: 1,
-      backgroundColor: theme.colors.white,
-    },
-    unknownLabel: { fontSize: 11, color: theme.colors.inkSoft },
   });
 }

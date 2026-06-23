@@ -1011,16 +1011,17 @@
     "pdfDone": "Done ✓"
   },
   "slingsId": {
-    "typeSectionHeader": "Type",
+    "typeSectionHeader": "Type / Kind",
     "identificationSection": "Identification",
     "characteristicsSection": "Characteristics",
     "markingSection": "Marking",
+    "markingPlaceholder": "Select marking",
     "nextInspectionSection": "Next inspection",
-    "serialIdLabel": "Serial / ID",
+    "serialIdLabel": "Serial number / ID",
     "manufacturerLabel": "Manufacturer",
-    "yearMadeLabel": "Year made",
-    "wllLabel": "WLL (kg)",
-    "unitSafetyLabel": "Unit safety",
+    "yearMadeLabel": "Year of manufacture",
+    "wllLabel": "Working load limit, WLL (kg)",
+    "unitSafetyLabel": "Unit count",
     "typeRequired": "Choose type"
   },
   "breathalyzer": {

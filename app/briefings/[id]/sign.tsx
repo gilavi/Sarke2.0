@@ -8,6 +8,7 @@ import { CircleAlert, RefreshCw } from 'lucide-react-native';
 import { Button } from '../../../components/ui';
 import { FlowHeader } from '../../../components/FlowHeader';
 import { ChipNavStrip } from '../../../components/inspection-parts/ChipNavStrip';
+import { ChipSwitchTransition } from '../../../components/inspection-parts/ChipSwitchTransition';
 import { SignatureStage } from '../../../components/briefings/SignatureStage';
 import { useBriefingSigning } from '../../../components/briefings/useBriefingSigning';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
@@ -108,17 +109,19 @@ export default function BriefingSignScreen() {
         <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
         {header}
         {chipStrip}
-        <SignatureStage
-          eyebrow={t('briefings.inspectorEyebrow')}
-          name={s.briefing.inspectorName || t('briefings.inspectorFallbackName')}
-          caption={t('briefings.inspectorSignPrompt')}
-          canvasKey="inspector"
-          canvasRef={s.canvasRef}
-          hasStroke={s.hasStroke}
-          onBegin={s.onStroke}
-          onEnd={s.onStroke}
-          onOK={s.handleOK}
-        />
+        <ChipSwitchTransition activeKey={s.activeChipIndex} mode="fade">
+          <SignatureStage
+            eyebrow={t('briefings.inspectorEyebrow')}
+            name={s.briefing.inspectorName || t('briefings.inspectorFallbackName')}
+            caption={t('briefings.inspectorSignPrompt')}
+            canvasKey="inspector"
+            canvasRef={s.canvasRef}
+            hasStroke={s.hasStroke}
+            onBegin={s.onStroke}
+            onEnd={s.onStroke}
+            onOK={s.handleOK}
+          />
+        </ChipSwitchTransition>
         {attempted && !s.hasStroke && (
           <Text style={styles.signatureError}>{t('briefings.signError')}</Text>
         )}
@@ -147,17 +150,19 @@ export default function BriefingSignScreen() {
       <Stack.Screen options={{ headerShown: false, gestureEnabled: false }} />
       {header}
       {chipStrip}
-      <SignatureStage
-        eyebrow={t('briefings.workerEyebrow')}
-        name={s.workerName}
-        caption={`${s.currentIdx + 1} / ${s.totalWorkers}${s.alreadySigned ? ` · ${t('briefings.alreadySigned')}` : ''}`}
-        canvasKey={s.currentIdx}
-        canvasRef={s.canvasRef}
-        hasStroke={s.hasStroke}
-        onBegin={s.onStroke}
-        onEnd={s.onStroke}
-        onOK={s.handleOK}
-      />
+      <ChipSwitchTransition activeKey={s.activeChipIndex} mode="fade">
+        <SignatureStage
+          eyebrow={t('briefings.workerEyebrow')}
+          name={s.workerName}
+          caption={`${s.currentIdx + 1} / ${s.totalWorkers}${s.alreadySigned ? ` · ${t('briefings.alreadySigned')}` : ''}`}
+          canvasKey={s.currentIdx}
+          canvasRef={s.canvasRef}
+          hasStroke={s.hasStroke}
+          onBegin={s.onStroke}
+          onEnd={s.onStroke}
+          onOK={s.handleOK}
+        />
+      </ChipSwitchTransition>
       {attempted && !s.hasStroke && (
         <Text style={styles.signatureError}>{t('briefings.signError')}</Text>
       )}

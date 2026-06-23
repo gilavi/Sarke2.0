@@ -13,9 +13,7 @@
  * Header/footer note: the previous builder rendered "next inspection date" and a
  * regulation badge inside its own bespoke header, and the EN-standards line in
  * its own footer. The shared engine owns the header/footer now, so the
- * regulation/standards strings move into header/footer schema fields and
- * `nextInspectionDate` is surfaced as a row in Section I (general info) - the
- * one place body content can carry it without losing the datum.
+ * regulation/standards strings move into header/footer schema fields.
  */
 import { escapeHtml, fmtDate } from '../escape';
 import type { InspectionSchema, PhotoMap } from '../schema';
@@ -241,12 +239,6 @@ function renderGeneralInfo(ins: FallProtectionInspection): string {
     ins.inspectionType === 'primary' ? 'პირველადი' :
     ins.inspectionType === 'secondary' ? 'განმეორებითი' : '-';
 
-  const nextInspRow = ins.nextInspectionDate ? `
-      <div class="info-row">
-        <span class="info-label">მომდევნო შემოწმება</span>
-        <span class="info-value">${fmtDate(ins.nextInspectionDate)}</span>
-      </div>` : '';
-
   return `
   <div class="section">
     <div class="section-title">I - ზოგადი ინფორმაცია / General Information</div>
@@ -270,7 +262,7 @@ function renderGeneralInfo(ins: FallProtectionInspection): string {
       <div class="info-row">
         <span class="info-label">შემოწმების სახე</span>
         <span class="info-value">${inspTypeLabel}</span>
-      </div>${nextInspRow}
+      </div>
     </div>
 
     <table class="reg-table" style="margin-top:16px">

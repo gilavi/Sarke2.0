@@ -109,8 +109,7 @@ const EXTRA_CSS = `
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function unknownOrValue(unknown: boolean, value: string | number | null): string {
-  if (unknown) return '<span class="pill pill-unknown">მონაცემი ვერ დგინდება</span>';
+function valOrDash(value: string | number | null): string {
   const v = value != null ? String(value) : '';
   return escapeHtml(v) || '-';
 }
@@ -150,15 +149,13 @@ function renderSectionI(insp: MobileLadderInspection): string {
 }
 
 function renderSectionII(insp: MobileLadderInspection): string {
-  const nextDateVal = insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '-';
   return `
     <div class="section-title">II - კიბის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>სახეობა / Type</td><td>${unknownOrValue(insp.ladderTypeUnknown, insp.ladderType)}</td></tr>
-      <tr><td>მწარმოებელი / Model</td><td>${unknownOrValue(insp.modelUnknown, insp.model)}</td></tr>
-      <tr><td>სიმაღლე (მ)</td><td>${unknownOrValue(insp.heightUnknown, insp.heightM != null ? `${insp.heightM} მ` : null)}</td></tr>
-      <tr><td>მაქს. დატვირთვა (კგ)</td><td>${unknownOrValue(insp.maxLoadUnknown, insp.maxLoadKg != null ? `${insp.maxLoadKg} კგ` : null)}</td></tr>
-      <tr><td>მომდევნო შემოწმება</td><td>${nextDateVal}</td></tr>
+      <tr><td>სახეობა / Type</td><td>${valOrDash(insp.ladderType)}</td></tr>
+      <tr><td>მწარმოებელი / Model</td><td>${valOrDash(insp.model)}</td></tr>
+      <tr><td>სიმაღლე (მ)</td><td>${valOrDash(insp.heightM != null ? `${insp.heightM} მ` : null)}</td></tr>
+      <tr><td>მაქს. დატვირთვა (კგ)</td><td>${valOrDash(insp.maxLoadKg != null ? `${insp.maxLoadKg} კგ` : null)}</td></tr>
     </table>
   `;
 }

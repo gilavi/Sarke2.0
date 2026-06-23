@@ -3,7 +3,6 @@ import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { DateTimeField } from '../../../components/DateTimeField';
 import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
@@ -273,17 +272,11 @@ export default function MobileLadderInspectionScreen() {
       label: 'სახეობა / Type',
       value: inspection.ladderType ?? '',
       onChange: (v: string) => updateIdentification({ ladderType: v || null }),
-      unknown: inspection.ladderTypeUnknown,
-      onUnknownChange: (v: boolean) =>
-        updateIdentification({ ladderTypeUnknown: v, ...(v ? { ladderType: null } : {}) }),
     },
     {
       label: 'მწარმოებელი / Model',
       value: inspection.model ?? '',
       onChange: (v: string) => updateIdentification({ model: v || null }),
-      unknown: inspection.modelUnknown,
-      onUnknownChange: (v: boolean) =>
-        updateIdentification({ modelUnknown: v, ...(v ? { model: null } : {}) }),
     },
     {
       label: 'სიმაღლე (მ)',
@@ -293,9 +286,6 @@ export default function MobileLadderInspectionScreen() {
         const n = parseFloat(v);
         updateIdentification({ heightM: isNaN(n) ? null : n });
       },
-      unknown: inspection.heightUnknown,
-      onUnknownChange: (v: boolean) =>
-        updateIdentification({ heightUnknown: v, ...(v ? { heightM: null } : {}) }),
     },
     {
       label: 'მაქს. დატვირთვა (კგ)',
@@ -305,9 +295,6 @@ export default function MobileLadderInspectionScreen() {
         const n = parseFloat(v);
         updateIdentification({ maxLoadKg: isNaN(n) ? null : n });
       },
-      unknown: inspection.maxLoadUnknown,
-      onUnknownChange: (v: boolean) =>
-        updateIdentification({ maxLoadUnknown: v, ...(v ? { maxLoadKg: null } : {}) }),
     },
   ];
 
@@ -362,23 +349,8 @@ export default function MobileLadderInspectionScreen() {
             >
               <IdentificationGrid
                 fields={identFields}
-                allowUnknown
                 columns={1}
               />
-
-              <View style={styles.nextDateRow}>
-                <Text style={styles.fieldLabel}>მომდევნო შემოწმება</Text>
-                <DateTimeField
-                  label="მომდევნო შემოწმება"
-                  value={
-                    inspection.nextInspectionDate
-                      ? new Date(inspection.nextInspectionDate)
-                      : new Date()
-                  }
-                  onChange={d => update('nextInspectionDate', d.toISOString().slice(0, 10))}
-                  mode="date"
-                />
-              </View>
             </KeyboardAwareScrollView>
           )}
 

@@ -1032,16 +1032,17 @@
     "pdfDone": "დასრულდა ✓"
   },
   "slingsId": {
-    "typeSectionHeader": "ტ-პი / სახ.",
+    "typeSectionHeader": "ტიპი / სახეობა",
     "identificationSection": "იდენტიფიკაცია",
     "characteristicsSection": "მახასიათებლები",
     "markingSection": "მარკირება",
+    "markingPlaceholder": "აირჩიეთ მარკირება",
     "nextInspectionSection": "მომდევნო შემოწმება",
-    "serialIdLabel": "სერ. NN / ID",
+    "serialIdLabel": "სერიული ნომერი / ID",
     "manufacturerLabel": "მწარმოებელი",
-    "yearMadeLabel": "წ. წარმ.",
-    "wllLabel": "WLL (კგ)",
-    "unitSafetyLabel": "ერთ. რ-ბა",
+    "yearMadeLabel": "წარმოების წელი",
+    "wllLabel": "დასაშვები სამუშაო დატვირთვა, WLL (კგ)",
+    "unitSafetyLabel": "ერთეულების რაოდენობა",
     "typeRequired": "აირჩიეთ ტიპი"
   },
   "breathalyzer": {

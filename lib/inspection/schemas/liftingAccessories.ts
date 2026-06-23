@@ -165,8 +165,6 @@ function renderSectionII(insp: LiftingAccessoriesInspection): string {
       }).join('')}</div>`
     : '-';
 
-  const nextDateVal = insp.nextInspectionDate ? fmtDate(insp.nextInspectionDate) : '-';
-
   return `
     <div class="section-title">II - მოწყობილობის იდენტიფიკაცია</div>
     <table class="param-table">
@@ -177,7 +175,6 @@ function renderSectionII(insp: LiftingAccessoriesInspection): string {
       <tr><td>WLL (კგ)</td><td>${escapeHtml(insp.wllKg) || '-'}</td></tr>
       <tr><td>ერთ. რ-ბა</td><td>${escapeHtml(insp.unitCount) || '-'}</td></tr>
       <tr><td>მარკირება</td><td>${markingPill(insp.markingStatus)}</td></tr>
-      <tr><td>მომდ. შემოწ.</td><td>${nextDateVal}</td></tr>
     </table>
   `;
 }

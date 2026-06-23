@@ -15,6 +15,7 @@ import {
   ChecklistItemRow,
   ChecklistLegend,
   ChipNavStrip,
+  ChipSwitchTransition,
   DynamicTable,
   type ChecklistRowOption,
   type ChipNavItem,
@@ -472,6 +473,7 @@ export default function FallProtectionInspectionScreen() {
         {step === CHECKLIST_STEP && inspection.devices.length > 0 && (
           <View style={{ flex: 1 }}>
             {deviceTabs}
+            <ChipSwitchTransition activeKey={safeDeviceIdx}>
             {currentDevice && currentDeviceData && (
               <KeyboardAwareScrollView
                 style={{ flex: 1 }}
@@ -522,6 +524,7 @@ export default function FallProtectionInspectionScreen() {
                 />
               </KeyboardAwareScrollView>
             )}
+            </ChipSwitchTransition>
           </View>
         )}
 
@@ -529,6 +532,7 @@ export default function FallProtectionInspectionScreen() {
         {step === CONCLUSION_STEP && inspection.devices.length > 0 && (
           <View style={{ flex: 1 }}>
             {deviceTabs}
+            <ChipSwitchTransition activeKey={safeDeviceIdx}>
             {currentDevice && currentDeviceData && (
               <ConclusionStep<FPVerdict>
                 showAvatar={false}
@@ -549,6 +553,7 @@ export default function FallProtectionInspectionScreen() {
                 completing={completing}
               />
             )}
+            </ChipSwitchTransition>
           </View>
         )}
 

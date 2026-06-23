@@ -12,6 +12,7 @@ import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { FlowHeader } from '../FlowHeader';
 import { useScaffoldHelpSheet } from '../ScaffoldHelpSheet';
 import { ChipNavStrip, type ChipNavItem } from '../inspection-parts/ChipNavStrip';
+import { ChipSwitchTransition } from '../inspection-parts/ChipSwitchTransition';
 import { ChecklistLegend } from '../inspection-parts/ChecklistLegend';
 import { QuantitySelector } from '../inputs/QuantitySelector';
 import { buildItems, rowLabelsFor, type HarnessItem } from './_shared';
@@ -284,23 +285,25 @@ export function HarnessListFlow(props: HarnessListFlowProps) {
         tone="neutral"
       />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <ChecklistLegend items={LEGEND_KEYS.map(l => ({ icon: l.icon, label: t(l.labelKey) }))} />
-        {items.map(item => (
-          <ChipRow
-            key={item.itemKey}
-            item={item}
-            row={row}
-            state={draftStateOf(item, row)}
-            onSet={handleSet}
-            onHelp={handleHelp}
-          />
-        ))}
-      </ScrollView>
+      <ChipSwitchTransition activeKey={safeRowIdx}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 16, gap: 8, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <ChecklistLegend items={LEGEND_KEYS.map(l => ({ icon: l.icon, label: t(l.labelKey) }))} />
+          {items.map(item => (
+            <ChipRow
+              key={item.itemKey}
+              item={item}
+              row={row}
+              state={draftStateOf(item, row)}
+              onSet={handleSet}
+              onHelp={handleHelp}
+            />
+          ))}
+        </ScrollView>
+      </ChipSwitchTransition>
 
       <View style={[s.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Button

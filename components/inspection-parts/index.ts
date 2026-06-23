@@ -25,6 +25,9 @@ export type { QualDocProps } from './QualDoc';
 export { ChipNavStrip } from './ChipNavStrip';
 export type { ChipNavStripProps, ChipNavItem, ChipNavState } from './ChipNavStrip';
 
+export { ChipSwitchTransition } from './ChipSwitchTransition';
+export type { ChipSwitchTransitionProps } from './ChipSwitchTransition';
+
 export { SlingTypeSheet } from './SlingTypeSheet';
 export type { SlingTypeSheetProps } from './SlingTypeSheet';
 
