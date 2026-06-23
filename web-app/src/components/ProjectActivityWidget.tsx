@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, ChevronRight, Building2 } from 'lucide-react';
 import { ActionIcon } from '@mantine/core';
-import { cn } from '@/lib/utils';
 import { type Project } from '@/lib/data/projects';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
+import StatusBadge from '@/components/StatusBadge';
+import { inspectionTypeMeta, type InspectionType } from '@/lib/inspectionTypeMeta';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
@@ -24,31 +26,12 @@ interface ActivityItem {
   date: string;
   status: string;
   href: string;
-  // The `inspections` table holds harness + the three scaffold variants; each
-  // needs its own emoji/label so a scaffold row doesn't get a harness badge
-  // (BUG-21). Equipment tables keep their own dedicated types.
-  type:
-    | 'harness'
-    | 'xaracho'
-    | 'mobile_scaffold'
-    | 'mobile_scaffold_n3'
-    | 'bobcat'
-    | 'general'
-    | 'excavator'
-    | 'cargo_platform';
+  // Harness + the three scaffold variants share the `inspections` table;
+  // equipment tables keep their own dedicated types. Display meta (label +
+  // illustration) is centralized in lib/inspectionTypeMeta — this used to carry
+  // a divergent emoji/label map that drifted from History's.
+  type: InspectionType;
 }
-
-/** Maps each inspection type to the emoji + pastel bg that mobile InspectionTypeAvatar uses. */
-const ACTIVITY_TYPE_AVATAR: Record<ActivityItem['type'], { emoji: string; bg: string; label: string }> = {
-  harness:            { emoji: '🦺', bg: 'bg-blue-50 dark:bg-blue-950/20',     label: 'შემოწმება' },
-  xaracho:            { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'ფასადის ხარაჩო' },
-  mobile_scaffold:    { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'მობ. ხარაჩო' },
-  mobile_scaffold_n3: { emoji: '🏗️', bg: 'bg-yellow-50 dark:bg-yellow-950/20', label: 'მობ. ხარაჩო N3' },
-  bobcat:             { emoji: '🚜', bg: 'bg-amber-50 dark:bg-amber-950/20',   label: 'ციცხვიანი' },
-  general:            { emoji: '⚙️', bg: 'bg-brand-50 dark:bg-brand-950/20', label: 'ტექ. აღჭ.' },
-  excavator:          { emoji: '🚧', bg: 'bg-orange-50 dark:bg-orange-950/20', label: 'ექსკავ.' },
-  cargo_platform:     { emoji: '📦', bg: 'bg-sky-50 dark:bg-sky-950/20',       label: 'ტვირთის პლატფ.' },
-};
 
 const STALE = 1000 * 60 * 5;
 const PREVIEW = 3;
@@ -129,36 +112,23 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
         <div className="px-4 py-6 text-center text-sm text-neutral-400 dark:text-neutral-500">ჯერ ჩანაწერი არ არის</div>
       ) : (
         <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
-          {visible.map((item) => {
-            const av = ACTIVITY_TYPE_AVATAR[item.type];
-            return (
-              <li key={item.id}>
-                <Link
-                  to={item.href}
-                  className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
-                >
-                  {/* Emoji avatar - matches mobile InspectionTypeAvatar style */}
-                  <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', av.bg)}>
-                    <span className="text-lg leading-none">{av.emoji}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-neutral-800 dark:text-neutral-200">{item.label}</p>
-                    <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                      {av.label} · {item.date ? new Date(item.date).toLocaleDateString('ka-GE') : ''}
-                    </p>
-                  </div>
-                  <span className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                    item.status === 'completed'
-                      ? 'bg-brand-100 text-brand-700 dark:bg-brand-950/40 dark:text-brand-400'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-                  )}>
-                    {item.status === 'completed' ? 'დასრულდა' : 'დრაფტი'}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
+          {visible.map((item) => (
+            <li key={item.id}>
+              <Link
+                to={item.href}
+                className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+              >
+                <InspectionTypeIcon type={item.type} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-neutral-800 dark:text-neutral-200">{item.label}</p>
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
+                    {inspectionTypeMeta(item.type).label} · {item.date ? new Date(item.date).toLocaleDateString('ka-GE') : ''}
+                  </p>
+                </div>
+                <StatusBadge status={item.status} />
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
 

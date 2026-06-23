@@ -6,9 +6,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NumberInput } from '@mantine/core';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
 
 import PhotoUploadZone from '@/components/PhotoUploadZone';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
 import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
 import { inspectionDisplayName } from '@/lib/documentNames';
 import { WizardFrame, WizardSidebar, SegmentedControl } from '@/components/wizard';
@@ -111,9 +111,6 @@ export default function InspectionWizard({
   /* ── Info form state (creation only) ── */
   const [projectId, setProjectId] = useState(defaultProjectId);
   const [templateId, setTemplateId] = useState(preset?.templateId ?? '');
-  const [harnessName, setHarnessName] = useState('');
-  const [department, setDepartment] = useState('');
-  const [inspectorName, setInspectorName] = useState('');
   const [creating, setCreating] = useState(false);
 
   /* ── Created inspection (after step 0) ── */
@@ -187,9 +184,6 @@ export default function InspectionWizard({
       hasResetRef.current = true;
       setProjectId(defaultProjectId);
       setTemplateId(preset?.templateId ?? '');
-      setHarnessName('');
-      setDepartment('');
-      setInspectorName('');
       setCreatedInspection(existingInspection ?? null);
       setQuestions(filterQuestions(initialQuestions));
       setAnswerMap(() => {
@@ -368,9 +362,11 @@ export default function InspectionWizard({
         const created = await createInspection({
           projectId,
           templateId: createTemplateId,
-          harnessName: harnessName.trim() || null,
-          department: department.trim() || null,
-          inspectorName: preset ? (profileName ?? null) : (inspectorName.trim() || null),
+          // Name/department dropped from the create form; inspector defaults to
+          // the signed-in profile. (Per UX cleanup: only project + template.)
+          harnessName: null,
+          department: null,
+          inspectorName: profileName ?? null,
         });
         qc.invalidateQueries({ queryKey: inspectionKeys.lists() });
         const qs = await listQuestions(created.template_id);
@@ -396,7 +392,7 @@ export default function InspectionWizard({
   }, [
     isConclusionStep, isQuestionStep, isInfoStep,
     effectiveInspection, conclusion, conclusionPhotos, currentQuestion, currentAnswer,
-    projectId, templateId, harnessName, department, inspectorName,
+    projectId, templateId,
     answerMutation, qc, totalSteps, preset, profileName,
     onComplete, gridSummary, projectName, onClose, navigate,
     templates, defaultCategory, resolvedTemplateId,
@@ -607,12 +603,6 @@ export default function InspectionWizard({
             setProjectId={setProjectId}
             templateId={templateId}
             setTemplateId={setTemplateId}
-            harnessName={harnessName}
-            setHarnessName={setHarnessName}
-            department={department}
-            setDepartment={setDepartment}
-            inspectorName={inspectorName}
-            setInspectorName={setInspectorName}
             lockTemplate={!!preset || (!!defaultCategory && !!resolvedTemplateId)}
             projects={projects ?? []}
             templates={templates ?? []}
@@ -674,19 +664,13 @@ export default function InspectionWizard({
 function InfoStep({
   projectId, setProjectId,
   templateId, setTemplateId,
-  harnessName, setHarnessName,
-  department, setDepartment,
-  inspectorName, setInspectorName,
   projects, templates,
   lockTemplate = false,
 }: {
   projectId: string; setProjectId: (v: string) => void;
   templateId: string; setTemplateId: (v: string) => void;
-  harnessName: string; setHarnessName: (v: string) => void;
-  department: string; setDepartment: (v: string) => void;
-  inspectorName: string; setInspectorName: (v: string) => void;
   projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
-  templates: { id: string; name: string; is_system?: boolean }[];
+  templates: { id: string; name: string; is_system?: boolean; category?: string | null }[];
   lockTemplate?: boolean;
 }) {
   if (lockTemplate) {
@@ -699,41 +683,63 @@ function InfoStep({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="space-y-2">
         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">პროექტი</p>
         <ProjectCardGrid projects={projects} projectId={projectId} setProjectId={setProjectId} />
       </div>
 
-      <Select
-        label="შაბლონი"
-        required
-        value={templateId}
-        onChange={setTemplateId}
-        options={templates.map((t) => ({ value: t.id, label: t.name + (t.is_system ? ' (სისტემური)' : '') }))}
-        placeholder="აირჩიეთ შაბლონი"
-      />
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          შაბლონი <span className="text-red-500">*</span>
+        </p>
+        <TemplateCardGrid templates={templates} templateId={templateId} setTemplateId={setTemplateId} />
+      </div>
+    </div>
+  );
+}
 
-      <Input
-        label="დასახელება"
-        value={harnessName}
-        onChange={(e) => setHarnessName(e.target.value)}
-        placeholder="მაგ: ხარაჩო A"
-      />
+/* ─── Template card grid (icon selector — replaces the dropdown) ─── */
 
-      <Input
-        label="დეპარტამენტი"
-        value={department}
-        onChange={(e) => setDepartment(e.target.value)}
-        placeholder="დეპარტამენტის დასახელება"
-      />
-
-      <Input
-        label="ინსპექტორის სახელი"
-        value={inspectorName}
-        onChange={(e) => setInspectorName(e.target.value)}
-        placeholder="სახელი გვარი"
-      />
+function TemplateCardGrid({
+  templates, templateId, setTemplateId,
+}: {
+  templates: { id: string; name: string; is_system?: boolean; category?: string | null }[];
+  templateId: string;
+  setTemplateId: (v: string) => void;
+}) {
+  if (templates.length === 0) {
+    return <p className="text-sm text-neutral-400">შაბლონები ვერ მოიძებნა.</p>;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {templates.map((t) => {
+        const selected = templateId === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setTemplateId(t.id)}
+            className="flex cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-colors"
+            style={{
+              border: selected ? '2px solid var(--brand-500)' : '1px solid var(--border-default)',
+              background: selected ? 'var(--brand-50)' : 'var(--bg-card)',
+            }}
+          >
+            <InspectionTypeIcon type={t.category} />
+            <div className="min-w-0">
+              <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                {inspectionDisplayName(t.name)}
+              </div>
+              {t.is_system && (
+                <div className="truncate" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  სისტემური
+                </div>
+              )}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
