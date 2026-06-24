@@ -84,13 +84,22 @@ Deno.serve(async (req) => {
   const db = createClient(url, serviceKey, { auth: { persistSession: false } });
 
   if (body.action === 'load') {
-    const { data, error } = await db
-      .from('ui_strings')
-      .select('key, en, ka, updated_at')
-      .order('key', { ascending: true })
-      .limit(10000);
-    if (error) return json({ error: 'load_failed', detail: error.message }, 500, origin);
-    return json({ rows: data ?? [] }, 200, origin);
+    // Paginate to bypass PostgREST max_rows server cap (default 1000).
+    const PAGE = 1000;
+    let allRows: { key: string; en: string | null; ka: string | null; updated_at: string }[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await db
+        .from('ui_strings')
+        .select('key, en, ka, updated_at')
+        .order('key', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) return json({ error: 'load_failed', detail: error.message }, 500, origin);
+      allRows = allRows.concat(data ?? []);
+      if (!data || data.length < PAGE) break;
+      from += PAGE;
+    }
+    return json({ rows: allRows }, 200, origin);
   }
 
   if (body.action === 'save') {
