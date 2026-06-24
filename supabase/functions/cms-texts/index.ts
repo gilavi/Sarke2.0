@@ -87,7 +87,8 @@ Deno.serve(async (req) => {
     const { data, error } = await db
       .from('ui_strings')
       .select('key, en, ka, updated_at')
-      .order('key', { ascending: true });
+      .order('key', { ascending: true })
+      .limit(10000);
     if (error) return json({ error: 'load_failed', detail: error.message }, 500, origin);
     return json({ rows: data ?? [] }, 200, origin);
   }
