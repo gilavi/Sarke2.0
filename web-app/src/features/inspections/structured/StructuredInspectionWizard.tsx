@@ -55,8 +55,12 @@ export function StructuredInspectionWizard<T extends { id: string; status: strin
   if (!wiz.isNew && !wiz.item) return <EmptyView message="აქტი ვერ მოიძებნა." />;
 
   const item = wiz.item;
-  const total = descriptor.steps.length;
-  const current = descriptor.steps[wiz.step];
+  // The specs/info step is dropped from the equipment act flow — the create
+  // modal already captured the project, so the act goes straight to the
+  // checklist (harness/xaracho never had a specs step).
+  const steps = descriptor.steps[0]?.kind === 'specs' ? descriptor.steps.slice(1) : descriptor.steps;
+  const total = steps.length;
+  const current = steps[wiz.step];
   const isLast = wiz.step === total - 1;
   const itemId = item?.id ?? '';
 
