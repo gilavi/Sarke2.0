@@ -398,6 +398,25 @@ export default function InspectionWizard({
     if (isInfoStep) {
       const createTemplateId = resolvedTemplateId;
       if (!projectId || !createTemplateId) return;
+      // Equipment templates are structured acts: create in their own table and
+      // jump straight to the act — no standalone /<type>/new page.
+      const pickedTpl = (templates ?? []).find((t) => t.id === createTemplateId);
+      const structuredAct = getStructuredActByCategory(pickedTpl?.category);
+      if (structuredAct) {
+        setCreating(true);
+        try {
+          const created = await structuredAct.descriptor.create(
+            structuredAct.descriptor.buildCreateArgs({ projectId, inspectorName: profileName, specValues: {} }),
+          );
+          onClose();
+          navigate(structuredAct.detail(created.id));
+        } catch (e) {
+          toastError(e);
+        } finally {
+          setCreating(false);
+        }
+        return;
+      }
       setCreating(true);
       try {
         const created = await createInspection({
@@ -673,7 +692,6 @@ export default function InspectionWizard({
             setProjectId={setProjectId}
             templateId={templateId}
             setTemplateId={setTemplateId}
-            onStructuredPick={(route) => { onClose(); navigate(route); }}
             lockTemplate={!!preset || (!!defaultCategory && !!resolvedTemplateId)}
             projects={projects ?? []}
             templates={templates ?? []}
@@ -745,13 +763,11 @@ export default function InspectionWizard({
 function InfoStep({
   projectId, setProjectId,
   templateId, setTemplateId,
-  onStructuredPick,
   projects, templates,
   lockTemplate = false,
 }: {
   projectId: string; setProjectId: (v: string) => void;
   templateId: string; setTemplateId: (v: string) => void;
-  onStructuredPick: (newRoute: string) => void;
   projects: { id: string; name: string; logo?: string | null; company_name?: string }[];
   templates: { id: string; name: string; is_system?: boolean; category?: string | null }[];
   lockTemplate?: boolean;
@@ -776,7 +792,7 @@ function InfoStep({
         <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
           შაბლონი <span className="text-red-500">*</span>
         </p>
-        <TemplateCardGrid templates={templates} templateId={templateId} setTemplateId={setTemplateId} onStructuredPick={onStructuredPick} />
+        <TemplateCardGrid templates={templates} templateId={templateId} setTemplateId={setTemplateId} />
       </div>
     </div>
   );
@@ -785,12 +801,11 @@ function InfoStep({
 /* ─── Template card grid (icon selector — replaces the dropdown) ─── */
 
 function TemplateCardGrid({
-  templates, templateId, setTemplateId, onStructuredPick,
+  templates, templateId, setTemplateId,
 }: {
   templates: { id: string; name: string; is_system?: boolean; category?: string | null }[];
   templateId: string;
   setTemplateId: (v: string) => void;
-  onStructuredPick: (newRoute: string) => void;
 }) {
   if (templates.length === 0) {
     return <p className="text-sm text-neutral-400">შაბლონები ვერ მოიძებნა.</p>;
@@ -799,14 +814,11 @@ function TemplateCardGrid({
     <div className="grid grid-cols-2 gap-3">
       {templates.map((t) => {
         const selected = templateId === t.id;
-        // Equipment templates route to their own structured create flow (own
-        // tables/wizard); generic templates select in place for the wizard.
-        const structured = getStructuredActByCategory(t.category);
         return (
           <button
             key={t.id}
             type="button"
-            onClick={() => (structured ? onStructuredPick(structured.newRoute) : setTemplateId(t.id))}
+            onClick={() => setTemplateId(t.id)}
             className="flex cursor-pointer items-center gap-3 rounded-xl p-3 text-left transition-colors"
             style={{
               border: selected ? '2px solid var(--brand-500)' : '1px solid var(--border-default)',
