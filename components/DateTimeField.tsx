@@ -25,6 +25,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, Clock } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
@@ -72,6 +73,7 @@ export function DateTimeField({
   error,
 }: Props) {
   const { theme, isDark } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const styles = makeStyles(theme);
@@ -115,10 +117,10 @@ export function DateTimeField({
 
   const sheetTitle =
     mode === 'datetime'
-      ? 'თარიღი და დრო'
+      ? t('components.dateTimeTitle')
       : sheetPickerMode === 'date'
-      ? 'თარიღი'
-      : 'დრო';
+      ? t('components.dateTitle')
+      : t('components.timeTitle');
 
   return (
     <View style={{ gap: 6 }}>
@@ -135,7 +137,7 @@ export function DateTimeField({
             flex={mode === 'datetime' ? 1.5 : 1}
             accentColor={theme.colors.accent}
             styles={styles}
-            a11yProps={a11y(formatDate(value), 'თარიღის არჩევა', 'button')}
+            a11yProps={a11y(formatDate(value), t('components.selectDateA11y'), 'button')}
           />
         )}
 
@@ -149,7 +151,7 @@ export function DateTimeField({
             flex={1}
             accentColor={theme.colors.accent}
             styles={styles}
-            a11yProps={a11y(formatTime(value), 'დროის არჩევა', 'button')}
+            a11yProps={a11y(formatTime(value), t('components.selectTimeA11y'), 'button')}
           />
         )}
       </View>
@@ -175,15 +177,15 @@ export function DateTimeField({
           >
             {/* Header - Cancel / Title / Confirm */}
             <View style={styles.header}>
-              <Pressable onPress={cancel} hitSlop={16} {...a11y('გაუქმება', '', 'button')}>
-                <Text style={styles.headerAction}>გაუქმება</Text>
+              <Pressable onPress={cancel} hitSlop={16} {...a11y(t('common.cancel'), '', 'button')}>
+                <Text style={styles.headerAction}>{t('common.cancel')}</Text>
               </Pressable>
               <Text style={styles.headerTitle} numberOfLines={1}>
                 {sheetTitle}
               </Text>
-              <Pressable onPress={confirm} hitSlop={16} {...a11y('დადასტურება', '', 'button')}>
+              <Pressable onPress={confirm} hitSlop={16} {...a11y(t('common.confirm'), '', 'button')}>
                 <Text style={[styles.headerAction, styles.headerActionPrimary]}>
-                  დადასტურება
+                  {t('common.confirm')}
                 </Text>
               </Pressable>
             </View>

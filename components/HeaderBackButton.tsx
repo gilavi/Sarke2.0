@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { IconButton } from './primitives/IconButton';
 
 interface Props {
@@ -16,12 +17,13 @@ interface Props {
  */
 export function HeaderBackButton({ onPress, disabled }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <IconButton
       icon={ChevronLeft}
       onPress={onPress ?? (() => router.back())}
-      a11yLabel="უკან"
-      a11yHint="წინა ეკრანზე დაბრუნება"
+      a11yLabel={t('common.back')}
+      a11yHint={t('components.backButtonHint')}
       variant="outline"
       size="lg"
       disabled={disabled}

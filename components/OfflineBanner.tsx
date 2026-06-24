@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useOffline } from '../lib/offline';
 import { useTheme } from '../lib/theme';
 
@@ -11,6 +12,7 @@ interface OfflineBannerProps {
 
 export function OfflineBanner({ variant = 'root' }: OfflineBannerProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { isOnline, netReady } = useOffline();
   const insets = useSafeAreaInsets();
   // Don't show anything until NetInfo has reported at least once - prevents
@@ -18,7 +20,7 @@ export function OfflineBanner({ variant = 'root' }: OfflineBannerProps) {
   if (!netReady) return null;
   if (isOnline) return null;
 
-  const text = 'ხაზგარეშე - ცვლილებები ინახება ლოკალურად';
+  const text = t('components.offlineBanner');
 
   if (variant === 'inline') {
     return (

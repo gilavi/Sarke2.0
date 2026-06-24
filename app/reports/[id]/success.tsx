@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText, Home } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SuccessScreen } from '../../../components/success';
 import { Screen } from '../../../components/ui';
@@ -27,6 +28,7 @@ export default function ReportSuccessScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: report } = useReport(id);
@@ -83,7 +85,7 @@ export default function ReportSuccessScreen() {
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('reports.pdfGenerateFailed')));
     } finally {
       setSharing(false);
     }
@@ -102,10 +104,10 @@ export default function ReportSuccessScreen() {
   return (
     <>
       <SuccessScreen
-        title="რეპორტი მზადაა!"
-        subtitle={`${report.slides.length} სლაიდი · ${report.title}`}
+        title={t('reports.successTitle')}
+        subtitle={t('reports.successSubtitle', { count: report.slides.length, title: report.title })}
         primary={{
-          title: pdfUsage?.isLocked ? '🔒 PDF გენერაცია' : 'PDF გენერაცია',
+          title: pdfUsage?.isLocked ? t('reports.generatePdfLocked') : t('reports.generatePdf'),
           icon: FileText,
           onPress: sharePdf,
           loading: sharing,
@@ -113,15 +115,15 @@ export default function ReportSuccessScreen() {
         actions={[
           {
             icon: Home,
-            title: 'მთავარ გვერდზე',
-            subtitle: 'დაბრუნდი საწყის გვერდზე',
+            title: t('tabs.backToHome'),
+            subtitle: t('reports.backToHomeAction'),
             onPress: () => router.replace('/(tabs)/home' as any),
           },
         ]}
       >
         {slides.length > 0 ? (
           <View style={styles.slidesSection}>
-            <Text style={styles.sectionLabel}>სლაიდები</Text>
+            <Text style={styles.sectionLabel}>{t('reports.slidesSection')}</Text>
             {slides.map((s, i) => (
               <ReportSlidePreview key={s.id} slide={s} index={i} />
             ))}

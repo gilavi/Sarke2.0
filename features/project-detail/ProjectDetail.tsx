@@ -151,7 +151,7 @@ export default function ProjectDetail() {
 
   const startNewInspection = () => {
     if (!id || typeof id !== 'string') {
-      toast.error(t('errors.sessionLost', 'სესია არ მუშაობს, ხელახლა გახსენით პროექტი'));
+      toast.error(t('errors.sessionLost'));
       return;
     }
     const system = templates.filter(tpl => tpl.is_system);
@@ -348,8 +348,9 @@ export default function ProjectDetail() {
       { label: t('projects.quickActionIncident'),   colorKey: 'incident',    onPress: () => id && router.push(`/incidents/new?projectId=${id}` as any) },
       { label: t('projects.quickActionBriefing'), colorKey: 'briefing',    onPress: () => id && router.push(`/briefings/new?projectId=${id}` as any) },
       { label: t('projects.quickActionReport'),     colorKey: 'report',      onPress: () => id && router.push(`/reports/new?projectId=${id}` as any) },
+      { label: t('projects.uploadOptionFile'),       colorKey: 'file',        onPress: uploadFile },
     ],
-    [id, router, startNewInspection, t],
+    [id, router, startNewInspection, uploadFile, t],
   );
 
   // Arch SVG morph + logo entrance animation. See ProjectArchHeader.tsx.
@@ -566,7 +567,7 @@ export default function ProjectDetail() {
           const tpl = templatePickerOptions.find(t => t.id === String(templateId));
           if (!tpl) return;
           if (!id || typeof id !== 'string') {
-            toast.error(t('errors.sessionLost', 'სესია არ მუშაობს, ხელახლა გახსენით პროექტი'));
+            toast.error(t('errors.sessionLost'));
             return;
           }
           await createInspectionForTemplate(id, tpl);

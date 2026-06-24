@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RefreshCw, X } from 'lucide-react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
+import { useTranslation } from 'react-i18next';
 import { Button } from './ui';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
@@ -25,6 +26,7 @@ interface Props {
  */
 export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const ref = useRef<SignatureViewRef>(null);
@@ -85,17 +87,17 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.eyebrow}>ხელმოწერა</Text>
+            <Text style={styles.eyebrow}>{t('common.signature')}</Text>
             <Text style={styles.title} numberOfLines={1}>
-              {personName || 'ხელმომწერი'}
+              {personName || t('common.signer')}
             </Text>
           </View>
           {hasStroke && (
-            <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]} {...a11y('გასუფთავება', 'ხელმოწერის გასუფთავება', 'button')}>
+            <Pressable onPress={handleClear} hitSlop={12} style={[styles.headerBtn, { marginRight: 8 }]} {...a11y(t('a11y.clearSignature'), t('a11y.clearSignatureHint'), 'button')}>
               <RefreshCw size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
           )}
-          <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y('დახურვა', undefined, 'button')}>
+          <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y(t('a11y.close'), undefined, 'button')}>
             <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
           </Pressable>
         </View>
@@ -123,30 +125,30 @@ export function SignatureCanvas({ visible, personName, onCancel, onConfirm }: Pr
           {/* Hint - only shown before first stroke */}
           {!hasStroke && (
             <View pointerEvents="none" style={styles.hintWrap}>
-              <Text style={styles.hintText}>ამ სივრცეში ხელი მოაწერეთ</Text>
+              <Text style={styles.hintText}>{t('components.signatureCanvasSignHereHint')}</Text>
             </View>
           )}
         </View>
 
         {/* Buttons */}
         {attempted && !hasStroke ? (
-          <Text style={styles.errorText}>გთხოვთ, ხელი მოაწეროთ</Text>
+          <Text style={styles.errorText}>{t('components.signatureCanvasDrawPrompt')}</Text>
         ) : null}
         <View style={styles.footer}>
           <Button
-            title="გაუქმება"
+            title={t('common.cancel')}
             variant="secondary"
             size="lg"
             onPress={onCancel}
             style={{ flex: 1 }}
-            {...a11y('გაუქმება', undefined, 'button')}
+            {...a11y(t('common.cancel'), undefined, 'button')}
           />
           <Button
-            title="შენახვა"
+            title={t('common.save')}
             size="lg"
             onPress={handleConfirm}
             style={{ flex: 1.6 }}
-            {...a11y('შენახვა', 'ხელმოწერის შენახვა', 'button')}
+            {...a11y(t('a11y.saveSignature'), t('a11y.saveSignatureHint'), 'button')}
           />
         </View>
       </SafeAreaView>

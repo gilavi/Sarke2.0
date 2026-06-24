@@ -140,7 +140,7 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
           onBlur={() => { focusedRef.current = false; }}
           onSubmitEditing={() => runForward(address)}
           returnKeyType="search"
-          placeholder="მისამართი"
+          placeholder={t('common.address')}
           placeholderTextColor={theme.colors.inkFaint}
           style={styles.searchInput}
         />
@@ -173,13 +173,13 @@ export function MapPicker({ value, onChange, address, onAddressChange, height = 
           <View pointerEvents="none" style={styles.hintOverlay}>
             <View style={styles.hintBubble}>
               <Hand size={14} color={theme.colors.ink} strokeWidth={1.5} />
-              <Text style={styles.hintText}>შეეხეთ რუკას ან მოძებნეთ მისამართი</Text>
+              <Text style={styles.hintText}>{t('components.mapPickerHint')}</Text>
             </View>
           </View>
         ) : (
-          <Pressable onPress={() => onChange(null)} hitSlop={{ top: 7, bottom: 7, left: 0, right: 0 }} style={styles.clearBtn} {...a11y('მდებარეობის გასუფთავება', 'შეეხეთ მონიშნული მდებარეობის წასაშლელად', 'button')}>
+          <Pressable onPress={() => onChange(null)} hitSlop={{ top: 7, bottom: 7, left: 0, right: 0 }} style={styles.clearBtn} {...a11y(t('components.mapPickerClearA11yLabel'), t('components.mapPickerClearA11yHint'), 'button')}>
             <X size={14} color={theme.colors.white} strokeWidth={1.5} />
-            <Text style={styles.clearTxt}>პინის მოხსნა</Text>
+            <Text style={styles.clearTxt}>{t('components.mapPickerRemovePin')}</Text>
           </Pressable>
         )}
       </View>

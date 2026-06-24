@@ -12,6 +12,7 @@ import {
 import { FlatList } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, BookOpen } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { QuestionAvatar } from './QuestionAvatar';
 import { HeaderBackButton } from './HeaderBackButton';
 import { HeaderCloseButton } from './HeaderCloseButton';
@@ -52,6 +53,7 @@ function ScaffoldTourBody({ visible, onClose }: { visible: boolean; onClose: () 
   const listRef = useRef<FlatList<ScaffoldHelpEntry>>(null);
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   // Reset to the first slide each time the tour is re-opened.
@@ -93,7 +95,7 @@ function ScaffoldTourBody({ visible, onClose }: { visible: boolean; onClose: () 
 
             <View style={styles.guidePill}>
               <BookOpen size={14} color={theme.colors.accent} strokeWidth={2} />
-              <Text style={styles.guidePillText}>გზამკვლევი</Text>
+              <Text style={styles.guidePillText}>{t('inspections.scaffoldTourGuideLabel')}</Text>
             </View>
 
             <View style={[styles.headerSide, styles.headerSideRight]}>
@@ -103,9 +105,9 @@ function ScaffoldTourBody({ visible, onClose }: { visible: boolean; onClose: () 
 
           {/* Framing: makes clear this is optional help, not a required step. */}
           <View style={styles.intro}>
-            <Text style={styles.introTitle}>ხარაჩოს კომპონენტები</Text>
+            <Text style={styles.introTitle}>{t('inspections.scaffoldTourTitle')}</Text>
             <Text style={styles.introCopy}>
-              გაიცანით კომპონენტები შემოწმებამდე — არასავალდებულოა, შეგიძლიათ გამოტოვოთ.
+              {t('inspections.scaffoldTourSubtitle')}
             </Text>
           </View>
 
@@ -145,7 +147,7 @@ function ScaffoldTourBody({ visible, onClose }: { visible: boolean; onClose: () 
             style={({ pressed }) => [styles.btn, pressed && { opacity: 0.85 }]}
           >
             <Text style={styles.btnText}>
-              {isLast ? 'შემოწმების დაწყება' : `შემდეგი · ${index + 1}/${total}`}
+              {isLast ? t('inspections.scaffoldTourStartInspection') : t('inspections.scaffoldTourNextPage', { index: index + 1, total })}
             </Text>
             {!isLast ? (
               <ArrowRight size={18} color={theme.colors.white} strokeWidth={2} style={{ marginLeft: 6 }} />

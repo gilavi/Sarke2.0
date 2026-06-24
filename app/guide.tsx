@@ -18,7 +18,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 const PARTS_DATA = {
   frame_left: {
-    title_geo: 'მარცხენა ვერტიკალური კოშკურა',
+    titleKey: 'guide.frameLeft' as const,
     title_eng: 'Left Vertical Frame',
     steps: [
       'Place on firm, level surface. No dirt or debris under legs.',
@@ -28,7 +28,7 @@ const PARTS_DATA = {
     ],
   },
   frame_right: {
-    title_geo: 'მარჯვენა ვერტიკალური კოშკურა',
+    titleKey: 'guide.frameRight' as const,
     title_eng: 'Right Vertical Frame',
     steps: [
       'Mirror the left frame exactly. Both must be parallel.',
@@ -37,7 +37,7 @@ const PARTS_DATA = {
     ],
   },
   cross_brace: {
-    title_geo: 'გადამკვეთი საყრდენები (X-ბრას)',
+    titleKey: 'guide.crossBrace' as const,
     title_eng: 'Cross Bracing',
     steps: [
       'Install braces BEFORE climbing or loading the platform.',
@@ -47,7 +47,7 @@ const PARTS_DATA = {
     ],
   },
   platform: {
-    title_geo: 'სამუშაო პლატფორმა / დეკა',
+    titleKey: 'guide.platform' as const,
     title_eng: 'Platform / Deck',
     steps: [
       'Deck must overhang the frame by minimum 150mm on both sides.',
@@ -57,7 +57,7 @@ const PARTS_DATA = {
     ],
   },
   guardrail: {
-    title_geo: 'დამცავი ღობეები',
+    titleKey: 'guide.guardrail' as const,
     title_eng: 'Guardrails',
     steps: [
       'Top rail height: 1.0–1.2m from platform surface.',
@@ -67,7 +67,7 @@ const PARTS_DATA = {
     ],
   },
   wheels: {
-    title_geo: 'თვლები / კოლესები',
+    titleKey: 'guide.wheels' as const,
     title_eng: 'Casters / Wheels',
     steps: [
       'Brakes must be engaged before anyone steps onto the scaffold.',
@@ -191,7 +191,7 @@ export default function GuideScreen() {
           <View>
             <View style={styles.panelHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.titleGeo}>{data.title_geo}</Text>
+                <Text style={styles.titleGeo}>{t(data.titleKey)}</Text>
                 <Text style={styles.titleEng}>{data.title_eng}</Text>
               </View>
               <Pressable onPress={closePanel} style={styles.closeBtn} hitSlop={8}>

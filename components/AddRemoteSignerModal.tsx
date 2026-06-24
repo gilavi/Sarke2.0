@@ -5,6 +5,7 @@ import {
   View,
 } from 'react-native';
 import { Check } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText } from './primitives/A11yText';
 import { FormField } from './FormField';
 import { ButtonGroup } from './ButtonGroup';
@@ -37,6 +38,7 @@ export function AddRemoteSignerSheet({
   busy,
 }: AddRemoteSignerSheetProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const [name, setName] = useState('');
@@ -45,12 +47,12 @@ export function AddRemoteSignerSheet({
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
 
-  const nameError = nameTouched && !name.trim() ? 'სავალდებულო ველი' : undefined;
+  const nameError = nameTouched && !name.trim() ? t('components.requiredField') : undefined;
   const phoneError =
     phoneTouched && phone.trim() && !isGeorgianPhone(phone)
-      ? 'ფორმატი: +995 5XX XXX XXX ან 32X XXX XXX'
+      ? t('components.phoneFormat')
       : phoneTouched && !phone.trim()
-        ? 'სავალდებულო ველი'
+        ? t('components.requiredField')
         : undefined;
 
   const reset = () => {
@@ -92,14 +94,14 @@ export function AddRemoteSignerSheet({
         <ButtonGroup
           buttons={[
             {
-              label: 'გაუქმება',
+              label: t('common.cancel'),
               variant: 'secondary',
               size: 'lg',
               onPress: handleCancel,
               disabled: busy,
             },
             {
-              label: 'გაგზავნე SMS',
+              label: t('components.sendSms'),
               variant: 'primary',
               size: 'lg',
               onPress: handleSubmit,
@@ -111,14 +113,14 @@ export function AddRemoteSignerSheet({
       }
     >
         <A11yText size="xl" weight="bold" style={styles.title}>
-          გარე ხელისმოწერის მოთხოვნა
+          {t('components.remoteSignatureTitle')}
         </A11yText>
 
         <A11yText size="sm" color={theme.colors.inkSoft} style={styles.description}>
-          ხელის მოწერის ლინკი გაიგზავნება SMS-ით. ლინკი 14 დღეში იწურება.
+          {t('components.remoteSignatureDescription')}
         </A11yText>
 
-        <FormField label="როლი" required>
+        <FormField label={t('common.role')} required>
           <View style={styles.roleOptions}>
             {ROSTER_ROLES.map(r => (
               <Pressable
@@ -143,7 +145,7 @@ export function AddRemoteSignerSheet({
         </FormField>
 
         <FloatingLabelInput
-          label="სახელი გვარი"
+          label={t('components.fullName')}
           required
           error={nameError}
           value={name}
@@ -153,7 +155,7 @@ export function AddRemoteSignerSheet({
         />
 
         <FloatingLabelInput
-          label="ტელეფონი"
+          label={t('common.phone')}
           required
           error={phoneError}
           value={phone}

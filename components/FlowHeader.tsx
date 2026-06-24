@@ -1,6 +1,7 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
@@ -65,6 +66,7 @@ export function FlowHeader({
   surfaceColor,
 }: FlowHeaderProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [exitVisible, setExitVisible] = useState(false);
   const pendingExitRef = useRef<(() => void) | null>(null);
@@ -126,7 +128,7 @@ export function FlowHeader({
                 { borderColor: theme.colors.accent, backgroundColor: theme.colors.background },
                 pressed && { opacity: 0.6 },
               ]}
-              {...a11y('დახმარება', 'ნაბიჯის ახსნა', 'button')}
+              {...a11y(t('a11y.help'), t('components.helpStepHint'), 'button')}
             >
               <Text style={[styles.helpText, { color: theme.colors.accent }]}>?</Text>
             </Pressable>

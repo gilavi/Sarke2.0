@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
 import { A11yText as Text } from './primitives/A11yText';
@@ -27,6 +28,7 @@ export function MapPickerInline({
   error,
 }: MapPickerInlineProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [pin, setPin] = useState<LatLng | null>(initialPin);
   const [address, setAddress] = useState(initialAddress);
@@ -43,7 +45,7 @@ export function MapPickerInline({
     onConfirm(pin, address);
   };
 
-  const errorMessage = error ?? (attempted && !pin ? 'აირჩიეთ მდებარეობა რუკაზე' : undefined);
+  const errorMessage = error ?? (attempted && !pin ? t('components.mapPickerChooseOnMap') : undefined);
 
   const screenH = Dimensions.get('window').height;
   // Reserve space for header (~60) + bottom action bar (~160) + safe areas
@@ -83,13 +85,13 @@ export function MapPickerInline({
           </Text>
         ) : null}
         <Button
-          title="დადასტურება"
+          title={t('common.confirm')}
           size="lg"
           onPress={handleConfirm}
         />
         <Pressable onPress={onCancel} style={styles.cancelButton}>
           <Text style={[styles.cancelText, { color: theme.colors.inkSoft }]}>
-            გაუქმება
+            {t('common.cancel')}
           </Text>
         </Pressable>
       </View>

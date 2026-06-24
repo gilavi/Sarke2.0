@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useProject, useReportsByProject } from '../../../lib/apiHooks';
@@ -11,6 +12,7 @@ export default function ProjectReportsList() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
   const confirmDelete = useReportDelete();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
@@ -27,12 +29,12 @@ export default function ProjectReportsList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'რეპორტები' }} />
+      <Stack.Screen options={{ title: t('records.reports') }} />
       <ReportCardGrid
         query={reportsQ}
         reports={completed}
         refreshQueries={[reportsQ]}
-        emptyText="ჩანაწერები არ არის"
+        emptyText={t('projects.noRecords')}
         onPressReport={(r) => router.push(`/reports/${r.id}` as any)}
         onDeleteReport={(r) => confirmDelete(r)}
         ListHeaderComponent={

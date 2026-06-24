@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Folder, ChevronUp, ChevronDown, CloudUpload, File, Trash2, Plus } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { formatShortDateTime } from '../lib/formatDate';
 import { useTheme } from '../lib/ThemeContext';
 import type { ProjectFile } from '../types/models';
@@ -32,6 +33,7 @@ export function UploadedFilesSection({
 }) {
   const [open, setOpen] = useState(false);
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
   const count = files.length;
   const latest = count > 0 ? files[0].created_at : null;
@@ -43,11 +45,11 @@ export function UploadedFilesSection({
           <Folder size={18} color={theme.colors.semantic.success} strokeWidth={1.5} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>ატვირთული ფაილები</Text>
+          <Text style={styles.title}>{t('components.uploadedFilesSectionTitle')}</Text>
           <Text style={styles.subtitle}>
             {count === 0
-              ? 'ფაილები არ არის ატვირთული'
-              : `${count} ფაილი · ბოლოს ${formatShortDateTime(latest)}`}
+              ? t('components.uploadedFilesSectionEmpty')
+              : t('components.uploadedFilesSectionCountLatest', { count, date: formatShortDateTime(latest) })}
           </Text>
         </View>
         {open
@@ -61,9 +63,9 @@ export function UploadedFilesSection({
           {count === 0 ? (
             <View style={styles.emptyZone}>
               <CloudUpload size={32} color={theme.colors.semantic.success} strokeWidth={1.5} />
-              <Text style={styles.emptyTitle}>ფაილები არ არის</Text>
+              <Text style={styles.emptyTitle}>{t('components.uploadedFilesSectionEmptyTitle')}</Text>
               <Text style={styles.emptyHint}>
-                ატვირთეთ პროექტის დოკუმენტაცია, ფოტოები ან გეგმები.
+                {t('components.uploadedFilesSectionEmptyHint')}
               </Text>
             </View>
           ) : (
@@ -88,7 +90,7 @@ export function UploadedFilesSection({
                       onPress={() => onDelete(f)}
                       hitSlop={8}
                       style={styles.deleteBtn}
-                      accessibilityLabel="წაშლა"
+                      accessibilityLabel={t('common.delete')}
                     >
                       <Trash2 size={16} color={theme.colors.inkFaint} strokeWidth={1.5} />
                     </Pressable>
@@ -113,7 +115,7 @@ export function UploadedFilesSection({
               <Plus size={18} color={theme.colors.surface} strokeWidth={1.5} />
             )}
             <Text style={styles.uploadBtnText}>
-              {busy ? 'იტვირთება…' : 'ფაილის ატვირთვა'}
+              {busy ? t('common.loading') : t('components.uploadedFilesSectionUpload')}
             </Text>
           </Pressable>
         </View>

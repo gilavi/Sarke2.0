@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
@@ -37,6 +38,7 @@ export default function ProjectInspectionsList() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
@@ -81,7 +83,7 @@ export default function ProjectInspectionsList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'შემოწმების აქტები' }} />
+      <Stack.Screen options={{ title: t('records.inspections') }} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -89,7 +91,7 @@ export default function ProjectInspectionsList() {
         refreshControl={<RefreshControl queries={[genericQ, bobcatQ, excavatorQ, geQ, templatesQ]} />}
       >
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>შემოწმების აქტები</Text>
+          <Text style={styles.pageTitle}>{t('records.inspections')}</Text>
           {project ? (
             <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
@@ -104,7 +106,7 @@ export default function ProjectInspectionsList() {
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
-            <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
+            <Text style={styles.emptyStateText}>{t('projects.noRecords')}</Text>
           </View>
         ) : (
           grouped.map(group => (

@@ -93,7 +93,7 @@ export default function SignerForm() {
         // storageApi.upload path produced 0-byte objects on Hermes/SDK 54.
         const path = `project/${id}/signer-${existing?.id ?? Date.now()}-${Date.now()}.png`;
         const { pending } = await uploadSignature(path, pendingSigData);
-        if (pending) throw new Error('ხელმოწერის ატვირთვა ვერ მოხერხდა');
+        if (pending) throw new Error(t('reports.signatureUploadFailed'));
         sigPath = path;
       }
 
@@ -187,7 +187,7 @@ export default function SignerForm() {
             required
             value={fullName}
             onChangeText={setFullName}
-            error={attempted && !fullName.trim() ? 'სავალდებულო ველი' : undefined}
+            error={attempted && !fullName.trim() ? t('errors.requiredField') : undefined}
           />
           <FloatingLabelInput
             label={t('common.phone')}
@@ -315,7 +315,7 @@ function SignatureCaptureModal({
           </View>
           {sigError ? (
             <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
-              გთხოვთ, ხელი მოაწეროთ
+              {t('reports.pleaseSign')}
             </Text>
           ) : null}
           <View style={{ flexDirection: 'row', gap: 8 }}>

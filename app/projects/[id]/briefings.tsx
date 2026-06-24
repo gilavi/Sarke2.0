@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText, ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
@@ -32,6 +33,7 @@ export default function ProjectBriefingsList() {
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
@@ -46,7 +48,7 @@ export default function ProjectBriefingsList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'ინსტრუქტაჟი' }} />
+      <Stack.Screen options={{ title: t('records.briefings') }} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -54,7 +56,7 @@ export default function ProjectBriefingsList() {
         refreshControl={<RefreshControl queries={[briefingsQ]} />}
       >
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>ინსტრუქტაჟი</Text>
+          <Text style={styles.pageTitle}>{t('records.briefings')}</Text>
           {project ? (
             <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
@@ -69,7 +71,7 @@ export default function ProjectBriefingsList() {
         ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
-            <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
+            <Text style={styles.emptyStateText}>{t('projects.noRecords')}</Text>
           </View>
         ) : (
           grouped.map(group => (
@@ -87,7 +89,7 @@ export default function ProjectBriefingsList() {
                         {b.topics.map(topicLabel).join(', ') || '-'}
                       </Text>
                       <Text style={styles.listRowSubtitle}>
-                        {b.participants.length} მონაწილე · {formatShortDateTime(b.dateTime)}
+                        {b.participants.length}{t('projects.participantCountSuffix')}{formatShortDateTime(b.dateTime)}
                       </Text>
                     </View>
                     <ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />

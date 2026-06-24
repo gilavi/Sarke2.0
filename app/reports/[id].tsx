@@ -9,6 +9,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Trash2, CircleCheck, SquarePen } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { Button } from '../../components/ui';
@@ -45,6 +46,7 @@ export default function ReportDetailScreen() {
   const session = useSession();
   const queryClient = useQueryClient();
   const confirmDelete = useReportDelete(() => router.back());
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reopening, setReopening] = useState(false);
 
@@ -104,7 +106,7 @@ export default function ReportDetailScreen() {
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF გენერაცია ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('reports.pdfGenerateFailed')));
     } finally {
       setGenerating(false);
     }
@@ -124,7 +126,7 @@ export default function ReportDetailScreen() {
       await reopenDocument({ kind: 'report', id: report.id }, queryClient);
       router.replace(`/reports/${report.id}/edit` as any);
     } catch (e) {
-      toast.error(friendlyError(e, 'რედაქტირება ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('reports.editFailed')));
       setReopening(false);
     }
   };
@@ -172,24 +174,24 @@ export default function ReportDetailScreen() {
           <Text style={styles.heroTitle}>{report.title}</Text>
           <Text style={styles.heroMeta}>
             {project ? `${project.company_name || project.name} · ` : ''}
-            {report.slides.length} სლაიდი · {formatShortDateTime(report.created_at)}
+            {t('reports.slidesCountSuffix', { count: report.slides.length })} · {formatShortDateTime(report.created_at)}
           </Text>
           <View style={styles.statusChip}>
             <CircleCheck size={14} color={theme.colors.semantic.success} strokeWidth={1.5} />
             <Text style={[styles.statusText, { color: theme.colors.semantic.success }]}>
-              დასრულებული
+              {t('reports.statusCompleted')}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>სლაიდები</Text>
+        <Text style={styles.sectionLabel}>{t('reports.slidesSection')}</Text>
         {slides.map((s, i) => (
           <ReportSlidePreview key={s.id} slide={s} index={i} />
         ))}
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <Button title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'} onPress={generatePdf} loading={generating} />
+        <Button title={pdfUsage?.isLocked ? t('reports.generatePdfLocked') : t('reports.generatePdf')} onPress={generatePdf} loading={generating} />
       </View>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>

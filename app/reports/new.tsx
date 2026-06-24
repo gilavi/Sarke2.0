@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useTranslation } from 'react-i18next';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
@@ -22,6 +23,7 @@ export default function NewReportTitleScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
+  const { t } = useTranslation();
   const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
   const [pickedProject, setPickedProject] = useState<Project | null>(null);
   const projectId = paramProjectId ?? pickedProject?.id;
@@ -52,7 +54,7 @@ export default function NewReportTitleScreen() {
       invalidateRecordLists(queryClient);
       router.replace(`/reports/${created.id}/edit` as any);
     } catch (e) {
-      toast.error(friendlyError(e, 'რეპორტის შექმნა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('reports.createFailed')));
       setBusy(false);
     }
   };
@@ -61,7 +63,7 @@ export default function NewReportTitleScreen() {
   if (!projectId) {
     return (
       <FlowProjectPicker
-        flowTitle="რეპორტი"
+        flowTitle={t('records.reports')}
         action="report"
         onBack={() => router.back()}
         onPicked={(p) => { setPickedProject(p); setProject(p); }}
@@ -74,7 +76,7 @@ export default function NewReportTitleScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
-        flowTitle="რეპორტი"
+        flowTitle={t('records.reports')}
         project={project}
         step={1}
         totalSteps={2}
@@ -88,14 +90,14 @@ export default function NewReportTitleScreen() {
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }}>
         <FloatingLabelInput
-          label="რეპორტის სახელი"
+          label={t('reports.reportTitleLabel')}
           required
           value={title}
           onChangeText={setTitle}
           autoFocus
           returnKeyType="done"
           onSubmitEditing={() => guard(inputValid, onNext)}
-          error={attempted && !trimmed.length ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !trimmed.length ? t('errors.requiredField') : undefined}
         />
       </KeyboardSafeArea>
 
@@ -111,7 +113,7 @@ export default function NewReportTitleScreen() {
           }}
         >
           <Button
-            title="შემდეგი →"
+            title={t('reports.nextButton')}
             onPress={() => guard(inputValid, onNext)}
             disabled={busy}
             loading={busy}
@@ -121,4 +123,3 @@ export default function NewReportTitleScreen() {
     </View>
   );
 }
-

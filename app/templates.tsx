@@ -12,20 +12,22 @@ import { useTemplates } from '../lib/apiHooks';
 import { useTheme } from '../lib/theme';
 import { inspectionDisplayName } from '../lib/shared/documentName';
 import { labelForSource } from '../lib/inspectionRouting';
+import { useTranslation } from 'react-i18next';
 
 import type { Template } from '../types/models';
 import { SIGNER_ROLE_LABEL } from '../types/models';
 
 const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: { item: Template; onHelpPress: () => void }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Card padding={14}>
       <A11yText size="base" weight="bold">{inspectionDisplayName(item.name)}</A11yText>
       <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
-        {item.is_system ? 'სისტემური' : 'ჩემი'} · {labelForSource(item.category)}
+        {item.is_system ? t('templates.labelSystem') : t('templates.labelMine')} · {labelForSource(item.category)}
       </A11yText>
       <A11yText size="xs" color={theme.colors.inkSoft} style={{ marginTop: 4 }}>
-        საჭირო: {item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ')}
+        {t('templates.requiredSigners', { signers: item.required_signer_roles.map(r => SIGNER_ROLE_LABEL[r]).join(', ') })}
       </A11yText>
       {item.category !== 'harness' ? (
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -33,7 +35,7 @@ const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: {
             onPress={onHelpPress}
             hitSlop={13}
             accessibilityRole="button"
-            accessibilityLabel="დახმარება"
+            accessibilityLabel={t('common.help')}
           >
             {({ pressed }) => (
               <A11yText
@@ -42,7 +44,7 @@ const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: {
                 color={theme.colors.regsTint}
                 style={{ opacity: pressed ? 0.6 : 1 }}
               >
-                დახმარება
+                {t('common.help')}
               </A11yText>
             )}
           </Pressable>
@@ -54,6 +56,7 @@ const MemoizedTemplateItem = memo(function TemplateItem({ item, onHelpPress }: {
 
 export default function TemplatesScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const templatesQ = useTemplates();
   const templates = templatesQ.data ?? [];
   const loaded = !templatesQ.isLoading;
@@ -67,7 +70,7 @@ export default function TemplatesScreen() {
   return (
     <Screen edgeToEdge edges={[]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader title="შაბლონები" />
+      <ScreenHeader title={t('templates.title')} />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
         <FlatList
           data={templates}

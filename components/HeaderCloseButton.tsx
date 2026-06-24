@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
 
@@ -18,6 +19,7 @@ interface Props {
  */
 export function HeaderCloseButton({ onPress, disabled, hitSlop = 8 }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Pressable
       hitSlop={hitSlop}
@@ -29,7 +31,7 @@ export function HeaderCloseButton({ onPress, disabled, hitSlop = 8 }: Props) {
         disabled && { opacity: 0.35 },
         pressed && !disabled && { opacity: 0.6 },
       ]}
-      {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}
+      {...a11y(t('a11y.close'), t('a11y.closeHint'), 'button')}
     >
       <X
         size={22}

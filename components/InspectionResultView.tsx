@@ -29,6 +29,7 @@ import {
 import { Stack, useFocusEffect } from 'expo-router';
 import { CircleAlert, Pencil, Lock, Share2, SquarePen } from 'lucide-react-native';
 import WebView from 'react-native-webview';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { Screen } from './ui';
 import { consumeCertsDirty } from '../lib/certDirty';
@@ -101,6 +102,7 @@ export function InspectionResultView(props: Props) {
   } = props;
 
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // Signatures state - local to this result view. Lost when it unmounts.
@@ -133,7 +135,7 @@ export function InspectionResultView(props: Props) {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: templateName ?? 'შემოწმების აქტი',
+          title: templateName ?? t('common.inspection'),
           headerBackVisible: false,
           headerLeft: () => <HeaderBackButton />,
           headerRight: onEdit
@@ -141,7 +143,7 @@ export function InspectionResultView(props: Props) {
                 <Pressable
                   onPress={onEdit}
                   hitSlop={12}
-                  accessibilityLabel="რედაქტირება"
+                  accessibilityLabel={t('common.edit')}
                   style={{ paddingHorizontal: 4 }}
                 >
                   <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
@@ -193,7 +195,7 @@ export function InspectionResultView(props: Props) {
               >
                 <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
                 <Text style={styles.bottomBtnText} numberOfLines={1}>
-                  ხელმოწერები
+                  {t('components.inspectionResultSignatures')}
                 </Text>
               </Pressable>
             </View>
@@ -215,7 +217,7 @@ export function InspectionResultView(props: Props) {
               <>
                 {pdfLocked ? <Lock size={18} color={theme.colors.white} strokeWidth={1.5} /> : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />}
                 <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
-                  {pdfLocked ? '🔒 გაზიარება' : 'გაზიარება'}
+                  {pdfLocked ? t('components.inspectionResultShareLocked') : t('components.inspectionResultShare')}
                 </Text>
               </>
             )}

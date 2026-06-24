@@ -11,6 +11,7 @@ import { FileText, File, ChevronRight } from 'lucide-react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
@@ -55,6 +56,7 @@ export default function ProjectFilesList() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const toast = useToast();
+  const { t } = useTranslation();
 
   const { data: project } = useProject(id);
   const filesQ = useProjectFiles(id);
@@ -70,13 +72,13 @@ export default function ProjectFilesList() {
       const url = await projectFilesApi.signedUrl(f, 3600);
       await Linking.openURL(url);
     } catch {
-      toast.error('ფაილის გახსნა ვერ მოხერხდა');
+      toast.error(t('projects.fileOpenFailed'));
     }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'ბრძანებები' }} />
+      <Stack.Screen options={{ title: t('records.orders') }} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -85,7 +87,7 @@ export default function ProjectFilesList() {
         refreshControl={<RefreshControl queries={[filesQ]} />}
       >
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>ბრძანებები</Text>
+          <Text style={styles.pageTitle}>{t('records.orders')}</Text>
           {project ? (
             <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
@@ -100,7 +102,7 @@ export default function ProjectFilesList() {
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
-            <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
+            <Text style={styles.emptyStateText}>{t('projects.noRecords')}</Text>
           </View>
         ) : (
           grouped.map(group => (

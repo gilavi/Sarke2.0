@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { useTranslation } from 'react-i18next';
 import { KeyboardSafeArea } from '../../../../components/layout/KeyboardSafeArea';
 import { Button } from '../../../../components/ui';
 import { FloatingLabelInput } from '../../../../components/inputs/FloatingLabelInput';
@@ -37,6 +38,7 @@ export default function ReportSlideEditor() {
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { id, slideId } = useLocalSearchParams<{ id: string; slideId: string }>();
 
   const [report, setReport] = useState<Report | null>(null);
@@ -116,7 +118,7 @@ export default function ReportSlideEditor() {
       queryClient.setQueryData(qk.reports.byId(saved.id), saved);
       router.back();
     } catch (e) {
-      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.saveFailed')));
       setBusy(false);
     }
   };
@@ -136,7 +138,7 @@ export default function ReportSlideEditor() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
-        flowTitle={`სლაიდი ${slideIndex + 1}`}
+        flowTitle={t('reports.slideFlowTitle', { n: slideIndex + 1 })}
         leading="back"
         trailing="none"
         onBack={() => router.back()}
@@ -171,17 +173,17 @@ export default function ReportSlideEditor() {
 
         {/* Title */}
         <FloatingLabelInput
-          label="სლაიდის სათაური"
+          label={t('reports.slideTitleLabel')}
           required
           value={title}
           onChangeText={setTitle}
           returnKeyType="next"
-          error={attempted && !title.trim() ? 'სავალდებულო ველი' : undefined}
+          error={attempted && !title.trim() ? t('errors.requiredField') : undefined}
         />
 
         {/* Description */}
         <FloatingLabelInput
-          label="აღწერა"
+          label={t('reports.descriptionLabel')}
           value={description}
           onChangeText={setDescription}
           multiline
@@ -193,7 +195,7 @@ export default function ReportSlideEditor() {
       <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
           <Button
-            title="შენახვა"
+            title={t('common.save')}
             onPress={() => guard(titleValid, onSave)}
             disabled={busy || uploading}
             loading={busy}

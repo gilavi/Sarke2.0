@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MapPin } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
 import { A11yText as Text } from './primitives/A11yText';
 import { MapPreview } from './MapPreview';
@@ -13,6 +14,7 @@ interface LocationRowProps {
 
 export function LocationRow({ pin, address, onPress }: LocationRowProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   if (!pin) {
     return (
@@ -28,7 +30,7 @@ export function LocationRow({ pin, address, onPress }: LocationRowProps) {
       >
         <MapPin size={20} color={theme.colors.accent} strokeWidth={1.5} />
         <Text style={[styles.emptyText, { color: theme.colors.inkSoft }]}>
-          დააჭირეთ მდებარეობის ასარჩევად
+          {t('components.locationRowTapToSelect')}
         </Text>
       </Pressable>
     );
@@ -49,7 +51,7 @@ export function LocationRow({ pin, address, onPress }: LocationRowProps) {
           </Text>
         ) : null}
         <Text style={[styles.changeLink, { color: theme.colors.accent }]}>
-          შეცვლა
+          {t('components.locationRowChange')}
         </Text>
       </View>
     </Pressable>

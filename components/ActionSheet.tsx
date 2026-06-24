@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { A11yText } from './primitives/A11yText';
 import { ActionSheetItem, type ActionSheetItemVariant } from './primitives/ActionSheetItem';
 import { useTheme } from '../lib/theme';
@@ -22,12 +23,15 @@ interface ActionSheetProps {
 export function ActionSheet({
   title,
   items,
-  closeLabel = 'გაუქმება',
+  closeLabel,
   onClose,
 }: ActionSheetProps) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  const resolvedCloseLabel = closeLabel ?? t('common.cancel');
 
   const handleItemPress = useCallback((item: ActionSheetItemConfig) => {
     item.onPress();
@@ -60,7 +64,7 @@ export function ActionSheet({
 
       <View style={styles.cancelBtn}>
         <ActionSheetItem
-          label={closeLabel}
+          label={resolvedCloseLabel}
           onPress={onClose}
           isLast
         />

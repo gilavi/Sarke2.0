@@ -137,7 +137,7 @@ const MemoizedCertItem = memo(function CertItem({
   return (
     <Swipeable
       renderRightActions={() => (
-        <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y(t('common.delete'), 'PDF რეპორტის წაშლა', 'button')}>
+        <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y(t('common.delete'), t('certificates.deletePdfHint'), 'button')}>
           <Trash2 size={18} color={theme.colors.white} strokeWidth={2} />
           <Text style={{ color: theme.colors.white, fontWeight: '700', fontSize: 11 }}>
             {t('common.delete')}
@@ -146,7 +146,7 @@ const MemoizedCertItem = memo(function CertItem({
       )}
       overshootRight={false}
     >
-      <Pressable onPress={() => onPress(item)} {...a11y(t('certificates.pdfReport'), 'დეტალების ნახვა', 'button')}>
+      <Pressable onPress={() => onPress(item)} {...a11y(t('certificates.pdfReport'), t('certificates.viewDetailsHint'), 'button')}>
         <Card padding={12}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {/* PDF thumbnail */}

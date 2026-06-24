@@ -276,7 +276,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   );
 });
 
-// 🔒 Bounded photo URL cache (mirrors generic wizard pattern) ───────────────
+// 🔒 Bounded photo URL cache (mirrors generic wizard pattern) ───────────────────────
 
 const PHOTO_URL_CACHE_MAX = 100;
 const photoUrlCache = new Map<string, string>();
@@ -290,7 +290,7 @@ function setPhotoUrlCache(key: string, url: string) {
   }
 }
 
-// 🖼 Photo thumbnail ────────────────────────────────────────────────────────
+// 🖼 Photo thumbnail ──────────────────────────────────────────────────────
 
 const PhotoThumb = memo(function PhotoThumb({
   path,
@@ -300,6 +300,7 @@ const PhotoThumb = memo(function PhotoThumb({
   onDelete: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const [uri, setUri] = useState('');
 
@@ -328,7 +329,7 @@ const PhotoThumb = memo(function PhotoThumb({
         style={styles.thumbDelete}
         onPress={onDelete}
         hitSlop={8}
-        {...a11y('ფოტოს წაშლა', undefined, 'button')}
+        {...a11y(t('wizard.deletePhotoA11y'), undefined, 'button')}
       >
         <CircleX size={18} color={theme.colors.white} strokeWidth={1.5} />
       </Pressable>
@@ -336,7 +337,7 @@ const PhotoThumb = memo(function PhotoThumb({
   );
 });
 
-// 🎨 Styles ────────────────────────────────────────────────────────────────
+// 🎨 Styles ─────────────────────────────────────────────────────────────────────────
 
 function getstyles(theme: Theme) {
   return StyleSheet.create({

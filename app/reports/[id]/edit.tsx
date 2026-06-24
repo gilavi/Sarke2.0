@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Images, Plus } from 'lucide-react-native';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Button } from '../../../components/primitives/Button';
 import { FlowHeader } from '../../../components/FlowHeader';
@@ -25,6 +26,7 @@ export default function ReportSlidesEditor() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const showSheet = useBottomSheet();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: report } = useReport(id);
@@ -74,11 +76,11 @@ export default function ReportSlidesEditor() {
         const saved = await reportsApi.update(report.id, { slides: renumbered });
         queryClient.setQueryData(qk.reports.byId(saved.id), saved);
       } catch (e) {
-        toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+        toast.error(friendlyError(e, t('errors.saveFailed')));
         queryClient.invalidateQueries({ queryKey: qk.reports.byId(report.id) });
       }
     },
-    [report, toast, queryClient],
+    [report, toast, queryClient, t],
   );
 
   const addSlide = async () => {
@@ -110,8 +112,8 @@ export default function ReportSlidesEditor() {
   const removeSlide = (slide: ReportSlide) => {
     showSheet(
       {
-        title: 'სლაიდის წაშლა?',
-        options: ['დიახ, წაშლა', 'გაუქმება'],
+        title: t('reports.deleteSlideTitle'),
+        options: [t('projects.deleteConfirmYes'), t('common.cancel')],
         cancelButtonIndex: 1,
         destructiveButtonIndex: 0,
       },
@@ -125,7 +127,7 @@ export default function ReportSlidesEditor() {
   const onComplete = async () => {
     if (!report) return;
     if (slides.length === 0) {
-      toast.error('მინიმუმ ერთი სლაიდი დაამატეთ');
+      toast.error(t('reports.addSlideRequired'));
       return;
     }
     setGenerating(true);
@@ -135,7 +137,7 @@ export default function ReportSlidesEditor() {
       invalidateRecordLists(queryClient);
       router.replace(`/reports/${saved.id}/success` as any);
     } catch (e) {
-      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.saveFailed')));
     } finally {
       setGenerating(false);
     }
@@ -154,7 +156,7 @@ export default function ReportSlidesEditor() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
-        flowTitle="რეპორტი"
+        flowTitle={t('records.reports')}
         project={project ? { name: project.name } : null}
         step={2}
         totalSteps={2}
@@ -169,8 +171,8 @@ export default function ReportSlidesEditor() {
         {slides.length === 0 ? (
           <View style={styles.empty}>
             <Images size={36} color={theme.colors.borderStrong} strokeWidth={1.5} />
-            <Text style={styles.emptyText}>ჯერ სლაიდები არ არის</Text>
-            <Text style={styles.emptyHint}>დაამატეთ პირველი სლაიდი ქვემოთ</Text>
+            <Text style={styles.emptyText}>{t('reports.noSlidesYet')}</Text>
+            <Text style={styles.emptyHint}>{t('reports.addFirstSlideHint')}</Text>
           </View>
         ) : (
           <SlideReorderList
@@ -186,14 +188,14 @@ export default function ReportSlidesEditor() {
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
         >
           <Plus size={20} color={theme.colors.inkSoft} strokeWidth={1.75} />
-          <Text style={styles.addBtnText}>სლაიდის დამატება</Text>
+          <Text style={styles.addBtnText}>{t('reports.addSlide')}</Text>
         </Pressable>
       </ScrollView>
 
       {/* Sticky footer - always visible so the user knows how to finish */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Button
-          title={generating ? 'გენერირდება…' : 'PDF-ის გენერაცია →'}
+          title={generating ? t('reports.generating') : t('reports.generatePdfButton')}
           variant="primary"
           size="lg"
           onPress={onComplete}

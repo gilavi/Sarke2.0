@@ -113,7 +113,7 @@ export function EditProjectSheet({
         <Pressable
           style={[StyleSheet.absoluteFillObject, { backgroundColor: theme.colors.overlay }]}
           onPress={() => (mapVisible ? setMapVisible(false) : onClose())}
-          {...a11y(t('common.close'), 'შეეხეთ ფონის დასახურად', 'button')}
+          {...a11y(t('common.close'), t('projects.closeBackdrop'), 'button')}
         />
         {/* Card - marginBottom rides the iOS keyboard 1:1 */}
         <Animated.View style={{ width: '100%', marginBottom: keyboardMargin }}>

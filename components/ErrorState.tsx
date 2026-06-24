@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CloudOff, RefreshCw } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
 
 import { friendlyError } from '../lib/errorMap';
@@ -17,7 +18,7 @@ export interface ErrorStateProps {
 }
 
 export function ErrorState({
-  title = 'ვერ ჩაიტვირთა',
+  title,
   message,
   error,
   onRetry,
@@ -26,8 +27,10 @@ export function ErrorState({
   compact,
 }: ErrorStateProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
+  const resolvedTitle = title ?? t('components.errorStateTitle');
   const body = message ?? friendlyError(error);
   return (
     <View
@@ -38,14 +41,14 @@ export function ErrorState({
       <View style={styles.iconCircle}>
         <IconComp size={compact ? 24 : 32} color={theme.colors.danger} strokeWidth={1.5} />
       </View>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>{resolvedTitle}</Text>
       {body ? <Text style={styles.body}>{body}</Text> : null}
       {onRetry ? (
         <Pressable
           onPress={onRetry}
           disabled={retrying}
           accessibilityRole="button"
-          accessibilityLabel="ხელახლა ცდა"
+          accessibilityLabel={t('components.errorStateRetry')}
           accessibilityState={{ disabled: !!retrying, busy: !!retrying }}
           hitSlop={8}
           style={({ pressed }) => [
@@ -55,7 +58,7 @@ export function ErrorState({
           ]}
         >
           <RefreshCw size={16} color={theme.colors.accent} strokeWidth={1.5} />
-          <Text style={styles.retryText}>{retrying ? 'იტვირთება…' : 'ხელახლა ცდა'}</Text>
+          <Text style={styles.retryText}>{retrying ? t('common.loading') : t('components.errorStateRetry')}</Text>
         </Pressable>
       ) : null}
     </View>

@@ -11,18 +11,11 @@ import { reopenDocument } from '../../../lib/documents/reopen';
 import { queryClient } from '../../../lib/queryClient';
 import { haptic } from '../../../lib/haptics';
 import { ORDER_DOCUMENT_TYPE_LABEL, type Order, type OrderDocumentType } from '../../../types/models';
-
-const ORDER_SUCCESS_TITLE: Partial<Record<OrderDocumentType, string>> = {
-  labor_safety_specialist: 'სპეციალისტი დანიშნულია!',
-  alcohol_control: 'ალკოჰოლის კონტროლი დანიშნულია!',
-  fire_safety_order: 'სახანძრო უსაფრთხოების პასუხისმგებელი პირი დანიშნულია!',
-  fire_safety_order_enterprise: 'საწარმოს სახანძრო უსაფრთხოების პასუხისმგებელი პირი დანიშნულია!',
-  crane_operator_order: 'კოშკურა ამწის ოპერატორი დანიშნულია!',
-  crane_technical_order: 'ამწის ტექნიკური შემოწმება დანიშნულია!',
-};
+import { useTranslation } from 'react-i18next';
 
 export default function OrderSuccessScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -32,6 +25,15 @@ export default function OrderSuccessScreen() {
   useEffect(() => {
     if (id) ordersApi.getById(id).then(setOrder).catch(() => {});
   }, [id]);
+
+  const ORDER_SUCCESS_TITLE: Partial<Record<OrderDocumentType, string>> = {
+    labor_safety_specialist: t('orders.successTitleLaborSafetySpecialist'),
+    alcohol_control: t('orders.successTitleAlcoholControl'),
+    fire_safety_order: t('orders.successTitleFireSafetyOrder'),
+    fire_safety_order_enterprise: t('orders.successTitleFireSafetyOrderEnterprise'),
+    crane_operator_order: t('orders.successTitleCraneOperatorOrder'),
+    crane_technical_order: t('orders.successTitleCraneTechnicalOrder'),
+  };
 
   // Reopen the order to draft and route into the wizard in edit mode (hydrated
   // by ?editId). Re-generating the PDF re-completes it.
@@ -49,10 +51,10 @@ export default function OrderSuccessScreen() {
 
   return (
     <SuccessScreen
-      title={order ? (ORDER_SUCCESS_TITLE[order.documentType] ?? 'ბრძანება შეიქმნა!') : 'ბრძანება შეიქმნა!'}
-      subtitle="PDF ბრძანება გაიზიარა. ასლი ავტომატურად ატვირთება."
+      title={order ? (ORDER_SUCCESS_TITLE[order.documentType] ?? t('orders.successTitle')) : t('orders.successTitle')}
+      subtitle={t('orders.successSubtitle')}
       primary={{
-        title: 'მთავარ გვერდზე',
+        title: t('orders.successPrimaryAction'),
         icon: Home,
         onPress: () => router.replace('/(tabs)/home' as any),
       }}
@@ -60,25 +62,25 @@ export default function OrderSuccessScreen() {
         ...(order
           ? [{
               icon: SquarePen,
-              title: 'რედაქტირება',
-              subtitle: 'შეცვალე ბრძანების მონაცემები',
+              title: t('orders.successEditTitle'),
+              subtitle: t('orders.successEditSubtitle'),
               onPress: onEdit,
             }]
           : []),
         {
           icon: Folder,
-          title: 'პროექტებზე დაბრუნება',
-          subtitle: 'ნახე ყველა პროექტი',
+          title: t('orders.successBackProjectsTitle'),
+          subtitle: t('orders.successBackProjectsSubtitle'),
           onPress: () => router.replace('/(tabs)/projects' as any),
         },
       ]}
     >
       <Card>
         <Text style={styles.eyebrow}>
-          {order ? ORDER_DOCUMENT_TYPE_LABEL[order.documentType] : 'ბრძანება'}
+          {order ? ORDER_DOCUMENT_TYPE_LABEL[order.documentType] : t('orders.docFallback')}
         </Text>
         <Text style={[styles.eyebrow, { marginTop: 6, color: theme.colors.accent }]}>
-          ბრძანება №{order?.formData.orderNumber ?? id?.slice(0, 4).toUpperCase()}
+          {t('orders.orderNumberDisplay', { number: order?.formData.orderNumber ?? id?.slice(0, 4).toUpperCase() })}
         </Text>
       </Card>
     </SuccessScreen>

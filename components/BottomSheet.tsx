@@ -35,6 +35,7 @@ import {
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
 import { useTheme } from '../lib/ThemeContext';
@@ -88,6 +89,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
   const callbackRef = useRef<((idx: number | undefined) => void) | null>(null);
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(theme.colors), [theme.colors]);
 
   const backdropProgress = useRef(new Animated.Value(0)).current;
@@ -299,7 +301,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
                   ]}
                   {...a11y(
                     item.label,
-                    isDestructive ? 'ყურადღება, ეს ქმედება წაშლით დასრულდება' : undefined,
+                    isDestructive ? t('components.destructiveActionHint') : undefined,
                     'button',
                   )}
                 >
@@ -340,9 +342,9 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               styles.cancelBtn,
               pressed && { opacity: 0.7 },
             ]}
-            {...a11y('გაუქმება', 'მოქმედების გაუქმება', 'button')}
+            {...a11y(t('common.cancel'), t('a11y.cancelHint'), 'button')}
           >
-            <Text style={styles.cancelBtnText}>გაუქმება</Text>
+            <Text style={styles.cancelBtnText}>{t('common.cancel')}</Text>
           </Pressable>
         )}
       </>
@@ -371,7 +373,7 @@ export function BottomSheetProvider({ children }: { children: ReactNode }) {
               <Pressable
                 style={StyleSheet.absoluteFillObject}
                 onPress={() => dismissable && dismiss(cancelIndex)}
-                {...a11y('დახურვა', 'ფონის დაჭერით დახურვა', 'button')}
+                {...a11y(t('a11y.close'), t('components.backdropDismissHint'), 'button')}
               />
             </Animated.View>
 

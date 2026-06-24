@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { FileText, ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
@@ -31,6 +32,7 @@ export default function ProjectIncidentsList() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const INCIDENT_BADGE_COLORS = incidentColors(isDark);
   const router = useRouter();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
@@ -45,7 +47,7 @@ export default function ProjectIncidentsList() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ title: 'ინციდენტები' }} />
+      <Stack.Screen options={{ title: t('records.incidents') }} />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -54,7 +56,7 @@ export default function ProjectIncidentsList() {
         refreshControl={<RefreshControl queries={[incidentsQ]} />}
       >
         <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>ინციდენტები</Text>
+          <Text style={styles.pageTitle}>{t('records.incidents')}</Text>
           {project ? (
             <Text style={styles.pageSubtitle}>{project.company_name || project.name}</Text>
           ) : null}
@@ -69,7 +71,7 @@ export default function ProjectIncidentsList() {
         ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
-            <Text style={styles.emptyStateText}>ჩანაწერები არ არის</Text>
+            <Text style={styles.emptyStateText}>{t('projects.noRecords')}</Text>
           </View>
         ) : (
           grouped.map(group => (

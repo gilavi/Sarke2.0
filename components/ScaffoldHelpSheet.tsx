@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useBottomSheet } from './BottomSheet';
 import { QuestionAvatar } from './QuestionAvatar';
 import { helpForRow } from '../lib/scaffoldHelp';
@@ -29,17 +30,18 @@ function HelpSheetBody({
 }) {
   const illustrationRef = useRef<View>(null);
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const tourSteps: TourStep[] = useMemo(
     () => [
       {
         targetRef: illustrationRef,
-        title: 'კომპონენტის სურათი',
-        body: 'ეს გვიჩვენებს სად ზუსტად არის ეს ნაწილი',
+        title: t('inspections.scaffoldHelpComponentImage'),
+        body: t('inspections.scaffoldHelpComponentImageBody'),
         position: 'bottom',
       },
     ],
-    [],
+    [t],
   );
   return (
     <TourGuide tourId="haraco_help_icon_v1" steps={tourSteps}>
@@ -55,7 +57,7 @@ function HelpSheetBody({
           onPress={dismiss}
           style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
         >
-          <Text style={styles.btnText}>დახურვა</Text>
+          <Text style={styles.btnText}>{t('common.close')}</Text>
         </Pressable>
       </View>
     </TourGuide>
@@ -64,12 +66,13 @@ function HelpSheetBody({
 
 export function HelpIcon({ onPress }: { onPress: () => void }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   return (
     <Pressable
       onPress={onPress}
       hitSlop={12}
-      accessibilityLabel="დახმარება"
+      accessibilityLabel={t('common.help')}
       style={({ pressed }) => [styles.icon, pressed && { opacity: 0.6 }]}
     >
       <Text style={styles.iconText}>?</Text>

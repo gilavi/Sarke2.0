@@ -67,6 +67,8 @@ function weekOffsetForDate(date: Date): number {
 
 // Mon-first weekday arrays for the week strip (getDay()+6)%7 maps to index 0=Mon…6=Sun.
 // homeUtils exports Sun-first KA_WEEKDAY_FULL; keep these local for different ordering.
+// These are intentionally kept as locale-agnostic constants since the app currently
+// uses Georgian month names from homeUtils for date formatting throughout.
 const WEEKDAY_SHORT = ['ორშ.', 'სამ.', 'ოთხ.', 'ხუთ.', 'პარ.', 'შაბ.', 'კვ.'];
 
 const WEEKDAY_FULL = [

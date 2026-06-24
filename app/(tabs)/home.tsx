@@ -180,7 +180,7 @@ export default function HomeScreen() {
         {showCertBanner ? (
           <Card
             onPress={() => router.push('/qualifications' as any)}
-            a11y={a11y('კვალიფიკაციები', 'შეეხეთ კვალიფიკაციების სანახავად', 'button')}
+            a11y={a11y(t('home.qualificationsLabel'), t('home.qualificationsHint'), 'button')}
             style={styles.certBanner}
           >
               <View style={styles.bannerIcon}>
@@ -223,7 +223,7 @@ export default function HomeScreen() {
           <Pressable
             onPress={() => setPickerVisible(true)}
             style={staticStyles.emptyProjectWrap}
-            {...a11y('პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
+            {...a11y(t('home.createProjectLabel'), t('home.createProjectHint'), 'button')}
           >
             <View style={styles.emptyProjects}>
               <View style={styles.emptyPlusIcon}>
@@ -255,7 +255,7 @@ export default function HomeScreen() {
                 setPickerVisible(true);
               }}
               style={{ width: projectCardWidth }}
-              {...a11y('ახალი პროექტის შექმნა', 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
+              {...a11y(t('home.newProjectLabel'), t('home.createProjectHint'), 'button')}
             >
               <View style={styles.newProjectCard}>
                 <CirclePlus size={28} color={theme.colors.ink} strokeWidth={1.5} />
@@ -812,4 +812,3 @@ function getStyles(theme: Theme) {
 
 });
 }
-

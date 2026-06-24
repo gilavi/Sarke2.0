@@ -16,6 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Line, Rect, Circle, Path, Polygon, Ellipse, Polyline, G } from 'react-native-svg';
 import type { LucideIcon } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { haptic } from '../lib/haptics';
 import { a11y, useAccessibilitySettings } from '../lib/accessibility';
 import { useTheme, type Theme } from '../lib/theme';
@@ -482,16 +483,16 @@ const SECTION_ILLUSTRATIONS: Record<SectionType, React.FC> = {
   documents: DocumentsIllustration,
 };
 
-const SECTION_SUBTITLES: Record<SectionType, string> = {
-  incidents: 'ინციდენტი არ დაფიქსირებულა',
-  briefings: 'ინსტრუქტაჟი ჯერ არ ჩატარებულა',
-  reports: 'რეპორტი ჯერ არ შეიქმნა',
-  documents: 'ფაილები არ არის ატვირთული',
-};
-
 export function SectionEmptyState({ type, subtitle }: { type: SectionType; subtitle?: string }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const Illustration = SECTION_ILLUSTRATIONS[type];
+  const SECTION_SUBTITLES: Record<SectionType, string> = {
+    incidents: t('components.sectionEmptyIncidents'),
+    briefings: t('components.sectionEmptyBriefings'),
+    reports: t('components.sectionEmptyReports'),
+    documents: t('components.sectionEmptyDocuments'),
+  };
   const text = subtitle ?? SECTION_SUBTITLES[type];
   return (
     <View style={sectionStyles.container}>

@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../lib/theme';
 
 export type TourStep = {
@@ -52,6 +53,7 @@ export function TourGuide({ tourId, steps, children }: Props) {
   const insets = useSafeAreaInsets();
   const screen = Dimensions.get('window');
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   // Decide whether to show on mount
@@ -251,14 +253,14 @@ export function TourGuide({ tourId, steps, children }: Props) {
                   hitSlop={8}
                   style={({ pressed }) => [styles.ghost, pressed && { opacity: 0.6 }]}
                 >
-                  <Text style={styles.ghostText}>გამოტოვება</Text>
+                  <Text style={styles.ghostText}>{t('common.skip')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={next}
                   style={({ pressed }) => [styles.cta, pressed && { opacity: 0.85 }]}
                 >
                   <Text style={styles.ctaText}>
-                    {isLast ? 'დასრულება ✓' : 'შემდეგი →'}
+                    {isLast ? t('components.tourGuideFinish') : t('components.tourGuideNext')}
                   </Text>
                 </Pressable>
               </View>

@@ -1,5 +1,6 @@
 import { StyleSheet, Pressable, View } from 'react-native';
 import Svg, { Circle, Path, Ellipse } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 import { a11y } from '../lib/accessibility';
@@ -38,26 +39,30 @@ interface Props {
 }
 
 export function ErrorScreen({
-  title = 'რაღაც არასწორად მოხდა',
-  subtitle = 'ეს გვერდი ვერ იტვირთა. სცადეთ თავიდან ან დაბრუნდით მთავარ გვერდზე.',
+  title,
+  subtitle,
   onGoHome,
   onRetry,
 }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+
+  const resolvedTitle = title ?? t('components.errorScreenTitle');
+  const resolvedSubtitle = subtitle ?? t('components.errorScreenSubtitle');
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <HardHatIllustration />
-      <Text style={[styles.title, { color: theme.colors.ink }]}>{title}</Text>
-      <Text style={[styles.subtitle, { color: theme.colors.inkSoft }]}>{subtitle}</Text>
+      <Text style={[styles.title, { color: theme.colors.ink }]}>{resolvedTitle}</Text>
+      <Text style={[styles.subtitle, { color: theme.colors.inkSoft }]}>{resolvedSubtitle}</Text>
 
       {onGoHome && (
         <Pressable
           style={[styles.primaryBtn, { backgroundColor: theme.colors.accent }]}
           onPress={onGoHome}
-          {...a11y('მთავარ გვერდზე დაბრუნება', 'შეეხეთ მთავარ გვერდზე დასაბრუნებლად', 'button')}
+          {...a11y(t('components.goHome'), t('components.goHome'), 'button')}
         >
-          <Text style={styles.primaryBtnText}>მთავარ გვერდზე დაბრუნება</Text>
+          <Text style={styles.primaryBtnText}>{t('components.goHome')}</Text>
         </Pressable>
       )}
 
@@ -65,10 +70,10 @@ export function ErrorScreen({
         <Pressable
           style={[styles.secondaryBtn, { borderColor: theme.colors.accent }]}
           onPress={onRetry}
-          {...a11y('სცადე თავიდან', 'შეეხეთ ხელახლა ცდისთვის', 'button')}
+          {...a11y(t('components.tryAgain'), t('components.tryAgain'), 'button')}
         >
           <Text style={[styles.secondaryBtnText, { color: theme.colors.accent }]}>
-            სცადე თავიდან
+            {t('components.tryAgain')}
           </Text>
         </Pressable>
       )}

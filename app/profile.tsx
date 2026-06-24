@@ -157,7 +157,7 @@ export default function ProfileScreen() {
             onPress={() => router.push('/account-settings')}
             style={styles.row}
             disabled={busy || deleting}
-            {...a11y('პაროლის შეცვლა', undefined, 'button')}
+            {...a11y(t('more.changePassword'), undefined, 'button')}
           >
             <Key size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             <Text style={styles.rowLabel}>{t('more.changePassword')}</Text>
@@ -171,7 +171,7 @@ export default function ProfileScreen() {
             onPress={handleDelete}
             style={[styles.deleteRow, (busy || deleting) && { opacity: 0.5 }]}
             disabled={busy || deleting}
-            {...a11y('ანგარიშის წაშლა', 'ანგარიშის შეუქცევადი წაშლა', 'button')}
+            {...a11y(t('profile.deleteAccountLabel'), t('profile.deleteAccountA11yHint'), 'button')}
           >
             {deleting ? (
               <ActivityIndicator color={theme.colors.danger} />
