@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText } from '../primitives/A11yText';
 import { useBottomSheet } from '../BottomSheet';
 import { haptic } from '../../lib/haptics';
@@ -16,6 +17,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
   const sheetRef = useRef<{ dismiss: () => void } | null>(null);
   const actionRef = useRef<'stay' | 'exit' | null>(null);
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   useEffect(() => {
@@ -31,10 +33,10 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
         content: () => (
           <View style={styles.content}>
             <A11yText size="xl" weight="bold" color={theme.colors.ink} style={styles.title}>
-              გასვლა?
+              {t('wizard.exitTitle')}
             </A11yText>
             <A11yText size="sm" color={theme.colors.inkFaint} style={styles.subtitle}>
-              თუ ახლა გახვალთ, მიმდინარე პასუხები შეინახება, მაგრამ შემოწმების აქტი დასრულებულად არ ჩაითვლება.
+              {t('wizard.exitBody')}
             </A11yText>
 
             <View style={styles.buttonRow}>
@@ -47,7 +49,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
                 style={({ pressed }) => [styles.continueBtn, pressed && { opacity: 0.8 }]}
               >
                 <A11yText size="base" weight="semibold" color={theme.colors.white}>
-                  გაგრძელება
+                  {t('wizard.exitContinue')}
                 </A11yText>
               </Pressable>
               <Pressable
@@ -59,7 +61,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
                 style={({ pressed }) => [styles.exitBtn, pressed && { opacity: 0.7 }]}
               >
                 <A11yText size="base" weight="semibold" color={theme.colors.danger}>
-                  გასვლა
+                  {t('wizard.exitLeave')}
                 </A11yText>
               </Pressable>
             </View>

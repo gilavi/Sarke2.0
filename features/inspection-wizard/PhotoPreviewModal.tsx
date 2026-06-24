@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ImageIcon, RefreshCw, Trash2, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Skeleton } from '../../components/Skeleton';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -24,6 +25,7 @@ export function PhotoPreviewModal({
   onClose: () => void;
   onDelete: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -70,7 +72,7 @@ export function PhotoPreviewModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.previewOverlay}>
-        <Pressable style={styles.previewBackdrop} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ ფოტოს გადახურვისთვის', 'button')} />
+        <Pressable style={styles.previewBackdrop} onPress={onClose} {...a11y(t('a11y.close'), t('inspections.closePhotoBackdropHint'), 'button')} />
         {loading || !uri ? (
           <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center' }]}>
             <Skeleton width={120} height={120} radius={12} />
@@ -78,8 +80,8 @@ export function PhotoPreviewModal({
         ) : error ? (
           <View style={[styles.previewImage, { alignItems: 'center', justifyContent: 'center', gap: 12 }]}>
             <ImageIcon size={48} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
-            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>ფოტო ვერ ჩაიტვირთა</Text>
-            <Pressable onPress={loadUri} style={{ padding: 8 }} {...a11y('თავიდან ცდა', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
+            <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>{t('inspections.photoLoadFailed')}</Text>
+            <Pressable onPress={loadUri} style={{ padding: 8 }} {...a11y(t('inspections.retryPhotoLoad'), t('inspections.retryPhotoLoadHint'), 'button')}>
               <RefreshCw size={28} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
             </Pressable>
           </View>
@@ -97,12 +99,12 @@ export function PhotoPreviewModal({
             await onDelete(photo);
             onClose();
           }}
-          {...a11y('წაშლა', 'შეეხეთ წასაშლელად', 'button')}
+          {...a11y(t('common.delete'), t('inspections.deleteA11yHint'), 'button')}
         >
           <Trash2 size={22} color="#fff" strokeWidth={1.5} />
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>წაშლა</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{t('common.delete')}</Text>
         </Pressable>
-        <Pressable style={styles.previewCloseBtn} onPress={onClose} {...a11y('დახურვა', 'შეეხეთ დასახურად', 'button')}>
+        <Pressable style={styles.previewCloseBtn} onPress={onClose} {...a11y(t('a11y.close'), t('a11y.closeHint'), 'button')}>
           <X size={28} color="#fff" strokeWidth={1.5} />
         </Pressable>
       </View>

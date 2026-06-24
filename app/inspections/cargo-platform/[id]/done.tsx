@@ -4,6 +4,7 @@
 // cargo-platform row + project name and maps the verdict onto the shared view.
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { InspectionDoneView, type DoneVerdictTone } from '../../../../components/success';
 import { projectsApi } from '../../../../lib/services';
 import { cargoPlatformApi } from '../../../../lib/cargoPlatformService';
@@ -11,6 +12,7 @@ import { CP_VERDICT_LABEL } from '../../../../types/cargoPlatform';
 import type { CargoPlatformInspection } from '../../../../types/cargoPlatform';
 
 export default function CargoPlatformDoneScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [inspection, setInspection] = useState<CargoPlatformInspection | null>(null);
@@ -51,7 +53,7 @@ export default function CargoPlatformDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ტვირთის მიმღები პლატფორმა"
+      typeLabel={t('inspections.cargoPlatformDoneType')}
       projectName={projectName || undefined}
       dateText={
         inspection

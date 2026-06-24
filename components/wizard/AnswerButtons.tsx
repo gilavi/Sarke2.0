@@ -1,5 +1,6 @@
 import Animated, { Easing, LinearTransition } from 'react-native-reanimated';
 import { CircleCheck, CircleX } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics';
 import { useAccessibilitySettings } from '../../lib/accessibility';
 import { StatusChip } from './StatusChip';
@@ -24,6 +25,7 @@ interface AnswerButtonsProps {
  */
 export function AnswerButtons({ value, onChange, compact, error }: AnswerButtonsProps) {
   const { reduceMotion } = useAccessibilitySettings();
+  const { t } = useTranslation();
   const layout = compact ? 'chip' : 'pill';
   const showError = !!error && value === null;
   return (
@@ -35,29 +37,29 @@ export function AnswerButtons({ value, onChange, compact, error }: AnswerButtons
         layout={layout}
         selected={value === true}
         error={showError}
-        label="კი"
+        label={t('wizard.answerYesLabel')}
         icon={CircleCheck}
         fillSelectedIcon
         onPress={() => {
           haptic.answerYes();
           onChange(true);
         }}
-        a11yLabel="პასუხი: კი. უსაფრთხოა."
-        a11yHint="შეეხეთ თუ პასუხი დადებითია"
+        a11yLabel={t('wizard.answerYesA11y')}
+        a11yHint={t('wizard.answerYesA11yHint')}
       />
       <StatusChip
         layout={layout}
         selected={value === false}
         error={showError}
-        label="არა"
+        label={t('wizard.answerNoLabel')}
         icon={CircleX}
         fillSelectedIcon
         onPress={() => {
           haptic.answerNo();
           onChange(false);
         }}
-        a11yLabel="პასუხი: არა. არ არის უსაფრთხო."
-        a11yHint="შეეხეთ თუ პასუხი უარყოფითია"
+        a11yLabel={t('wizard.answerNoA11y')}
+        a11yHint={t('wizard.answerNoA11yHint')}
       />
     </Animated.View>
   );

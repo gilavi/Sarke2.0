@@ -117,7 +117,7 @@ export function ViewMoreRow({
     <Pressable
       onPress={onPress}
       style={rowStyles.listRow}
-      {...a11y(t('records.viewAll'), 'სრული სიის გახსნა', 'button')}
+      {...a11y(t('records.viewAll'), t('projects.viewAllHint'), 'button')}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         {avatars
@@ -165,6 +165,7 @@ export function IncidentRow({
   showBorder?: boolean;
 }) {
   const { theme, isDark } = useTheme();
+  const { t } = useTranslation();
   const palette = incidentColors(isDark);
   const badge = palette[incident.type as IncidentType] ?? palette.minor;
   const typeLabel = INCIDENT_TYPE_LABEL[incident.type as IncidentType] ?? incident.type;
@@ -180,7 +181,7 @@ export function IncidentRow({
       inset={0}
       showBorder={showBorder}
       onPress={onPress}
-      a11y={a11y(typeLabel, 'ინციდენტის ნახვა', 'button')}
+      a11y={a11y(typeLabel, t('projects.incidentViewA11yHint'), 'button')}
     />
   );
 }

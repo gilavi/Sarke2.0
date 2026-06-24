@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InputAccessoryView, Platform, Pressable, TextInput, View } from 'react-native';
 import { KeyboardController } from 'react-native-keyboard-controller';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -13,6 +14,7 @@ export function DebouncedFreetext({
   initial: string;
   onCommit: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -62,7 +64,7 @@ export function DebouncedFreetext({
     <>
       <FloatingLabelInput
         ref={inputRef}
-        label="დასკვნა"
+        label={t('inspections.wizardStepConclusion')}
         value={text}
         onChangeText={setText}
         onEndEditing={() => onCommit(text)}
@@ -76,7 +78,7 @@ export function DebouncedFreetext({
               onPress={() => KeyboardController.dismiss()}
               style={styles.accessoryBtn}
             >
-              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>მზადაა</Text>
+              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>{t('inspections.doneButton')}</Text>
             </Pressable>
           </View>
         </InputAccessoryView>

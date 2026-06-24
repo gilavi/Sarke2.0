@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { CircleX } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -20,13 +21,14 @@ export interface ParticipantsStepProps {
 
 export function ParticipantsStep({ participants, onAdd, onRemove }: ParticipantsStepProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const [nameInput, setNameInput] = useState('');
   const nameInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => nameInputRef.current?.focus(), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => nameInputRef.current?.focus(), 300);
+    return () => clearTimeout(timer);
   }, []);
 
   const add = () => {
@@ -43,7 +45,7 @@ export function ParticipantsStep({ participants, onAdd, onRemove }: Participants
         <View style={{ flex: 1 }}>
           <FloatingLabelInput
             ref={nameInputRef}
-            label="სახელი გვარი"
+            label={t('briefings.participantNameLabel')}
             value={nameInput}
             onChangeText={setNameInput}
             returnKeyType="done"
@@ -55,9 +57,9 @@ export function ParticipantsStep({ participants, onAdd, onRemove }: Participants
           onPress={add}
           disabled={!nameInput.trim()}
           style={[styles.addBtn, !nameInput.trim() && { opacity: 0.4 }]}
-          {...a11y('დამატება', 'მონაწილის დამატება', 'button')}
+          {...a11y(t('common.add'), t('a11y.addMemberHint'), 'button')}
         >
-          <Text style={styles.addBtnText}>დამატება</Text>
+          <Text style={styles.addBtnText}>{t('common.add')}</Text>
         </Pressable>
       </View>
 
@@ -71,7 +73,7 @@ export function ParticipantsStep({ participants, onAdd, onRemove }: Participants
               <Pressable
                 onPress={() => onRemove(idx)}
                 hitSlop={12}
-                {...a11y('წაშლა', `${p.name} წაშლა`, 'button')}
+                {...a11y(t('common.delete'), `${p.name} ${t('common.delete')}`, 'button')}
               >
                 <CircleX size={18} color={theme.colors.inkFaint} strokeWidth={1.5} />
               </Pressable>

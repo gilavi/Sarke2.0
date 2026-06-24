@@ -6,6 +6,7 @@ import Animated, {
   withSpring,
   FadeInUp,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../lib/theme';
 
 import { useAccessibilitySettings, announce } from '../../lib/accessibility';
@@ -27,6 +28,7 @@ export function QuestionCard({
   direction = 'next',
 }: QuestionCardProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const translateX = useSharedValue(0);
@@ -50,7 +52,7 @@ export function QuestionCard({
     }
 
     if (screenReaderEnabled) {
-      announce(`კითხვა ${stepIndex + 1} / ${totalSteps}. ${question.title}`);
+      announce(`${t('wizard.questionCounter', { index: stepIndex + 1, total: totalSteps })}. ${question.title}`);
     }
   }, [question.id, direction, reduceMotion, screenReaderEnabled, stepIndex, totalSteps, translateX, opacity]);
 
@@ -64,12 +66,12 @@ export function QuestionCard({
       entering={reduceMotion ? undefined : FadeInUp.duration(300)}
       style={[styles.card, animatedStyle]}
       accessible
-      accessibilityLabel={`კითხვა ${stepIndex + 1} / ${totalSteps}. ${question.title}`}
-      accessibilityHint="გადაიფურცლეთ მარჯვნივ შემდეგი კითხვისთვის, მარცხნივ წინა კითხვისთვის"
+      accessibilityLabel={`${t('wizard.questionCounter', { index: stepIndex + 1, total: totalSteps })}. ${question.title}`}
+      accessibilityHint={t('wizard.questionSwipeA11y')}
       accessibilityRole="header"
     >
       <Text style={styles.questionNumber}>
-        კითხვა {stepIndex + 1} / {totalSteps}
+        {t('wizard.questionCounter', { index: stepIndex + 1, total: totalSteps })}
       </Text>
       <Text style={styles.questionText}>{question.title}</Text>
       <View style={styles.content}>{children}</View>

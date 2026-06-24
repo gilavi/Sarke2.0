@@ -100,7 +100,7 @@ export default function ForgotPasswordScreen() {
                   textContentType="emailAddress"
                   autoComplete="email"
                   returnKeyType="go"
-                  error={attempted && !email.trim() ? 'შეიყვანეთ ელ. ფოსტა' : undefined}
+                  error={attempted && !email.trim() ? t('auth.enterEmail') : undefined}
                   onSubmitEditing={() => guard(!!email.trim(), submit)}
                 />
                 {error ? <ErrorText>{error}</ErrorText> : null}

@@ -1,5 +1,6 @@
 import { Pressable, View } from 'react-native';
 import { CircleCheck } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import type { OrderDocumentType } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
@@ -15,10 +16,11 @@ export function Step1DocType({
   s: OrderStyles;
   attempted: boolean;
 }) {
+  const { t } = useTranslation();
   const showError = attempted && docType === null;
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>ბრძანების ტიპი</Text>
+      <Text style={s.stepTitle}>{t('orders.docType')}</Text>
       {DOC_TYPES.map(({ type, Icon }) => {
         const selected = docType === type;
         return (
@@ -49,7 +51,7 @@ export function Step1DocType({
       })}
       {showError && (
         <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger, marginTop: 2 }}>
-          აირჩიეთ დოკუმენტის ტიპი
+          {t('orders.selectDocType')}
         </Text>
       )}
     </View>

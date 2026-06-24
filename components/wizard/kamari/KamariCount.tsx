@@ -1,6 +1,7 @@
-﻿import { memo, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { CircleMinus, CirclePlus } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useAccessibilitySettings } from '../../../lib/accessibility';
@@ -20,6 +21,7 @@ export const KamariCount = memo(function KamariCount({
   max: number;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -36,7 +38,7 @@ export const KamariCount = memo(function KamariCount({
   return (
     <View style={styles.countWrap}>
       <Text size="2xl" weight="bold" style={styles.countTitle}>
-        რამდენი ქამარია?
+        {t('wizard.kamariCountTitle')}
       </Text>
       <View style={styles.stepper}>
         <Pressable

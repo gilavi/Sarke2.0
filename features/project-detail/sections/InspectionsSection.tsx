@@ -59,7 +59,7 @@ export function InspectionsSection({
           <Text style={styles.sectionCount}>{completed.length}</Text>
         </View>
         <Pressable onPress={onAdd} hitSlop={16}>
-          <Text style={styles.sectionAddLink}>+ დამატება</Text>
+          <Text style={styles.sectionAddLink}>{t('projects.addInspection')}</Text>
         </Pressable>
       </View>
 
@@ -80,7 +80,7 @@ export function InspectionsSection({
               <Swipeable
                 key={`${item.source}-${item.id}`}
                 renderRightActions={() => (
-                  <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y('შემოწმების აქტს წაშლა', 'შემოწმების აქტს წაშლა', 'button')}>
+                  <Pressable onPress={() => onDelete(item)} style={styles.swipeDelete} {...a11y(t('projects.deleteInspectionA11yLabel'), t('projects.deleteInspectionA11yLabel'), 'button')}>
                     <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
                   </Pressable>
                 )}
@@ -94,7 +94,7 @@ export function InspectionsSection({
                   inset={0}
                   showBorder={!isLast}
                   onPress={() => router.push(route as any)}
-                  a11y={a11y(inspectionDisplayName(tpl?.name), 'დასრულებული შემოწმების აქტს ნახვა', 'button')}
+                  a11y={a11y(inspectionDisplayName(tpl?.name), t('projects.viewInspectionA11yHint'), 'button')}
                 />
               </Swipeable>
             );

@@ -10,6 +10,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { useTheme, withOpacity } from '../../lib/theme';
@@ -30,6 +31,7 @@ export const ProjectCard = memo(function ProjectCard({
   onPress,
 }: ProjectCardProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
   const hasLocation = project.latitude != null && project.longitude != null;
@@ -53,8 +55,8 @@ export const ProjectCard = memo(function ProjectCard({
     <Pressable
       onPress={onPress}
       {...a11y(
-        `პროექტი: ${project.company_name || project.name}`,
-        'შეეხეთ პროექტის დეტალების სანახავად',
+        t('projects.cardA11yLabel', { name: project.company_name || project.name }),
+        t('projects.cardA11yHint'),
         'button',
       )}
     >

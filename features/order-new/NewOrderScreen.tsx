@@ -1,13 +1,14 @@
 // NewOrderScreen.tsx - orchestrator for the order wizard.
 // All step renderers, types, validation, and styles live in sibling files.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useTranslation } from 'react-i18next';
 
 import { ArrowRight, FileText } from 'lucide-react-native';
 import { FlowHeader } from '../../components/FlowHeader';
@@ -113,7 +114,8 @@ export default function NewOrderScreen() {
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
-  const { projectId, editId } = useLocalSearchParams<{ projectId: string; editId?: string }>();
+  const { t } = useTranslation();
+  const { projectId } = useLocalSearchParams<{ projectId: string }>();
 
   const [step, setStep] = useState<Step>(1);
   // Enabled forward/submit button + on-press field errors (see useSubmitGuard).
@@ -141,8 +143,6 @@ export default function NewOrderScreen() {
     projectsApi.getById(projectId).then(p => {
       if (!p) return;
       setProject(p);
-      // Edit mode: keep the saved form values; don't autofill from the project.
-      if (editId) return;
       setForm(f => ({
         ...f,
         companyName: p.company_name || p.name,
@@ -152,28 +152,7 @@ export default function NewOrderScreen() {
         objectAddress: p.address ?? '',
       }));
     }).catch(() => null);
-  }, [projectId, editId]);
-
-  // Edit mode: hydrate docType + form from the (reopened) order. buildFormData
-  // keeps identical field names, so the stored form_data maps straight back
-  // onto CombinedForm.
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (!editId || hydratedRef.current) return;
-    hydratedRef.current = true;
-    let mounted = true;
-    (async () => {
-      try {
-        const order = await ordersApi.getById(editId);
-        if (!order || !mounted) return;
-        setDocType(order.documentType);
-        setForm(f => ({ ...f, ...(order.formData as Partial<CombinedForm>) }));
-      } catch {
-        // best-effort: leave the blank form if hydration fails
-      }
-    })();
-    return () => { mounted = false; };
-  }, [editId]);
+  }, [projectId]);
 
   // Auto-generate order number when a crane order is selected
   useEffect(() => {
@@ -195,9 +174,9 @@ export default function NewOrderScreen() {
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, result.uri, 'image/jpeg', 'certificate');
       setForm(f => ({ ...f, [field]: path }));
     } catch {
-      toast.error('ფოტო ვერ აიტვირთა');
+      toast.error(t('orders.photoUploadFailed'));
     }
-  }, [pickPhotoWithAnnotation, photoSessionId, toast]);
+  }, [pickPhotoWithAnnotation, photoSessionId, toast, t]);
 
   const handleDeletePhoto = useCallback(async (field: 'craneOperatorCertPhoto' | 'craneInspCertPhoto') => {
     const path = form[field];
@@ -235,25 +214,16 @@ export default function NewOrderScreen() {
     if (!projectId || !docType) return;
     setSaving(true);
     try {
-      if (editId) {
-        await ordersApi.update(editId, {
-          documentType: docType,
-          formData: buildFormData(form, docType),
-          status: 'draft',
-        });
-      } else {
-        await ordersApi.create({
-          projectId,
-          documentType: docType,
-          formData: buildFormData(form, docType),
-          status: 'draft',
-        });
-      }
-      invalidateRecordLists(queryClient);
-      toast.success('ბრძანება შენახულია');
+      await ordersApi.create({
+        projectId,
+        documentType: docType,
+        formData: buildFormData(form, docType),
+        status: 'draft',
+      });
+      toast.success(t('orders.orderSaved'));
       router.back();
     } catch (e) {
-      toast.error(friendlyError(e, 'შენახვა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('orders.saveFailed')));
     } finally {
       setSaving(false);
     }
@@ -262,36 +232,30 @@ export default function NewOrderScreen() {
   // ── generate PDF ────────────────────────────────────────────────────────────
   const saveAndGeneratePdf = async () => {
     if (!projectId || !project || !docType) {
-      toast.error('პროექტი ვერ მოიძებნა');
+      toast.error(t('orders.projectNotFound'));
       return;
     }
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
 
     // Validate signatures for types that require them
     if (isFireSafetyVariant(docType) && (!form.directorSignature || !form.appointedSignature)) {
-      toast.error('გთხოვთ, დააწეროთ ორივე ხელმოწერა');
+      toast.error(t('orders.bothSignaturesRequired'));
       return;
     }
     if (isCraneVariant(docType) && (!form.directorSignature || !form.operatorSignature)) {
-      toast.error('გთხოვთ, დააწეროთ ორივე ხელმოწერა');
+      toast.error(t('orders.bothSignaturesRequired'));
       return;
     }
 
     setSaving(true);
     let savedId = '';
     try {
-      const saved = editId
-        ? await ordersApi.update(editId, {
-            documentType: docType,
-            formData: buildFormData(form, docType),
-            status: 'completed',
-          })
-        : await ordersApi.create({
-            projectId,
-            documentType: docType,
-            formData: buildFormData(form, docType),
-            status: 'completed',
-          });
+      const saved = await ordersApi.create({
+        projectId,
+        documentType: docType,
+        formData: buildFormData(form, docType),
+        status: 'completed',
+      });
       savedId = saved.id;
       invalidateRecordLists(queryClient);
 
@@ -305,7 +269,7 @@ export default function NewOrderScreen() {
         isFireSafetyVariant(docType) ? form.appointedName :
         isCraneVariant(docType) ? form.craneOperatorName :
         form.specialistName;
-      const orderTitle = docType ? ORDER_DOCUMENT_TYPE_LABEL[docType] : 'ბრძანება';
+      const orderTitle = docType ? ORDER_DOCUMENT_TYPE_LABEL[docType] : t('orders.orderTitle');
       const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
         title: orderTitle,
         author: orderAuthor || undefined,
@@ -333,13 +297,13 @@ export default function NewOrderScreen() {
               contentType: 'application/pdf',
               dbOp: { kind: 'none' },
             });
-            toast.info('PDF შენახულია ლოკალურად; სინქრონიზაცია მოხდება ქსელზე დაბრუნებისას');
+            toast.info(t('orders.pdfSavedLocally'));
           }
         })();
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      toast.error(friendlyError(e, 'PDF-ის შექმნა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('orders.pdfGenerateFailed')));
       if (savedId) router.replace(`/orders/${savedId}/success` as any);
     } finally {
       setSaving(false);
@@ -351,7 +315,7 @@ export default function NewOrderScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <FlowHeader
-        flowTitle="ბრძანება"
+        flowTitle={t('orders.orderTitle')}
         project={project}
         step={step}
         totalSteps={getTotalSteps(docType)}
@@ -393,9 +357,9 @@ export default function NewOrderScreen() {
             form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField}
             onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
             onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
-            positionLabel="კვალიფიკაცია / სპეციალობა"
+            positionLabel={t('orders.qualificationSpecialty')}
             positionField="craneOperatorQualification"
-            stepTitle="ტექ. პასუხისმგებელი"
+            stepTitle={t('orders.techResponsible')}
           />
         )}
         {step === 4 && isCraneOperatorVariant(docType) && (
@@ -428,7 +392,7 @@ export default function NewOrderScreen() {
         <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
           {step < getTotalSteps(docType) ? (
             <Button
-              title="შემდეგი"
+              title={t('orders.nextButton')}
               rightIcon={ArrowRight}
               onPress={() => guard(canAdvance, goNext, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
               style={{ width: '100%' }}
@@ -436,14 +400,14 @@ export default function NewOrderScreen() {
           ) : (
             <View style={{ gap: 10 }}>
               <Button
-                title={pdfUsage?.isLocked ? '🔒 PDF გენერირება' : 'PDF გენერირება'}
+                title={pdfUsage?.isLocked ? `🔒 ${t('orders.generatePdf')}` : t('orders.generatePdf')}
                 leftIcon={FileText}
                 loading={saving}
                 onPress={() => guard(canAdvance, saveAndGeneratePdf, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
                 style={{ width: '100%' }}
               />
               <Button
-                title="შენახვა PDF-ის გარეშე"
+                title={t('orders.saveWithoutPdf')}
                 variant="link"
                 disabled={saving}
                 onPress={saveDraft}

@@ -1,6 +1,7 @@
 import React, {useMemo} from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 import { Button } from '../ui';
@@ -17,6 +18,7 @@ interface WizardNavProps {
 
 export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: WizardNavProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const handleNext = () => {
@@ -37,7 +39,7 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
         onPress={handlePrev}
         disabled={!canGoPrev}
         style={[styles.prevBtn, !canGoPrev && styles.disabled]}
-        {...a11y('წინა კითხვა', 'შეეხეთ წინა კითხვაზე დასაბრუნებლად', 'button')}
+        {...a11y(t('wizard.prevQuestion'), t('wizard.prevQuestionA11yHint'), 'button')}
       >
         <ArrowLeft
           size={18}
@@ -50,20 +52,20 @@ export function WizardNav({ isLast, canGoNext, canGoPrev, onNext, onPrev }: Wiza
             { color: canGoPrev ? theme.colors.inkSoft : theme.colors.inkFaint },
           ]}
         >
-          წინა
+          {t('wizard.prevLabel')}
         </Text>
       </Pressable>
 
       <Button
-        title={isLast ? '✓ დასრულება' : 'შემდეგი'}
+        title={isLast ? t('wizard.finishLabel') : t('common.next')}
         rightIcon={!isLast ? ArrowRight : undefined}
         size="lg"
         onPress={handleNext}
         disabled={!canGoNext}
         style={{ minWidth: 140 }}
         {...a11y(
-          isLast ? 'დასრულება' : 'შემდეგი კითხვა',
-          isLast ? 'შეეხეთ შემოწმების აქტის დასასრულებლად' : 'შეეხეთ შემდეგ კითხვაზე გადასვლისთვის',
+          isLast ? t('common.done') : t('wizard.nextQuestionA11y'),
+          isLast ? t('wizard.finishA11yHint') : t('wizard.nextQuestionA11yHint'),
           'button',
           { disabled: !canGoNext }
         )}

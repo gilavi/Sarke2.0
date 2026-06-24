@@ -64,7 +64,7 @@ export function TopicSelector({
 
       {selectedTopics.has('other') && (
         <FloatingLabelInput
-          label="თემის დასახელება"
+          label={t('briefings.topicNameLabel')}
           value={customTopic}
           onChangeText={onChangeCustomTopic}
           returnKeyType="done"

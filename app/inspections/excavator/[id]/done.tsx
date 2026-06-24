@@ -4,6 +4,7 @@
 // excavator row + project name and maps the verdict onto the shared view.
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { InspectionDoneView, type DoneVerdictTone } from '../../../../components/success';
 import { projectsApi } from '../../../../lib/services';
 import { excavatorApi } from '../../../../lib/excavatorService';
@@ -11,6 +12,7 @@ import { EXCAVATOR_VERDICT_LABEL } from '../../../../types/excavator';
 import type { ExcavatorInspection } from '../../../../types/excavator';
 
 export default function ExcavatorInspectionDoneScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [inspection, setInspection] = useState<ExcavatorInspection | null>(null);
@@ -44,10 +46,10 @@ export default function ExcavatorInspectionDoneScreen() {
           )[0] ?? inspection.verdict;
         const head =
           inspection.verdict === 'approved'
-            ? '✓ დადებითი'
+            ? t('inspections.verdictPositive')
             : inspection.verdict === 'conditional'
-              ? '⚠ პირობითი'
-              : '✗ უარყოფითი';
+              ? t('inspections.verdictConditional')
+              : t('inspections.verdictNegative');
         const tone: DoneVerdictTone =
           inspection.verdict === 'rejected'
             ? 'danger'
@@ -62,7 +64,7 @@ export default function ExcavatorInspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ექსკავატორი"
+      typeLabel={t('inspections.excavatorDoneType')}
       projectName={projectName || undefined}
       dateText={
         inspection

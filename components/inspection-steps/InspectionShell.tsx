@@ -5,6 +5,7 @@
  */
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
@@ -76,6 +77,7 @@ export function InspectionShell({
   onClose,
   children,
 }: InspectionShellProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(theme, insets.bottom);
@@ -124,7 +126,7 @@ export function InspectionShell({
           <View style={styles.footer}>
             {isLastStep ? (
               <Button
-                title={finishLabel ?? 'შენახვა და დასრულება'}
+                title={finishLabel ?? t('inspections.saveAndFinish')}
                 style={{ paddingVertical: 14 }}
                 rightIcon={Check}
                 loading={completing}
@@ -133,7 +135,7 @@ export function InspectionShell({
               />
             ) : (
               <Button
-                title={!blockNext && !canGoNext ? 'გაგრძელება' : 'შემდეგი'}
+                title={!blockNext && !canGoNext ? t('common.continue') : t('common.next')}
                 variant={blockNext || canGoNext ? 'primary' : 'secondary'}
                 size="lg"
                 style={styles.nextBtn}

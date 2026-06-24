@@ -24,6 +24,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -68,6 +69,7 @@ function SignaturesScreenBody({
   state,
 }: Omit<Props, 'visible'>) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeSignaturesScreenStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const [canvasOpen, setCanvasOpen] = useState(false);
@@ -92,17 +94,17 @@ function SignaturesScreenBody({
           onPress={onClose}
           hitSlop={12}
           style={({ pressed }) => [styles.headerPill, pressed && styles.pressed]}
-          {...a11y('უკან', undefined, 'button')}
+          {...a11y(t('common.back'), undefined, 'button')}
         >
           <ChevronLeft size={18} color={theme.colors.accent} strokeWidth={1.5} />
-          <Text style={styles.headerPillText}>უკან</Text>
+          <Text style={styles.headerPillText}>{t('common.back')}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>ხელმოწერები</Text>
+        <Text style={styles.headerTitle}>{t('signature.screenTitle')}</Text>
         <Pressable
           onPress={onClose}
           hitSlop={12}
           style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-          {...a11y('დახურვა', undefined, 'button')}
+          {...a11y(t('common.close'), undefined, 'button')}
         >
           <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
         </Pressable>
@@ -122,10 +124,10 @@ function SignaturesScreenBody({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>დამატებითი ხაზები PDF-ისთვის</Text>
+          <Text style={styles.sectionLabel}>{t('signature.additionalLinesLabel')}</Text>
           {additionalRows.length === 0 ? (
             <Text style={styles.emptyCaption}>
-              დაამატეთ ხაზი თუ აქტს რამდენიმე ხელმოწერა სჭირდება
+              {t('signature.additionalLinesEmpty')}
             </Text>
           ) : (
             <View style={styles.rowsStack}>
@@ -145,10 +147,10 @@ function SignaturesScreenBody({
         <Pressable
           onPress={addRow}
           style={({ pressed }) => [styles.addRowBtn, pressed && styles.pressed]}
-          {...a11y('ხაზის დამატება', 'PDF-ში ცარიელი ხელმოწერის ხაზის დამატება', 'button')}
+          {...a11y(t('signature.addLine'), t('signature.addLineA11y'), 'button')}
         >
           <Plus size={18} color={theme.colors.accent} strokeWidth={1.5} />
-          <Text style={styles.addRowText}>ხაზის დამატება</Text>
+          <Text style={styles.addRowText}>{t('signature.addLine')}</Text>
         </Pressable>
       </View>
 

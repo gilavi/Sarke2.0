@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
@@ -43,6 +44,7 @@ export function SlingTypeSheet({
   onChange,
   onClose,
 }: SlingTypeSheetProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = getStyles(theme);
 
@@ -59,8 +61,8 @@ export function SlingTypeSheet({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>ტ-პი / სახ.</Text>
-        <Pressable onPress={onClose} hitSlop={12} {...a11y('დახურვა', undefined, 'button')}>
+        <Text style={styles.title}>{t('inspections.slingTypeSheetTitle')}</Text>
+        <Pressable onPress={onClose} hitSlop={12} {...a11y(t('common.close'), undefined, 'button')}>
           <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
         </Pressable>
       </View>
@@ -81,7 +83,7 @@ export function SlingTypeSheet({
         {otherActive && otherOptionValue ? (
           <View style={styles.otherWrap}>
             <FloatingLabelInput
-              label={`${otherOptionValue} - კონკრეტული სახელი`}
+              label={`${otherOptionValue} - ${t('inspections.otherSpecificName')}`}
               value={otherText}
               onChangeText={setOtherText}
             />
@@ -90,7 +92,7 @@ export function SlingTypeSheet({
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button title="დასრულება" onPress={done} size="lg" />
+        <Button title={t('common.done')} onPress={done} size="lg" />
       </View>
     </View>
   );

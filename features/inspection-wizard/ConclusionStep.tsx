@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import {
   ConclusionStep as SharedConclusionStep,
@@ -12,16 +13,6 @@ import { AttachmentBars } from './AttachmentBars';
 import { PhotoPreviewModal } from './PhotoPreviewModal';
 
 export type SafetyVerdict = 'safe' | 'caution' | 'unsafe';
-
-// Verdict values map to comment #11 from ClickUp "ფასადის ხარაჩოს შემოწმების აქტი":
-//   safe    → green  (უსაფრთხოა)
-//   caution → yellow (დასაშვებია, საჭიროებს დაკვირვებას)
-//   unsafe  → red    (დაუშვებელია გამოყენება)
-const SAFETY_VERDICT_OPTIONS: VerdictOption<SafetyVerdict>[] = [
-  { value: 'safe', label: 'უსაფრთხოა', tone: 'success' },
-  { value: 'caution', label: 'დასაშვებია,\nდასაჭიროებს', tone: 'caution' },
-  { value: 'unsafe', label: 'დაუშვებელია\nგამოყენება', tone: 'danger' },
-];
 
 /**
  * Scaffold-wizard conclusion step. Thin wrapper over the shared
@@ -57,6 +48,17 @@ export const ConclusionStep = memo(function ConclusionStep({
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { t } = useTranslation();
+  // Verdict values map to comment #11 from ClickUp "ფასადის ხარაჩოს შემოწმების აქტი":
+  //   safe    → green  (უსაფრთხოა)
+  //   caution → yellow (დასაშვებია, საჭიროებს დაკვირვებას)
+  //   unsafe  → red    (დაუშვებელია გამოყენება)
+  const SAFETY_VERDICT_OPTIONS: VerdictOption<SafetyVerdict>[] = [
+    { value: 'safe', label: t('inspections.safe'), tone: 'success' },
+    { value: 'caution', label: t('inspections.verdictCautionShort'), tone: 'caution' },
+    { value: 'unsafe', label: t('inspections.verdictUnsafeShort'), tone: 'danger' },
+  ];
+
   // photoAnswerId is propagated for parity with the original signature;
   // PhotoThumb/PhotoPreviewModal key off photo.id internally.
   void photoAnswerId;
@@ -82,7 +84,7 @@ export const ConclusionStep = memo(function ConclusionStep({
       notesError={interacted && !conclusion.trim()}
       photoSection={photoQuestion ? (
         <View style={staticStyles.gap8}>
-          <Text style={styles.label}>საერთო ფოტოები</Text>
+          <Text style={styles.label}>{t('inspections.generalPhotosLabel')}</Text>
           <AttachmentBars
             photos={photos}
             onPickPhoto={onPickPhoto}

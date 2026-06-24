@@ -166,7 +166,7 @@ function ForgotPasswordModal({
                 textContentType="emailAddress"
                 autoComplete="email"
                 returnKeyType="go"
-                error={attempted && !email.trim() ? 'შეიყვანეთ ელ. ფოსტა' : undefined}
+                error={attempted && !email.trim() ? t('auth.enterEmail') : undefined}
                 onSubmitEditing={() => guard(!!email.trim(), submit)}
               />
               <Button title={t('auth.sendLink')} onPress={() => guard(!!email.trim(), submit)} loading={busy} />
@@ -256,7 +256,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         autoComplete="email"
         returnKeyType="next"
         blurOnSubmit={false}
-        error={attempted && !isEmail(email.trim()) ? 'არასწორი ელ. ფოსტა' : undefined}
+        error={attempted && !isEmail(email.trim()) ? t('auth.invalidEmail') : undefined}
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
@@ -270,7 +270,7 @@ function LoginForm({ onForgotPassword }: { onForgotPassword: (email?: string) =>
         textContentType="password"
         autoComplete="current-password"
         returnKeyType="go"
-        error={attempted && password.length < MIN_PASSWORD_LEN ? `პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს` : undefined}
+        error={attempted && password.length < MIN_PASSWORD_LEN ? t('errors.passwordTooShort', { min: MIN_PASSWORD_LEN }) : undefined}
         onSubmitEditing={() => guard(loginValid, handleSignIn)}
       />
       <Pressable
@@ -397,7 +397,7 @@ function RegisterForm({
             autoComplete="name-given"
             returnKeyType="next"
             blurOnSubmit={false}
-            error={attempted && !firstName.trim() ? 'სავალდებულო ველი' : undefined}
+            error={attempted && !firstName.trim() ? t('errors.requiredField') : undefined}
             onSubmitEditing={() => lastNameRef.current?.focus()}
           />
         </View>
@@ -411,7 +411,7 @@ function RegisterForm({
             autoComplete="name-family"
             returnKeyType="next"
             blurOnSubmit={false}
-            error={attempted && !lastName.trim() ? 'სავალდებულო ველი' : undefined}
+            error={attempted && !lastName.trim() ? t('errors.requiredField') : undefined}
             onSubmitEditing={() => emailRef.current?.focus()}
           />
         </View>
@@ -428,7 +428,7 @@ function RegisterForm({
         autoComplete="email"
         returnKeyType="next"
         blurOnSubmit={false}
-        error={attempted && !isEmail(email.trim()) ? 'არასწორი ელ. ფოსტა' : undefined}
+        error={attempted && !isEmail(email.trim()) ? t('auth.invalidEmail') : undefined}
         onSubmitEditing={() => passwordRef.current?.focus()}
       />
       <FloatingLabelInput
@@ -442,7 +442,7 @@ function RegisterForm({
         textContentType="newPassword"
         autoComplete="new-password"
         returnKeyType="go"
-        error={attempted && password.length < MIN_PASSWORD_LEN ? `პაროლი უნდა შეიცავდეს მინიმუმ ${MIN_PASSWORD_LEN} სიმბოლოს` : undefined}
+        error={attempted && password.length < MIN_PASSWORD_LEN ? t('errors.passwordTooShort', { min: MIN_PASSWORD_LEN }) : undefined}
         onSubmitEditing={() => guard(canSubmit, handleRegister)}
       />
       {error ? <InlineError>{error}</InlineError> : null}

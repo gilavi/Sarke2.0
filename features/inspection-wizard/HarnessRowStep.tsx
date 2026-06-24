@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Camera, CircleMinus, CirclePlus, Plus } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -37,6 +38,7 @@ export const HarnessRowStep = memo(function HarnessRowStep({
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -48,6 +50,9 @@ export const HarnessRowStep = memo(function HarnessRowStep({
   const hasPhotos = answerPhotos.length > 0;
 
   const [previewPhoto, setPreviewPhoto] = useState<AnswerPhoto | null>(null);
+
+  const goodStatus = t('inspections.harnessStatusGood');
+  const damagedStatus = t('inspections.harnessStatusDamaged');
 
   const setValue = (col: string, value: string | null) => {
     onAnswer(question, a => {
@@ -79,13 +84,13 @@ export const HarnessRowStep = memo(function HarnessRowStep({
 
       {isFirstRow ? (
         <View style={staticStyles.rowBetweenPadH4}>
-          <Text style={{ fontWeight: '600' }}>რამდენი ქამარი სულ?</Text>
+          <Text style={{ fontWeight: '600' }}>{t('inspections.harnessCountQuestion')}</Text>
           <View style={staticStyles.rowCenterGap12}>
-            <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} {...a11y('ქამრების რაოდენობის შემცირება', 'შეეხეთ რაოდენობის შესამცირებლად', 'button')}>
+            <Pressable onPress={() => setHarnessRowCount(Math.max(1, harnessRowCount - 1))} {...a11y(t('inspections.decreaseHarnessCount'), t('inspections.decreaseHarnessCountHint'), 'button')}>
               <CircleMinus size={28} color={theme.colors.accent} strokeWidth={1.5} />
             </Pressable>
             <Text style={{ fontSize: 18, fontWeight: '700' }}>{harnessRowCount}</Text>
-            <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))} {...a11y('ქამრების რაოდენობის გაზრდა', 'შეეხეთ რაოდენობის გასაზრდელად', 'button')}>
+            <Pressable onPress={() => setHarnessRowCount(Math.min(15, harnessRowCount + 1))} {...a11y(t('inspections.increaseHarnessCount'), t('inspections.increaseHarnessCountHint'), 'button')}>
               <CirclePlus size={28} color={theme.colors.accent} strokeWidth={1.5} />
             </Pressable>
           </View>
@@ -108,7 +113,7 @@ export const HarnessRowStep = memo(function HarnessRowStep({
                       borderColor: theme.colors.accent,
                     },
                   ]}
-                  {...a11y(col + ' - ვარგისია', 'შეეხეთ ვარგისად მოსანიშნად', 'button')}
+                  {...a11y(col + ' - ' + goodStatus, t('inspections.harnessStatusGoodHint'), 'button')}
                 >
                   <Text style={{ color: current === 'ვარგისია' ? theme.colors.accent : theme.colors.inkSoft }}>
                     ✓
@@ -123,7 +128,7 @@ export const HarnessRowStep = memo(function HarnessRowStep({
                       borderColor: theme.colors.danger,
                     },
                   ]}
-                  {...a11y(col + ' - დაზიანებულია', 'შეეხეთ დაზიანებულად მოსანიშნად', 'button')}
+                  {...a11y(col + ' - ' + damagedStatus, t('inspections.harnessStatusDamagedHint'), 'button')}
                 >
                   <Text style={{ color: current === 'დაზიანებულია' ? theme.colors.danger : theme.colors.inkSoft }}>
                     ✗
@@ -142,19 +147,19 @@ export const HarnessRowStep = memo(function HarnessRowStep({
           contentContainerStyle={[staticStyles.gap10, staticStyles.padV8]}
         >
           {answerPhotos.map(p => (
-            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y('ფოტოს ნახვა', 'შეეხეთ ფოტოს დიდად სანახავად', 'button')}>
+            <Pressable key={p.id} onPress={() => setPreviewPhoto(p)} style={styles.photoTile} {...a11y(t('a11y.viewPhoto'), t('a11y.viewPhotoHint'), 'button')}>
               <PhotoThumb photo={p} size={120} />
             </Pressable>
           ))}
-          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
+          <Pressable onPress={onPickPhoto} style={styles.addPhotoTile} {...a11y(t('a11y.addPhoto'), t('a11y.addPhotoHint'), 'button')}>
             <Plus size={32} color={theme.colors.inkSoft} strokeWidth={1.5} />
           </Pressable>
         </ScrollView>
       ) : (
         <View style={styles.chipRow}>
-          <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y('ფოტოს დამატება', 'შეეხეთ ახალი ფოტოს ასატვირთად', 'button')}>
+          <Pressable onPress={onPickPhoto} style={styles.assistChip} {...a11y(t('a11y.addPhoto'), t('a11y.addPhotoHint'), 'button')}>
             <Camera size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.assistChipText}>ფოტო</Text>
+            <Text style={styles.assistChipText}>{t('inspections.photoBarLabel')}</Text>
           </Pressable>
         </View>
       )}

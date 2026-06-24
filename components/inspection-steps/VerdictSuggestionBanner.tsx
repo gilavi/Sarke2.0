@@ -7,6 +7,7 @@
  * mobile-ladder, lifting-accessories, safety-net, fall-protection).
  */
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Lightbulb } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -20,6 +21,7 @@ export interface VerdictSuggestionBannerProps {
 }
 
 export function VerdictSuggestionBanner({ text, onApply }: VerdictSuggestionBannerProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = getStyles(theme);
 
@@ -35,7 +37,7 @@ export function VerdictSuggestionBanner({ text, onApply }: VerdictSuggestionBann
       <Pressable
         style={styles.banner}
         onPress={onApply}
-        {...a11y(text, 'შეეხეთ შემოთავაზებული გადაწყვეტილების მისაღებად', 'button')}
+        {...a11y(text, t('inspections.suggestionApplyHint'), 'button')}
       >
         {inner}
       </Pressable>

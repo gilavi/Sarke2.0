@@ -10,6 +10,7 @@
 import { useMemo, type Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 import SignatureScreen, { type SignatureViewRef } from 'react-native-signature-canvas';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 
@@ -50,6 +51,7 @@ export function SignatureStage({
   onOK,
 }: SignatureStageProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
@@ -81,7 +83,7 @@ export function SignatureStage({
         <View pointerEvents="none" style={styles.baseline} />
         {!hasStroke && (
           <View pointerEvents="none" style={styles.hintWrap}>
-            <Text style={styles.hintText}>ამ სივრცეში ხელი მოაწერეთ</Text>
+            <Text style={styles.hintText}>{t('briefings.signHereHint')}</Text>
           </View>
         )}
       </View>

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 import { Camera, MoreHorizontal, Plus } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { PressBounce } from '../animations/PressBounce';
 import { useTheme } from '../../lib/theme';
@@ -39,6 +40,7 @@ export function SlidePhotoRow({
   onAddPhoto,
 }: SlidePhotoRowProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const canAdd = images.length < MAX_SLIDE_PHOTOS;
 
@@ -51,7 +53,7 @@ export function SlidePhotoRow({
         ) : (
           <>
             <Camera size={32} color={theme.colors.inkFaint} strokeWidth={1.5} />
-            <Text style={styles.addLabel}>+ ფოტოს დამატება</Text>
+            <Text style={styles.addLabel}>{t('reports.addPhoto')}</Text>
           </>
         )}
       </PressBounce>
@@ -60,7 +62,7 @@ export function SlidePhotoRow({
 
   return (
     <View style={{ gap: 10 }}>
-      <Text style={styles.sectionLabel}>ფოტოები</Text>
+      <Text style={styles.sectionLabel}>{t('reports.photosLabel')}</Text>
       <View style={styles.row}>
         {images.map((img, i) => {
           const path = slideImagePath(img);
@@ -85,8 +87,8 @@ export function SlidePhotoRow({
           ) : (
             <>
               <Plus size={18} color={theme.colors.inkSoft} strokeWidth={1.75} />
-              <Text style={styles.addSecondLabel}>მეორე ფოტო</Text>
-              <Text style={styles.optional}>არასავალდებულო</Text>
+              <Text style={styles.addSecondLabel}>{t('reports.secondPhoto')}</Text>
+              <Text style={styles.optional}>{t('reports.optionalLabel')}</Text>
             </>
           )}
         </PressBounce>

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Trash2, Image as ImageIcon } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -34,10 +35,11 @@ export function ReportSlideCard({
   onDelete: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const uris = useResolvedImageUris(STORAGE_BUCKETS.reportPhotos, slideImagePaths(slide));
   const layout = slideLayout(slide);
-  const title = slide.title || `სლაიდი ${index + 1}`;
+  const title = slide.title || t('reports.slideTitleFallback', { n: index + 1 });
   const hasDesc = !!slide.description?.trim();
 
   let media: React.ReactNode;
@@ -77,7 +79,7 @@ export function ReportSlideCard({
   return (
     <Swipeable
       renderRightActions={() => (
-        <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y('წაშლა', 'სლაიდის წაშლა', 'button')}>
+        <Pressable onPress={onDelete} style={styles.swipeDelete} {...a11y(t('reports.deleteSlide'), t('reports.deleteSlideHint'), 'button')}>
           <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
         </Pressable>
       )}

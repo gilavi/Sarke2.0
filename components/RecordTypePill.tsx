@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
 import { useTheme } from '../lib/theme';
 
@@ -11,19 +12,20 @@ export interface RecordTypePillProps {
   label?: string;
 }
 
-const DEFAULT_LABELS: Record<RecordType, string> = {
-  inspection: 'შემოწმება',
-  incident:   'ინციდენტი',
-  briefing:   'ინსტრუქტაჟი',
-  report:     'რეპორტი',
-};
-
-
 export const RecordTypePill = memo(function RecordTypePill({
   recordType,
   label,
 }: RecordTypePillProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+
+  const DEFAULT_LABELS: Record<RecordType, string> = {
+    inspection: t('components.recordTypePillInspection'),
+    incident:   t('components.recordTypePillIncident'),
+    briefing:   t('components.recordTypePillBriefing'),
+    report:     t('components.recordTypePillReport'),
+  };
+
   const resolvedLabel = label ?? DEFAULT_LABELS[recordType];
 
   return (

@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -55,6 +56,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
   dense,
   labelLines = 2,
 }: ChecklistItemRowProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
@@ -67,7 +69,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
               style={[styles.label, styles.labelInput]}
               value={editableLabel.value}
               onChangeText={editableLabel.onChange}
-              placeholder={editableLabel.placeholder ?? 'დასახელება...'}
+              placeholder={editableLabel.placeholder ?? t('components.namePlaceholder')}
               placeholderTextColor={theme.colors.inkFaint}
             />
           ) : (

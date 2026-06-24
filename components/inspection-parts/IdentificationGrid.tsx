@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { Selector, type SelectorOption } from '../ui/Selector';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -48,6 +49,7 @@ export function IdentificationGrid({
   fields,
   columns = 2,
 }: IdentificationGridProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -86,7 +88,7 @@ export function IdentificationGrid({
                 />
                 {otherActive && field.onOtherValueChange ? (
                   <FloatingLabelInput
-                    label={`${field.otherOptionValue} - კონკრეტული სახელი`}
+                    label={`${field.otherOptionValue} - ${t('inspections.otherSpecificName')}`}
                     value={field.otherValue ?? ''}
                     onChangeText={field.onOtherValueChange}
                   />

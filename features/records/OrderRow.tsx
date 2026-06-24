@@ -1,4 +1,5 @@
 import { ChevronRight, FileText } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { InspectionRow } from '../../components/InspectionRow';
 import { RecordAvatar } from '../../components/RecordAvatar';
 import { useTheme } from '../../lib/theme';
@@ -8,9 +9,8 @@ import { ORDER_DOCUMENT_TYPE_LABEL, type Order } from '../../types/models';
 
 /**
  * Status-free brdzaneba (order) row, reused by Home / History / Drafts.
- * Home/History pass `onPress` to open the order detail screen
- * (`app/orders/[id].tsx`); without one the row is display-only (no chevron /
- * tap) — e.g. the Drafts list.
+ * Orders have no per-order detail/edit screen on mobile, so the row is
+ * display-only (no chevron / tap) unless an `onPress` is supplied.
  */
 export function OrderRow({
   order,
@@ -22,6 +22,7 @@ export function OrderRow({
   showBorder?: boolean;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const label = ORDER_DOCUMENT_TYPE_LABEL[order.documentType] ?? order.documentType;
   return (
     <InspectionRow
@@ -32,7 +33,7 @@ export function OrderRow({
       inset={0}
       showBorder={showBorder}
       onPress={onPress}
-      a11y={a11y(label, 'ბრძანება', 'button')}
+      a11y={a11y(label, t('records.orderA11y'), 'button')}
     />
   );
 }

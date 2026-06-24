@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useBottomSheet } from '../../components/BottomSheet';
 import { useToast } from '../../lib/toast';
 import { friendlyError } from '../../lib/errorMap';
@@ -21,12 +22,13 @@ import type { Report } from '../../types/models';
 export function useReportDelete(onDeleted?: () => void): (report: Pick<Report, 'id'>) => void {
   const showSheet = useBottomSheet();
   const toast = useToast();
+  const { t } = useTranslation();
   return useCallback(
     (report: Pick<Report, 'id'>) => {
       showSheet(
         {
-          title: 'რეპორტის წაშლა?',
-          options: ['დიახ, წაშლა', 'გაუქმება'],
+          title: t('records.deleteTitle'),
+          options: [t('projects.deleteConfirmYes'), t('common.cancel')],
           cancelButtonIndex: 1,
           destructiveButtonIndex: 0,
         },
@@ -35,14 +37,14 @@ export function useReportDelete(onDeleted?: () => void): (report: Pick<Report, '
           try {
             await reportsApi.remove(report.id);
             invalidateRecordLists(queryClient);
-            toast.success('წაიშალა');
+            toast.success(t('notifications.deleted'));
             onDeleted?.();
           } catch (e) {
-            toast.error(friendlyError(e, 'წაშლა ვერ მოხერხდა'));
+            toast.error(friendlyError(e, t('errors.deleteFailed')));
           }
         },
       );
     },
-    [showSheet, toast, onDeleted],
+    [showSheet, toast, t, onDeleted],
   );
 }

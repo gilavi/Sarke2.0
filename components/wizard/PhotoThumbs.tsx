@@ -3,6 +3,7 @@ import { ActivityIndicator, View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 import { RefreshCw, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme, type Theme } from '../../lib/theme';
 
 import { haptic } from '../../lib/haptics';
@@ -25,6 +26,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
   styles: ReturnType<typeof getstyles>;
   theme: ReturnType<typeof useTheme>['theme'];
 }) {
+  const { t } = useTranslation();
   const isLocal = /^(file|content|ph|asset):\/\//.test(photo.storage_path);
   const [uri, setUri] = useState<string | null>(isLocal ? photo.storage_path : null);
   const [loadError, setLoadError] = useState(false);
@@ -60,7 +62,7 @@ function PhotoThumbCell({ photo, onView, onDelete, styles, theme }: {
         onPress={() => onDelete(photo)}
         style={styles.deleteBtn}
         hitSlop={8}
-        {...a11y('ფოტოს წაშლა', 'შეეხეთ ფოტოს წასაშლად', 'button')}
+        {...a11y(t('wizard.deletePhotoA11y'), t('wizard.deletePhotoA11yHint'), 'button')}
       >
         <X size={12} color="#fff" strokeWidth={1.5} />
       </Pressable>

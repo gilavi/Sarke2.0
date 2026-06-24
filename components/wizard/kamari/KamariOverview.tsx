@@ -1,7 +1,8 @@
-﻿import { memo, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { CircleAlert, Clock, CircleCheck } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../primitives/A11yText';
 import { useTheme } from '../../../lib/theme';
 import { useAccessibilitySettings } from '../../../lib/accessibility';
@@ -28,6 +29,7 @@ export const KamariOverview = memo(function KamariOverview({
   onOpen: (index: number) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -40,10 +42,10 @@ export const KamariOverview = memo(function KamariOverview({
       showsVerticalScrollIndicator={false}
     >
       <Text size="xl" weight="bold" style={{ marginBottom: 4 }}>
-        ქამარების შემოწმება
+        {t('wizard.kamariOverviewTitle')}
       </Text>
       <Text size="sm" color={theme.colors.inkSoft} style={{ marginBottom: 16 }}>
-        შეეხეთ ქამარის ბარათს დეტალების სანახავად
+        {t('wizard.kamariOverviewSubtitle')}
       </Text>
       <View style={styles.grid}>
         {indices.map(i => {
@@ -77,6 +79,7 @@ const KamariCard = memo(function KamariCard({
   onPress: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
   const palette: { bg: string; border: string; Icon: LucideIcon; iconColor: string; label: string; labelColor: string } =
@@ -86,7 +89,7 @@ const KamariCard = memo(function KamariCard({
           border: theme.colors.danger,
           Icon: CircleAlert,
           iconColor: theme.colors.danger,
-          label: `${problemCount} პრობლემა`,
+          label: t('wizard.kamariProblems', { count: problemCount }),
           labelColor: theme.colors.danger,
         }
       : state === 'inProgress'
@@ -95,7 +98,7 @@ const KamariCard = memo(function KamariCard({
             border: theme.colors.semantic.warning,
             Icon: Clock,
             iconColor: theme.colors.semantic.warning,
-            label: 'მიმდინარეობს',
+            label: t('wizard.kamariInProgress'),
             labelColor: theme.colors.semantic.warning,
           }
         : {
@@ -103,7 +106,7 @@ const KamariCard = memo(function KamariCard({
             border: theme.colors.semantic.success,
             Icon: CircleCheck,
             iconColor: theme.colors.semantic.success,
-            label: 'კარგია',
+            label: t('wizard.kamariOk'),
             labelColor: theme.colors.semantic.success,
           };
   return (
@@ -119,7 +122,7 @@ const KamariCard = memo(function KamariCard({
       ]}
     >
       <Text size="lg" weight="bold" style={{ marginBottom: 8 }}>
-        ქამარი #{index}
+        {t('wizard.kamariCardTitle', { index })}
       </Text>
       {(() => { const PaletteIcon = palette.Icon; return <PaletteIcon size={42} color={palette.iconColor} strokeWidth={1.5} />; })()}
       <Text

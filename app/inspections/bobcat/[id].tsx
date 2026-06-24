@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { PlateInput, type PlateInputHandle } from '../../../components/inputs/PlateInput';
@@ -59,6 +60,7 @@ const TOTAL_STEPS     = 5;
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function BobcatInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -120,9 +122,9 @@ export default function BobcatInspectionScreen() {
     }),
     validateMissing: (insp) => {
       const missing: string[] = [];
-      if (!insp.equipmentModel?.trim())     missing.push('დამტვირთველის მარკა / მოდელი');
-      if (!insp.registrationNumber?.trim()) missing.push('სახელმწიფო / ს.ნ ნომერი');
-      if (!insp.verdict)                    missing.push('შეჯამება: დასკვნა');
+      if (!insp.equipmentModel?.trim())     missing.push(t('inspections.equipmentModelLabel'));
+      if (!insp.registrationNumber?.trim()) missing.push(t('inspections.registrationNumberLabel'));
+      if (!insp.verdict)                    missing.push(t('inspections.missingConclusion'));
       return missing;
     },
     autofill: (insp, { inspectorName, project }) => {
@@ -150,7 +152,7 @@ export default function BobcatInspectionScreen() {
       title: 'ციცხვიანი დამტვირთველის შემოწმება',
       subject: 'შრომის უსაფრთხოების შემოწმება',
     },
-    loadingTitle: 'შემოწმება',
+    loadingTitle: t('inspections.bobcatTitle'),
   });
 
   // ── Template-derived catalog (local - template bounds must stay in screen) ──
@@ -161,7 +163,7 @@ export default function BobcatInspectionScreen() {
   );
 
   const isLargeLoader = inspection?.templateId === LARGE_LOADER_TEMPLATE_ID;
-  const screenTitle = isLargeLoader ? 'დიდი ციცხვიანი დამტვირთველი' : 'ციცხვიანი დამტვირთველი';
+  const screenTitle = isLargeLoader ? t('inspections.largeBobcatTitle') : t('inspections.bobcatTitle');
 
   // ── Item update ───────────────────────────────────────────────────────────
 
@@ -200,16 +202,16 @@ export default function BobcatInspectionScreen() {
           return next;
         });
       } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+        toast.error(friendlyError(e, t('errors.uploadFailed')));
       }
     }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection, t]);
 
   const handleDeletePhoto = useCallback(async (itemId: number, path: string) => {
     try {
       await bobcatApi.deletePhoto(path);
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.deleteFailed')));
       return;
     }
     setInspection(prev => {
@@ -221,7 +223,7 @@ export default function BobcatInspectionScreen() {
       scheduleSave(next);
       return next;
     });
-  }, [scheduleSave, toast, setInspection]);
+  }, [scheduleSave, toast, setInspection, t]);
 
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
@@ -240,16 +242,16 @@ export default function BobcatInspectionScreen() {
           return next;
         });
       } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+        toast.error(friendlyError(e, t('errors.uploadFailed')));
       }
     }
-  }, [pickPhotosWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey]);
+  }, [pickPhotosWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey, t]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
       await bobcatApi.deletePhoto(path);
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('errors.deleteFailed')));
       return;
     }
     setInspection(prev => {
@@ -258,7 +260,7 @@ export default function BobcatInspectionScreen() {
       AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
       return next;
     });
-  }, [summaryPhotosKey, toast, setInspection]);
+  }, [summaryPhotosKey, toast, setInspection, t]);
 
   // ── Step navigation ────────────────────────────────────────────────────────
 
@@ -393,7 +395,7 @@ export default function BobcatInspectionScreen() {
               bottomOffset={120}
             >
               <FloatingLabelInput
-                label="დამტვირთველის მარკა / მოდელი *"
+                label={t('inspections.equipmentModelLabel')}
                 value={inspection.equipmentModel ?? ''}
                 onChangeText={v => update('equipmentModel', v)}
                 onFocus={() => setFocusedField('equipmentModel')}
@@ -424,7 +426,7 @@ export default function BobcatInspectionScreen() {
               <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
                 <PlateInput
                   ref={plateRef}
-                  label="სახელმწიფო / ს.ნ ნომერი"
+                  label={t('inspections.registrationNumberLabel')}
                   value={inspection.registrationNumber ?? ''}
                   onChangeText={v => {
                     update('registrationNumber', v);
@@ -472,7 +474,7 @@ export default function BobcatInspectionScreen() {
               completing={completing}
               photoSection={
                 <>
-                  <Text style={[styles.fieldLabel, { color: theme.colors.ink }]}>ფოტოები (სურვ.)</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.colors.ink }]}>{t('inspections.photosOptional')}</Text>
                   <PhotoSection
                     photoPaths={inspection.summaryPhotos ?? []}
                     onAdd={handleAddSummaryPhoto}

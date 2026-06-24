@@ -212,7 +212,7 @@ export default function VerifyEmailScreen() {
                   guard(
                     !codeIncomplete,
                     () => submit(),
-                    () => setError(`შეიყვანეთ ${CODE_LENGTH}-ნიშნა კოდი`),
+                    () => setError(t('auth.enterCodeN', { n: CODE_LENGTH })),
                   )
                 }
                 loading={busy}

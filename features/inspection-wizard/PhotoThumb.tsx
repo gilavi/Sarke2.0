@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, View } from 'react-native';
 import { RefreshCw } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Skeleton } from '../../components/Skeleton';
 import { imageForDisplay } from '../../lib/imageUrl';
@@ -19,6 +20,7 @@ export const PhotoThumb = memo(function PhotoThumb({
   photo: AnswerPhoto;
   size?: number;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -79,9 +81,9 @@ export const PhotoThumb = memo(function PhotoThumb({
 
   if (error || !uri) {
     return (
-      <Pressable onPress={load} style={containerStyle} {...a11y('განახლება', 'შეეხეთ ფოტოს ხელახლა ჩასატვირთად', 'button')}>
+      <Pressable onPress={load} style={containerStyle} {...a11y(t('inspections.refreshPhoto'), t('inspections.retryPhotoLoadHint'), 'button')}>
         <RefreshCw size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
-        <Text style={{ fontSize: 10, color: theme.colors.inkFaint, marginTop: 4 }}>განახლება</Text>
+        <Text style={{ fontSize: 10, color: theme.colors.inkFaint, marginTop: 4 }}>{t('inspections.refreshPhoto')}</Text>
       </Pressable>
     );
   }

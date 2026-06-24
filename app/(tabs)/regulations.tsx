@@ -14,6 +14,7 @@ import { RefreshCw, ChevronRight } from 'lucide-react-native';
 import { Card } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
+import { useTranslation } from 'react-i18next';
 import {
   REGULATIONS,
   loadRegulationStates,
@@ -21,28 +22,29 @@ import {
   maybeRefreshRegulations,
 } from '../../lib/regulations';
 
-function formatLastFetch(iso: string | null): string {
-  if (!iso) return 'არასდროს';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return 'არასდროს';
-  const now = new Date();
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  if (sameDay) return `დღეს, ${hh}:${mm}`;
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mo = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mo}/${d.getFullYear()}, ${hh}:${mm}`;
-}
-
 export default function RegulationsScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [lastFetch, setLastFetch] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const refreshing = useRef(false);
+
+  function formatLastFetch(iso: string | null): string {
+    if (!iso) return t('regulations.neverUpdated');
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return t('regulations.neverUpdated');
+    const now = new Date();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    if (sameDay) return t('regulations.updatedToday', { time: `${hh}:${mm}` });
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    return t('regulations.lastUpdate', { date: `${dd}/${mo}/${d.getFullYear()}, ${hh}:${mm}` });
+  }
 
   const refresh = useCallback(async (force = false) => {
     if (refreshing.current) return;
@@ -83,12 +85,12 @@ export default function RegulationsScreen() {
           color: theme.colors.ink,
           paddingHorizontal: 20,
         }}>
-          რეგულაციები
+          {t('regulations.title')}
         </Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: -8 }}>
           <Text style={{ fontSize: 13, color: theme.colors.inkSoft, flex: 1 }}>
-            ბოლო განახლება: {formatLastFetch(lastFetch)}
+            {formatLastFetch(lastFetch)}
           </Text>
           {loading ? (
             <ActivityIndicator size="small" color={theme.colors.accent} style={{ marginLeft: 6 }} />
@@ -96,7 +98,7 @@ export default function RegulationsScreen() {
             <Pressable
               onPress={() => refresh(true)}
               hitSlop={12}
-              {...a11y('განახლება', 'რეგულაციების განახლება', 'button')}
+              {...a11y(t('regulations.refresh'), t('regulations.refreshHint'), 'button')}
             >
               <RefreshCw size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
             </Pressable>
@@ -132,7 +134,7 @@ export default function RegulationsScreen() {
                   size={18}
                   color={theme.colors.inkFaint}
                   strokeWidth={1.5}
-                  {...a11y(`${item.title} - გახსნა`, 'matsne.gov.ge', 'link')}
+                  {...a11y(t('regulations.openLinkA11y', { title: item.title }), t('regulations.sourceLabel'), 'link')}
                 />
               </View>
             </Card>

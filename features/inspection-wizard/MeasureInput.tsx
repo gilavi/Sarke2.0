@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -16,6 +17,7 @@ export function MeasureInput({
   initial: number | null;
   onCommit: (value: number | null) => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   const inputRef = useRef<TextInput>(null);
@@ -81,7 +83,7 @@ export function MeasureInput({
       </View>
       {hasRange ? (
         <Text style={{ fontSize: 12, color: theme.colors.inkSoft }}>
-          დიაპაზონი: {question.min_val ?? '-'} – {question.max_val ?? '-'}
+          {t('inspections.measureRange')} {question.min_val ?? '-'} – {question.max_val ?? '-'}
           {question.unit ? ` ${question.unit}` : ''}
         </Text>
       ) : null}

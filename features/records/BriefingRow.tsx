@@ -25,12 +25,12 @@ export function BriefingRow({
     <InspectionRow
       leading={<BriefingTopicAvatar topics={briefing.topics} />}
       title={briefingTopicsLabel(briefing.topics, t)}
-      subtitle={`${briefing.participants.length} მონაწილე · ${formatShortDateTime(briefing.dateTime)}`}
+      subtitle={`${t('records.participantCount', { count: briefing.participants.length })} · ${formatShortDateTime(briefing.dateTime)}`}
       trailing={<ChevronRight size={18} color={theme.colors.borderStrong} strokeWidth={1.5} />}
       inset={0}
       showBorder={showBorder}
       onPress={onPress}
-      a11y={a11y('ინსტრუქტაჟი', 'დეტალების ნახვა', 'button')}
+      a11y={a11y(t('records.briefingA11y'), t('records.viewDetailsA11y'), 'button')}
     />
   );
 }

@@ -31,6 +31,8 @@ import {
 import { runMigrationIfNeeded } from '../../lib/calendarSchedule';
 import type { CalendarEvent } from '../../lib/calendarEvents';
 import { KA_MONTH_FULL, KA_MONTH_SHORT } from '../../lib/homeUtils';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -86,14 +88,14 @@ function formatDayLabel(date: Date): string {
   return `${date.getDate()} ${KA_MONTH_FULL[date.getMonth()]}, ${WEEKDAY_FULL[dow]}`;
 }
 
-function relativeDayLabel(date: Date): string {
+function relativeDayLabel(date: Date, t: TFunction): string {
   const today = startOfDay(new Date());
   const target = startOfDay(date);
   const diffMs = target.getTime() - today.getTime();
   const diffDays = Math.round(diffMs / 86_400_000);
-  if (diffDays === 0) return 'დღეს';
-  if (diffDays > 0) return `${diffDays} დღეში`;
-  return `${Math.abs(diffDays)} დღე გადაცილდა`;
+  if (diffDays === 0) return t('calendar.today');
+  if (diffDays > 0) return t('calendar.inDays', { count: diffDays });
+  return t('calendar.overdueDays', { count: Math.abs(diffDays) });
 }
 
 // ── Section grouping ──────────────────────────────────────────────────────────
@@ -150,6 +152,7 @@ function findVisibleSection(
 
 export default function CalendarScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const styles = useMemo(() => getStyles(theme), [theme]);
 
@@ -290,7 +293,7 @@ export default function CalendarScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>კალენდარი</Text>
+        <Text style={styles.title}>{t('calendar.title')}</Text>
         <Text style={styles.headerMonth}>{headerMonth}</Text>
       </View>
 
@@ -381,7 +384,7 @@ export default function CalendarScreen() {
       ) : sections.length === 0 ? (
         <View style={styles.emptyWrap}>
           <CalendarDays size={30} color={theme.colors.inkFaint} strokeWidth={1.5} />
-          <Text style={styles.emptyText}>მოვლენები არ არის</Text>
+          <Text style={styles.emptyText}>{t('calendar.noEvents')}</Text>
         </View>
       ) : (
         <ScrollView
@@ -418,7 +421,7 @@ export default function CalendarScreen() {
                 </Text>
                 {isSameDay(section.date, today) && (
                   <View style={styles.todayPill}>
-                    <Text style={styles.todayPillText}>დღეს</Text>
+                    <Text style={styles.todayPillText}>{t('calendar.today')}</Text>
                   </View>
                 )}
               </View>
@@ -427,7 +430,7 @@ export default function CalendarScreen() {
                 {section.overdue.length > 0 && (
                   <>
                     <View style={styles.overdueHeader}>
-                      <Text style={styles.overdueHeaderText}>⚠ ვადაგადაცილებული</Text>
+                      <Text style={styles.overdueHeaderText}>{t('calendar.overdueSection')}</Text>
                     </View>
                     {section.overdue.map((event, idx) => (
                       <EventRow
@@ -435,6 +438,7 @@ export default function CalendarScreen() {
                         event={event}
                         isLast={idx === section.overdue.length - 1 && section.rest.length === 0}
                         templateCategoryMap={templateCategoryMap}
+                        t={t}
                       />
                     ))}
                   </>
@@ -445,6 +449,7 @@ export default function CalendarScreen() {
                     event={event}
                     isLast={idx === section.rest.length - 1}
                     templateCategoryMap={templateCategoryMap}
+                    t={t}
                   />
                 ))}
               </>
@@ -462,10 +467,12 @@ function EventRow({
   event,
   isLast,
   templateCategoryMap,
+  t,
 }: {
   event: CalendarEvent;
   isLast: boolean;
   templateCategoryMap: Record<string, string>;
+  t: TFunction;
 }) {
   const router = useRouter();
   const { theme } = useTheme();
@@ -483,7 +490,7 @@ function EventRow({
 
   const timeLabel = event.isPast
     ? `${String(event.date.getHours()).padStart(2, '0')}:${String(event.date.getMinutes()).padStart(2, '0')}`
-    : relativeDayLabel(event.date);
+    : relativeDayLabel(event.date, t);
 
   const handlePress = useCallback(() => {
     if (event.type === 'inspection') {

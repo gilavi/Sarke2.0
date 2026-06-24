@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ChevronDown } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../lib/theme';
 import { useBottomSheet, BottomSheetScrollView } from '../BottomSheet';
 import { haptic } from '../../lib/haptics';
@@ -37,7 +38,7 @@ export interface CustomDropdownProps {
 
 export const CustomDropdown = memo(function CustomDropdown({
   label,
-  placeholder = 'აირჩიეთ...',
+  placeholder,
   options,
   value,
   onChange,
@@ -49,6 +50,8 @@ export const CustomDropdown = memo(function CustomDropdown({
   onOpenChange,
 }: CustomDropdownProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('components.dropdownPlaceholder');
   const c = theme.colors;
   const ty = theme.typography;
   const insets = useSafeAreaInsets();
@@ -176,7 +179,7 @@ export const CustomDropdown = memo(function CustomDropdown({
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="გაუქმება"
+                accessibilityLabel={t('components.dropdownCancel')}
               >
                 <Text
                   style={[
@@ -184,7 +187,7 @@ export const CustomDropdown = memo(function CustomDropdown({
                     { fontFamily: ty.fontFamily.bodySemiBold, color: c.inkFaint },
                   ]}
                 >
-                  გაუქმება
+                  {t('components.dropdownCancel')}
                 </Text>
               </Pressable>
             </View>
@@ -197,7 +200,7 @@ export const CustomDropdown = memo(function CustomDropdown({
       },
     );
     sheetHandleRef.current = handle;
-  }, [isOpen, showSheet, setOpen, c, ty, insets.bottom]);
+  }, [isOpen, showSheet, setOpen, c, ty, insets.bottom, t]);
 
   // Make sure we tear the sheet down if the component unmounts mid-open.
   useEffect(() => () => sheetHandleRef.current?.dismiss(), []);
@@ -247,7 +250,7 @@ export const CustomDropdown = memo(function CustomDropdown({
             { fontFamily: ty.fontFamily.body, color: selectedOption ? c.ink : c.inkFaint },
           ]}
         >
-          {selectedOption?.label ?? placeholder}
+          {selectedOption?.label ?? resolvedPlaceholder}
         </Text>
         <ChevronDown size={16} color={disabled ? c.inkFaint : c.inkSoft} strokeWidth={1.5} />
       </PressBounce>

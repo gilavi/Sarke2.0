@@ -5,12 +5,14 @@
 // conclusion rather than an enum verdict, shown in the accent color.
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { InspectionDoneView } from '../../../../components/success';
 import { projectsApi } from '../../../../lib/services';
 import { generalEquipmentApi } from '../../../../lib/generalEquipmentService';
 import type { GeneralEquipmentInspection } from '../../../../types/generalEquipment';
 
 export default function GeneralEquipmentInspectionDoneScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [inspection, setInspection] = useState<GeneralEquipmentInspection | null>(null);
@@ -40,7 +42,7 @@ export default function GeneralEquipmentInspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ტექნიკური აღჭურვილობა"
+      typeLabel={t('inspections.geDoneType')}
       projectName={projectName || undefined}
       dateText={
         inspection

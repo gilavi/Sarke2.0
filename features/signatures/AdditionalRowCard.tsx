@@ -11,6 +11,7 @@
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -23,34 +24,35 @@ interface Props {
 
 export function AdditionalRowCard({ index, onRemove }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={styles.title}>{`ხაზი #${index}`}</Text>
+        <Text style={styles.title}>{t('signature.lineLabel', { index })}</Text>
         <Pressable
           onPress={onRemove}
           hitSlop={10}
           style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
-          {...a11y('წაშლა', `ხაზი ${index}-ის წაშლა`, 'button')}
+          {...a11y(t('common.delete'), t('signature.lineRemoveA11y', { index }), 'button')}
         >
           <X size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
         </Pressable>
       </View>
 
       <View style={styles.placeholderRow}>
-        <Text style={styles.placeholderLabel}>ხელმოწერა</Text>
+        <Text style={styles.placeholderLabel}>{t('signature.eyebrow')}</Text>
         <View style={styles.lineLong} />
       </View>
 
       <View style={styles.placeholderRowSplit}>
         <View style={styles.placeholderHalf}>
-          <Text style={styles.placeholderLabel}>სახელი</Text>
+          <Text style={styles.placeholderLabel}>{t('common.name')}</Text>
           <View style={styles.lineShort} />
         </View>
         <View style={styles.placeholderHalf}>
-          <Text style={styles.placeholderLabel}>თარიღი</Text>
+          <Text style={styles.placeholderLabel}>{t('common.date')}</Text>
           <View style={styles.lineShort} />
         </View>
       </View>

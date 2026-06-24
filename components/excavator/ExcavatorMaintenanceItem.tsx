@@ -2,6 +2,7 @@ import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { DateTimeField } from '../DateTimeField';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -24,6 +25,7 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
   onChange,
 }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -51,28 +53,28 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
             style={[styles.toggle, yesActive && styles.toggleYesActive]}
             onPress={() => setAnswer('yes')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('კი', undefined, 'button', { selected: yesActive })}
+            {...a11y(t('components.excavatorYes'), undefined, 'button', { selected: yesActive })}
           >
             <Check
               size={14}
               color={yesActive ? theme.colors.ink : theme.colors.inkFaint}
               strokeWidth={1.5}
             />
-            <Text style={[styles.toggleText, yesActive && styles.toggleTextActive]}>კი</Text>
+            <Text style={[styles.toggleText, yesActive && styles.toggleTextActive]}>{t('components.excavatorYes')}</Text>
           </Pressable>
 
           <Pressable
             style={[styles.toggle, noActive && styles.toggleNoActive]}
             onPress={() => setAnswer('no')}
             hitSlop={{ top: 9, bottom: 9, left: 0, right: 0 }}
-            {...a11y('არა', undefined, 'button', { selected: noActive })}
+            {...a11y(t('components.excavatorNo'), undefined, 'button', { selected: noActive })}
           >
             <X
               size={14}
               color={noActive ? theme.colors.ink : theme.colors.inkFaint}
               strokeWidth={1.5}
             />
-            <Text style={[styles.toggleText, noActive && styles.toggleTextActive]}>არა</Text>
+            <Text style={[styles.toggleText, noActive && styles.toggleTextActive]}>{t('components.excavatorNo')}</Text>
           </Pressable>
         </View>
       </View>
@@ -83,7 +85,7 @@ export const ExcavatorMaintenanceItem = memo(function ExcavatorMaintenanceItem({
           exiting={reduceMotion ? undefined : FadeOut.duration(100)}
           style={styles.dateRow}
         >
-          <Text style={styles.dateLabel}>კონკრეტული თარიღი:</Text>
+          <Text style={styles.dateLabel}>{t('components.excavatorDateLabel')}</Text>
           <DateTimeField
             mode="date"
             value={state.date ? new Date(state.date) : new Date()}

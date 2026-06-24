@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { PressBounce } from '../../components/animations/PressBounce';
 import { Skeleton } from '../../components/Skeleton';
@@ -45,6 +46,7 @@ export function ReportCardRail({
   gutter?: number;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const shown = reports.slice(0, maxCards);
@@ -102,12 +104,12 @@ export function ReportCardRail({
           hapticOnPress="light"
           style={styles.viewAll}
           onPress={onViewAll}
-          {...a11y('ყველას ნახვა', 'ყველა რეპორტის ნახვა', 'button')}
+          {...a11y(t('records.viewAll'), t('records.viewAllReportsA11y'), 'button')}
         >
           <View style={styles.viewAllIcon}>
             <ArrowRight size={20} color={theme.colors.accent} strokeWidth={2} />
           </View>
-          <Text style={styles.viewAllText}>ყველას ნახვა</Text>
+          <Text style={styles.viewAllText}>{t('records.viewAll')}</Text>
         </PressBounce>
       ) : null}
     </ScrollView>

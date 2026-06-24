@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
@@ -14,6 +15,7 @@ import type { ReportSlide } from '../../types/models';
  */
 export function ReportSlidePreview({ slide, index }: { slide: ReportSlide; index: number }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const paths = slideImagePaths(slide);
 
@@ -24,7 +26,7 @@ export function ReportSlidePreview({ slide, index }: { slide: ReportSlide; index
           <Text style={styles.numberBadgeText}>{index + 1}</Text>
         </View>
         <Text style={styles.slideTitle} numberOfLines={1}>
-          {slide.title || `სლაიდი ${index + 1}`}
+          {slide.title || t('reports.slideTitleFallback', { n: index + 1 })}
         </Text>
       </View>
       {paths.length > 0 ? (

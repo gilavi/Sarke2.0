@@ -9,6 +9,7 @@
  */
 import { type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
@@ -68,7 +69,7 @@ export function ConclusionStep<T extends string = string>({
   verdictLayout = 'row',
   notes,
   onNotesChange,
-  notesLabel = 'კომენტარი',
+  notesLabel,
   notesRequired = false,
   notesError = false,
   conclusionHistory,
@@ -78,15 +79,19 @@ export function ConclusionStep<T extends string = string>({
   photoPaths,
   onAddPhoto,
   onDeletePhoto,
-  photoLabel = 'ფოტოები (სურვ.)',
+  photoLabel,
   photoSection,
   showAvatar = true,
   summarySection,
   scroll = true,
   completing = false,
 }: ConclusionStepProps<T>) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = getConclusionStyles(theme);
+
+  const resolvedNotesLabel = notesLabel ?? t('inspections.commentPlaceholder');
+  const resolvedPhotoLabel = photoLabel ?? t('inspections.photoLabelOptional');
 
   const showNotes = onNotesChange !== undefined;
   const showPhotos =
@@ -104,7 +109,7 @@ export function ConclusionStep<T extends string = string>({
 
       {showHarnessName ? (
         <FloatingLabelInput
-          label="ღვედის დასახელება"
+          label={t('inspections.harnessNameLabel')}
           value={harnessName ?? ''}
           onChangeText={onHarnessNameChange ?? (() => {})}
           required
@@ -124,11 +129,11 @@ export function ConclusionStep<T extends string = string>({
       {showNotes ? (
         <>
           <FloatingLabelInput
-            label={notesLabel}
+            label={resolvedNotesLabel}
             value={notes ?? ''}
             onChangeText={onNotesChange ?? (() => {})}
             required={notesRequired}
-            error={notesError ? 'სავალდებულო ველი' : undefined}
+            error={notesError ? t('errors.requiredField') : undefined}
             multiline
             numberOfLines={4}
           />
@@ -144,7 +149,7 @@ export function ConclusionStep<T extends string = string>({
 
       {showPhotos ? (
         <View style={styles.photoBlock}>
-          <Text style={styles.photoLabel}>{photoLabel}</Text>
+          <Text style={styles.photoLabel}>{resolvedPhotoLabel}</Text>
           <PhotoSection photoPaths={photoPaths!} onAdd={onAddPhoto!} onDelete={onDeletePhoto!} />
         </View>
       ) : null}
@@ -154,7 +159,7 @@ export function ConclusionStep<T extends string = string>({
       {completing ? (
         <View style={styles.completingRow}>
           <ActivityIndicator size="small" color={theme.colors.accent} />
-          <Text style={styles.completingText}>მიმდინარეობს…</Text>
+          <Text style={styles.completingText}>{t('inspections.completing')}</Text>
         </View>
       ) : null}
     </>

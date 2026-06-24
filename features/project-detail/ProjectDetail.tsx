@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -185,8 +185,8 @@ export default function ProjectDetail() {
   const deleteInspection = (item: UnifiedInspection) => {
     showActionSheetWithOptions(
       {
-        title: 'დარწმუნებული ხართ?',
-        options: ['დიახ, წაშლა', 'გაუქმება'],
+        title: t('common.areYouSure'),
+        options: [t('projects.deleteConfirmYes'), t('projects.cancelOption')],
         cancelButtonIndex: 1,
         destructiveButtonIndex: 0,
       },
@@ -253,8 +253,8 @@ export default function ProjectDetail() {
       }
     }
     setFilesBusy(false);
-    if (success > 0 && failed === 0) toast.success(`${success} ფაილი აიტვირთა`);
-    else if (success > 0 && failed > 0) toast.error(`${success} აიტვირთა, ${failed} ვერ აიტვირთა`);
+    if (success > 0 && failed === 0) toast.success(t('projects.uploadSuccess', { count: success }));
+    else if (success > 0 && failed > 0) toast.error(t('projects.uploadPartial', { success, failed }));
     else toast.error(t('errors.uploadFailed'));
   };
 
@@ -291,8 +291,8 @@ export default function ProjectDetail() {
     if (!id) return;
     showActionSheetWithOptions(
       {
-        title: 'რა გსურთ ატვირთოთ?',
-        options: ['ფოტო', 'ფაილი', 'გაუქმება'],
+        title: t('projects.uploadSheetTitle'),
+        options: [t('projects.uploadOptionPhoto'), t('projects.uploadOptionFile'), t('projects.cancelOption')],
         cancelButtonIndex: 2,
       },
       idx => {
@@ -320,8 +320,8 @@ export default function ProjectDetail() {
     if (deletingFileIdsRef.current.has(f.id)) return;
     showActionSheetWithOptions(
       {
-        title: 'დარწმუნებული ხართ?',
-        options: ['დიახ, წაშლა', 'გაუქმება'],
+        title: t('common.areYouSure'),
+        options: [t('projects.deleteConfirmYes'), t('projects.cancelOption')],
         cancelButtonIndex: 1,
         destructiveButtonIndex: 0,
       },
@@ -344,13 +344,12 @@ export default function ProjectDetail() {
 
   const quickActions: QuickAction[] = useMemo(
     () => [
-      { label: 'შემოწმება',   colorKey: 'inspection',  onPress: startNewInspection },
-      { label: 'ინციდენტი',   colorKey: 'incident',    onPress: () => id && router.push(`/incidents/new?projectId=${id}` as any) },
-      { label: 'ინსტრუქტაჟი', colorKey: 'briefing',    onPress: () => id && router.push(`/briefings/new?projectId=${id}` as any) },
-      { label: 'რეპორტი',     colorKey: 'report',      onPress: () => id && router.push(`/reports/new?projectId=${id}` as any) },
-      { label: 'ფაილი',       colorKey: 'file',        onPress: uploadFile },
+      { label: t('projects.quickActionInspection'),   colorKey: 'inspection',  onPress: startNewInspection },
+      { label: t('projects.quickActionIncident'),   colorKey: 'incident',    onPress: () => id && router.push(`/incidents/new?projectId=${id}` as any) },
+      { label: t('projects.quickActionBriefing'), colorKey: 'briefing',    onPress: () => id && router.push(`/briefings/new?projectId=${id}` as any) },
+      { label: t('projects.quickActionReport'),     colorKey: 'report',      onPress: () => id && router.push(`/reports/new?projectId=${id}` as any) },
     ],
-    [id, router, startNewInspection, uploadFile],
+    [id, router, startNewInspection, t],
   );
 
   // Arch SVG morph + logo entrance animation. See ProjectArchHeader.tsx.
@@ -370,7 +369,7 @@ export default function ProjectDetail() {
         onPress={() => router.back()}
         hitSlop={13}
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, left: 16, zIndex: 30 }]}
-        {...a11y('უკან', 'წინა გვერდზე დაბრუნება', 'button')}
+        {...a11y(t('common.back'), t('projects.backA11yHint'), 'button')}
       >
         <ChevronLeft size={20} color={theme.colors.ink} strokeWidth={1.5} />
       </Pressable>
@@ -378,7 +377,7 @@ export default function ProjectDetail() {
         onPress={() => setEditing(true)}
         hitSlop={13}
         style={[styles.floatingBtn, { position: 'absolute', top: insets.top + 8, right: 16, zIndex: 30 }]}
-        {...a11y('რედაქტირება', 'პროექტის დეტალების შეცვლა', 'button')}
+        {...a11y(t('common.edit'), t('projects.editA11yHint'), 'button')}
       >
         <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
       </Pressable>
@@ -399,7 +398,7 @@ export default function ProjectDetail() {
             <Pressable
               style={StyleSheet.absoluteFill}
               onPress={mapModalState.open}
-              {...a11y('რუქა', 'გახსნა სრულ ეკრანზე', 'button')}
+              {...a11y(t('projects.mapA11yLabel'), t('projects.mapA11yHint'), 'button')}
             >
               <MapView
                 style={StyleSheet.absoluteFill}
@@ -445,7 +444,7 @@ export default function ProjectDetail() {
               onPress={onEditLogo}
               style={{ position: 'relative' }}
               hitSlop={4}
-              {...a11y('ლოგოს შეცვლა', 'პროექტის ლოგოს შეცვლა', 'button')}
+              {...a11y(t('projects.editLogoA11yLabel'), t('projects.editLogoA11yHint'), 'button')}
             >
               <View style={styles.logoOuter}>
                 {project?.logo ? (
@@ -475,7 +474,7 @@ export default function ProjectDetail() {
               onPress={() => Linking.openURL(`tel:${project.contact_phone}`)}
               hitSlop={16}
               style={{ paddingVertical: 8 }}
-              {...a11y('დარეკვა', `${project.contact_phone}-ზე დარეკვა`, 'button')}
+              {...a11y(t('projects.callA11yLabel'), `${project.contact_phone}`, 'button')}
             >
               <Text style={styles.heroPhoneText}>{project.contact_phone}</Text>
             </Pressable>

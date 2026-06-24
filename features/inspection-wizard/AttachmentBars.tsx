@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Camera, Pencil, Plus, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { PressBounce } from '../../components/animations/PressBounce';
 import { useTheme } from '../../lib/theme';
@@ -33,6 +34,7 @@ export function AttachmentBars({
   note?: string | null;
   onNoteCommit?: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const hasPhotos = photos.length > 0;
@@ -44,12 +46,12 @@ export function AttachmentBars({
     <View style={{ gap: 10 }}>
       <PressBounce
         onPress={onPickPhoto}
-        {...a11y('ფოტოს დამატება', 'შეეხეთ ფოტოს ასატვირთად', 'button')}
+        {...a11y(t('a11y.addPhoto'), t('inspections.addPhotoHintUpload'), 'button')}
       >
         <View style={[styles.bar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
           <View style={styles.barLabel}>
             <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>ფოტო</Text>
+            <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>{t('inspections.photoBarLabel')}</Text>
           </View>
           <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
         </View>
@@ -63,14 +65,14 @@ export function AttachmentBars({
         >
           {photos.map(p => (
             <View key={p.id} style={styles.thumbWrap}>
-              <Pressable onPress={() => onViewPhoto?.(p)} {...a11y('ფოტოს ნახვა', 'შეეხეთ დიდად სანახავად', 'button')}>
+              <Pressable onPress={() => onViewPhoto?.(p)} {...a11y(t('a11y.viewPhoto'), t('a11y.viewPhotoHint'), 'button')}>
                 <PhotoThumb photo={p} size={72} />
               </Pressable>
               <Pressable
                 onPress={() => onDeletePhoto(p)}
                 style={[styles.thumbDel, { backgroundColor: theme.colors.ink, borderColor: theme.colors.surface }]}
                 hitSlop={6}
-                {...a11y('ფოტოს წაშლა', undefined, 'button')}
+                {...a11y(t('inspections.deletePhotoA11y'), undefined, 'button')}
               >
                 <X size={12} color={theme.colors.white} strokeWidth={1.5} />
               </Pressable>
@@ -87,12 +89,12 @@ export function AttachmentBars({
         ) : (
           <PressBounce
             onPress={() => setNoteOpen(true)}
-            {...a11y('შენიშვნის დამატება', 'შეეხეთ შენიშვნის დასაწერად', 'button')}
+            {...a11y(t('inspections.addNoteA11y'), t('inspections.addNoteHint'), 'button')}
           >
             <View style={[styles.bar, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]}>
               <View style={styles.barLabel}>
                 <Pencil size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
-                <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>შენიშვნა</Text>
+                <Text style={[styles.barText, { color: theme.colors.inkSoft }]}>{t('inspections.noteBarLabel')}</Text>
               </View>
               <Plus size={20} color={theme.colors.inkFaint} strokeWidth={1.5} />
             </View>

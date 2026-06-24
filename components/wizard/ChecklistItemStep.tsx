@@ -11,6 +11,7 @@ import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { Camera, Check, CircleMinus, CircleX, FileText, CircleQuestionMark, Pencil, TriangleAlert } from 'lucide-react-native';
 import { KeyboardAwareScrollView, KeyboardController } from 'react-native-keyboard-controller';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 import { useTheme, type Theme } from '../../lib/theme';
@@ -43,6 +44,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
   onHelp,
 }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -54,7 +56,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
     setCommentDraft(state.comment ?? '');
   }, [state.comment]);
 
-  const unusableLabel = catalog.unusableLabel ?? 'გამოუსადეგ.';
+  const unusableLabel = catalog.unusableLabel ?? t('generalEquipment.conditionUnusable');
   const unusableIsNeutral = catalog.unusableIsNeutral === true;
   const showUnusable = true;
 
@@ -94,7 +96,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
     >
       {/* Progress indicator */}
       <Text style={styles.progressText}>
-        პუნქტი {index + 1} / {total}
+        {t('wizard.checklistProgress', { index: index + 1, total })}
       </Text>
 
       {/* Centered icon */}
@@ -116,19 +118,19 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
       <View style={styles.chipRow}>
         <Pressable style={styles.assistChip} onPress={onAddPhoto}>
           <Camera size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={styles.assistChipText}>ფოტო</Text>
+          <Text style={styles.assistChipText}>{t('wizard.photo')}</Text>
         </Pressable>
         <Pressable
           style={styles.assistChip}
           onPress={() => setNoteOpen(v => !v)}
         >
           <Pencil size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={styles.assistChipText}>შენიშვნა</Text>
+          <Text style={styles.assistChipText}>{t('wizard.noteChip')}</Text>
         </Pressable>
         {onHelp ? (
           <Pressable style={styles.assistChip} onPress={onHelp}>
             <CircleQuestionMark size={18} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.assistChipText}>დახმარება</Text>
+            <Text style={styles.assistChipText}>{t('common.help')}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -151,10 +153,10 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
           <Pressable
             style={styles.addPhoto}
             onPress={onAddPhoto}
-            {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
+            {...a11y(t('a11y.addPhoto'), t('wizard.addPhotoA11yHint'), 'button')}
           >
             <Camera size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.addPhotoLabel}>+ ფოტო</Text>
+            <Text style={styles.addPhotoLabel}>{t('wizard.addPhotoChip')}</Text>
           </Pressable>
         </ScrollView>
       )}
@@ -164,7 +166,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
         <Pressable
           style={[styles.choice, styles.choiceGood, goodActive && styles.choiceGoodActive]}
           onPress={() => setResult('good')}
-          {...a11y('გამართულია', '✓ გამართულია - შემდეგ პუნქტზე გადასვლა', 'button')}
+          {...a11y(t('wizard.choiceGood'), t('wizard.choiceGoodA11y'), 'button')}
         >
           <Check
             size={24}
@@ -172,14 +174,14 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
             strokeWidth={1.5}
           />
           <Text style={[styles.choiceText, goodActive && styles.choiceTextActive]}>
-            გამართულია
+            {t('wizard.choiceGood')}
           </Text>
         </Pressable>
 
         <Pressable
           style={[styles.choice, styles.choiceDef, defActive && styles.choiceDefActive]}
           onPress={() => setResult('deficient')}
-          {...a11y('ხარვეზია', '⚠ ხარვეზია - კომენტარის და ფოტოს დამატება', 'button')}
+          {...a11y(t('wizard.choiceDeficient'), t('wizard.choiceDeficientA11y'), 'button')}
         >
           <TriangleAlert
             size={24}
@@ -187,7 +189,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
             strokeWidth={1.5}
           />
           <Text style={[styles.choiceText, defActive && styles.choiceTextActive]}>
-            ხარვეზია
+            {t('wizard.choiceDeficient')}
           </Text>
         </Pressable>
       </View>
@@ -245,7 +247,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
           style={styles.commentWrap}
         >
           <FloatingLabelInput
-            label="ხარვეზის აღწერა"
+            label={t('wizard.defectDescription')}
             value={commentDraft}
             onChangeText={handleCommentChange}
             multiline
@@ -265,7 +267,7 @@ export const ChecklistItemStep = memo(function ChecklistItemStep({
               }}
               style={styles.accessoryBtn}
             >
-              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>მზადაა</Text>
+              <Text style={[styles.accessoryBtnText, { color: theme.colors.accent }]}>{t('qualifications.readyBtn')}</Text>
             </Pressable>
           </View>
         </InputAccessoryView>

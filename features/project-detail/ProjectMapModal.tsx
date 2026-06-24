@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { Building2, X } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { ProjectAvatar } from '../../components/ProjectAvatar';
 import { useTheme } from '../../lib/theme';
@@ -60,6 +61,7 @@ export type ProjectMapModalState = ReturnType<typeof useProjectMapModal>;
 
 export function ProjectMapModal({ state }: { state: ProjectMapModalState }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { visible, close, selected, cardAnim, openCard, closeCard, allProjects, currentProject } = state;
@@ -80,9 +82,9 @@ export function ProjectMapModal({ state }: { state: ProjectMapModalState }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: insets.top + 12, paddingBottom: 12 }}>
           <View style={{ width: 24 }} />
           <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
-            პროექტები რუკაზე
+            {t('projects.mapModalTitle')}
           </Text>
-          <Pressable onPress={close} hitSlop={10} {...a11y('დახურვა', 'რუკის დახურვა', 'button')}>
+          <Pressable onPress={close} hitSlop={10} {...a11y(t('common.close'), t('projects.mapCloseA11yHint'), 'button')}>
             <X size={24} color={theme.colors.ink} strokeWidth={1.5} />
           </Pressable>
         </View>
@@ -140,7 +142,7 @@ export function ProjectMapModal({ state }: { state: ProjectMapModalState }) {
           <View style={{ position: 'absolute', bottom: insets.bottom + 100, left: 16, right: 16, alignItems: 'center' }}>
             <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
               <Text style={{ color: theme.colors.white, fontSize: 12, fontWeight: '600' }}>
-                ნაჩვენებია პირველი 20 პროექტი
+                {t('projects.mapMarkerLimitNotice')}
               </Text>
             </View>
           </View>
@@ -194,7 +196,7 @@ export function ProjectMapModal({ state }: { state: ProjectMapModalState }) {
                     paddingVertical: 9,
                   }}
                 >
-                  <Text size="sm" weight="semibold" color={theme.colors.white}>გახსნა →</Text>
+                  <Text size="sm" weight="semibold" color={theme.colors.white}>{t('projects.openProject')}</Text>
                 </Pressable>
               </View>
             </View>

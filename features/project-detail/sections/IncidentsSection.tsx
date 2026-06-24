@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { TriangleAlert } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { IncidentRow, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
@@ -22,6 +23,7 @@ export function IncidentsSection({
   loading?: boolean;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
 
@@ -41,11 +43,11 @@ export function IncidentsSection({
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <TriangleAlert size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={styles.sectionTitle}>ინციდენტები</Text>
+          <Text style={styles.sectionTitle}>{t('projects.incidentsSectionTitle')}</Text>
           <Text style={styles.sectionCount}>{sorted.length}</Text>
         </View>
         <Pressable onPress={() => router.push(`/incidents/new?projectId=${id}` as any)} hitSlop={16}>
-          <Text style={styles.sectionAddLink}>+ დამატება</Text>
+          <Text style={styles.sectionAddLink}>{t('projects.addIncident')}</Text>
         </Pressable>
       </View>
 

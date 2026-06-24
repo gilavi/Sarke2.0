@@ -21,6 +21,7 @@ export function getRecordStyles(theme: any) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      paddingTop: 12,
     },
     sectionTitle: {
       fontSize: 16,

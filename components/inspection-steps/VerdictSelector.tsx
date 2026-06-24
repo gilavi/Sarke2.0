@@ -12,6 +12,7 @@
  *      orders its options positive → negative, so this needs no per-route wiring.
  */
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Eye, ShieldCheck, TriangleAlert } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -65,14 +66,18 @@ export function VerdictSelector<T extends string = string>({
   value,
   options,
   onChange,
-  title = 'გადაწყვეტილება',
+  title,
   layout = 'row',
   showError = false,
-  errorText = 'აუცილებლად აირჩიეთ სტატუსი.',
+  errorText,
 }: VerdictSelectorProps<T>) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = getStyles(theme);
   const vertical = layout === 'vertical';
+
+  const resolvedTitle = title ?? t('inspections.verdictTitle');
+  const resolvedErrorText = errorText ?? t('inspections.verdictRequired');
 
   const press = (v: T, active: boolean) => {
     haptic.light();
@@ -81,7 +86,7 @@ export function VerdictSelector<T extends string = string>({
 
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.header, { color: theme.colors.inkSoft }]}>{title}</Text>
+      <Text style={[styles.header, { color: theme.colors.inkSoft }]}>{resolvedTitle}</Text>
       <View style={vertical ? styles.column : styles.row}>
         {options.map((opt, i) => {
           const active = value === opt.value;
@@ -112,7 +117,7 @@ export function VerdictSelector<T extends string = string>({
           );
         })}
       </View>
-      {showError ? <Text style={[styles.error, { color: theme.colors.danger }]}>{errorText}</Text> : null}
+      {showError ? <Text style={[styles.error, { color: theme.colors.danger }]}>{resolvedErrorText}</Text> : null}
     </View>
   );
 }

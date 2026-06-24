@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { useTheme } from '../../lib/theme';
@@ -15,6 +16,7 @@ export function DebouncedNotes({
   /** Focus the field (and open the keyboard) on mount — set when opened by tap. */
   autoFocus?: boolean;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const [text, setText] = useState(initial ?? '');
@@ -60,7 +62,7 @@ export function DebouncedNotes({
   return (
     <View>
       <FloatingLabelInput
-        label="შენიშვნა"
+        label={t('inspections.noteBarLabel')}
         value={text}
         onChangeText={setText}
         onEndEditing={() => onCommit(text)}

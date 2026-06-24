@@ -4,6 +4,7 @@
 // bobcat row + project name and maps the verdict onto the shared view.
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { InspectionDoneView, type DoneVerdictTone } from '../../../../components/success';
 import { projectsApi } from '../../../../lib/services';
 import { bobcatApi } from '../../../../lib/bobcatService';
@@ -11,6 +12,7 @@ import { VERDICT_LABEL } from '../../../../types/bobcat';
 import type { BobcatInspection } from '../../../../types/bobcat';
 
 export default function BobcatInspectionDoneScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [inspection, setInspection] = useState<BobcatInspection | null>(null);
@@ -43,10 +45,10 @@ export default function BobcatInspectionDoneScreen() {
           inspection.verdict;
         const head =
           inspection.verdict === 'approved'
-            ? '✓ დადებითი'
+            ? t('inspections.verdictPositive')
             : inspection.verdict === 'limited'
-              ? '⚠ შეზღუდული'
-              : '✗ უარყოფითი';
+              ? t('inspections.verdictLimited')
+              : t('inspections.verdictNegative');
         const tone: DoneVerdictTone =
           inspection.verdict === 'rejected'
             ? 'danger'
@@ -61,7 +63,7 @@ export default function BobcatInspectionDoneScreen() {
     <InspectionDoneView
       loading={loading}
       loaded={!!inspection}
-      typeLabel="ბობკატი"
+      typeLabel={t('inspections.bobcatDoneType')}
       projectName={projectName || undefined}
       dateText={
         inspection

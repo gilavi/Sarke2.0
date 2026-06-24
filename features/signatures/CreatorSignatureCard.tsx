@@ -11,6 +11,7 @@
 import { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Pencil } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { useTheme, type Theme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
@@ -29,6 +30,7 @@ interface Props {
 
 export function CreatorSignatureCard({ creatorName, signature, onTap }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   if (signature) {
@@ -52,9 +54,9 @@ export function CreatorSignatureCard({ creatorName, signature, onTap }: Props) {
             onPress={onTap}
             hitSlop={10}
             style={({ pressed }) => [styles.changeBtn, pressed && styles.pressed]}
-            {...a11y('შეცვლა', 'ხელმოწერის შეცვლა', 'button')}
+            {...a11y(t('certificates.changeAction'), t('signature.changeBtnA11y'), 'button')}
           >
-            <Text style={styles.changeBtnText}>შეცვლა</Text>
+            <Text style={styles.changeBtnText}>{t('certificates.changeAction')}</Text>
           </Pressable>
         </View>
       </View>
@@ -65,7 +67,7 @@ export function CreatorSignatureCard({ creatorName, signature, onTap }: Props) {
     <Pressable
       onPress={onTap}
       style={({ pressed }) => [styles.cardPressable, pressed && styles.pressed]}
-      {...a11y(`ხელმოწერა - ${creatorName}`, 'შეეხეთ ხელმოწერისთვის', 'button')}
+      {...a11y(`${t('signature.eyebrow')} - ${creatorName}`, t('signature.tapToSignA11y'), 'button')}
     >
       <View style={styles.emptyRow}>
         <View style={styles.placeholderImgBox}>
@@ -73,7 +75,7 @@ export function CreatorSignatureCard({ creatorName, signature, onTap }: Props) {
         </View>
         <View style={styles.signedMeta}>
           <Text style={styles.creatorName} numberOfLines={1}>{creatorName}</Text>
-          <Text style={styles.captionText}>ხელმოწერისთვის შეეხეთ</Text>
+          <Text style={styles.captionText}>{t('signature.tapToSign')}</Text>
         </View>
       </View>
     </Pressable>

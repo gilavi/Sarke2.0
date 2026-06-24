@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { Megaphone } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
@@ -25,6 +26,7 @@ export function BriefingsSection({
   loading?: boolean;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
 
@@ -43,14 +45,14 @@ export function BriefingsSection({
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Megaphone size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={styles.sectionTitle}>ინსტრუქტაჟი</Text>
+          <Text style={styles.sectionTitle}>{t('projects.briefingsSectionTitle')}</Text>
           <Text style={styles.sectionCount}>{completed.length}</Text>
         </View>
         <Pressable
           onPress={() => id && router.push(`/briefings/new?projectId=${id}` as any)}
           hitSlop={16}
         >
-          <Text style={styles.sectionAddLink}>+ დამატება</Text>
+          <Text style={styles.sectionAddLink}>{t('projects.addBriefing')}</Text>
         </Pressable>
       </View>
 

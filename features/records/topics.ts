@@ -1,5 +1,6 @@
 import { Pencil, type LucideIcon } from 'lucide-react-native';
 import { TOPIC_ICONS, TOPIC_KEYS } from '../../components/briefings/TopicSelector';
+import i18n from '../../lib/i18n';
 
 // Briefing topic helpers shared by the briefing row + its topic avatar.
 // Topics are either a known catalog key (scaffold_safety, …) or a free-text
@@ -13,13 +14,13 @@ export function briefingTopicIcon(topic: string): LucideIcon {
 }
 
 export function briefingTopicLabel(topic: string, t: (k: string) => string): string {
-  if (topic.startsWith('custom:')) return topic.slice('custom:'.length) || 'ინსტრუქტაჟი';
+  if (topic.startsWith('custom:')) return topic.slice('custom:'.length) || i18n.t('briefings.flowTitle');
   return isKnownKey(topic) ? t(`briefings.topics.${topic}`) : topic;
 }
 
 /** Comma-joined topic names for the briefing row title. */
 export function briefingTopicsLabel(topics: string[], t: (k: string) => string): string {
-  if (!topics || topics.length === 0) return 'ინსტრუქტაჟი';
+  if (!topics || topics.length === 0) return i18n.t('briefings.flowTitle');
   return topics.map((tp) => briefingTopicLabel(tp, t)).join(', ');
 }
 

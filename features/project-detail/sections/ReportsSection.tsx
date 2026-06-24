@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { FileText } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { SkeletonRow } from '../../../components/Skeleton';
@@ -28,6 +29,7 @@ export function ReportsSection({
   loading?: boolean;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
   const confirmDelete = useReportDelete();
@@ -45,15 +47,15 @@ export function ReportsSection({
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <FileText size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={styles.sectionTitle}>რეპორტები</Text>
+          <Text style={styles.sectionTitle}>{t('projects.reportsSectionTitle')}</Text>
           <Text style={styles.sectionCount}>{completed.length}</Text>
         </View>
         <Pressable
           onPress={() => id && router.push(`/reports/new?projectId=${id}` as any)}
           hitSlop={16}
-          {...a11y('ახალი რეპორტი', 'ახალი რეპორტის შექმნა', 'button')}
+          {...a11y(t('projects.newReportA11yLabel'), t('projects.newReportA11yHint'), 'button')}
         >
-          <Text style={styles.sectionAddLink}>+ ახალი რეპორტი</Text>
+          <Text style={styles.sectionAddLink}>{t('projects.addReport')}</Text>
         </Pressable>
       </View>
 

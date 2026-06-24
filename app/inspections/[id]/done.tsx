@@ -5,12 +5,14 @@
 // the shared <InspectionDoneView />. All wording/layout live in that view.
 import { useCallback, useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { InspectionDoneView } from '../../../components/success';
 import { inspectionsApi, projectsApi, templatesApi } from '../../../lib/services';
 import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import type { Inspection, Project, Template } from '../../../types/models';
 
 export default function InspectionDoneScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [inspection, setInspection] = useState<Inspection | null>(null);
@@ -57,8 +59,8 @@ export default function InspectionDoneScreen() {
         inspection
           ? {
               text: safe
-                ? '✓ უსაფრთხოა ექსპლუატაციისთვის'
-                : '✗ არ არის უსაფრთხო ექსპლუატაციისთვის',
+                ? t('inspections.verdictSafeForUse')
+                : t('inspections.verdictNotSafeForUse'),
               tone: safe ? 'safe' : 'danger',
             }
           : null

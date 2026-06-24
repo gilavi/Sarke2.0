@@ -1,5 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { QuestionAvatar, illustrationKeyFor } from '../../components/QuestionAvatar';
 import { useTheme } from '../../lib/theme';
@@ -25,6 +26,7 @@ export const QuestionStep = memo(function QuestionStep({
   onPickPhoto: () => void;
   onDeletePhoto: (photo: AnswerPhoto) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -55,7 +57,7 @@ export const QuestionStep = memo(function QuestionStep({
       ) : null}
       {question.type === 'photo_upload' ? (
         <Text style={{ color: theme.colors.inkSoft, fontSize: 14, textAlign: 'center' }}>
-          დაამატეთ ფოტოები ქვემოთ
+          {t('inspections.addPhotosBelow')}
         </Text>
       ) : null}
 

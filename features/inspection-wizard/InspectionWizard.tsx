@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Stack, useRouter } from 'expo-router';
 import { Check, ChevronRight, FileText } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
@@ -44,6 +45,7 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 
 export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const router = useRouter();
@@ -212,7 +214,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     }
     return (
       <InspectionShellSkeleton
-        title={template?.name ? inspectionDisplayName(template.name) : 'კითხვარი'}
+        title={template?.name ? inspectionDisplayName(template.name) : t('inspections.questionnaireFallbackTitle')}
         projectName={project?.name ?? ''}
         variant="question"
         onClose={() => router.back()}
@@ -259,8 +261,8 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
         />
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <ErrorState
-            title="შაბლონს კითხვები არ აქვს"
-            message="ამ შაბლონზე კითხვები არ არის კონფიგურირებული. გთხოვთ მიმართოთ ადმინისტრატორს."
+            title={t('inspections.emptyTemplateTitle')}
+            message={t('inspections.emptyTemplateMessage')}
             icon={FileText}
           />
         </View>
@@ -308,7 +310,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
           <View style={uploadPillStyles.pill}>
             <ActivityIndicator size="small" color={theme.colors.surface} />
             <Text style={[uploadPillStyles.text, { color: theme.colors.white }]}>
-              {photoUploadCount > 1 ? `ფოტოები იტვირთება (${photoUploadCount})…` : 'ფოტო იტვირთება…'}
+              {photoUploadCount > 1 ? t('inspections.photoUploading', { count: photoUploadCount }) : t('inspections.photoUploadingSingle')}
             </Text>
           </View>
         </View>
@@ -406,7 +408,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
             ) : null}
             {isLast ? (
               <Button
-                title="დასრულება"
+                title={t('inspections.footerComplete')}
                 style={{ paddingVertical: 14 }}
                 rightIcon={Check}
                 loading={finishing}
@@ -429,7 +431,7 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
               />
             ) : keyboardOpen ? null : (
               <Button
-                title="გაგრძელება"
+                title={t('common.continue')}
                 variant="primary"
                 size="lg"
                 style={{ alignSelf: 'stretch', paddingVertical: 16, justifyContent: 'center' }}

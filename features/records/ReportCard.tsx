@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { FileText, Layers, Trash2 } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { IconButton } from '../../components/primitives/IconButton';
 import { PressBounce } from '../../components/animations/PressBounce';
@@ -38,6 +39,7 @@ export function ReportCard({
   width?: number;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const uri = useReportCoverUri(report);
   const coverHeight = Math.round(width * 0.66);
@@ -53,7 +55,7 @@ export function ReportCard({
       style={[styles.card, { width }]}
       onPress={onPress}
       onLongPress={onDelete}
-      {...a11y(report.title, onDelete ? 'რეპორტის ნახვა · ხანგრძლივი დაჭერა წასაშლელად' : 'რეპორტის ნახვა', 'button')}
+      {...a11y(report.title, onDelete ? t('records.reportViewDeleteA11y') : t('records.reportViewA11y'), 'button')}
     >
       <View style={[styles.cover, { height: coverHeight }]}>
         {uri ? (
@@ -88,7 +90,7 @@ export function ReportCard({
             onPress={onDelete}
             variant="overlay"
             size="sm"
-            a11yLabel="რეპორტის წაშლა"
+            a11yLabel={t('records.reportDeleteA11y')}
             style={styles.deleteBtn}
           />
         ) : null}

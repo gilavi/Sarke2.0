@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { ChevronRight } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
 import { useTheme } from '../../lib/theme';
@@ -38,6 +39,7 @@ export function ScaffoldFooterButtons({
   onAdvance: () => void;
   compact?: boolean;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { reduceMotion } = useAccessibilitySettings();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -97,7 +99,7 @@ export function ScaffoldFooterButtons({
             borderColor: theme.colors.inverse.background,
           },
         ]}
-        {...a11y('სტატუსი: ' + col, 'შეეხეთ ამ სტატუსის ასარჩევად', 'button')}
+        {...a11y(t('inspections.statusA11yPrefix') + col, t('inspections.statusSelectHint'), 'button')}
       >
         {morph.showIcon ? (
           <Animated.View entering={iconIn} exiting={iconOut}>
@@ -128,7 +130,7 @@ export function ScaffoldFooterButtons({
         showDetails ? (
           <Animated.View key="next" layout={layoutAnim} entering={iconIn} exiting={iconOut}>
             <Button
-              title="შემდეგი"
+              title={t('common.next')}
               style={{ paddingVertical: 14 }}
               rightIcon={ChevronRight}
               onPress={onAdvance}

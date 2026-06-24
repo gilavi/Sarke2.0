@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { QualDoc } from '../../components/inspection-parts';
@@ -14,35 +15,36 @@ export function Step4CraneSpecs({
   onPickPhoto: () => void;
   onDeletePhoto: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={{ gap: 12 }}>
-      <Text style={s.stepTitle}>ამწის მონაცემები</Text>
+      <Text style={s.stepTitle}>{t('orders.craneData')}</Text>
 
       <FloatingLabelInput
-        label="მოდელი / ტიპი"
+        label={t('orders.craneModelType')}
         value={form.craneModel}
         onChangeText={v => setForm(f => ({ ...f, craneModel: v }))}
       />
 
       <FloatingLabelInput
-        label="ამწის ნომერი"
+        label={t('orders.craneNumberLabel')}
         value={form.craneNumber}
         onChangeText={v => setForm(f => ({ ...f, craneNumber: v }))}
       />
 
       <FloatingLabelInput
-        label="მაქს. ასაწევი ტვირთი (ტ.)"
+        label={t('orders.craneMaxLoadLabel')}
         value={form.craneMaxLoad}
         onChangeText={v => setForm(f => ({ ...f, craneMaxLoad: v }))}
         keyboardType="decimal-pad"
       />
 
-      <Text style={s.sectionLabel}>ამწის შემოწმ. სერთიფ.</Text>
+      <Text style={s.sectionLabel}>{t('orders.craneInspCert')}</Text>
       <QualDoc
         photoPath={form.craneInspCertPhoto}
         onAdd={onPickPhoto}
         onDelete={onDeletePhoto}
-        label="ამწის შემოწმების სერთიფიკატი"
+        label={t('orders.craneInspCertFull')}
       />
     </View>
   );

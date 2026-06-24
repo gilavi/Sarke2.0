@@ -57,6 +57,7 @@ function AnimatedDarkBackdrop({
   onPress: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   return (
     <View
       style={[
@@ -70,7 +71,7 @@ function AnimatedDarkBackdrop({
         <Pressable
           style={StyleSheet.absoluteFillObject}
           onPress={onPress}
-          {...a11y('დახურვა', 'შეეხეთ ფონის დასახურად', 'button')}
+          {...a11y(t('common.close'), t('a11y.closeHint'), 'button')}
         />
       )}
     </View>
@@ -373,7 +374,7 @@ export function ProjectPickerSheet({
                     required
                     value={company}
                     onChangeText={setCompany}
-                    error={attempted && !company.trim() ? 'სავალდებულო ველი' : undefined}
+                    error={attempted && !company.trim() ? t('errors.requiredField') : undefined}
                     autoFocus
                   />
                   <FloatingLabelInput
@@ -393,7 +394,7 @@ export function ProjectPickerSheet({
                       setPhone(formatted);
                     }}
                     keyboardType="phone-pad"
-                    error={attempted && !phone.trim() ? 'სავალდებულო ველი' : undefined}
+                    error={attempted && !phone.trim() ? t('errors.requiredField') : undefined}
                   />
                   <GeocodingAddressInput
                     label={t('common.address')}
@@ -401,7 +402,7 @@ export function ProjectPickerSheet({
                     value={address}
                     onChangeText={setAddress}
                     onPin={setPin}
-                    error={attempted && !address.trim() ? 'სავალდებულო ველი' : undefined}
+                    error={attempted && !address.trim() ? t('errors.requiredField') : undefined}
                   />
                   <LocationRow
                     pin={pin}
@@ -420,7 +421,7 @@ export function ProjectPickerSheet({
                       )
                     }
                     loading={busy}
-                    {...a11y(t('projects.createButton'), 'შეეხეთ ახალი პროექტის შესაქმნელად', 'button')}
+                    {...a11y(t('projects.createButton'), t('a11y.closeHint'), 'button')}
                   />
                 </View>
               </>
@@ -440,7 +441,7 @@ export function ProjectPickerSheet({
             }}>
               <View style={{ width: 38 }} />
               <Text style={{ flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: theme.colors.ink }}>
-                მდებარეობის არჩევა
+                {t('projects.chooseLocation')}
               </Text>
               <HeaderCloseButton onPress={() => setMapVisible(false)} />
             </View>

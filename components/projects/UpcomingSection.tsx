@@ -24,7 +24,7 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
     return events
       .filter(e => !e.isPast && e.projectId === projectId)
       .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .slice(0, 3);
+      .slice(0, 1);
   }, [events, projectId]);
 
   if (upcoming.length === 0) return null;
@@ -47,7 +47,6 @@ export function UpcomingSection({ projectId }: UpcomingSectionProps) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Calendar size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
           <Text style={styles.sectionTitle}>{t('calendar.upcomingSection')}</Text>
-          <Text style={styles.sectionCount}>{upcoming.length}</Text>
         </View>
         <Pressable
           onPress={() => router.push(`/(tabs)/calendar?projectId=${projectId}` as any)}

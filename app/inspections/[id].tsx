@@ -1,4 +1,4 @@
-﻿// Inspection result screen.
+// Inspection result screen.
 //
 // Live PDF preview as the main content (full-screen WebView). Two buttons in
 // the bottom bar:
@@ -23,6 +23,7 @@ import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-rou
 import { CircleAlert, CloudOff, Paperclip, Pencil, Lock, Share2, SquarePen } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import WebView from 'react-native-webview';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
@@ -79,6 +80,7 @@ import type {
 } from '../../types/models';
 
 export default function InspectionResultScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -217,8 +219,8 @@ export default function InspectionResultScreen() {
   // Navigation timeout guard: if loading takes >5 s, show recovery UI.
   useEffect(() => {
     if (!loading) return;
-    const t = setTimeout(() => setLoadTimedOut(true), 5000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setLoadTimedOut(true), 5000);
+    return () => clearTimeout(timer);
   }, [loading]);
 
   const buildSignaturesSection = useCallback(
@@ -310,12 +312,12 @@ export default function InspectionResultScreen() {
       } catch (e) {
         const msg = toErrorMessage(e);
         console.error('[inspection.preview] buildPdfPreviewHtml failed:', msg, e);
-        setPreviewError(msg || 'პრევიუ ვერ აიწყო');
+        setPreviewError(msg || t('certificates.previewFailedTitle'));
       } finally {
         setPreviewBusy(false);
       }
     },
-    [inspection, template, project, questions, answers, photosByAnswer, buildSignaturesSection],
+    [inspection, template, project, questions, answers, photosByAnswer, buildSignaturesSection, t],
   );
 
   // Initial preview build whenever core data is loaded. Subsequent rebuilds
@@ -365,10 +367,10 @@ export default function InspectionResultScreen() {
       // generic/xaracho → /inspections/[id]/wizard).
       router.replace(routeForInspection(template?.category, inspection.id, false) as any);
     } catch (e) {
-      toast.error(friendlyError(e, 'რედაქტირება ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('inspections.editFailed')));
       setReopening(false);
     }
-  }, [inspection, reopening, queryClient, router, toast]);
+  }, [inspection, reopening, queryClient, router, toast, t]);
 
   const downloadPdf = useCallback(async () => {
     if (!inspection || !template || !project || downloading) return;
@@ -454,7 +456,7 @@ export default function InspectionResultScreen() {
         subject: 'შრომის უსაფრთხოების შემოწმება',
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('PDF გენერირება ძალიან დიდხანს გრძელდება - სცადე თავიდან')), 30_000),
+        setTimeout(() => reject(new Error(t('inspections.pdfGenerateTooLong'))), 30_000),
       );
       await Promise.race([pdfPromise, timeoutPromise]);
       // Captured signatures persist while the user remains on this screen
@@ -465,7 +467,7 @@ export default function InspectionResultScreen() {
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { haptic.warn(); setLimitNoticeVisible(true); return; }
       haptic.error();
-      toast.error(friendlyError(e, 'PDF-ის გენერირება ვერ მოხერხდა'));
+      toast.error(friendlyError(e, t('inspections.pdfGenerateFailed')));
     } finally {
       setDownloading(false);
     }
@@ -483,25 +485,26 @@ export default function InspectionResultScreen() {
     invalidatePdfUsage,
     buildSignaturesSection,
     session,
+    t,
   ]);
 
   if (!loading && (notFound || loadError)) {
     return (
       <Screen edges={['bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
-        <ScreenHeader title="შემოწმების აქტი" />
+        <ScreenHeader title={t('inspections.title')} />
         <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
           <ErrorState
-            title={notFound ? 'შემოწმების აქტი ვერ მოიძებნა' : 'ვერ ჩაიტვირთა'}
+            title={notFound ? t('inspections.notFoundTitle') : t('components.errorStateTitle')}
             error={loadError ?? undefined}
-            message={notFound ? 'შესაძლოა წაიშალა, ან თქვენ არ გაქვთ წვდომა.' : undefined}
+            message={notFound ? t('inspections.notFoundDesc') : undefined}
             icon={notFound ? CircleAlert : CloudOff}
             onRetry={notFound ? undefined : () => void loadAll()}
             retrying={loading}
           />
           <View style={{ padding: 16 }}>
             <Button
-              title="მთავარ გვერდზე"
+              title={t('inspections.backToHome')}
               variant="ghost"
               onPress={() => router.replace('/(tabs)/home' as any)}
             />
@@ -523,7 +526,7 @@ export default function InspectionResultScreen() {
             onPress={onEdit}
             disabled={reopening}
             hitSlop={12}
-            accessibilityLabel="რედაქტირება"
+            accessibilityLabel={t('common.edit')}
             style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
           >
             <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
@@ -569,7 +572,7 @@ export default function InspectionResultScreen() {
             >
               <Paperclip size={18} color={theme.colors.ink} strokeWidth={1.5} />
               <Text style={styles.bottomBtnText} numberOfLines={1}>
-                სერტიფიკატები {certBadge}
+                {t('inspections.certificatesButton')} {certBadge}
               </Text>
             </Pressable>
             <Pressable
@@ -578,7 +581,7 @@ export default function InspectionResultScreen() {
             >
               <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
               <Text style={styles.bottomBtnText} numberOfLines={1}>
-                ხელმოწერები
+                {t('inspections.signaturesButton')}
               </Text>
             </Pressable>
           </View>
@@ -602,7 +605,7 @@ export default function InspectionResultScreen() {
                   : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />
                 }
                 <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
-                  {pdfUsage?.isLocked ? '🔒 გაზიარება' : 'გაზიარება'}
+                  {pdfUsage?.isLocked ? t('inspections.shareButtonLocked') : t('inspections.shareButton')}
                 </Text>
               </>
             )}

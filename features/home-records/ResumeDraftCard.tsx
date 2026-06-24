@@ -119,7 +119,7 @@ export function ResumeDraftCard() {
         >
           <Card
             onPress={() => router.push(routeForInspection(tpl?.category, draft.id, false) as never)}
-            a11y={a11y('შევსების გაგრძელება', 'შეეხეთ დრაფტის გასაგრძელებლად', 'button')}
+            a11y={a11y(t('a11y.resumeDraft'), t('home.resumeDraftHint'), 'button')}
             style={styles.resumeCard}
             padding="none"
           >

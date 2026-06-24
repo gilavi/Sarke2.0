@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { CircleCheck, CircleX, ChevronRight, Plus } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { HeaderBackButton } from '../HeaderBackButton';
 import { SkeletonRow } from '../Skeleton';
@@ -33,6 +34,7 @@ export function CertificatesManager({
   onClose: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const toast = useToast();
   const [view, setView] = useState<View_>({ kind: 'list' });
@@ -76,7 +78,7 @@ export function CertificatesManager({
     <View style={styles.flex}>
       <View style={styles.header}>
         <HeaderBackButton onPress={onClose} />
-        <Text style={styles.headerTitle} numberOfLines={1}>სერტიფიკატები</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{t('components.certManagerTitle')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -88,7 +90,7 @@ export function CertificatesManager({
             ))}
           </View>
         ) : items.length === 0 ? (
-          <Text style={styles.emptyText}>სერტიფიკატი ჯერ არ დამატებულა</Text>
+          <Text style={styles.emptyText}>{t('components.certManagerEmpty')}</Text>
         ) : (
           <View style={{ gap: 8 }}>
             {items.map(item => (
@@ -102,10 +104,10 @@ export function CertificatesManager({
         <Pressable
           onPress={() => setView({ kind: 'edit' })}
           style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.7 }]}
-          {...a11y('სერტიფიკატის დამატება', 'ახალი სერტიფიკატის დამატება', 'button')}
+          {...a11y(t('components.certManagerAdd'), t('components.certManagerAddHint'), 'button')}
         >
           <Plus size={18} color={theme.colors.accent} strokeWidth={2} />
-          <Text style={styles.addBtnText}>სერტიფიკატის დამატება</Text>
+          <Text style={styles.addBtnText}>{t('components.certManagerAdd')}</Text>
         </Pressable>
       </View>
     </View>
@@ -123,6 +125,7 @@ function CertRow({
   theme: any;
   onPress: () => void;
 }) {
+  const { t } = useTranslation();
   const hasPhoto = !!item.photo_path;
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
@@ -138,7 +141,7 @@ function CertRow({
             <CircleX size={14} color={theme.colors.inkFaint} strokeWidth={1.5} />
           )}
           <Text style={[styles.rowMeta, { color: hasPhoto ? theme.colors.accent : theme.colors.inkFaint }]}>
-            {hasPhoto ? '✓ ფოტო' : 'ფოტო არ არის'}
+            {hasPhoto ? t('components.certPhotoYes') : t('components.certPhotoNo')}
           </Text>
         </View>
       </View>

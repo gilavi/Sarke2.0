@@ -6,9 +6,11 @@
  * type for the PDF/schema but are no longer captured here.
  */
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, X, TriangleAlert } from 'lucide-react-native';
 import { ChecklistItemRow, type ChecklistRowOption } from '../inspection-parts/ChecklistItemRow';
 import type { ChecklistLegendItem } from '../inspection-parts/ChecklistLegend';
+import i18n from '../../lib/i18n';
 
 export type ChecklistResult = 'good' | 'deficient' | 'unusable' | null;
 
@@ -26,17 +28,11 @@ export interface ChecklistItemState {
   photo_paths: string[];
 }
 
-const OPTIONS: ChecklistRowOption[] = [
-  { value: 'good', icon: Check, a11yLabel: 'ვარგისია' },
-  { value: 'deficient', icon: TriangleAlert, a11yLabel: 'ხარვეზი' },
-  { value: 'unusable', icon: X, a11yLabel: 'გამოუსადეგარია' },
-];
-
 /** Legend explaining the three monochrome result chips (rendered by ChecklistStep). */
 export const CHECKLIST_LEGEND: ChecklistLegendItem[] = [
-  { icon: Check, label: 'ვარგისია' },
-  { icon: TriangleAlert, label: 'ხარვეზი' },
-  { icon: X, label: 'გამოუსადეგარია' },
+  { icon: Check, label: i18n.t('inspections.checklistGood') },
+  { icon: TriangleAlert, label: i18n.t('inspections.checklistDeficient') },
+  { icon: X, label: i18n.t('inspections.checklistUnusable') },
 ];
 
 export interface ChecklistRowProps {
@@ -53,9 +49,14 @@ export interface ChecklistRowProps {
 }
 
 export function ChecklistRow({ item, state, onStateChange }: ChecklistRowProps) {
-  const options = useMemo(
-    () => OPTIONS.map(o => ({ ...o, a11yLabel: `${item.description} - ${o.a11yLabel}` })),
-    [item.description],
+  const { t } = useTranslation();
+  const options = useMemo<ChecklistRowOption[]>(
+    () => [
+      { value: 'good', icon: Check, a11yLabel: `${item.description} - ${t('inspections.checklistGood')}` },
+      { value: 'deficient', icon: TriangleAlert, a11yLabel: `${item.description} - ${t('inspections.checklistDeficient')}` },
+      { value: 'unusable', icon: X, a11yLabel: `${item.description} - ${t('inspections.checklistUnusable')}` },
+    ],
+    [item.description, t],
   );
   return (
     <ChecklistItemRow

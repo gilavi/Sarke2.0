@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Plus, Pencil } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText } from './primitives/A11yText';
 import { a11y } from '../lib/accessibility';
 
@@ -56,6 +57,7 @@ export const ProjectAvatar = memo(function ProjectAvatar({
   editable?: boolean;
   onEdit?: () => void;
 }) {
+  const { t } = useTranslation();
   // Default to a full circle. Callers can still pass an explicit `radius`
   // when a rounded-square shape is needed (e.g. legacy layouts).
   const r = radius ?? Math.round(size / 2);
@@ -94,8 +96,8 @@ export const ProjectAvatar = memo(function ProjectAvatar({
       onPress={onEdit}
       style={{ width: size, height: size }}
       {...a11y(
-        logo ? 'ლოგოს შეცვლა' : 'ლოგოს დამატება',
-        'შეეხეთ პროექტის ლოგოს ასარჩევად',
+        logo ? t('projects.avatarChangeLogoA11y') : t('projects.avatarAddLogoA11y'),
+        t('projects.avatarEditHint'),
         'button',
       )}
     >

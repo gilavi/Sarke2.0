@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import { Paperclip, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -20,11 +21,14 @@ export function QualDoc({
   photoPath,
   onAdd,
   onDelete,
-  label = 'კვალიფიკაციის / სერტიფიკატის ფოტო',
+  label,
 }: QualDocProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const [uri, setUri] = useState('');
+
+  const resolvedLabel = label ?? t('inspections.qualDocLabel');
 
   useEffect(() => {
     if (!photoPath) { setUri(''); return; }
@@ -42,7 +46,7 @@ export function QualDoc({
         <IconButton
           icon={X}
           onPress={onDelete}
-          a11yLabel="ფოტოს წაშლა"
+          a11yLabel={t('generalEquipment.deletePhotoA11y')}
           variant="overlay"
           size="md"
           style={styles.deleteBtn}
@@ -55,11 +59,11 @@ export function QualDoc({
     <Pressable
       style={styles.placeholder}
       onPress={onAdd}
-      {...a11y('დოკუმენტის ფოტოს დამატება', label, 'button')}
+      {...a11y(t('inspections.addDocPhoto'), resolvedLabel, 'button')}
     >
       <Paperclip size={28} color={theme.colors.inkSoft} strokeWidth={1.5} />
-      <Text style={styles.placeholderLabel}>{label}</Text>
-      <Text style={styles.placeholderHint}>+ ფოტოს გადაღება</Text>
+      <Text style={styles.placeholderLabel}>{resolvedLabel}</Text>
+      <Text style={styles.placeholderHint}>{t('inspections.takePhoto')}</Text>
     </Pressable>
   );
 }

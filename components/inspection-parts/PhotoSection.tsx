@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Image } from 'expo-image';
 import { Camera, X } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -26,6 +27,7 @@ export function PhotoSection({
   maxPhotos,
   hint,
 }: PhotoSectionProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
 
@@ -47,10 +49,10 @@ export function PhotoSection({
           <Pressable
             style={styles.addBtn}
             onPress={onAdd}
-            {...a11y('ფოტოს დამატება', 'ფოტოს გადაღება ან ბიბლიოთეკიდან', 'button')}
+            {...a11y(t('a11y.addPhoto'), t('inspections.addPhotoFromCamera'), 'button')}
           >
             <Camera size={20} color={theme.colors.inkSoft} strokeWidth={1.5} />
-            <Text style={styles.addLabel}>+ ფოტო</Text>
+            <Text style={styles.addLabel}>{t('inspections.addPhotoShort')}</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -67,6 +69,7 @@ const PhotoThumb = memo(function PhotoThumb({
   path: string;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const [uri, setUri] = useState('');
@@ -85,7 +88,7 @@ const PhotoThumb = memo(function PhotoThumb({
       <IconButton
         icon={X}
         onPress={onDelete}
-        a11yLabel="ფოტოს წაშლა"
+        a11yLabel={t('generalEquipment.deletePhotoA11y')}
         variant="overlay"
         size="sm"
         style={styles.thumbDelete}

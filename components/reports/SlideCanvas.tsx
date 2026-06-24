@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Image, StyleSheet, View, type ImageResizeMode } from 'react-native';
 import { Image as ImageIcon } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import type { ReportSlideLayout } from '../../types/models';
@@ -27,11 +28,12 @@ interface Props {
  */
 export function SlideCanvas({ num, title, description, layout, uris }: Props) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const count = uris.length;
   const hasDesc = description.trim().length > 0;
-  const displayTitle = title.trim() || `სლაიდი ${num}`;
+  const displayTitle = title.trim() || t('reports.slideTitleFallback', { n: num });
 
   const NumBadge = (
     <View style={styles.numBadge}>

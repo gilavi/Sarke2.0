@@ -4,7 +4,7 @@
 //   - Generated orders (ბრძანებები) - read-only previews
 //   - Uploaded files (ფაილები) - swipe-to-delete, tap-to-open
 //
-// Header has two `+` actions: "+ ბრძანება" (new order) and
+// Header has two `+` actions: "+  ბრძანება" (new order) and
 // "+ ატვირთვა" (upload file). Empty state renders only when both
 // lists are empty.
 
@@ -13,6 +13,7 @@ import { Pressable, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Award, ChevronRight, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { FileThumbnail, ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
@@ -44,6 +45,7 @@ export function FilesAndOrdersSection({
   onDeleteFile: (f: ProjectFile) => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
 
@@ -61,15 +63,15 @@ export function FilesAndOrdersSection({
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Award size={16} color={theme.colors.inkSoft} strokeWidth={1.5} />
-          <Text style={styles.sectionTitle}>ბრძანებები</Text>
+          <Text style={styles.sectionTitle}>{t('projects.filesAndOrdersTitle')}</Text>
           <Text style={styles.sectionCount}>{files.length + completedOrders.length}</Text>
         </View>
         <Pressable
           onPress={() => router.push(`/orders/new?projectId=${id}` as any)}
           hitSlop={16}
-          {...a11y('ბრძანების შექმნა', 'ახალი ბრძანების შექმნა', 'button')}
+          {...a11y(t('projects.createOrderA11yLabel'), t('projects.createOrderA11yHint'), 'button')}
         >
-          <Text style={styles.sectionAddLink}>+ ბრძანება</Text>
+          <Text style={styles.sectionAddLink}>{t('projects.addOrder')}</Text>
         </Pressable>
       </View>
 
@@ -100,7 +102,7 @@ export function FilesAndOrdersSection({
             <Swipeable
               key={f.id}
               renderRightActions={() => (
-                <Pressable onPress={() => onDeleteFile(f)} style={styles.swipeDelete} {...a11y('ფაილის წაშლა', 'ფაილის წაშლა', 'button')}>
+                <Pressable onPress={() => onDeleteFile(f)} style={styles.swipeDelete} {...a11y(t('projects.deleteFileA11yLabel'), t('projects.deleteFileA11yLabel'), 'button')}>
                   <Trash2 size={18} color={theme.colors.white} strokeWidth={1.5} />
                 </Pressable>
               )}
@@ -112,7 +114,7 @@ export function FilesAndOrdersSection({
                   styles.listRow,
                   (i < filesPreview.length - 1 || overflowFiles.length > 0) && styles.listRowBorder,
                 ]}
-                {...a11y(f.name, 'ფაილის გახსნა', 'button')}
+                {...a11y(f.name, t('projects.openFileA11yHint'), 'button')}
               >
                 <FileThumbnail file={f} />
                 <View style={{ flex: 1 }}>

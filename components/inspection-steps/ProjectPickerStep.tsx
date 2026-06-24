@@ -1,4 +1,5 @@
 import { ScrollView, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { ProjectAvatar } from '../ProjectAvatar';
 import { Selector, type SelectorOption } from '../ui/Selector';
@@ -13,6 +14,7 @@ interface ProjectPickerStepProps {
 }
 
 export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const projectsQ = useProjects();
   const projects = projectsQ.data ?? [];
@@ -39,7 +41,7 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
       {projects.length === 0 ? (
         <View style={{ padding: 40, alignItems: 'center' }}>
           <Text style={{ color: theme.colors.inkFaint, textAlign: 'center' }}>
-            პროექტი ვერ მოიძებნა
+            {t('errors.notFoundProject')}
           </Text>
         </View>
       ) : (
