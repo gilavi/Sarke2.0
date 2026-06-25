@@ -28,6 +28,16 @@ OTA-deliverable (locale files only, no native changes).
 
 ---
 
+## 2026-06-25 — Account deletion works again (breathalyzer-log FK)
+
+Deleting an account from the Profile screen failed with a red "Edge Function returned a non-2xx status code" toast for any user who had ever logged a breathalyzer test.
+
+- **Root cause:** `breathalyzer_logs.user_id` carried **two** foreign keys to `auth.users` — the intended `…_auth_users_fkey` (ON DELETE CASCADE) plus a leftover `breathalyzer_logs_user_id_fkey` (NO ACTION) from [`0048_breathalyzer_log.sql`](../supabase/migrations/0048_breathalyzer_log.sql) that was never dropped. Postgres enforces both, so `supabase.auth.admin.deleteUser` (the [`delete-account`](../supabase/functions/delete-account/index.ts) Edge Function) aborted the cascade and returned 500.
+- **Fix:** migration [`20260625120000_drop_breathalyzer_logs_duplicate_user_fk.sql`](../supabase/migrations/20260625120000_drop_breathalyzer_logs_duplicate_user_fk.sql) drops the redundant NO ACTION constraint (idempotent). **Apply manually** to live.
+- **Also:** [`lib/profileService.ts`](../lib/profileService.ts) `deleteAccount` now unwraps the Edge Function's `{ error }` body from `error.context`, so a non-2xx now surfaces the real reason instead of the opaque generic string. Covered by `tests/unit/deleteAccount.test.ts`.
+
+---
+
 ## 2026-06-25 — Home now loads its record widgets on first arrival (and on pull-to-refresh)
 
 Home showed your projects but no record widgets (Inspections / Reports / Brdzaneba / Incidents / Briefings) after first login, and pulling to refresh didn't fix it — only History/Projects (which use different cache entries or mount later) showed the data. This was the **same JWT-propagation race** documented for projects (see [BUG_REPORT.md](reports/BUG_REPORT.md), "Home shows empty projects after first login"), fixed for projects on 2026-05-27 but never extended to the record lists.

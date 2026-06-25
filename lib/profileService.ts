@@ -26,5 +26,23 @@ export async function updateProfile(
 
 export async function deleteAccount(): Promise<void> {
   const { error } = await supabase.functions.invoke('delete-account');
-  if (error) throw error;
+  if (!error) return;
+  // supabase-js wraps any non-2xx response in a FunctionsHttpError whose message
+  // is the opaque "Edge Function returned a non-2xx status code". The real cause
+  // lives in the response body (`{ error: "<reason>" }`, set by the function) on
+  // `error.context` — surface it so the toast and our logs show the actual
+  // failure (e.g. a FK constraint blocking the auth.users cascade) instead of a
+  // dead-end generic string.
+  const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+  if (ctx && typeof ctx.json === 'function') {
+    let detail: string | undefined;
+    try {
+      const body = (await ctx.json()) as { error?: string } | null;
+      detail = body?.error ?? undefined;
+    } catch {
+      // Body wasn't JSON / already consumed — fall through to the original error.
+    }
+    if (detail) throw new Error(detail);
+  }
+  throw error;
 }
