@@ -13,6 +13,17 @@
  */
 
 const project = '/projects';
+const inspection = '/inspections';
+const bobcat = '/bobcat';
+const excavator = '/excavator';
+const generalEquipment = '/general-equipment';
+const cargoPlatform = '/cargo-platform';
+const largeLoader = '/large-loader';
+const safetyNet = '/safety-net';
+const mobileLadder = '/mobile-ladder';
+const forklift = '/forklift';
+const liftingAccessories = '/lifting-accessories';
+const fallProtection = '/fall-protection';
 
 export const routePattern = {
   // Auth & public
@@ -49,9 +60,24 @@ export const routePattern = {
   safety: '/safety',
   safetyStandalone: '/safety-standalone',
 
-  // Inspection acts - created via the home/project wizard modal; only the
-  // print route survives (PDF generation). Listing + detail pages were removed.
+  // Generic questionnaire acts (harness / scaffold) - created via the wizard
+  // modal. `inspectionDetail` is the completed-act result page (signature + PDF);
+  // `inspectionPrint` renders the PDF.
+  inspectionDetail: '/inspections/:id',
   inspectionPrint: '/inspections/:id/print',
+
+  // Structured equipment acts (restored on branch): create/edit via
+  // StructuredActPage, PDF via StructuredInspectionPrint.
+  bobcatNew: `${bobcat}/new`, bobcatDetail: `${bobcat}/:id`, bobcatPrint: `${bobcat}/:id/print`,
+  excavatorNew: `${excavator}/new`, excavatorDetail: `${excavator}/:id`, excavatorPrint: `${excavator}/:id/print`,
+  generalEquipmentNew: `${generalEquipment}/new`, generalEquipmentDetail: `${generalEquipment}/:id`, generalEquipmentPrint: `${generalEquipment}/:id/print`,
+  cargoPlatformNew: `${cargoPlatform}/new`, cargoPlatformDetail: `${cargoPlatform}/:id`, cargoPlatformPrint: `${cargoPlatform}/:id/print`,
+  largeLoaderNew: `${largeLoader}/new`, largeLoaderDetail: `${largeLoader}/:id`, largeLoaderPrint: `${largeLoader}/:id/print`,
+  safetyNetNew: `${safetyNet}/new`, safetyNetDetail: `${safetyNet}/:id`, safetyNetPrint: `${safetyNet}/:id/print`,
+  mobileLadderNew: `${mobileLadder}/new`, mobileLadderDetail: `${mobileLadder}/:id`, mobileLadderPrint: `${mobileLadder}/:id/print`,
+  forkliftNew: `${forklift}/new`, forkliftDetail: `${forklift}/:id`, forkliftPrint: `${forklift}/:id/print`,
+  liftingAccessoriesNew: `${liftingAccessories}/new`, liftingAccessoriesDetail: `${liftingAccessories}/:id`, liftingAccessoriesPrint: `${liftingAccessories}/:id/print`,
+  fallProtectionNew: `${fallProtection}/new`, fallProtectionDetail: `${fallProtection}/:id`, fallProtectionPrint: `${fallProtection}/:id/print`,
 
   // Projects
   projects: project,
@@ -101,4 +127,24 @@ export const routes = {
     edit: (id: string) => `${project}/${id}/edit`,
     files: (id: string) => `/project-files/${id}`,
   },
+
+  // Generic acts. The standalone list/detail pages were removed; History is the
+  // surviving list, so `list()` points there (used by structured back-nav).
+  inspections: {
+    list: (_projectId?: string | null) => '/history',
+    detail: (id: string) => `${inspection}/${id}`,
+    print: (id: string) => `${inspection}/${id}/print`,
+  },
+
+  // Structured equipment acts (restored on branch).
+  bobcat: { new: `${bobcat}/new`, detail: (id: string) => `${bobcat}/${id}`, print: (id: string) => `${bobcat}/${id}/print` },
+  excavator: { new: `${excavator}/new`, detail: (id: string) => `${excavator}/${id}`, print: (id: string) => `${excavator}/${id}/print` },
+  generalEquipment: { new: `${generalEquipment}/new`, detail: (id: string) => `${generalEquipment}/${id}`, print: (id: string) => `${generalEquipment}/${id}/print` },
+  cargoPlatform: { new: `${cargoPlatform}/new`, detail: (id: string) => `${cargoPlatform}/${id}`, print: (id: string) => `${cargoPlatform}/${id}/print` },
+  largeLoader: { new: `${largeLoader}/new`, detail: (id: string) => `${largeLoader}/${id}`, print: (id: string) => `${largeLoader}/${id}/print` },
+  safetyNet: { new: `${safetyNet}/new`, detail: (id: string) => `${safetyNet}/${id}`, print: (id: string) => `${safetyNet}/${id}/print` },
+  mobileLadder: { new: `${mobileLadder}/new`, detail: (id: string) => `${mobileLadder}/${id}`, print: (id: string) => `${mobileLadder}/${id}/print` },
+  forklift: { new: `${forklift}/new`, detail: (id: string) => `${forklift}/${id}`, print: (id: string) => `${forklift}/${id}/print` },
+  liftingAccessories: { new: `${liftingAccessories}/new`, detail: (id: string) => `${liftingAccessories}/${id}`, print: (id: string) => `${liftingAccessories}/${id}/print` },
+  fallProtection: { new: `${fallProtection}/new`, detail: (id: string) => `${fallProtection}/${id}`, print: (id: string) => `${fallProtection}/${id}/print` },
 } as const;

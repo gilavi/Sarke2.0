@@ -1,19 +1,20 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Textarea } from '@/components/ui/textarea';
 import { SegmentedControl } from '@/components/wizard/SegmentedControl';
-import { VERDICT_GOOD, VERDICT_BAD, VERDICT_NEUTRAL } from '@/lib/verdictColors';
 
 /**
  * Per-item checklist content (one harness/item at a time). Rendered inside the
- * shared WizardContent, so it owns no padding/max-width of its own.
+ * shared WizardContent, so it owns no padding/max-width of its own. Rows read as
+ * an AUDIT LEDGER: [label fills width] · [monochrome seg control right-aligned],
+ * hairline divider between rows.
  */
 type GridValues = Record<string, Record<string, string>>;
 type CellOpt = 'ok' | 'bad' | 'na';
 
 const STATUS_OPTIONS = [
-  { label: 'კი', value: 'ok', selectedBg: VERDICT_GOOD },
-  { label: 'არა', value: 'bad', selectedBg: VERDICT_BAD },
-  { label: 'N/A', value: 'na', selectedBg: VERDICT_NEUTRAL },
+  { label: 'კი', value: 'ok' },
+  { label: 'არა', value: 'bad' },
+  { label: 'N/A', value: 'na' },
 ];
 
 export function HarnessChecklist({
@@ -51,8 +52,8 @@ export function HarnessChecklist({
         </h2>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>შეამოწმეთ ყველა პუნქტი</p>
 
-        <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
-          {statusCols.map((col, ri) => {
+        <div role="list">
+          {statusCols.map((col) => {
             const current = values[activeRow]?.[col] ?? '';
             const key = `${activeRow}|${col}`;
             const selected = current === 'ok' ? 'ok' : current === 'bad' ? 'bad' : naSet.has(key) ? 'na' : null;
@@ -61,7 +62,6 @@ export function HarnessChecklist({
                 key={col}
                 label={col}
                 selected={selected}
-                last={ri === statusCols.length - 1}
                 onSelect={(opt) => onSelect(activeRow, col, opt)}
               />
             );
@@ -87,12 +87,10 @@ export function HarnessChecklist({
 function ChecklistRow({
   label,
   selected,
-  last,
   onSelect,
 }: {
   label: string;
   selected: string | null;
-  last: boolean;
   onSelect: (opt: CellOpt) => void;
 }) {
   const handleKey = (e: React.KeyboardEvent) => {
@@ -111,19 +109,21 @@ function ChecklistRow({
 
   return (
     <div
+      role="listitem"
       tabIndex={0}
       onKeyDown={handleKey}
-      className="flex items-center justify-between gap-4 outline-none transition-shadow focus-visible:ring-2 focus-visible:ring-brand-500"
+      className="grid items-center gap-4 rounded outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
       style={{
-        paddingTop: 14,
-        paddingBottom: 14,
-        paddingLeft: 16,
-        paddingRight: 16,
-        borderBottom: last ? undefined : '1px solid var(--border-subtle)',
+        gridTemplateColumns: 'minmax(0,1fr) auto',
+        paddingTop: 12,
+        paddingBottom: 12,
+        borderTop: '1px solid var(--border-subtle)',
       }}
     >
-      <span className="text-sm text-neutral-800 dark:text-neutral-200">{label}</span>
-      <SegmentedControl options={STATUS_OPTIONS} selected={selected} onSelect={(v) => onSelect(v as CellOpt)} />
+      <span className="min-w-0 text-sm text-neutral-800 dark:text-neutral-200">{label}</span>
+      <div className="justify-self-end">
+        <SegmentedControl options={STATUS_OPTIONS} selected={selected} onSelect={(v) => onSelect(v as CellOpt)} />
+      </div>
     </div>
   );
 }

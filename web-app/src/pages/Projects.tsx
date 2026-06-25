@@ -2,13 +2,13 @@ import { motion } from 'framer-motion';
 import { useState, lazy, Suspense, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { View, Text, Image, Pressable } from 'react-native';
-import { Plus, List, Map as MapIcon, Pencil, Trash2, Building2, MapPin } from 'lucide-react-native';
+import { Text } from 'react-native';
+import { Plus, List, Map as MapIcon, Pencil, Trash2, Building2 } from 'lucide-react-native';
 // Shared component library — the SAME primitives the Expo app renders, via
 // react-native-web. Page-level responsive scaffolding (CSS grid, the Radix
 // confirm dialog, the Leaflet map) stays web-specific; every UI atom on the
 // screen is the shared primitive.
-import { Button, Card, IconButton } from '@root/components/primitives';
+import { Button, IconButton } from '@root/components/primitives';
 import { useTheme } from '@root/lib/theme';
 import {
   AlertDialog,
@@ -24,6 +24,7 @@ import { SkeletonList } from '@/components/SkeletonCard';
 import { ProjectModal } from '@/components/ProjectModal';
 import { projectKeys } from '@/app/queryKeys';
 import { routes } from '@/app/routes';
+import { osmTileUrl } from '@/lib/mapTile';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { humanizeError } from '@/lib/errors';
 
@@ -32,14 +33,6 @@ function projectInitials(name: string | null | undefined): string {
   const trimmed = name.trim();
   if (!trimmed) return '-';
   return Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE');
-}
-
-function latLngToTile(lat: number, lng: number, zoom: number) {
-  const x = Math.floor(((lng + 180) / 360) * 2 ** zoom);
-  const y = Math.floor(
-    ((1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2) * 2 ** zoom,
-  );
-  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
 }
 
 function ProjectCard({
@@ -52,90 +45,77 @@ function ProjectCard({
   onEdit: (id: string) => void;
 }) {
   const navigate = useNavigate();
-  const { theme } = useTheme();
   const title = p.company_name || p.name;
   const hasTile = p.latitude != null && p.longitude != null;
-  const tileUrl = hasTile ? latLngToTile(p.latitude!, p.longitude!, 14) : null;
+  const tileUrl = hasTile ? osmTileUrl(p.latitude!, p.longitude!) : null;
 
+  // Mirrors the mobile home ProjectCard: one card with the map as a desaturated
+  // background that fades toward the bottom-left (so it peeks at the top-right),
+  // the avatar top-left and the name/address bottom-left over the card surface.
   return (
-    <Card padding="none" style={{ overflow: 'hidden' }}>
-      <Pressable onPress={() => navigate(routes.projects.detail(p.id))}>
-        {/* Map tile / placeholder header */}
-        <View style={{ height: 144, backgroundColor: theme.colors.surfaceSecondary }}>
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={() => navigate(routes.projects.detail(p.id))}
+        aria-label={`პროექტი: ${title}`}
+        className="block w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+      >
+        <div className="relative flex h-[155px] w-full flex-col justify-between overflow-hidden rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-neutral-900">
           {tileUrl ? (
             <>
-              <Image source={{ uri: tileUrl }} style={{ height: '100%', width: '100%', opacity: 0.85 }} />
-              <View
+              <img
+                src={tileUrl}
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover grayscale"
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  opacity: 0.85,
+                  WebkitMaskImage:
+                    'radial-gradient(135% 135% at 100% 0%, #000 0%, rgba(0,0,0,0.45) 45%, transparent 78%)',
+                  maskImage:
+                    'radial-gradient(135% 135% at 100% 0%, #000 0%, rgba(0,0,0,0.45) 45%, transparent 78%)',
                 }}
-              >
-                <View
-                  style={{
-                    height: 24,
-                    width: 24,
-                    borderRadius: 12,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: theme.colors.accent,
-                    borderWidth: 2,
-                    borderColor: theme.colors.white,
-                  }}
-                >
-                  <MapPin size={12} color={theme.colors.white} fill={theme.colors.white} />
-                </View>
-              </View>
+              />
+              {/* Pulsing location dot, biased to the top-right like mobile. */}
+              <span className="absolute left-[80%] top-[30%] h-2 w-2 animate-pulse rounded-full bg-brand-500 ring-2 ring-white dark:ring-neutral-900" />
             </>
           ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <Building2 size={28} color={theme.colors.inkFaint} />
-            </View>
+            <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+              <Building2 size={28} color="#a3a3a3" />
+            </div>
           )}
-        </View>
 
-        {/* Body */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
-          <View
-            style={{
-              height: 36,
-              width: 36,
-              borderRadius: 18,
-              overflow: 'hidden',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.colors.accentSoft,
-            }}
-          >
+          {/* Avatar (top-left) */}
+          <div className="relative z-10 flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/40">
             {p.logo ? (
-              <Image source={{ uri: p.logo }} style={{ height: '100%', width: '100%' }} />
+              <img src={p.logo} alt="" className="h-full w-full object-cover" />
             ) : (
-              <Text style={{ color: theme.colors.accent, fontWeight: '600', fontSize: 13 }}>
+              <span className="text-sm font-semibold text-brand-700 dark:text-brand-300">
                 {projectInitials(title)}
-              </Text>
+              </span>
             )}
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text numberOfLines={1} style={{ fontWeight: '600', color: theme.colors.ink }}>
-              {title}
-            </Text>
-            {p.address ? (
-              <Text numberOfLines={1} style={{ marginTop: 2, fontSize: 12, color: theme.colors.inkSoft }}>
-                {p.address}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      </Pressable>
+          </div>
 
-      {/* Row actions — shared IconButtons */}
-      <View style={{ position: 'absolute', right: 8, top: 8, flexDirection: 'row', gap: 4 }}>
+          {/* Name + address (bottom-left) */}
+          <div className="relative z-10 min-w-0">
+            <p className="truncate text-[18px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+              {title}
+            </p>
+            {p.address ? (
+              <p className="mt-0.5 truncate text-[11px] text-neutral-500 dark:text-neutral-400">
+                {p.address}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </button>
+
+      {/* Row actions — shared IconButtons, top-right (web-only) */}
+      <div className="absolute right-2 top-2 flex gap-1">
         <IconButton icon={Pencil} a11yLabel="რედაქტირება" size="sm" variant="ghost" onPress={() => onEdit(p.id)} />
         <IconButton icon={Trash2} a11yLabel="წაშლა" size="sm" variant="danger" onPress={() => onDelete(p.id)} />
-      </View>
-    </Card>
+      </div>
+    </div>
   );
 }
 

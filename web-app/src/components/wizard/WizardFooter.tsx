@@ -58,7 +58,10 @@ export function WizardFooter({
         onPress={onNext}
         disabled={nextDisabled}
         loading={submitting}
-        style={{ minWidth: 180 }}
+        // The Button primitive's wrapper defaults to alignSelf:'flex-start', which
+        // top-pins it inside this items-center footer row and makes it cross the
+        // top border line. Center it vertically within the 80px footer band.
+        style={{ minWidth: 180, alignSelf: 'center' }}
       />
     </div>
   );

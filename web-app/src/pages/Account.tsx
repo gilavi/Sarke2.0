@@ -359,13 +359,13 @@ export default function Account() {
             onClick={toggleMode}
             aria-label="გარეგნობის შეცვლა"
             className={cn(
-              'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-              isDark ? 'bg-brand-500' : 'bg-neutral-200',
+              'inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors',
+              isDark ? 'bg-brand-500' : 'bg-neutral-200 dark:bg-neutral-700',
             )}
           >
             <span className={cn(
-              'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
-              isDark ? 'translate-x-5' : 'translate-x-0.5',
+              'h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200',
+              isDark ? 'translate-x-5' : 'translate-x-0',
             )} />
           </button>
         </div>

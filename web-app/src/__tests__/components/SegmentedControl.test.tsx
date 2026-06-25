@@ -22,18 +22,18 @@ describe('SegmentedControl', () => {
     expect(onSelect).toHaveBeenCalledWith('fix');
   });
 
-  it('highlights only the selected option (white text on its selectedBg)', () => {
+  it('highlights only the selected option (inverted ink fill, others transparent)', () => {
     render(<SegmentedControl options={options} selected="good" onSelect={() => {}} />);
     const selected = screen.getByText('კარგი');
     const unselected = screen.getByText('N/A');
-    expect(selected).toHaveStyle({ color: 'rgb(255, 255, 255)' });
-    expect(unselected).toHaveStyle({ background: 'var(--bg-hover)' });
+    expect(selected).toHaveStyle({ background: 'var(--text-primary)', color: 'var(--bg-card)' });
+    expect(unselected).toHaveStyle({ background: 'transparent' });
   });
 
   it('shows nothing selected when selected is null', () => {
     render(<SegmentedControl options={options} selected={null} onSelect={() => {}} />);
     for (const o of options) {
-      expect(screen.getByText(o.label)).toHaveStyle({ background: 'var(--bg-hover)' });
+      expect(screen.getByText(o.label)).toHaveStyle({ background: 'transparent' });
     }
   });
 });

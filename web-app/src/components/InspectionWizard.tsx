@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 
 import PhotoUploadZone from '@/components/PhotoUploadZone';
 import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
-import SuccessModal, { type SuccessModalData } from '@/components/web/SuccessModal';
+import { getStructuredActByCategory } from '@/features/inspections/structured/acts';
+import type { SuccessModalData } from '@/components/web/SuccessModal';
 import { inspectionDisplayName } from '@/lib/documentNames';
 import { WizardFrame, WizardSidebar, SegmentedControl } from '@/components/wizard';
 import { HarnessChecklist } from '@/components/inspections/HarnessChecklist';
@@ -30,6 +31,7 @@ import {
 import { listProjects } from '@/lib/data/projects';
 import { listTemplates } from '@/lib/data/templates';
 import { projectKeys, inspectionKeys, templateKeys } from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 import { VERDICT_GOOD, VERDICT_BAD } from '@/lib/verdictColors';
 import { toastError } from '@/lib/errors';
 
@@ -130,11 +132,6 @@ export default function InspectionWizard({
   const [direction, setDirection] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
-  /* ── Success modal (shown after completion, survives the wizard closing) ── */
-  const [successData, setSuccessData] = useState<SuccessModalData | null>(null);
-  const [successOpen, setSuccessOpen] = useState(false);
-  const [completedId, setCompletedId] = useState<string | null>(null);
-
   /* ── Harness (component_grid) UI state, lifted so the shared sidebar persists
      across the checklist and conclusion steps ── */
   const [harnessAddedCount, setHarnessAddedCount] = useState(1);
@@ -195,9 +192,6 @@ export default function InspectionWizard({
       setStepIndex(0);
       setDirection(1);
       setSubmitting(false);
-      setSuccessData(null);
-      setSuccessOpen(false);
-      setCompletedId(null);
       setHarnessActiveIdx(0);
       setHarnessNaSet(new Set());
       // Reveal every item that already holds data (resumed inspection); always ≥1.
@@ -318,19 +312,13 @@ export default function InspectionWizard({
           projectName,
           itemLabel: preset?.itemLabel ?? 'ერთეული',
         };
-        if (preset?.successDetailRoute) {
-          // Navigate to the detail page and let it own the success modal, so the
-          // confirmation appears on top of the completed inspection.
-          onClose();
-          navigate(preset.successDetailRoute(insId), { state: { inspectionSuccess: successPayload } });
-        } else {
-          // Generic create + edit: the standalone inspection detail page was
-          // removed, so show the success modal in place. The modal owns PDF
-          // generation (opens the print route in a new tab).
-          setCompletedId(insId);
-          setSuccessData(successPayload);
-          setSuccessOpen(true);
-        }
+        // Land on the act's result page and let it own the success modal, so the
+        // confirmation appears on top of the completed inspection — and the
+        // inspector can add a signature before generating the PDF. Generic
+        // harness/scaffold acts fall back to the shared /inspections/:id page.
+        const detailRoute = preset?.successDetailRoute ?? routes.inspections.detail;
+        onClose();
+        navigate(detailRoute(insId), { state: { inspectionSuccess: successPayload } });
       } catch (e) {
         toastError(e);
       } finally {
@@ -397,6 +385,25 @@ export default function InspectionWizard({
     if (isInfoStep) {
       const createTemplateId = resolvedTemplateId;
       if (!projectId || !createTemplateId) return;
+      // Equipment templates are structured acts: create in their own table and
+      // jump straight to the act — no standalone /<type>/new page.
+      const pickedTpl = (templates ?? []).find((t) => t.id === createTemplateId);
+      const structuredAct = getStructuredActByCategory(pickedTpl?.category);
+      if (structuredAct) {
+        setCreating(true);
+        try {
+          const created = await structuredAct.descriptor.create(
+            structuredAct.descriptor.buildCreateArgs({ projectId, inspectorName: profileName, specValues: {} }),
+          );
+          onClose();
+          navigate(structuredAct.detail(created.id));
+        } catch (e) {
+          toastError(e);
+        } finally {
+          setCreating(false);
+        }
+        return;
+      }
       setCreating(true);
       try {
         const created = await createInspection({
@@ -616,16 +623,21 @@ export default function InspectionWizard({
     singlePageQuestions, currentQuestion, stepIndex, totalSteps,
   ]);
 
-  /* ── Success modal handlers (only used for flows without a detail route) ── */
-  const handleSuccessClose = () => {
-    setSuccessOpen(false);
-    onClose();
-  };
-  const handleGeneratePDF = () => {
-    if (completedId) window.open(`#/inspections/${completedId}/print`, '_blank');
-  };
+  // Mono "N / M შემოწმებული" counter for the harness grid step (checked status
+  // rows of the active item). Other step kinds carry no per-row checklist.
+  const progressCounter = useMemo<string | undefined>(() => {
+    if (!isHarnessGridStep || !harnessRows.length) return undefined;
+    const activeRow = harnessRows[harnessActiveIdx] ?? '';
+    const total = harnessStatusCols.length;
+    if (total === 0) return undefined;
+    const checked = harnessStatusCols.filter((col) => {
+      const cur = gridValues[activeRow]?.[col] ?? '';
+      return cur === 'ok' || cur === 'bad' || harnessNaSet.has(`${activeRow}|${col}`);
+    }).length;
+    return `${checked} / ${total} შემოწმებული`;
+  }, [isHarnessGridStep, harnessRows, harnessActiveIdx, harnessStatusCols, gridValues, harnessNaSet]);
 
-  if (!open && !successOpen) return null;
+  if (!open) return null;
 
   return (
     <>
@@ -637,6 +649,7 @@ export default function InspectionWizard({
         stepName={stepName}
         showProgress={!isInfoStep}
         progressPercent={progressPercent}
+        progressCounter={progressCounter}
         closeDisabled={submitting || creating}
         stepKey={stepIndex}
         direction={direction}
@@ -727,13 +740,6 @@ export default function InspectionWizard({
           />
         )}
       </WizardFrame>
-
-      <SuccessModal
-        isOpen={successOpen}
-        onClose={handleSuccessClose}
-        onGeneratePDF={handleGeneratePDF}
-        data={successData ?? { totalCount: 0, safeCount: 0, problemCount: 0, inspectionName: '', projectName: '', itemLabel: '' }}
-      />
     </>
   );
 }
@@ -903,8 +909,8 @@ function QuestionStepRenderer({
 
       {question.type === 'yesno' && (
         <div className="grid grid-cols-2 gap-3">
-          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" variant="yes" />
-          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" variant="no" />
+          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" />
+          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" />
         </div>
       )}
 
@@ -1040,8 +1046,8 @@ function SinglePageQuestion({
 
       {question.type === 'yesno' && (
         <div className="grid grid-cols-2 gap-3">
-          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" variant="yes" />
-          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" variant="no" />
+          <AnswerButton selected={answer?.value_bool === true} onClick={() => onChange({ value_bool: true })} icon={<CheckCircle2 size={20} />} label="კი" />
+          <AnswerButton selected={answer?.value_bool === false} onClick={() => onChange({ value_bool: false })} icon={<X size={20} />} label="არა" />
         </div>
       )}
 
@@ -1100,10 +1106,8 @@ function ConclusionStepRenderer({
 }) {
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100">დასკვნა</h3>
-        <p className="text-sm text-neutral-500">მიუთითეთ შემოწმების შედეგი და დასკვნა</p>
-      </div>
+      {/* The "დასკვნა" heading lives only in the wizard stepper — no duplicate here. */}
+      <p className="text-sm text-neutral-500">მიუთითეთ შემოწმების შედეგი</p>
 
       {/* 1 - Compact summary line */}
       {summary && (
@@ -1152,10 +1156,10 @@ function ConclusionStepRenderer({
 
       {/* 4 - Textarea (secondary) */}
       <Textarea
-        label="კომენტარი / დასკვნა"
+        label="კომენტარი"
         value={conclusion.text}
         onChange={(e) => onChange({ ...conclusion, text: e.target.value })}
-        placeholder="შეიყვანეთ დასკვნა..."
+        placeholder="შეიყვანეთ კომენტარი..."
         rows={4}
       />
 
@@ -1178,12 +1182,14 @@ function ConclusionStepRenderer({
 
 /* ─── Answer Button ─── */
 
-function AnswerButton({ selected, onClick, icon, label, variant }: {
-  selected: boolean; onClick: () => void; icon: React.ReactNode; label: string; variant: 'yes' | 'no';
+function AnswerButton({ selected, onClick, icon, label }: {
+  selected: boolean; onClick: () => void; icon: React.ReactNode; label: string;
 }) {
-  const base = variant === 'yes'
-    ? selected ? 'bg-brand-500 text-white ring-2 ring-brand-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-brand-50 hover:text-brand-600 border border-neutral-200'
-    : selected ? 'bg-red-500 text-white ring-2 ring-red-500 ring-offset-2' : 'bg-white text-neutral-600 hover:bg-red-50 hover:text-red-600 border border-neutral-200';
+  // Monochrome selection (ink fill + light content); the ✓/✗ icon carries
+  // yes/no, not colour — matching the mobile StatusChip.
+  const base = selected
+    ? 'bg-neutral-900 text-white ring-2 ring-neutral-900 ring-offset-2 dark:bg-neutral-100 dark:text-neutral-900 dark:ring-neutral-100'
+    : 'bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-900 dark:text-neutral-300 dark:border-neutral-700';
   return (
     <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={onClick}
       className={`flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-sm font-semibold transition-all ${base} dark:ring-offset-neutral-900`}>

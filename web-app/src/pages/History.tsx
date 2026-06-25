@@ -16,6 +16,7 @@ import { listProjects } from '@/lib/data/projects';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
 import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, cargoPlatformKeys } from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 
 interface Row {
   id: string;
@@ -72,7 +73,9 @@ export default function History() {
           type,
           status: i.status,
           date: i.created_at ?? '',
-          href: `/inspections/${i.id}`,
+          // Generic harness/scaffold result page (read-only summary + signature +
+          // PDF), mirroring the structured equipment acts.
+          href: routes.inspections.detail(i.id),
         };
       }),
       ...(bobcats ?? []).map((i): Row => ({

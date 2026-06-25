@@ -40,6 +40,11 @@ const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 const History = lazy(() => import('@/pages/History'));
 const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
 const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
+// Generic (harness / scaffold) completed-act result page: signature capture + PDF.
+const InspectionResult = lazy(() => import('@/pages/InspectionResult'));
+// Structured equipment acts (restored): one engine for create/edit/result + PDF.
+const StructuredActPage = lazy(() => import('@/features/inspections/structured/StructuredActPage'));
+const StructuredInspectionPrint = lazy(() => import('@/pages/print/StructuredInspectionPrint'));
 
 // Public marketing pages (the landing is multi-page). Landing stays eager
 // (first paint); the rest are lazy under MarketingLayout's Suspense boundary.
@@ -178,7 +183,32 @@ export function AppRouter() {
             <Route path={routePattern.projectEdit} element={<EditProject />} />
             <Route path={routePattern.projectDetail} element={<ProjectDetail />} />
             <Route path={routePattern.projectFiles} element={<ProjectFiles />} />
+            <Route path={routePattern.inspectionDetail} element={<InspectionResult />} />
             <Route path={routePattern.inspectionPrint} element={<InspectionPrint />} />
+
+            {/* Structured equipment acts (restored) — view/edit + PDF per type.
+                Creation happens in the wizard modal (project required), which
+                navigates straight to the act; there is no standalone /new page. */}
+            <Route path={routePattern.bobcatDetail} element={<StructuredActPage actKey="bobcat" />} />
+            <Route path={routePattern.bobcatPrint} element={<StructuredInspectionPrint actKey="bobcat" />} />
+            <Route path={routePattern.excavatorDetail} element={<StructuredActPage actKey="excavator" />} />
+            <Route path={routePattern.excavatorPrint} element={<StructuredInspectionPrint actKey="excavator" />} />
+            <Route path={routePattern.generalEquipmentDetail} element={<StructuredActPage actKey="general_equipment" />} />
+            <Route path={routePattern.generalEquipmentPrint} element={<StructuredInspectionPrint actKey="general_equipment" />} />
+            <Route path={routePattern.cargoPlatformDetail} element={<StructuredActPage actKey="cargo_platform" />} />
+            <Route path={routePattern.cargoPlatformPrint} element={<StructuredInspectionPrint actKey="cargo_platform" />} />
+            <Route path={routePattern.largeLoaderDetail} element={<StructuredActPage actKey="large_loader" />} />
+            <Route path={routePattern.largeLoaderPrint} element={<StructuredInspectionPrint actKey="large_loader" />} />
+            <Route path={routePattern.safetyNetDetail} element={<StructuredActPage actKey="safety_net_inspection" />} />
+            <Route path={routePattern.safetyNetPrint} element={<StructuredInspectionPrint actKey="safety_net_inspection" />} />
+            <Route path={routePattern.mobileLadderDetail} element={<StructuredActPage actKey="mobile_ladder_inspection" />} />
+            <Route path={routePattern.mobileLadderPrint} element={<StructuredInspectionPrint actKey="mobile_ladder_inspection" />} />
+            <Route path={routePattern.forkliftDetail} element={<StructuredActPage actKey="forklift_inspection" />} />
+            <Route path={routePattern.forkliftPrint} element={<StructuredInspectionPrint actKey="forklift_inspection" />} />
+            <Route path={routePattern.liftingAccessoriesDetail} element={<StructuredActPage actKey="lifting_accessories_inspection" />} />
+            <Route path={routePattern.liftingAccessoriesPrint} element={<StructuredInspectionPrint actKey="lifting_accessories_inspection" />} />
+            <Route path={routePattern.fallProtectionDetail} element={<StructuredActPage actKey="fall_protection_inspection" />} />
+            <Route path={routePattern.fallProtectionPrint} element={<StructuredInspectionPrint actKey="fall_protection_inspection" />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

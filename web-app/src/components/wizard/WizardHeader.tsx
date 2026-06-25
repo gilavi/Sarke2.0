@@ -13,6 +13,7 @@ export function WizardHeader({
   stepName,
   showProgress,
   progressPercent,
+  progressCounter,
   onClose,
   closeDisabled,
 }: {
@@ -21,6 +22,8 @@ export function WizardHeader({
   stepName?: string;
   showProgress: boolean;
   progressPercent: number;
+  /** Optional mono counter, e.g. "3 / 12 შემოწმებული". Rendered right-aligned. */
+  progressCounter?: string;
   onClose: () => void;
   closeDisabled?: boolean;
 }) {
@@ -36,7 +39,7 @@ export function WizardHeader({
               {projectName}
             </span>
           )}
-          <span className="truncate text-[17px] font-semibold leading-snug text-neutral-900 dark:text-neutral-100">
+          <span className="truncate text-[17px] font-semibold leading-snug tracking-tight text-neutral-900 dark:text-neutral-100">
             {inspectionName}
           </span>
           {stepName && (
@@ -45,14 +48,26 @@ export function WizardHeader({
             </span>
           )}
         </div>
-        <div className="ml-4 shrink-0">
+        <div className="ml-4 flex shrink-0 items-center gap-4">
+          {showProgress && progressCounter && (
+            <span
+              className="hidden whitespace-nowrap font-mono tabular-nums sm:inline"
+              style={{ fontSize: 12, color: 'var(--text-muted)' }}
+            >
+              {progressCounter}
+            </span>
+          )}
           <IconButton icon={X} a11yLabel="დახურვა" variant="ghost" size="lg" onPress={onClose} disabled={closeDisabled} />
         </div>
       </div>
       {showProgress && (
-        <div className="absolute bottom-0 left-0 right-0 h-1.5 overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+        <div
+          className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden"
+          style={{ background: 'var(--track)' }}
+        >
           <motion.div
-            className="h-full bg-brand-500"
+            className="h-full"
+            style={{ background: 'var(--text-primary)' }}
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ type: 'spring', stiffness: 200, damping: 25 }}

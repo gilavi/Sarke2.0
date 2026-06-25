@@ -44,6 +44,8 @@ export interface WizardFrameProps {
   stepName?: string;
   showProgress: boolean;
   progressPercent: number;
+  /** Optional mono counter shown in the header, e.g. "3 / 12 შემოწმებული". */
+  progressCounter?: string;
   closeDisabled?: boolean;
   /* Layout */
   sidebar?: ReactNode;
@@ -70,6 +72,7 @@ export function WizardFrame({
   stepName,
   showProgress,
   progressPercent,
+  progressCounter,
   closeDisabled,
   sidebar,
   stepKey,
@@ -112,6 +115,7 @@ export function WizardFrame({
             stepName={stepName}
             showProgress={showProgress}
             progressPercent={progressPercent}
+            progressCounter={progressCounter}
             onClose={onClose}
             closeDisabled={closeDisabled}
           />

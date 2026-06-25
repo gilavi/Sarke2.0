@@ -165,7 +165,7 @@ describe('InspectionWizard - conclusion step', () => {
     const yesBtn = screen.getByRole('button', { name: /გამოყენებადია/ });
     fireEvent.click(yesBtn);
     // Type a conclusion text.
-    const textarea = screen.getByPlaceholderText('შეიყვანეთ დასკვნა...');
+    const textarea = screen.getByPlaceholderText('შეიყვანეთ კომენტარი...');
     fireEvent.change(textarea, { target: { value: 'ყველაფერი წესრიგშია' } });
     expect((textarea as HTMLTextAreaElement).value).toBe('ყველაფერი წესრიგშია');
   });

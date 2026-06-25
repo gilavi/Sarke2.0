@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, ChevronRight, Building2 } from 'lucide-react';
-import { ActionIcon } from '@mantine/core';
+import { Plus, ChevronRight } from 'lucide-react';
 import { type Project } from '@/lib/data/projects';
 import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
 import StatusBadge from '@/components/StatusBadge';
@@ -19,6 +18,8 @@ import {
   cargoPlatformKeys,
 } from '@/app/queryKeys';
 import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
+import { routes } from '@/app/routes';
+import { osmTileUrl } from '@/lib/mapTile';
 
 interface ActivityItem {
   id: string;
@@ -28,19 +29,31 @@ interface ActivityItem {
   href: string;
   // Harness + the three scaffold variants share the `inspections` table;
   // equipment tables keep their own dedicated types. Display meta (label +
-  // illustration) is centralized in lib/inspectionTypeMeta — this used to carry
-  // a divergent emoji/label map that drifted from History's.
+  // illustration) is centralized in lib/inspectionTypeMeta.
   type: InspectionType;
 }
 
 const STALE = 1000 * 60 * 5;
 const PREVIEW = 3;
 
+function projectInitials(name: string): string {
+  const trimmed = (name ?? '').trim();
+  if (!trimmed) return '?';
+  return Array.from(trimmed).slice(0, 2).join('').toLocaleUpperCase('ka-GE');
+}
+
 interface Props {
   project: Project;
   onNewAct: () => void;
 }
 
+/**
+ * Home project card. The header mirrors the /projects ProjectCard exactly — the
+ * project-location map fills it (greyscale, radially faded toward the bottom-left
+ * so the map peeks at the top-right), the round logo sits top-left and the name +
+ * address bottom-left over the map. The recent-activity list is attached on a
+ * clean surface below.
+ */
 export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const { data: ins = [] }   = useQuery({ queryKey: inspectionKeys.list(project.id),         queryFn: () => listInspections(project.id),                staleTime: STALE });
   const { data: bobs = [] }  = useQuery({ queryKey: bobcatKeys.list(project.id),              queryFn: () => listBobcatInspections(project.id),           staleTime: STALE });
@@ -52,19 +65,15 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const all: ActivityItem[] = [
     ...ins.map(i  => {
       // Distinguish scaffold acts (xaracho / mobile_scaffold / mobile_scaffold_n3)
-      // from harness via the joined template.category - otherwise every
-      // inspections-table row gets the harness badge (BUG-21).
+      // from harness via the joined template.category.
       const cat = Array.isArray(i.template) ? i.template[0]?.category : null;
       const type: ActivityItem['type'] =
         cat === 'xaracho' || cat === 'mobile_scaffold' || cat === 'mobile_scaffold_n3'
           ? cat
           : 'harness';
-      // Preserve original href logic: only category='harness' goes to the
-      // dedicated /harness route. Everything else (scaffold + unknown
-      // templates like "ციცხვიანი დამტვირთველი") stays on the generic
-      // /inspections route so unknown templates don't break the harness
-      // detail page.
-      const href = cat === 'harness' ? `/harness/${i.id}` : `/inspections/${i.id}`;
+      // Generic harness/scaffold acts open the shared result page (read-only
+      // summary + signature + PDF), matching the History list.
+      const href = routes.inspections.detail(i.id);
       return { id: i.id, label: inspectionName(i.template_id), date: i.created_at ?? '', status: i.status, href, type };
     }),
     ...bobs.map(i  => ({ id: i.id, label: equipmentInspectionName('bobcat'),          date: i.createdAt, status: i.status, href: `/bobcat/${i.id}`,             type: 'bobcat' as const })),
@@ -76,47 +85,85 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
   const visible = all.slice(0, PREVIEW);
   const remaining = all.length - PREVIEW;
 
+  const tileUrl =
+    project.latitude != null && project.longitude != null
+      ? osmTileUrl(project.latitude, project.longitude)
+      : null;
+  const subline =
+    project.company_name && project.company_name !== project.name
+      ? project.company_name
+      : project.address || null;
+
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-      {/* ── Project header ── */}
-      <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
-        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700">
-          {project.logo ? (
-            <img src={project.logo} alt={project.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-neutral-100 dark:bg-neutral-800">
-              <Building2 size={16} className="text-neutral-400" />
-            </div>
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900">
+      {/* ── Map header (mirrors the /projects card) ── */}
+      <div className="relative flex h-[148px] flex-col justify-between border-b border-neutral-100 p-4 dark:border-neutral-800">
+        {tileUrl ? (
+          <>
+            <img
+              src={tileUrl}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover grayscale"
+              style={{
+                opacity: 0.85,
+                WebkitMaskImage:
+                  'radial-gradient(135% 135% at 100% 0%, #000 0%, rgba(0,0,0,0.45) 45%, transparent 78%)',
+                maskImage:
+                  'radial-gradient(135% 135% at 100% 0%, #000 0%, rgba(0,0,0,0.45) 45%, transparent 78%)',
+              }}
+            />
+            <span className="absolute left-[80%] top-[26%] h-2 w-2 animate-pulse rounded-full bg-brand-500 ring-2 ring-white dark:ring-neutral-900" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-50 to-neutral-100 dark:from-brand-950/30 dark:to-neutral-800" />
+        )}
+
+        {/* Top row: logo + new-act */}
+        <div className="relative z-10 flex items-start justify-between">
+          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/40">
+            {project.logo ? (
+              <img src={project.logo} alt={project.name} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-base font-semibold text-brand-700 dark:text-brand-300">
+                {projectInitials(project.name)}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onNewAct}
+            aria-label="ახალი აქტი"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-neutral-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-brand-600 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-800"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+
+        {/* Bottom: name + address */}
+        <div className="relative z-10 min-w-0">
+          <p className="truncate text-[18px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+            {project.name}
+          </p>
+          {subline && (
+            <p className="mt-0.5 truncate text-[11px] text-neutral-500 dark:text-neutral-400">{subline}</p>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">{project.name}</p>
-          {project.company_name && project.company_name !== project.name && (
-            <p className="truncate text-[11px] text-neutral-400 dark:text-neutral-500">{project.company_name}</p>
-          )}
-        </div>
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          radius="xl"
-          size="sm"
-          onClick={onNewAct}
-          aria-label="ახალი აქტი"
-        >
-          <Plus size={15} />
-        </ActionIcon>
       </div>
 
-      {/* ── Activity rows ── */}
+      {/* ── Recent activity ── */}
+      <p className="px-4 pt-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+        ბოლო აქტები
+      </p>
       {all.length === 0 ? (
         <div className="px-4 py-6 text-center text-sm text-neutral-400 dark:text-neutral-500">ჯერ ჩანაწერი არ არის</div>
       ) : (
-        <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        <ul className="mt-1 px-2">
           {visible.map((item) => (
             <li key={item.id}>
               <Link
                 to={item.href}
-                className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                className="group flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
                 <InspectionTypeIcon type={item.type} />
                 <div className="min-w-0 flex-1">
@@ -136,7 +183,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
       {remaining > 0 && (
         <Link
           to={`/projects/${project.id}`}
-          className="flex items-center justify-center gap-1 border-t border-neutral-100 px-4 py-2.5 text-xs text-neutral-500 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
+          className="mt-1 flex items-center justify-center gap-1 border-t border-neutral-100 px-4 py-2.5 text-xs font-medium text-neutral-500 transition-colors hover:bg-neutral-50 hover:text-brand-600 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-800/50"
         >
           კიდევ {remaining} ჩანაწერი <ChevronRight size={12} />
         </Link>
