@@ -9,6 +9,17 @@
 
 One real bug found — a **P0** infinite redirect loop between the wizard and the inspection-detail screen — root-caused and fixed. The other items in my initial pass turned out to be either downstream effects of the loop, simulator artifacts, or a misobservation. No code changes needed for the rest.
 
+## P1 — Completed equipment inspections missing from inspection feeds · FIXED 2026-06-25
+
+**Repro:** Complete a bobcat / excavator / forklift / fall-protection / … (any of the 9 equipment types) inspection. It does not appear in the Home "შემოწმების აქტები" widget, the History → Inspections tab, or the project-detail inspection list. Generic/harness acts and every other record type (reports/orders/incidents/briefings) show fine.
+
+**Root cause:** an equipment inspection is stored as a `<type>_inspections` row **plus** a parent `public.inspections` row sharing the same id (created via the `create_equipment_inspection` RPC). All three unified feeds read the parent's status — [`inspectionsApi.recent`](../../lib/services/real/inspections.ts) (Home/History) and the `get_project_inspections_unified` RPC (project detail) both select `inspections.status`. But [`makeInspectionService.complete()`/`reopen()`](../../lib/inspection/service.ts) updated only the equipment table, so the parent row stayed `status='draft'` forever and the completed act was filtered out of every `status='completed'` feed. Diagnosed on live: 41 completed equipment inspections across all accounts had a draft parent.
+
+**Fix:**
+- [`lib/inspection/service.ts`](../../lib/inspection/service.ts): `complete()` and `reopen()` now mirror `status` + `completed_at` onto the parent `public.inspections` row (`syncParent`). The parent freeze trigger admits both transitions (draft→completed, owner reopen).
+- Migration [`20260625130000_sync_equipment_inspection_parent_status.sql`](../../supabase/migrations/20260625130000_sync_equipment_inspection_parent_status.sql): one-time backfill of the 41 drifted parents (casts the equipment `text` status to the `questionnaire_status` enum). **Apply manually.**
+- Tests: `tests/unit/inspectionServiceParentSync.test.ts`.
+
 ## P1 — Home shows empty projects after first login (data appears only after manual pull-to-refresh) · FIXED 2026-05-27
 
 **Repro:** Fresh sign-in on an account that has projects → Home tab opens with the "ახალი პროექტი / შექმენით პირველი" empty-state card instead of the user's project cards. Same on the Projects tab. Pulling the screen down to refresh fetches the rows and shows them.

@@ -28,6 +28,16 @@ OTA-deliverable (locale files only, no native changes).
 
 ---
 
+## 2026-06-25 — Completed equipment inspections now surface in every inspection feed
+
+Completed **equipment** inspection acts (bobcat, excavator, forklift, fall-protection, …) were missing from Home, History, and the project-detail inspection list — only generic/harness acts showed. Reports/orders/incidents/briefings were unaffected.
+
+- **Root cause:** an equipment inspection has a row in its `<type>_inspections` table **and** a parent row in `public.inspections` (same id). Every unified feed reads the parent's status — `inspectionsApi.recent` (Home/History) and `get_project_inspections_unified` (project detail) both key off `inspections.status`. But `makeInspectionService.complete()`/`reopen()` ([lib/inspection/service.ts](../lib/inspection/service.ts)) wrote status only to the equipment table, so the parent stayed `draft` forever and the completed act never appeared.
+- **Fix:** `complete()`/`reopen()` now mirror status + `completed_at` onto the parent row (`syncParent`). Backfill migration [`20260625130000_sync_equipment_inspection_parent_status.sql`](../supabase/migrations/20260625130000_sync_equipment_inspection_parent_status.sql) repairs the **41** existing rows (completed equipment inspections whose parent was stuck at draft). **Apply manually** to live.
+- Tests: `tests/unit/inspectionServiceParentSync.test.ts` locks the dual-write (incl. failure isolation).
+
+---
+
 ## 2026-06-25 — Account deletion works again (breathalyzer-log FK)
 
 Deleting an account from the Profile screen failed with a red "Edge Function returned a non-2xx status code" toast for any user who had ever logged a breathalyzer test.

@@ -13,8 +13,10 @@
  * The two inspection regimes store "completed" in different tables, so the
  * dispatch must flip the table the detail screen actually reads:
  *   - genericInspection   → parent `public.inspections` row (frozen; relaxed).
- *   - equipmentInspection → `<type>_inspections` row via the per-type service
- *                            (unfrozen; the parent row stays draft regardless).
+ *   - equipmentInspection → `<type>_inspections` row via the per-type service,
+ *                            which also mirrors status onto the shared parent
+ *                            `public.inspections` row so the unified feeds stay
+ *                            in sync (see lib/inspection/service.ts `syncParent`).
  * See docs/primitives.md and the plan in the document-edit feature.
  */
 import type { QueryClient } from '@tanstack/react-query';
@@ -54,6 +56,8 @@ export async function reopenDocument(target: ReopenTarget, qc: QueryClient): Pro
     case 'equipmentInspection': {
       // Equipment "completed" lives on the <type>_inspections table; reopen it
       // there via the per-type service resolved from the registry by category.
+      // The service also mirrors the reopen onto the shared parent inspections
+      // row, so the unified feeds reflect it.
       const entry = inspectionRegistry[String(target.source)];
       if (!entry) throw new Error(`reopenDocument: unknown equipment source "${target.source}"`);
       await entry.reopen(target.id);
