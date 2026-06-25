@@ -80,6 +80,23 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
 ): InspectionService<T, P> {
   const { table, pathPrefix } = cfg;
 
+  // Equipment "completed"/"draft" lives on the <type>_inspections row, but every
+  // unified inspection feed reads the PARENT public.inspections row (same id):
+  // Home/History `inspectionsApi.recent`, the get_project_inspections_unified
+  // RPC, and the project-detail list all key off `inspections.status`. Mirror
+  // the status onto the parent or completed equipment acts never surface
+  // anywhere. See docs/reports/BUG_REPORT.md ("Completed equipment inspections
+  // missing from inspection feeds"). The parent's freeze trigger admits both a
+  // draft->completed transition and an explicit owner reopen (status draft +
+  // completed_at null), so no special-casing is needed here.
+  const syncParent = async (id: string, status: 'draft' | 'completed', completedAt: string | null) => {
+    const { error } = await supabase
+      .from('inspections')
+      .update({ status, completed_at: completedAt })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  };
+
   return {
     create: async (args) => {
       const projectId = assertUuid(args.projectId, 'projectId', table);
@@ -154,14 +171,17 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
         .update({ status: 'draft', completed_at: null })
         .eq('id', id);
       if (error) throw new Error(error.message);
+      await syncParent(id, 'draft', null);
     },
 
     complete: async (id) => {
+      const completedAt = new Date().toISOString();
       const { error } = await supabase
         .from(table)
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .update({ status: 'completed', completed_at: completedAt })
         .eq('id', id);
       if (error) throw new Error(error.message);
+      await syncParent(id, 'completed', completedAt);
     },
 
     uploadPhotoAt: async (subpath, photoUri) => {
