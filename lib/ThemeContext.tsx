@@ -28,12 +28,20 @@ interface ThemeContextValue {
 // AsyncStorage-backed mode resolution.
 export const ThemeContext = createContext<ThemeContextValue>(undefined as unknown as ThemeContextValue);
 
-const STORAGE_KEY = 'theme_dark';
+// Key bumped from the legacy 'theme_dark' so any device that persisted dark
+// under the old dark-by-default scheme starts fresh on the new light default.
+// (Changing only the resolver default left those devices stuck on dark — the
+// root of the "it won't switch to light" reports.) Users can still opt into
+// dark via the toggle; that writes the new key.
+const STORAGE_KEY = 'theme_mode_v2';
 
-function resolveMode(stored: string | null): ThemeMode {
+// Exported for testing: the default must stay 'light' (the toggle is OFF unless
+// the user explicitly turns dark on). Regressing this to 'dark' is the bug this
+// guards against.
+export function resolveMode(stored: string | null): ThemeMode {
   if (stored === 'true') return 'dark';
   if (stored === 'false') return 'light';
-  return 'dark';
+  return 'light';
 }
 
 function resolveIsDark(mode: ThemeMode): boolean {
@@ -43,7 +51,7 @@ function resolveIsDark(mode: ThemeMode): boolean {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('dark');
+  const [mode, setModeState] = useState<ThemeMode>('light');
   const [loaded, setLoaded] = useState(false);
   // Bumped by the OS appearance listener so `isDark` recomputes when the
   // system flips light/dark while the app is open. Plain `setModeState((m) => m)`

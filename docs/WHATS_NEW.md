@@ -28,6 +28,13 @@ OTA-deliverable (locale files only, no native changes).
 
 ---
 
+## 2026-06-25 — Light mode is the default; resume-draft card restored
+
+- **Light by default.** [`lib/ThemeContext.tsx`](../lib/ThemeContext.tsx) `resolveMode` now returns `'light'` for the no-preference case (was `'dark'`), and the pre-load `useState` seed matches. Earlier attempts that only changed the seed never took because the post-mount AsyncStorage effect re-applied the `'dark'` resolver default. The persisted key was also bumped (`theme_dark` → `theme_mode_v2`) so devices that stored dark under the old dark-by-default scheme start fresh on light; dark is still available via the toggle. Guarded by `tests/unit/themeMode.test.ts`.
+- **Resume-draft card.** [`features/home-records/ResumeDraftCard.tsx`](../features/home-records/ResumeDraftCard.tsx) regained its original layout after the History/Drafts extraction had flattened it: the orange accent rail, title + draft pill on one row, the thin progress bar, and the step-label/relative-time bottom row (space-between) with the original `padding:14`/`gap:8` spacing.
+
+---
+
 ## 2026-06-25 — Completed equipment inspections now surface in every inspection feed
 
 Completed **equipment** inspection acts (bobcat, excavator, forklift, fall-protection, …) were missing from Home, History, and the project-detail inspection list — only generic/harness acts showed. Reports/orders/incidents/briefings were unaffected.

@@ -21,6 +21,7 @@ const USER_SCOPED_PREFIXES = [
   'regulation_date_',
   'projects_view_pref',
   'theme_dark',
+  'theme_mode_v2',
   'pdf_language',
 ];
 
