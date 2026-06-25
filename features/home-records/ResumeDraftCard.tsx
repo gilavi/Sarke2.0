@@ -123,22 +123,28 @@ export function ResumeDraftCard() {
             style={styles.resumeCard}
             padding="none"
           >
+            {/* Orange accent rail + content column — the original resume-card
+                identity (restored after the History/Drafts extraction flattened
+                it). */}
+            <View style={styles.resumeAccent} />
             <View style={styles.resumeContent}>
               <View style={styles.resumeTopRow}>
+                <Text style={styles.resumeTitle} numberOfLines={1}>{inspectionDisplayName(tpl?.name)}</Text>
                 <View style={styles.resumePill}><Text style={styles.resumePillText}>{t('home.lastDraft')}</Text></View>
-                <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
               </View>
-              <Text style={styles.resumeTitle} numberOfLines={1}>{inspectionDisplayName(tpl?.name)}</Text>
               {totalSteps > 0 ? (
                 <View style={styles.progressTrack}>
                   <View style={[styles.progressFill, { width: `${Math.min((step / totalSteps) * 100, 100)}%` as `${number}%` }]} />
                 </View>
               ) : null}
-              {step > 0 ? (
-                <View style={styles.resumeBottomRow}>
+              <View style={styles.resumeBottomRow}>
+                {step > 0 ? (
                   <Text style={styles.resumeStepLabel}>{t('home.stepLabel', { step })}</Text>
-                </View>
-              ) : null}
+                ) : (
+                  <View />
+                )}
+                <Text style={styles.resumeMeta}>{relativeTime(draft.created_at, t, i18n.language)}</Text>
+              </View>
             </View>
           </Card>
         </Swipeable>
@@ -149,25 +155,28 @@ export function ResumeDraftCard() {
 
 function getStyles(theme: Theme) {
   return StyleSheet.create({
+    // Row layout: a 4px orange rail on the left, content column on the right.
     resumeCard: {
+      flexDirection: 'row',
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.hairline,
       overflow: 'hidden',
     },
-    resumeContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, gap: 0 },
-    resumeTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '800', marginTop: 10 },
-    resumePill: { alignSelf: 'flex-start', backgroundColor: theme.colors.neutral[900], borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
-    resumeTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    resumeAccent: { width: 4, backgroundColor: '#FF6D2E' },
+    resumeContent: { flex: 1, padding: 14, gap: 8 },
+    resumeTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    resumeTitle: { flex: 1, color: theme.colors.ink, fontSize: 15, fontWeight: '800' },
+    resumePill: { backgroundColor: theme.colors.neutral[900], borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
     resumePillText: {
-      color: theme.colors.highlight, fontSize: 10, fontWeight: '700',
+      color: theme.colors.highlight, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5,
     },
-    resumeBottomRow: { flexDirection: 'row', marginTop: 6 },
+    resumeBottomRow: { flexDirection: 'row', justifyContent: 'space-between' },
     resumeStepLabel: { color: theme.colors.inkSoft, fontSize: 11, fontWeight: '600' },
     resumeMeta: { color: theme.colors.inkSoft, fontSize: 11 },
     progressTrack: {
-      height: 4, borderRadius: 2, backgroundColor: withOpacity(theme.colors.ink, 0.1), overflow: 'hidden', marginTop: 12,
+      height: 2, borderRadius: 1, backgroundColor: withOpacity(theme.colors.ink, 0.1), overflow: 'hidden',
     },
-    progressFill: { height: 4, borderRadius: 2, backgroundColor: withOpacity(theme.colors.ink, 0.35) },
+    progressFill: { height: 2, borderRadius: 1, backgroundColor: withOpacity(theme.colors.ink, 0.35) },
     deleteAction: {
       backgroundColor: theme.colors.danger, justifyContent: 'center', alignItems: 'center',
       width: 72, borderRadius: 14, marginLeft: 8, marginRight: 20, marginVertical: 2, gap: 4,
