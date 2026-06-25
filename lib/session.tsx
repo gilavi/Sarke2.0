@@ -11,7 +11,7 @@ import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
 import { TERMS_VERSION } from './terms';
 import { queryClient } from './queryClient';
-import { projectsApi } from './services';
+import { warmHomeCaches } from './apiHooks';
 import type { AppUser } from '../types/models';
 
 const EMAIL_STORAGE_KEY = '@auth:email';
@@ -139,24 +139,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         if (cancelled || myEpoch !== epoch) return;
         setState({ status: 'signedIn', session, user: (data as AppUser | null) ?? null });
-        // Warm the home-screen caches in the background. The user is most
-        // likely heading for either home or the projects tab next; either way,
-        // this saves them the cold-fetch wait on first arrival.
+        // Warm EVERY Home-screen cache in the background now that the JWT is
+        // provably live (the users-row fetch above just succeeded). The user is
+        // most likely heading for home or the projects tab next; this saves the
+        // cold-fetch wait on first arrival.
         //
-        // `staleTime: 0` forces a network round-trip even if a cached value
-        // exists for these keys. Without it, a previous prefetch that raced
-        // the JWT propagation and returned `[]` (RLS rejected the call before
-        // the token was set on the Supabase client) would stick around for
-        // the default 5-minute staleTime, leaving the home screen empty
-        // until the user pulled-to-refresh. See `docs/reports/BUG_REPORT.md` ("Home shows
-        // empty projects after first login").
+        // `warmHomeCaches` prefetches projects, qualifications, templates AND the
+        // five record-widget lists with `staleTime: 0`, forcing a network round-
+        // trip even when a cached value exists. Without it, a mount-time query
+        // that raced JWT propagation and returned an RLS-empty `[]` would stick
+        // for the 5-minute default staleTime, leaving Home showing projects but
+        // no record widgets until pull-to-refresh. Projects were warmed here since
+        // 2026-05-27; the record widgets are added 2026-06-25 to close the same
+        // race. See `docs/reports/BUG_REPORT.md` ("Home shows empty projects
+        // after first login").
         //
         // Fire-and-forget so a network blip here can't delay post-auth nav.
-        queryClient.prefetchQuery({
-          queryKey: ['projects', 'list'],
-          queryFn: () => projectsApi.list(),
-          staleTime: 0,
-        }).catch(() => undefined);
+        warmHomeCaches(queryClient);
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
         logError(e, 'session.loadUser');

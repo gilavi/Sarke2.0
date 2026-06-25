@@ -40,6 +40,10 @@ import { liftingAccessoriesApi } from './liftingAccessoriesService';
 import { forkliftApi } from './forkliftService';
 import { breathalyzerLogApi } from './breathalyzerLogService';
 import type { BreathalizerLog } from '../types/breathalyzerLog';
+// Leaf import (recordTypes only pulls lucide icons — no cycle back into lib).
+// Keeps the Home warm-up's record-list keys in lock-step with the widgets that
+// read them, so the prefetch and the mount-time query share one cache entry.
+import { RECENT_COMPLETED_LIMIT } from '../features/records/recordTypes';
 import type {
   Project,
   ProjectFile,
@@ -174,7 +178,7 @@ export const qk = {
  * with the focusManager↔AppState binding in `lib/queryClient.ts`, which refreshes
  * stale queries when the app returns to the foreground.
  */
-export function invalidateRecordLists(qc: QueryClient): void {
+export function invalidateRecordLists(qc: QueryClient): Promise<void> {
   const namespaces = [
     'inspections',
     'reports',
@@ -187,8 +191,47 @@ export function invalidateRecordLists(qc: QueryClient): void {
     'schedules',
     'calendar',
   ];
-  for (const ns of namespaces) {
-    void qc.invalidateQueries({ queryKey: [ns] });
+  // Returns an awaitable so callers that want to gate a spinner on the refetch
+  // (e.g. Home's pull-to-refresh) can `await` it; fire-and-forget callers simply
+  // ignore the promise. Resolves once every matching active query has refetched.
+  return Promise.all(
+    namespaces.map((ns) => qc.invalidateQueries({ queryKey: [ns] })),
+  ).then(() => undefined);
+}
+
+/**
+ * Force-refetch every query the Home screen reads, bypassing `staleTime`.
+ *
+ * Called from the post-login flow in `lib/session.tsx` once the JWT is provably
+ * live (the users-row fetch in `safeLoadUser` has already succeeded). `staleTime: 0`
+ * guarantees a network round-trip even when a cached value exists — without it a
+ * query that earlier raced JWT propagation and cached an RLS-empty `[]` stays
+ * "fresh" for the 5-minute default staleTime, leaving Home showing projects (warmed
+ * here since 2026-05-27) but no record widgets. Warming the record-list keys too
+ * closes that gap (see `docs/reports/BUG_REPORT.md`, "Home shows empty projects
+ * after first login").
+ *
+ * Fire-and-forget: do NOT await it — a network blip must not delay post-auth nav.
+ * Each prefetch swallows its own error so one failing call can't reject the rest.
+ */
+export function warmHomeCaches(qc: QueryClient): void {
+  const recent = { status: 'completed' as const, limit: RECENT_COMPLETED_LIMIT };
+  // The Resume-draft card reads the single most-recent draft inspection — a
+  // different key from the completed feeds, but the same race, so warm it too.
+  const draft = { status: 'draft' as const, limit: 1 };
+  const jobs: Array<{ queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }> = [
+    { queryKey: qk.projects.list, queryFn: () => projectsApi.list() },
+    { queryKey: qk.qualifications.list, queryFn: () => qualificationsApi.list() },
+    { queryKey: qk.templates.list, queryFn: () => templatesApi.list() },
+    { queryKey: qk.inspections.recent(recent), queryFn: () => inspectionsApi.recent(recent) },
+    { queryKey: qk.inspections.recent(draft), queryFn: () => inspectionsApi.recent(draft) },
+    { queryKey: qk.reports.recent(recent), queryFn: () => reportsApi.recent(recent) },
+    { queryKey: qk.orders.recent(recent), queryFn: () => ordersApi.recent(recent) },
+    { queryKey: qk.incidents.recent(recent), queryFn: () => incidentsApi.recent(recent) },
+    { queryKey: qk.briefings.recent(recent), queryFn: () => briefingsApi.recent(recent) },
+  ];
+  for (const job of jobs) {
+    void qc.prefetchQuery({ ...job, staleTime: 0 }).catch(() => undefined);
   }
 }
 
