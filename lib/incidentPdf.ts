@@ -8,6 +8,10 @@ export interface IncidentPdfArgs {
   inspectorRole?: string;
   /** Base64 data URL of the inspector's saved signature. */
   inspectorSignatureDataUrl?: string;
+  /** Number of extra blank signature boxes to print after the inspector's, so
+   *  additional people can sign the printed copy by hand. No data is captured
+   *  for these — they are blank lines only (see features/signatures/AGENTS.md). */
+  additionalSignatureRows?: number;
   /** Ordered array of base64 data URLs for each photo in incident.photos. */
   photoDataUrls?: string[];
   /** Reverse-geocoded address for each photo (parallel to photoDataUrls). null = no location. */
@@ -36,9 +40,21 @@ export function buildIncidentPdfHtml(args: IncidentPdfArgs): string {
     inspectorName,
     inspectorRole = 'შრომის უსაფრთხოების სპეციალისტი',
     inspectorSignatureDataUrl,
+    additionalSignatureRows = 0,
     photoDataUrls = [],
     photoAddresses = [],
   } = args;
+
+  const blankSignatureBoxes = Array.from({ length: Math.max(0, additionalSignatureRows) })
+    .map(
+      () => `
+  <div class="sig-box">
+    <div class="sig-label">ხელმოწერა</div>
+    <div style="height:32px;border-bottom:1px solid #aaa;margin:18px 0 4px;"></div>
+    <div class="sig-date">თარიღი: ____________</div>
+  </div>`,
+    )
+    .join('');
 
   const typeLabel =
     INCIDENT_TYPE_FULL_LABEL[incident.type] ?? incident.type;
@@ -393,7 +409,7 @@ ${
         : '<div style="height:32px;border-bottom:1px solid #aaa;margin-bottom:4px;"></div>'
     }
     <div class="sig-date">თარიღი: ${fmt(incident.created_at)}</div>
-  </div>
+  </div>${blankSignatureBoxes}
 </div>
 
 </body>

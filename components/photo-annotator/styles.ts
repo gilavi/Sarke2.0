@@ -1,5 +1,11 @@
 ﻿import { StyleSheet } from 'react-native';
 
+// Foreground for content sitting on the orange accent pill (Save / Crop apply /
+// active tool). The accent stays orange in BOTH themes, but theme.colors.ink
+// flips to near-white in dark mode and would wash out — so on-accent text/icons
+// use a fixed dark ink ("black text on orange" is the brand convention).
+export const ON_ACCENT_INK = '#1A1A1A';
+
 /* ─────────────────────────── Styles ─────────────────────────── */
 
 export function getstyles(theme: any) {
@@ -25,16 +31,53 @@ export function getstyles(theme: any) {
     justifyContent: 'center',
   },
   headerTitle: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 17,
     fontWeight: '700',
     color: theme.colors.ink,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   canvasWrap: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.subtleSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  photoContainer: {
-    flex: 1,
+
+  // ── Floating brush controls overlay (sibling of the captured photo View) ──
+  // box-none container that fills the photo box; the two slots park the pills at
+  // the image edges without intercepting draw touches in between.
+  floatingLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  colorBarSlot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 16,
+    alignItems: 'center',
+  },
+  sizeBarSlot: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  // photoBox is sized inline to photoLayout.{w,h} (so its aspect == the image
+  // aspect) and centered by canvasWrap. It holds two absolute-fill children: the
+  // captured photo View and the floating-controls overlay.
+  photoBox: {
+    position: 'relative',
+  },
+  // The captured View (== captureRef target). Fills photoBox, so display→pixel is
+  // one uniform scale and captureRef preserves the true photo aspect.
+  photoFill: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: theme.colors.background,
     overflow: 'hidden',
   },
@@ -44,42 +87,51 @@ export function getstyles(theme: any) {
     borderTopColor: theme.colors.hairline,
     paddingTop: 10,
     paddingBottom: 16,
-    gap: 10,
+    gap: 12,
   },
-  row: {
-    paddingHorizontal: 12,
-    overflow: 'visible',
-  },
-  rowContent: {
+
+  // ── Tools row: distinct crop chip + scrollable draw tools ──
+  toolsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 4,
-    overflow: 'visible',
+    paddingHorizontal: 14,
+    gap: 8,
   },
-  colorBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  colorBtnActive: {
-    borderColor: theme.colors.ink,
-    transform: [{ scale: 1.15 }],
-  },
-  whiteBtnRing: {
-    width: 28,
-    height: 28,
+  cropChip: {
+    width: 60,
+    height: 56,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: theme.colors.hairline,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  cropChipLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: theme.colors.inkFaint,
+  },
+  divider: {
+    width: 1,
+    height: 34,
+    backgroundColor: theme.colors.hairline,
+  },
+  // flex:1 bounds the ScrollView to the row's remaining width so it actually
+  // scrolls instead of overflowing (RN default flexShrink is 0).
+  toolScrollView: {
+    flex: 1,
+  },
+  toolScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
   },
   toolBtn: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     backgroundColor: theme.colors.subtleSurface,
     alignItems: 'center',
@@ -88,46 +140,52 @@ export function getstyles(theme: any) {
   toolBtnActive: {
     backgroundColor: theme.colors.accent,
   },
-  divider: {
-    width: 1,
-    height: 28,
-    backgroundColor: theme.colors.hairline,
-    marginHorizontal: 4,
-  },
-  widthBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  widthBtnActive: {
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.accentSoft,
-  },
-  widthLabel: {
-    marginLeft: 8,
-    fontSize: 13,
-    color: theme.colors.inkSoft,
-    fontWeight: '600',
-    minWidth: 30,
-  },
+
+  // ── Primary save (orange pill, black text) ──
   saveBtn: {
     marginHorizontal: 16,
-    marginTop: 4,
-    height: 50,
-    borderRadius: theme.radius.md,
+    marginTop: 2,
+    height: 52,
+    borderRadius: theme.radius.full,
     backgroundColor: theme.colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadow.button,
   },
   saveBtnText: {
-    color: theme.colors.white,
+    color: ON_ACCENT_INK,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+
+  // ── Crop mode actions (cancel / apply, no aspect chips) ──
+  cropActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+  },
+  cropCancelBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: theme.radius.full,
+    borderWidth: 1.5,
+    borderColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cropCancelText: {
+    color: theme.colors.accent,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cropApplyBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadow.button,
   },
 });
 }

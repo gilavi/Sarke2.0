@@ -1,36 +1,43 @@
-import { createElement, useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { A11yText as Text } from '../../components/primitives/A11yText';
+// Instruction (briefing) details — reached by tapping a saved briefing in a
+// list. Renders DocumentDetails (type="instruction"): topic note, VIEW-ONLY
+// signatures (the expert + participants signed during the flow), no
+// certificates. The post-save success screen is /briefings/[id]/done — this is
+// NOT it. Replaces the old WebView PDF-preview detail page.
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Users } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import { DocumentDetails, NoteBlocksContent } from '../../components/document-details';
 import { ErrorScreen } from '../../components/ErrorScreen';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Share2, FileText, SquarePen } from 'lucide-react-native';
-import { WebView } from 'react-native-webview';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SkeletonCard } from '../../components/Skeleton';
 import { useTheme } from '../../lib/theme';
-import { SkeletonPreview } from '../../components/Skeleton';
+import { useToast } from '../../lib/toast';
 import { useSession } from '../../lib/session';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
-import { useBriefing, useProject } from '../../lib/apiHooks';
+import { useBriefing, useProject, invalidateRecordLists } from '../../lib/apiHooks';
 import { queryClient } from '../../lib/queryClient';
+import { briefingsApi } from '../../lib/briefingsApi';
 import { reopenDocument } from '../../lib/documents/reopen';
+import { duplicateDocument } from '../../lib/documents/duplicate';
 import { haptic } from '../../lib/haptics';
-import { buildBriefingPreviewHtml, buildBriefingPdfHtml } from '../../lib/briefingPdf';
+import { friendlyError } from '../../lib/errorMap';
+import { buildBriefingPdfHtml } from '../../lib/briefingPdf';
 import { generatePdfName } from '../../lib/pdfName';
-import { a11y } from '../../lib/accessibility';
-import { useTranslation } from 'react-i18next';
-import type { Briefing, Project } from '../../types/models';
+import { formatShortDate } from '../../lib/formatDate';
+import { shortCode } from '../../lib/shared/documentName';
+import { briefingTopicLabel, briefingTopicsLabel } from '../../features/records/topics';
 
 export default function BriefingDetailScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const session = useSession();
+  const toast = useToast();
 
   const { data: briefing, isLoading: loading } = useBriefing(id);
   const { data: project } = useProject(briefing?.projectId);
@@ -38,12 +45,18 @@ export default function BriefingDetailScreen() {
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
-  const [webviewLoading, setWebviewLoading] = useState(true);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [reopening, setReopening] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
-  // Reopen the briefing to draft and route into the create flow (edit mode);
-  // re-signing on the next screen re-completes it.
+  // People who signed during the flow — expert first, then participants.
+  const participants = useMemo(() => {
+    if (!briefing) return [];
+    return [
+      { name: briefing.inspectorName, signed: !!briefing.inspectorSignature },
+      ...briefing.participants.map((p) => ({ name: p.name, signed: !!p.signature })),
+    ];
+  }, [briefing]);
+
   const onEdit = useCallback(async () => {
     if (!briefing || reopening) return;
     setReopening(true);
@@ -51,19 +64,46 @@ export default function BriefingDetailScreen() {
       haptic.medium();
       await reopenDocument({ kind: 'briefing', id: briefing.id }, queryClient);
       router.replace(`/briefings/new?editId=${briefing.id}&projectId=${briefing.projectId}` as any);
-    } catch {
-      Alert.alert(t('common.error'), t('briefings.createFailed'));
+    } catch (e) {
+      toast.error(friendlyError(e, t('briefings.createFailed')));
       setReopening(false);
     }
-  }, [briefing, reopening, router, t]);
+  }, [briefing, reopening, router, toast, t]);
 
-  useEffect(() => {
-    if (briefing && project) {
-      setPreviewHtml(buildBriefingPreviewHtml(briefing, project));
-    } else {
-      setPreviewHtml(null);
+  const onDuplicate = useCallback(async () => {
+    if (!briefing || duplicating) return;
+    setDuplicating(true);
+    try {
+      haptic.medium();
+      const { id: newId } = await duplicateDocument({ kind: 'briefing', id: briefing.id }, queryClient);
+      toast.success(t('details.duplicate.done'));
+      router.replace(`/briefings/new?editId=${newId}&projectId=${briefing.projectId}` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, t('details.duplicate.failed')));
+      setDuplicating(false);
     }
-  }, [briefing, project]);
+  }, [briefing, duplicating, router, toast, t]);
+
+  const onDelete = useCallback(() => {
+    if (!briefing) return;
+    Alert.alert(t('details.delete.title'), t('details.delete.confirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await briefingsApi.remove(briefing.id);
+            invalidateRecordLists(queryClient);
+            toast.success(t('notifications.deleted'));
+            router.back();
+          } catch (e) {
+            toast.error(friendlyError(e, t('errors.deleteFailed')));
+          }
+        },
+      },
+    ]);
+  }, [briefing, router, toast, t]);
 
   const sharePdf = useCallback(async () => {
     if (!briefing || !project) return;
@@ -82,145 +122,61 @@ export default function BriefingDetailScreen() {
       invalidatePdfUsage();
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
-      Alert.alert(t('common.error'), t('briefings.pdfGenerateFailed'));
+      toast.error(friendlyError(e, t('briefings.pdfGenerateFailed')));
     } finally {
       setSharing(false);
     }
-  }, [briefing, project, pdfUsage, invalidatePdfUsage, t]);
+  }, [briefing, project, pdfUsage, invalidatePdfUsage, session.state, toast, t]);
 
   if (!id) {
     return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
   }
 
-  if (loading) {
+  if (loading || !briefing) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title={t('briefings.flowTitle')} />
-        <SkeletonPreview />
+        <View style={{ flex: 1, padding: 16, justifyContent: 'center' }}>
+          <SkeletonCard />
+        </View>
       </View>
     );
   }
 
+  const info = [
+    { label: t('details.info.project'), value: project ? (project.company_name || project.name) : '—' },
+    { label: t('details.info.date'), value: formatShortDate(briefing.dateTime) },
+    { label: t('details.info.expert'), value: briefing.inspectorName || '—' },
+    { label: t('details.info.code'), value: shortCode(briefing.id) },
+  ];
+
+  const topicLines = briefing.topics.map((tp) => briefingTopicLabel(tp, t)).join('\n');
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader
-        title={t('briefings.recordTitle')}
-        right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Pressable
-              onPress={onEdit}
-              disabled={reopening || !briefing}
-              style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
-              hitSlop={11}
-              {...a11y(t('common.edit'), undefined, 'button')}
-            >
-              <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
-            </Pressable>
-            <Pressable
-              onPress={sharePdf}
-              disabled={sharing || !briefing || !project}
-              style={{ paddingHorizontal: 4 }}
-              hitSlop={11}
-              {...a11y(t('briefings.pdfShare'), undefined, 'button')}
-            >
-              {sharing ? (
-                <ActivityIndicator size="small" color={theme.colors.accent} />
-              ) : (
-                <Share2 size={22} color={theme.colors.accent} strokeWidth={1.5} />
-              )}
-            </Pressable>
-          </View>
-        }
-      />
-
-      {/* Preview WebView */}
-      {previewHtml ? (
-        <View style={{ flex: 1 }}>
-          {webviewLoading && Platform.OS !== 'web' && (
-            <View style={styles.webviewLoader}>
-              <ActivityIndicator color={theme.colors.accent} />
-            </View>
-          )}
-          {Platform.OS === 'web'
-            ? createElement('iframe', {
-                srcDoc: previewHtml,
-                style: { width: '100%', height: '100%', border: 'none', display: 'block' },
-              })
-            : <WebView
-                source={{ html: previewHtml }}
-                style={{ flex: 1 }}
-                onLoadEnd={() => setWebviewLoading(false)}
-                scrollEnabled
-                showsVerticalScrollIndicator
-              />
-          }
-        </View>
-      ) : (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <FileText size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
-          <Text style={{ color: theme.colors.inkFaint, fontSize: 14 }}>
-            {t('briefings.previewUnavailable')}
-          </Text>
-        </View>
-      )}
-
-      {/* Share bar */}
-      <View style={[styles.shareBar, { paddingBottom: Math.max(insets.bottom, 0) + 16 }]}>
-        <Pressable
-          onPress={sharePdf}
-          disabled={sharing || !briefing || !project}
-          style={[styles.shareBtn, (sharing || !briefing || !project) && { opacity: 0.5 }]}
-          {...a11y(t('briefings.pdfShare'), t('briefings.pdfShareHint'), 'button')}
-        >
-          {sharing ? (
-            <ActivityIndicator size="small" color={theme.colors.white} />
-          ) : (
-            <Share2 size={20} color={theme.colors.white} strokeWidth={1.5} />
-          )}
-          <Text style={styles.shareBtnText}>
-            {sharing ? t('briefings.pdfPreparing') : pdfUsage?.isLocked ? t('briefings.pdfShareLocked') : t('briefings.pdfShare')}
-          </Text>
-        </Pressable>
-      </View>
+    <>
+      <DocumentDetails
+        type="instruction"
+        tileIcon={Users}
+        title={briefingTopicsLabel(briefing.topics, t)}
+        typeLabel={t('details.type.instruction')}
+        status={null}
+        info={info}
+        contentLabel={t('details.content.instruction')}
+        contentTab={t('details.content.instruction')}
+        signatures={{ mode: 'view', participants }}
+        onEdit={onEdit}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        editing={reopening}
+        duplicating={duplicating}
+        onSharePdf={sharePdf}
+        sharing={sharing}
+        pdfLocked={pdfUsage?.isLocked}
+        onBack={() => router.back()}
+      >
+        <NoteBlocksContent blocks={[{ text: topicLines }]} />
+      </DocumentDetails>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-    </View>
+    </>
   );
-}
-
-function getstyles(theme: any) {
-  return StyleSheet.create({
-    webviewLoader: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.background,
-      zIndex: 1,
-    },
-    shareBar: {
-      padding: 16,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.hairline,
-      backgroundColor: theme.colors.background,
-    },
-    shareBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      backgroundColor: theme.colors.accent,
-      borderRadius: 12,
-      paddingVertical: 14,
-    },
-    shareBtnText: {
-      color: '#fff',
-      fontSize: 16,
-      fontWeight: '700',
-    },
-  });
 }

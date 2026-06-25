@@ -256,13 +256,15 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
   .slide-description.full-width { width: 100%; }
   .slide-image {
     width: 100%;
+    max-width: 100%;
     max-height: 200px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 6px;
     display: block;
   }
   .slide-image-full {
     width: 100%;
+    max-width: 100%;
     max-height: 320px;
     object-fit: contain;
     border-radius: 6px;
@@ -276,8 +278,9 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
   }
   .slide-image-duo {
     width: 48%;
+    max-width: 48%;
     max-height: 220px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 6px;
     display: block;
   }
@@ -289,6 +292,7 @@ export function buildReportPdfHtml(args: ReportPdfArgs): string {
   }
   .slide-image-stacked {
     width: 100%;
+    max-width: 100%;
     max-height: 230px;
     object-fit: contain;
     border-radius: 6px;

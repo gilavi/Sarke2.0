@@ -2,9 +2,9 @@
 
 ## What this module does
 Cross-document orchestration that doesn't belong to any single
-record service. Today it owns the **reopen-for-edit** flow shared by
-every finished-document family (inspection Acts, reports, orders,
-incidents, briefings).
+record service. It owns the **reopen-for-edit** flow and the
+**duplicate-as-draft** flow shared by the finished-document families
+(inspection Acts, reports, orders, incidents, briefings).
 
 ## Public API
 - `reopenDocument(target, queryClient)` — `lib/documents/reopen.ts`.
@@ -16,10 +16,23 @@ incidents, briefings).
   matching create/edit screen; re-completion happens through each
   family's normal completion path (which regenerates the PDF and, for
   inspections, re-captures the in-memory signature).
+- `duplicateDocument(target, queryClient)` — `lib/documents/duplicate.ts`.
+  Clones a saved document into a fresh **draft** (returns `{ id }`), then
+  `invalidateRecordLists(qc)`; the caller routes into the edit flow.
+  `target` is `DuplicateTarget`: `genericInspection | report | incident |
+  briefing` (equipment acts not included). Copies everything the schema
+  persists — incident: all fields + photo path refs + the expert
+  signature path; report: title + deep-copied slides; briefing: topics +
+  participants (persisted base64 sigs) + the expert signature; act:
+  inspection + answers + attachments, with answer/cert photo BLOBS
+  server-copied (`storageApi.copy`) to new paths so the editable draft is
+  independent. Captured act signatures are never persisted → nothing to
+  copy there.
 
 ## Internal files
-- `reopen.ts` — the dispatcher. Only ever writes `status -> 'draft'`
-  (+ `completed_at -> null` for inspections); never audit fields.
+- `reopen.ts` — the reopen dispatcher. Only ever writes `status ->
+  'draft'` (+ `completed_at -> null` for inspections); never audit fields.
+- `duplicate.ts` — the duplicate dispatcher + per-type clone helpers.
 
 ## Gotchas
 - **Two inspection regimes.** Generic inspections (harness/xaracho)

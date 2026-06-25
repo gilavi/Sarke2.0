@@ -62,3 +62,13 @@ export function certificateDisplayName(conclusionText?: string | null): string {
 export function orderDisplayName(typeLabel?: string | null): string {
   return typeLabel?.trim() || FALLBACK.order;
 }
+
+/**
+ * Short human-facing reference code for a document, derived from the first
+ * segment of its UUID (uppercased hex). Shown as the "Code" info row on the
+ * details screen. Display-only — never used as a key/lookup.
+ */
+export function shortCode(id?: string | null): string {
+  if (!id) return '—';
+  return (id.split('-')[0] || id).slice(0, 8).toUpperCase();
+}

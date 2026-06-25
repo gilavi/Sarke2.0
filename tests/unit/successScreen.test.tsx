@@ -22,7 +22,7 @@ vi.mock('../../components/ui', () => ({
     React.createElement('button', { 'data-testid': 'primary-btn', onClick: onPress }, title),
 }));
 
-import { SuccessScreen } from '../../components/success/SuccessScreen';
+import { SuccessScreen, actionCardPressStyle } from '../../components/success/SuccessScreen';
 import { Home, FileText } from 'lucide-react-native';
 import { haptic } from '../../lib/haptics';
 
@@ -76,6 +76,11 @@ describe('SuccessScreen', () => {
       <SuccessScreen title="t" actions={[{ icon: Home, title: 'მთავარი', subtitle: 'დაბრუნება', onPress: vi.fn() }]} />,
     );
     expect(getByText('დაბრუნება')).toBeTruthy();
+  });
+
+  it('actionCardPressStyle returns press feedback only when pressed', () => {
+    expect(actionCardPressStyle(true)).toEqual({ opacity: 0.85, transform: [{ scale: 0.99 }] });
+    expect(actionCardPressStyle(false)).toBeNull();
   });
 
   it('fires the completion haptic once, 400ms after mount', () => {

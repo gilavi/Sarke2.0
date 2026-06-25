@@ -26,6 +26,8 @@ export const storageApi = {
     MOCK_IMAGE_URI,
   publicUrl: (_bucket: string, _path: string) =>
     MOCK_IMAGE_URI,
+  copy: async (_bucket: string, _fromPath: string, toPath: string): Promise<string> =>
+    toPath,
   remove: async (_bucket: string, _path: string): Promise<void> => {
     // No-op in mock - no real blobs to clean up.
   },

@@ -419,7 +419,7 @@ export default function NewIncident() {
         title: INCIDENT_TYPE_FULL_LABEL[form.type],
         author: inspector.name || undefined,
         documentId: savedId,
-        subject: 'შრომის უსაფრთხოების ინციდენტის ანგარიში',
+        subject: t('incidents.reportSubject'),
       });
       const pdfHash = localUri ? await hashPdf(localUri).catch(() => undefined) : undefined;
       invalidatePdfUsage();

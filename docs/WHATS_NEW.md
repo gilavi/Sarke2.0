@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-06-25 — Saved records open a real Details screen (not the success screen)
+
+Tapping a saved record (act / incident / report / instruction) now opens a reusable, type-aware **Details** screen instead of the post-save success screen.
+
+- **Routing fix.** The act's `/inspections/[id]` route was *both* the success screen and the list-tap destination. It now renders the new Details screen; the post-save success screen moved to `/inspections/[id]/done` (the wizard already routed there). Incident/report/instruction list taps already hit their `[id]` routes, whose bodies were swapped to the Details screen. The old one-off detail / PDF-preview pages are replaced.
+- **One reusable component** — [`components/document-details/`](../components/document-details/AGENTS.md) `DocumentDetails` (`type: act | incident | report | instruction`): back top bar, header + status pill (no celebratory check), visible **Edit · Duplicate · Delete** chips, sticky scroll tabs, read-only info, type-specific content (act → inspection points, incident → description/cause/actions note, report → slide thumbnail strip, instruction → topic note), and the **reused** signature (editable for act/incident, view-only for instruction) + certificate (act only) lists from `components/success`. Footer = **PDF-ის გაზიარება**.
+- **Duplicate** ([`lib/documents/duplicate.ts`](../lib/documents/duplicate.ts), sibling of `reopenDocument`) clones a record into a fresh draft, copying everything the schema persists (act photo blobs are server-copied so the draft is independent). **Delete** confirms first.
+- **Terminology:** user-facing "inspector/ინსპექტორი" strings replaced with **expert/ექსპერტი**; the new screen uses `expert` throughout. New `details.*` i18n keys (ka + en).
+- **Intentional divergences from the design mockup** (schema-driven): info rows are read-only (no per-document expert exists and the incident/report update APIs omit `project_id`); certificates are act-only (the `inspection_attachments` table is inspection-scoped).
+- The act success + details screens share their data/PDF/signature logic via [`features/inspection-result/`](../features/inspection-result/AGENTS.md) so the legal no-persist signature rule and PDF output stay identical.
+
+---
+
+## 2026-06-25 — Photo annotator: floating brush controls + single-row toolbar
+
+The annotator's editing chrome was reworked so the photo stays the focus and the footer no longer grows a second row.
+
+- **Single-row footer.** The contextual style panel (color swatches + size slider) was removed from the bottom toolbar. The footer is now one row — a Crop chip + the draw tools — then the Save pill. No more empty/duplicated footer bar that only filled in once you picked the pencil.
+- **Floating, split brush controls.** Color and size moved *onto* the image: a **color palette pill floats bottom-center** ([`AnnotatorColorBar.tsx`](../components/photo-annotator/AnnotatorColorBar.tsx)) and a **vertical size picker floats on the right** ([`AnnotatorSizeBar.tsx`](../components/photo-annotator/AnnotatorSizeBar.tsx)). Both fade in, hug the **image** edges (anchored to the photo box, not the letterbox), and live in a `box-none` overlay that's a sibling of the captured view — so they never bake into the saved photo and drawing still works through the gaps.
+- **Size selector no longer jitters.** The drag slider (`BrushSizeSlider`, deleted) is replaced by three discrete presets (`SIZE_PRESETS = [3,6,10]`) — the slider re-measured its track on every layout pass and the thumb jumped; a tap can't.
+- **Fixes from review:** the draw-tools row now scrolls instead of pushing the last tools off-screen; Save / Apply / active-tool stay legible on the orange pill in **dark mode** (fixed dark ink instead of theme ink); the **text tool can set its color again** (color bar shows for text too); the Save pill clears the home-indicator safe area.
+- No new i18n keys (reuses existing `photoAnnotator.*`). OTA-deliverable — no native changes.
+
+---
+
 ## 2026-06-25 — Photo editor gains crop + rotate; report-PDF photos no longer overflow
 
 The photo annotator is now a full **edit** surface — crop (free + 1:1 / 4:3 / 16:9 presets) and 90° rotate, on top of the existing draw/annotate tools — and a related report-PDF photo-fit bug is fixed.

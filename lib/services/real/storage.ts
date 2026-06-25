@@ -109,6 +109,17 @@ export const storageApi = {
   },
   publicUrl: (bucket: string, path: string) =>
     supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl,
+  /**
+   * Server-side copy of a stored blob to a new path within the same bucket.
+   * Used when duplicating a document so the copy owns independent photo blobs
+   * (editing/deleting a photo in the copy must never affect the original).
+   * Returns the new path. Throws on failure so the caller can fall back.
+   */
+  copy: async (bucket: string, fromPath: string, toPath: string): Promise<string> => {
+    const { error } = await supabase.storage.from(bucket).copy(fromPath, toPath);
+    if (error) throw error;
+    return toPath;
+  },
   /** Best-effort blob delete. Logs failures (file may already be gone) but never throws. */
   remove: async (bucket: string, path: string): Promise<void> => {
     await supabase.storage

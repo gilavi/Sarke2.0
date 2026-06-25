@@ -1,684 +1,164 @@
-// Inspection result screen.
+// Inspection (act) DETAILS screen — reached by tapping a saved act in a list.
 //
-// Live PDF preview as the main content (full-screen WebView). Two buttons in
-// the bottom bar:
-//   - სერტიფიკატები: pushes the /inspections/[id]/certificates screen
-//   - გაზიარება:     renders the same HTML through expo-print and shares
+// Renders the reusable DocumentDetails shell (type="act"): inspection points,
+// editable signatures, certificates, Share PDF. The post-save SUCCESS screen is
+// the separate /inspections/[id]/done route (FlowSuccessScreen) — this is NOT
+// it. A draft tapped here is redirected into the wizard by useActResult.
 //
-// Signatures are captured on this screen via features/signatures/SignaturesScreen
-// and flow into the PDF builder as a local snapshot - no global state hop.
-//
-// The preview is regenerated whenever the certificates sheet saves a change.
-
-import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleAlert, CloudOff, Paperclip, Pencil, Lock, Share2, SquarePen } from 'lucide-react-native';
+// All data + the legal signature/PDF logic lives in useActResult so this screen
+// and the success screen never drift (captured signatures are never persisted;
+// see features/signatures/AGENTS.md).
+import { useCallback, useState } from 'react';
+import { Alert, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import WebView from 'react-native-webview';
 import { useTranslation } from 'react-i18next';
-import { A11yText as Text } from '../../components/primitives/A11yText';
+import { CircleAlert, ClipboardCheck, CloudOff } from 'lucide-react-native';
 import { Button, Screen } from '../../components/ui';
 import { ErrorState } from '../../components/ErrorState';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import { consumeCertsDirty } from '../../lib/certDirty';
-import {
-  SignaturesScreen,
-  useSignaturesState,
-} from '../../features/signatures';
-import type { SignaturesSectionData } from '../../lib/pdf/inspection';
-import {
-  answersApi,
-  inspectionAttachmentsApi,
-  inspectionsApi,
-  projectsApi,
-  templatesApi,
-} from '../../lib/services';
-import {
-  useInspection,
-  useProject,
-  useTemplate,
-  useTemplateQuestions,
-  useInspectionAnswers,
-} from '../../lib/apiHooks';
-import { buildPdfHtml, buildPdfPreviewHtml, type PdfAttachment } from '../../lib/pdf';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
-import { generatePdfName } from '../../lib/pdfName';
-import { inspectionDisplayName } from '../../lib/shared/documentName';
-import { STORAGE_BUCKETS } from '../../lib/supabase';
-import {
-  pdfPhotoEmbed,
-  imageForDisplay,
-} from '../../lib/imageUrl';
-import { useSession } from '../../lib/session';
-import { useToast } from '../../lib/toast';
-import { recordRedirect, isOscillating } from '../../lib/navigationGuard';
-import { reopenDocument } from '../../lib/documents/reopen';
-import { routeForInspection } from '../../lib/inspectionRouting';
-import { friendlyError } from '../../lib/errorMap';
+import { SkeletonCard } from '../../components/Skeleton';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
-import { toErrorMessage } from '../../lib/logError';
+import { DocumentDetails, InspectionPointsContent, type DocumentInfoRow } from '../../components/document-details';
+import { useActResult } from '../../features/inspection-result';
+import { inspectionsApi } from '../../lib/services';
+import { invalidateRecordLists } from '../../lib/apiHooks';
+import { queryClient } from '../../lib/queryClient';
+import { duplicateDocument } from '../../lib/documents/duplicate';
+import { routeForInspection } from '../../lib/inspectionRouting';
+import { inspectionDisplayName, shortCode } from '../../lib/shared/documentName';
+import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
-import { useTheme } from '../../lib/theme';
-import { SkeletonPreview } from '../../components/Skeleton';
-import type {
-  Answer,
-  AnswerPhoto,
-  Inspection,
-  InspectionAttachment,
-  Project,
-  Question,
-  Template,
-} from '../../types/models';
+import { useToast } from '../../lib/toast';
 
-export default function InspectionResultScreen() {
+export default function InspectionDetailScreen() {
   const { t } = useTranslation();
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const session = useSession();
+  const qc = useQueryClient();
+  const r = useActResult(id);
+  const [duplicating, setDuplicating] = useState(false);
 
-  const [inspection, setInspection] = useState<Inspection | null>(null);
-  const [template, setTemplate] = useState<Template | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Answer[]>([]);
-  const [photosByAnswer, setPhotosByAnswer] = useState<Record<string, AnswerPhoto[]>>({});
-  const [attachments, setAttachments] = useState<InspectionAttachment[]>([]);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<unknown>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
-  const { data: pdfUsage } = usePdfUsage();
-  const invalidatePdfUsage = useInvalidatePdfUsage();
-  const [redirectBlocked, setRedirectBlocked] = useState(false);
-  const [loadTimedOut, setLoadTimedOut] = useState(false);
-  const [reopening, setReopening] = useState(false);
-  const queryClient = useQueryClient();
-  const mountedRef = useRef(true);
-
-  // Signatures state - local to this result screen. Dies when the screen
-  // unmounts. See features/signatures/AGENTS.md for the no-persistence rule.
-  const signatures = useSignaturesState();
-  const [signaturesOpen, setSignaturesOpen] = useState(false);
-  const creatorName = useMemo(() => {
-    if (session.state.status !== 'signedIn') return '';
-    const u = session.state.user;
-    if (!u) return '';
-    return `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
-  }, [session.state]);
-
-  // React Query hooks seed cached data instantly so skeletons disappear faster.
-  // loadAll() below still runs on mount for nested photo / attachment data.
-  const inspectionQ = useInspection(id);
-  const projectQ = useProject(inspection?.project_id);
-  const templateQ = useTemplate(inspection?.template_id);
-  const questionsQ = useTemplateQuestions(inspection?.template_id);
-  const answersQ = useInspectionAnswers(id);
-
-  useEffect(() => { if (inspectionQ.data !== undefined) setInspection(inspectionQ.data); }, [inspectionQ.data]);
-  useEffect(() => { if (projectQ.data !== undefined) setProject(projectQ.data); }, [projectQ.data]);
-  useEffect(() => { if (templateQ.data !== undefined) setTemplate(templateQ.data); }, [templateQ.data]);
-  useEffect(() => { if (questionsQ.data !== undefined) setQuestions(questionsQ.data); }, [questionsQ.data]);
-  useEffect(() => { if (answersQ.data !== undefined) setAnswers(answersQ.data); }, [answersQ.data]);
-
-  const loadAll = useCallback(async () => {
-    if (!id) {
-      if (mountedRef.current) setLoading(false);
-      return;
-    }
-    if (mountedRef.current) {
-      setLoading(true);
-      setLoadError(null);
-      setNotFound(false);
-    }
-    try {
-      const insp = await inspectionsApi.getById(id);
-      if (!insp) {
-        if (mountedRef.current) setNotFound(true);
-        return;
-      }
-      if (mountedRef.current) setInspection(insp);
-      if (insp.status === 'draft' && !redirectBlocked) {
-        const tpl = await templatesApi.getById(insp.template_id).catch(() => null);
-        const target =
-          tpl?.category === 'bobcat' ? `bobcat/${insp.id}` :
-          tpl?.category === 'excavator' ? `excavator/${insp.id}` :
-          tpl?.category === 'general_equipment' ? `general-equipment/${insp.id}` :
-          tpl?.category === 'cargo_platform' ? `cargo-platform/${insp.id}` :
-          tpl?.category === 'harness' ? `harness/${insp.id}` :
-          `${insp.id}/wizard`;
-        if (isOscillating('detail', target)) {
-          if (mountedRef.current) setRedirectBlocked(true);
-          /* oscillation detected - blocking redirect */
-        } else {
-          recordRedirect('detail', target);
-          router.replace(`/inspections/${target}` as any);
-          return;
-        }
-      }
-      const [tpl, proj, atts] = await Promise.all([
-        templatesApi.getById(insp.template_id).catch(() => null),
-        projectsApi.getById(insp.project_id).catch(() => null),
-        inspectionAttachmentsApi
-          .listByInspection(insp.id)
-          .catch(() => [] as InspectionAttachment[]),
-      ]);
-      if (mountedRef.current) {
-        setTemplate(tpl);
-        setProject(proj);
-        setAttachments(atts);
-      }
-      if (tpl && mountedRef.current) {
-        const [qs, ans] = await Promise.all([
-          templatesApi.questions(tpl.id).catch(() => [] as Question[]),
-          answersApi.list(insp.id).catch(() => [] as Answer[]),
-        ]);
-        if (mountedRef.current) {
-          setQuestions(qs);
-          setAnswers(ans);
-        }
-        if (ans.length > 0 && mountedRef.current) {
-          const photoMap = await answersApi
-            .photosByAnswerIds(ans.map(a => a.id))
-            .catch(() => ({} as Record<string, AnswerPhoto[]>));
-          if (mountedRef.current) setPhotosByAnswer(photoMap);
-        }
-      }
-    } catch (e) {
-      if (mountedRef.current) setLoadError(e);
-    } finally {
-      if (mountedRef.current) setLoading(false);
-    }
-  }, [id, router]);
-
-  // Load on mount only - useFocusEffect was re-hammering Supabase on every
-  // back-navigation. Cached data from the hooks above renders instantly;
-  // loadAll() fills in nested photo / attachment data on first paint.
-  useEffect(() => {
-    mountedRef.current = true;
-    void loadAll();
-    return () => { mountedRef.current = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  // Navigation timeout guard: if loading takes >5 s, show recovery UI.
-  useEffect(() => {
-    if (!loading) return;
-    const timer = setTimeout(() => setLoadTimedOut(true), 5000);
-    return () => clearTimeout(timer);
-  }, [loading]);
-
-  const buildSignaturesSection = useCallback(
-    (): SignaturesSectionData | null => {
-      const creator = signatures.creatorSignature;
-      const rowCount = signatures.additionalRows.length;
-      if (!creator && rowCount === 0) return null;
-      return {
-        creatorSignature: creator
-          ? {
-              pngBase64: creator.pngBase64,
-              capturedAtIso: creator.capturedAt.toISOString(),
-              creatorName,
-            }
-          : null,
-        additionalRowsCount: rowCount,
-      };
-    },
-    [signatures.creatorSignature, signatures.additionalRows.length, creatorName],
-  );
-
-  const buildPreview = useCallback(
-    async (currentAttachments: InspectionAttachment[]) => {
-      if (!inspection || !template || !project) return;
-      setPreviewBusy(true);
-      setPreviewError(null);
-      try {
-        // Photos → resized data URLs (raw paths can't be reached from WebView).
-        const photosEmbedded: Record<string, AnswerPhoto[]> = {};
-        await Promise.all(
-          Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
-            photosEmbedded[answerId] = await Promise.all(
-              photos.map(async p => {
-                if (p.storage_path.startsWith('data:') || p.storage_path.startsWith('file:')) return p;
-                try {
-                  const dataUrl = await pdfPhotoEmbed(
-                    STORAGE_BUCKETS.answerPhotos,
-                    p.storage_path,
-                  );
-                  return { ...p, storage_path: dataUrl };
-                } catch {
-                  return p;
-                }
-              }),
-            );
-          }),
-        );
-
-        // Attachments → data URLs for cert photos.
-        const attsEmbedded: PdfAttachment[] = await Promise.all(
-          currentAttachments.map(async a => {
-            if (!a.photo_path) return { ...a };
-            if (a.photo_path.startsWith('data:') || a.photo_path.startsWith('file:')) {
-              return { ...a, photo_data_url: a.photo_path };
-            }
-            try {
-              const dataUrl = await pdfPhotoEmbed(
-                STORAGE_BUCKETS.certificates,
-                a.photo_path,
-              );
-              return { ...a, photo_data_url: dataUrl };
-            } catch (e) {
-              console.warn(
-                '[inspection.cert] embed failed, falling back to URL:',
-                a.photo_path,
-                toErrorMessage(e),
-              );
-              try {
-                const url = await imageForDisplay(STORAGE_BUCKETS.certificates, a.photo_path);
-                return { ...a, photo_data_url: url };
-              } catch {
-                return { ...a };
-              }
-            }
-          }),
-        );
-
-        const html = await buildPdfPreviewHtml({
-          questionnaire: inspection,
-          template,
-          project,
-          questions,
-          answers,
-          signaturesSession: buildSignaturesSection(),
-          photosByAnswer: photosEmbedded,
-          attachments: attsEmbedded,
-        });
-        setPreviewHtml(html);
-      } catch (e) {
-        const msg = toErrorMessage(e);
-        console.error('[inspection.preview] buildPdfPreviewHtml failed:', msg, e);
-        setPreviewError(msg || t('certificates.previewFailedTitle'));
-      } finally {
-        setPreviewBusy(false);
-      }
-    },
-    [inspection, template, project, questions, answers, photosByAnswer, buildSignaturesSection, t],
-  );
-
-  // Initial preview build whenever core data is loaded. Subsequent rebuilds
-  // are triggered explicitly when sheets save changes.
-  useEffect(() => {
-    if ((loading && !loadTimedOut) || !inspection || !template || !project) return;
-    void buildPreview(attachments);
-  }, [loading, loadTimedOut, inspection, template, project, questions, answers, photosByAnswer, attachments, buildPreview]);
-
-  const refreshAfterSheetSave = useCallback(async () => {
-    if (!inspection) return;
-    const atts = await inspectionAttachmentsApi
-      .listByInspection(inspection.id)
-      .catch(() => attachments);
-    setAttachments(atts);
-    await buildPreview(atts);
-  }, [inspection, attachments, buildPreview]);
-
-  const openCertificatesSheet = useCallback(() => {
-    if (!inspection) return;
-    router.push(`/inspections/${inspection.id}/certificates` as never);
-  }, [inspection, router]);
-
-  // Certificates is now a pushed screen. On return, refetch attachments and
-  // rebuild the preview only if a cert was actually saved/deleted.
-  const certFirstFocus = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      if (certFirstFocus.current) {
-        certFirstFocus.current = false;
-        return;
-      }
-      if (inspection && consumeCertsDirty(inspection.id)) void refreshAfterSheetSave();
-    }, [inspection, refreshAfterSheetSave]),
-  );
-
-  // Reopen the completed inspection back to draft and route into the wizard,
-  // which re-hydrates the existing answers/photos/conclusion. Re-completing on
-  // the result screen regenerates the PDF and re-captures the signature.
-  const onEdit = useCallback(async () => {
-    if (!inspection || reopening) return;
-    setReopening(true);
+  const onDuplicate = useCallback(async () => {
+    if (!r.inspection || duplicating) return;
+    setDuplicating(true);
     try {
       haptic.medium();
-      await reopenDocument({ kind: 'genericInspection', id: inspection.id }, queryClient);
-      // Canonical draft route for the category (harness → /inspections/harness/[id],
-      // generic/xaracho → /inspections/[id]/wizard).
-      router.replace(routeForInspection(template?.category, inspection.id, false) as any);
+      const { id: newId } = await duplicateDocument({ kind: 'genericInspection', id: r.inspection.id }, qc);
+      toast.success(t('details.duplicate.done'));
+      router.replace(routeForInspection(r.template?.category, newId, false) as never);
     } catch (e) {
-      toast.error(friendlyError(e, t('inspections.editFailed')));
-      setReopening(false);
+      toast.error(friendlyError(e, t('details.duplicate.failed')));
+      setDuplicating(false);
     }
-  }, [inspection, reopening, queryClient, router, toast, t]);
+  }, [r.inspection, r.template?.category, duplicating, qc, router, toast, t]);
 
-  const downloadPdf = useCallback(async () => {
-    if (!inspection || !template || !project || downloading) return;
-    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
-    setDownloading(true);
-    try {
-      // Re-embed everything fresh - signatures or attachments may have been
-      // edited since the preview was last built.
-      const photosEmbedded: Record<string, AnswerPhoto[]> = {};
-      await Promise.all(
-        Object.entries(photosByAnswer).map(async ([answerId, photos]) => {
-          photosEmbedded[answerId] = await Promise.all(
-            photos.map(async p => {
-              if (p.storage_path.startsWith('data:') || p.storage_path.startsWith('file:')) return p;
-              try {
-                const dataUrl = await pdfPhotoEmbed(
-                  STORAGE_BUCKETS.answerPhotos,
-                  p.storage_path,
-                );
-                return { ...p, storage_path: dataUrl };
-              } catch {
-                return p;
-              }
-            }),
-          );
-        }),
-      );
-      const attsEmbedded: PdfAttachment[] = await Promise.all(
-        attachments.map(async a => {
-          if (!a.photo_path) return { ...a };
-          if (a.photo_path.startsWith('data:') || a.photo_path.startsWith('file:')) {
-            return { ...a, photo_data_url: a.photo_path };
-          }
+  const onDelete = useCallback(() => {
+    if (!r.inspection) return;
+    const inspectionId = r.inspection.id;
+    Alert.alert(t('details.delete.title'), t('details.delete.confirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
           try {
-            const dataUrl = await pdfPhotoEmbed(
-              STORAGE_BUCKETS.certificates,
-              a.photo_path,
-            );
-            return { ...a, photo_data_url: dataUrl };
+            await inspectionsApi.remove(inspectionId);
+            invalidateRecordLists(queryClient);
+            toast.success(t('notifications.deleted'));
+            router.back();
           } catch (e) {
-            console.warn(
-              '[inspection.cert] embed failed, falling back to URL:',
-              a.photo_path,
-              toErrorMessage(e),
-            );
-            try {
-              const url = await imageForDisplay(STORAGE_BUCKETS.certificates, a.photo_path);
-              return { ...a, photo_data_url: url };
-            } catch {
-              return { ...a };
-            }
+            toast.error(friendlyError(e, t('errors.deleteFailed')));
           }
-        }),
-      );
+        },
+      },
+    ]);
+  }, [r.inspection, router, toast, t]);
 
-      const html = await buildPdfHtml({
-        questionnaire: inspection,
-        template,
-        project,
-        questions,
-        answers,
-        signaturesSession: buildSignaturesSection(),
-        photosByAnswer: photosEmbedded,
-        attachments: attsEmbedded,
-      });
-
-      const filename = generatePdfName(
-        project.company_name || project.name,
-        template.category === 'harness' ? 'aprzhilebis_shemowmeba' : 'kharachos_shemowmeba',
-        new Date(inspection.created_at),
-        inspection.id,
-      );
-      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      const authorName = session.state.status === 'signedIn'
-        ? `${session.state.user?.first_name ?? ''} ${session.state.user?.last_name ?? ''}`.trim()
-        : '';
-      // pdfOpen wraps expo-print in its own 30s timeout, but keep an outer
-      // race here too as belt-and-braces against UI freezes.
-      const pdfPromise = generateAndSharePdf(html, filename, false, userId, {
-        title: template.name,
-        author: authorName || undefined,
-        documentId: inspection.id,
-        subject: 'შრომის უსაფრთხოების შემოწმება',
-      });
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(t('inspections.pdfGenerateTooLong'))), 30_000),
-      );
-      await Promise.race([pdfPromise, timeoutPromise]);
-      // Captured signatures persist while the user remains on this screen
-      // (so re-sharing keeps the same signature); they die when the screen
-      // unmounts. No persistence path - see features/signatures/AGENTS.md.
-      haptic.pdfGenerated();
-      invalidatePdfUsage();
-    } catch (e) {
-      if (e instanceof PdfLimitReachedError) { haptic.warn(); setLimitNoticeVisible(true); return; }
-      haptic.error();
-      toast.error(friendlyError(e, t('inspections.pdfGenerateFailed')));
-    } finally {
-      setDownloading(false);
-    }
-  }, [
-    inspection,
-    template,
-    project,
-    questions,
-    answers,
-    attachments,
-    photosByAnswer,
-    downloading,
-    toast,
-    pdfUsage,
-    invalidatePdfUsage,
-    buildSignaturesSection,
-    session,
-    t,
-  ]);
-
-  if (!loading && (notFound || loadError)) {
+  if (!r.loading && (r.notFound || r.loadError)) {
     return (
       <Screen edges={['bottom']}>
         <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title={t('inspections.title')} />
-        <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+        <View style={{ flex: 1 }}>
           <ErrorState
-            title={notFound ? t('inspections.notFoundTitle') : t('components.errorStateTitle')}
-            error={loadError ?? undefined}
-            message={notFound ? t('inspections.notFoundDesc') : undefined}
-            icon={notFound ? CircleAlert : CloudOff}
-            onRetry={notFound ? undefined : () => void loadAll()}
-            retrying={loading}
+            title={r.notFound ? t('inspections.notFoundTitle') : t('components.errorStateTitle')}
+            error={r.loadError ?? undefined}
+            message={r.notFound ? t('inspections.notFoundDesc') : undefined}
+            icon={r.notFound ? CircleAlert : CloudOff}
+            onRetry={r.notFound ? undefined : () => void r.reload()}
+            retrying={r.loading}
           />
           <View style={{ padding: 16 }}>
             <Button
               title={t('inspections.backToHome')}
               variant="ghost"
-              onPress={() => router.replace('/(tabs)/home' as any)}
+              onPress={() => router.replace('/(tabs)/home' as never)}
             />
           </View>
-        </SafeAreaView>
+        </View>
       </Screen>
     );
   }
 
-  const certBadge = attachments.length > 0 ? `(${attachments.length})` : '';
+  if (!r.inspection) {
+    return (
+      <Screen edges={['bottom']}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={{ flex: 1, padding: 16, justifyContent: 'center' }}>
+          <SkeletonCard />
+        </View>
+      </Screen>
+    );
+  }
+
+  const safe = r.inspection.is_safe_for_use !== false;
+
+  const info: DocumentInfoRow[] = [
+    { label: t('details.info.project'), value: r.project ? (r.project.company_name || r.project.name) : '—' },
+  ];
+  if (r.inspection.harness_name) {
+    info.push({ label: t('details.info.object'), value: r.inspection.harness_name });
+  }
+  info.push({ label: t('details.info.date'), value: new Date(r.inspection.created_at).toLocaleDateString('ka-GE') });
+  info.push({ label: t('details.info.expert'), value: r.creatorName || '—' });
+  info.push({ label: t('details.info.code'), value: shortCode(r.inspection.id) });
 
   return (
-    <Screen edges={['bottom']}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader
-        title={inspectionDisplayName(template?.name)}
-        right={
-          <Pressable
-            onPress={onEdit}
-            disabled={reopening}
-            hitSlop={12}
-            accessibilityLabel={t('common.edit')}
-            style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
-          >
-            <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
-          </Pressable>
+    <>
+      <DocumentDetails
+        type="act"
+        tileIcon={ClipboardCheck}
+        title={inspectionDisplayName(r.template?.name)}
+        typeLabel={t('details.type.act')}
+        status={
+          safe
+            ? { tone: 'safe', label: t('success.status.safe') }
+            : { tone: 'severe', label: t('inspections.notSafe') }
         }
-      />
-      <View style={styles.previewWrap}>
-        {previewBusy && !previewHtml ? (
-          <SkeletonPreview />
-        ) : previewError && !previewHtml ? (
-          <View style={styles.previewState}>
-            <CircleAlert size={36} color={theme.colors.danger} strokeWidth={2} />
-            <Text style={{ color: theme.colors.danger, textAlign: 'center', marginTop: 12 }}>
-              {previewError}
-            </Text>
-          </View>
-        ) : previewHtml ? (
-          Platform.OS === 'web'
-            ? createElement('iframe', {
-                srcDoc: previewHtml,
-                style: { flex: 1, width: '100%', height: '100%', border: 'none' },
-              })
-            : (
-              <WebView
-                key={previewHtml.length /* force remount on new HTML */}
-                originWhitelist={['*']}
-                source={{ html: previewHtml }}
-                style={styles.webview}
-                scalesPageToFit
-                javaScriptEnabled={false}
-                domStorageEnabled={false}
-              />
-            )
-        ) : null}
-      </View>
-
-      <View style={styles.bottomBarSafe}>
-        <View style={styles.bottomBar}>
-          <View style={styles.bottomBarRow}>
-            <Pressable
-              onPress={openCertificatesSheet}
-              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-            >
-              <Paperclip size={18} color={theme.colors.ink} strokeWidth={1.5} />
-              <Text style={styles.bottomBtnText} numberOfLines={1}>
-                {t('inspections.certificatesButton')} {certBadge}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setSignaturesOpen(true)}
-              style={({ pressed }) => [styles.bottomBtn, styles.bottomBtnGhost, pressed && { opacity: 0.7 }]}
-            >
-              <Pencil size={18} color={theme.colors.ink} strokeWidth={1.5} />
-              <Text style={styles.bottomBtnText} numberOfLines={1}>
-                {t('inspections.signaturesButton')}
-              </Text>
-            </Pressable>
-          </View>
-          <Pressable
-            onPress={downloadPdf}
-            disabled={downloading}
-            style={({ pressed }) => [
-              styles.bottomBtn,
-              styles.bottomBtnPrimary,
-              styles.bottomBtnFull,
-              pressed && { opacity: 0.85 },
-              downloading && { opacity: 0.6 },
-            ]}
-          >
-            {downloading ? (
-              <ActivityIndicator color={theme.colors.white} />
-            ) : (
-              <>
-                {pdfUsage?.isLocked
-                  ? <Lock size={18} color={theme.colors.white} strokeWidth={1.5} />
-                  : <Share2 size={18} color={theme.colors.white} strokeWidth={1.5} />
-                }
-                <Text style={[styles.bottomBtnText, { color: theme.colors.white }]} numberOfLines={1}>
-                  {pdfUsage?.isLocked ? t('inspections.shareButtonLocked') : t('inspections.shareButton')}
-                </Text>
-              </>
-            )}
-          </Pressable>
-        </View>
-      </View>
-      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      <SignaturesScreen
-        visible={signaturesOpen}
-        onClose={() => setSignaturesOpen(false)}
-        creatorName={creatorName}
-        state={signatures}
-      />
-    </Screen>
+        info={info}
+        contentLabel={t('details.content.act')}
+        contentTab={t('details.content.act')}
+        signatures={{ mode: 'edit', state: r.signatures, creatorName: r.creatorName }}
+        certificates={{
+          items: r.certItems,
+          onAdd: r.openCertificatesSheet,
+          onOpen: () => r.openCertificatesSheet(),
+        }}
+        onEdit={r.onEdit}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        editing={r.reopening}
+        duplicating={duplicating}
+        onSharePdf={r.downloadPdf}
+        sharing={r.downloading}
+        pdfLocked={r.pdfLocked}
+        onBack={() => router.back()}
+      >
+        <InspectionPointsContent questions={r.questions} answers={r.answers} />
+      </DocumentDetails>
+      <SubscriptionNotice visible={r.limitNoticeVisible} onClose={() => r.setLimitNoticeVisible(false)} />
+    </>
   );
-}
-
-function createStyles(theme: any) {
-  return StyleSheet.create({
-    previewWrap: {
-      flex: 1,
-      backgroundColor: theme.colors.subtleSurface,
-    },
-    previewState: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 32,
-    },
-    webview: {
-      flex: 1,
-      backgroundColor: '#fff',
-    },
-    bottomBarSafe: {
-      backgroundColor: theme.colors.surface,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.colors.hairline,
-    },
-    bottomBar: {
-      flexDirection: 'column',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 16,
-    },
-    bottomBarRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    bottomBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      height: 48,
-      borderRadius: 12,
-    },
-    bottomBtnGhost: {
-      borderWidth: 1,
-      borderColor: theme.colors.hairline,
-      backgroundColor: theme.colors.surface,
-    },
-    bottomBtnPrimary: {
-      backgroundColor: theme.colors.accent,
-    },
-    bottomBtnFull: {
-      flex: 0,
-    },
-    bottomBtnText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.ink,
-    },
-  });
 }

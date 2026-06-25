@@ -1,47 +1,40 @@
+// Report details — reached by tapping a saved report in a list. Renders the
+// reusable DocumentDetails shell (type="report"): slide thumbnail strip, no
+// signatures, no certificates. The post-save success screen is the separate
+// /reports/[id]/success route — this is NOT it. Replaces the old slide-preview
+// detail page.
 import { useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Trash2, CircleCheck, SquarePen } from 'lucide-react-native';
+import { View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { BarChart3 } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { A11yText as Text } from '../../components/primitives/A11yText';
-import { RefreshControl } from '../../components/primitives';
-import { Button } from '../../components/ui';
-import { ScreenHeader } from '../../components/ScreenHeader';
-import { useTheme } from '../../lib/theme';
+import { DocumentDetails, ReportSlidesContent } from '../../components/document-details';
+import { ErrorScreen } from '../../components/ErrorScreen';
 import { SkeletonPreview } from '../../components/Skeleton';
+import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { useSession } from '../../lib/session';
-import { reportDisplayName } from '../../lib/shared/documentName';
+import { reportDisplayName, shortCode } from '../../lib/shared/documentName';
 import { friendlyError } from '../../lib/errorMap';
 import { haptic } from '../../lib/haptics';
 import { reopenDocument } from '../../lib/documents/reopen';
+import { duplicateDocument } from '../../lib/documents/duplicate';
 import { useReportDelete } from '../../features/records';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { pdfPhotoEmbed } from '../../lib/imageUrl';
 import { slideImagePaths } from '../../lib/reportSlides';
-import { ReportSlidePreview } from '../../components/reports/ReportSlidePreview';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
 import { buildReportPdfHtml } from '../../lib/reportPdf';
 import { generatePdfName } from '../../lib/pdfName';
-import { formatShortDateTime } from '../../lib/formatDate';
+import { formatShortDate } from '../../lib/formatDate';
 import { useReport, useProject } from '../../lib/apiHooks';
-import { ErrorScreen } from '../../components/ErrorScreen';
-import type { Report } from '../../types/models';
 
 export default function ReportDetailScreen() {
   const { theme } = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const toast = useToast();
   const session = useSession();
   const queryClient = useQueryClient();
@@ -49,6 +42,7 @@ export default function ReportDetailScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [reopening, setReopening] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const reportQ = useReport(id);
   const { data: report } = reportQ;
@@ -59,12 +53,7 @@ export default function ReportDetailScreen() {
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
-  const slides = useMemo(
-    () => (report?.slides ?? []).slice().sort((a, b) => a.order - b.order),
-    [report],
-  );
-
-  const inspectorName = useMemo(() => {
+  const expertName = useMemo(() => {
     if (session.state.status !== 'signedIn') return '';
     const u = session.state.user;
     return `${u?.first_name ?? ''} ${u?.last_name ?? ''}`.trim() || (session.state.session.user.email ?? '');
@@ -89,7 +78,7 @@ export default function ReportDetailScreen() {
       const slideImageDataUrls = Object.fromEntries(
         dataUrlEntries.filter(([, v]) => !!v),
       ) as Record<string, string>;
-      const html = buildReportPdfHtml({ report, project: project ?? null, inspectorName, slideImageDataUrls });
+      const html = buildReportPdfHtml({ report, project: project ?? null, inspectorName: expertName, slideImageDataUrls });
       const pdfName = generatePdfName(
         project?.name ?? '',
         `რეპორტი_${report.title.slice(0, 10)}`,
@@ -99,7 +88,7 @@ export default function ReportDetailScreen() {
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       await generateAndSharePdf(html, pdfName, undefined, userId, {
         title: report.title,
-        author: inspectorName || undefined,
+        author: expertName || undefined,
         documentId: report.id,
         subject: 'შრომის უსაფრთხოების რეპორტი',
       });
@@ -112,12 +101,6 @@ export default function ReportDetailScreen() {
     }
   };
 
-  const onDelete = () => {
-    if (report) confirmDelete(report);
-  };
-
-  // Reopen the completed report back to draft and route into the existing
-  // slides editor; its "PDF გენერაცია" re-completes and regenerates the PDF.
   const onEdit = async () => {
     if (!report || reopening) return;
     setReopening(true);
@@ -131,109 +114,66 @@ export default function ReportDetailScreen() {
     }
   };
 
+  const onDuplicate = async () => {
+    if (!report || duplicating) return;
+    setDuplicating(true);
+    try {
+      haptic.medium();
+      const { id: newId } = await duplicateDocument({ kind: 'report', id: report.id }, queryClient);
+      toast.success(t('details.duplicate.done'));
+      router.replace(`/reports/${newId}/edit` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, t('details.duplicate.failed')));
+      setDuplicating(false);
+    }
+  };
+
   if (!id) {
     return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
   }
 
   if (!report) {
-    // No native header in the loading branch (the stack default is
-    // headerShown: false) and a bare View doesn't auto-inset like a ScrollView,
-    // so apply the safe-area top inset manually to keep the skeleton below the
-    // status bar / Dynamic Island.
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <SkeletonPreview />
       </View>
     );
   }
 
+  const info = [
+    { label: t('details.info.project'), value: project ? (project.company_name || project.name) : '—' },
+    { label: t('details.info.date'), value: formatShortDate(report.created_at) },
+    { label: t('details.info.expert'), value: expertName || '—' },
+    { label: t('details.info.code'), value: shortCode(report.id) },
+  ];
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader
-        title={reportDisplayName(report?.title)}
+    <>
+      <DocumentDetails
+        type="report"
+        tileIcon={BarChart3}
+        title={reportDisplayName(report.title)}
+        typeLabel={t('details.type.report')}
+        status={null}
+        info={info}
+        contentLabel={t('details.content.report')}
+        contentTab={t('details.content.report')}
+        onEdit={onEdit}
+        onDuplicate={onDuplicate}
+        onDelete={() => confirmDelete(report)}
+        editing={reopening}
+        duplicating={duplicating}
+        onSharePdf={generatePdf}
+        sharing={generating}
+        pdfLocked={pdfUsage?.isLocked}
         onBack={() => router.back()}
-        right={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Pressable onPress={onEdit} disabled={reopening} hitSlop={12} style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}>
-              <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
-            </Pressable>
-            <Pressable onPress={onDelete} hitSlop={12} style={{ paddingHorizontal: 4 }}>
-              <Trash2 size={20} color={theme.colors.danger} strokeWidth={1.5} />
-            </Pressable>
-          </View>
-        }
-      />
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 100, gap: 12 }}
-        refreshControl={<RefreshControl queries={[reportQ, projectQ]} />}
       >
-        <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>{report.title}</Text>
-          <Text style={styles.heroMeta}>
-            {project ? `${project.company_name || project.name} · ` : ''}
-            {t('reports.slidesCountSuffix', { count: report.slides.length })} · {formatShortDateTime(report.created_at)}
-          </Text>
-          <View style={styles.statusChip}>
-            <CircleCheck size={14} color={theme.colors.semantic.success} strokeWidth={1.5} />
-            <Text style={[styles.statusText, { color: theme.colors.semantic.success }]}>
-              {t('reports.statusCompleted')}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>{t('reports.slidesSection')}</Text>
-        {slides.map((s, i) => (
-          <ReportSlidePreview key={s.id} slide={s} index={i} />
-        ))}
-      </ScrollView>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <Button title={pdfUsage?.isLocked ? t('reports.generatePdfLocked') : t('reports.generatePdf')} onPress={generatePdf} loading={generating} />
-      </View>
+        <ReportSlidesContent
+          slides={report.slides}
+          onOpenSlide={(slideId) => router.push(`/reports/${report.id}/slide/${slideId}` as any)}
+        />
+      </DocumentDetails>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-    </View>
+    </>
   );
-}
-
-function makeStyles(theme: any) {
-  return StyleSheet.create({
-    heroCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 12,
-      padding: 16,
-      gap: 6,
-    },
-    heroTitle: { fontSize: 20, fontWeight: '800', color: theme.colors.ink },
-    heroMeta: { fontSize: 12, color: theme.colors.inkSoft },
-    statusChip: {
-      alignSelf: 'flex-start',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 999,
-      backgroundColor: theme.colors.semantic.successSoft,
-      marginTop: 6,
-    },
-    statusText: { fontSize: 11, fontWeight: '700' },
-    sectionLabel: {
-      fontSize: 12,
-      fontWeight: '700',
-      color: theme.colors.inkFaint,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      marginTop: 8,
-    },
-    footer: {
-      paddingHorizontal: 24,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.hairline,
-      backgroundColor: theme.colors.background,
-    },
-  });
 }

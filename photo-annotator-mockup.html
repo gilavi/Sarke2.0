@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Photo Annotator — redesign mockup</title>
+<style>
+  :root{
+    --orange:#FE7A43; --orange600:#E85510; --orangeSoft:#FFF3EE;
+    --ink:#1A1A1A; --inkSoft:#4E4A44; --inkFaint:#9C988F;
+    --bg:#F2F1EC; --surface:#FFFFFF; --chip:#E9E7E0; --hair:#E1E0DA; --border:#D6D6D1;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#d9d8d1;font-family:-apple-system,'Helvetica Neue',Helvetica,Arial,sans-serif;padding:32px;}
+  .device{width:392px;background:#0d0d0f;border-radius:48px;padding:11px;box-shadow:0 20px 50px rgba(0,0,0,.4);}
+  .phone{width:370px;height:760px;background:var(--bg);border-radius:38px;overflow:hidden;
+    display:flex;flex-direction:column;position:relative;}
+
+  .status{height:34px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+    padding:12px 30px 0;color:var(--ink);font-size:13px;font-weight:600;background:var(--surface);}
+  .status .bars{width:24px;height:11px;border:1.5px solid var(--ink);border-radius:3px;position:relative;}
+  .status .bars::after{content:"";position:absolute;right:-4px;top:3px;width:2px;height:4px;background:var(--ink);border-radius:1px;}
+
+  .top{flex:0 0 auto;height:54px;display:flex;align-items:center;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--hair);}
+  .top .ttl{flex:1;text-align:center;color:var(--ink);font-size:16px;font-weight:600;}
+  .iconbtn{width:44px;height:44px;border:none;background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
+  .sp{width:44px;flex:0 0 auto;}
+
+  .canvas{flex:1 1 auto;position:relative;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .photo{position:relative;height:90%;aspect-ratio:3/4;border-radius:8px;overflow:hidden;
+    border:1px solid rgba(0,0,0,.08);box-shadow:0 4px 16px rgba(0,0,0,.1);
+    background:linear-gradient(160deg,#b8b3aa 0%,#a39d93 38%,#cfcac1 39%,#bdb8ae 100%);}
+  .photo .wallL{position:absolute;inset:0 64% 38% 0;background:linear-gradient(120deg,#8f8a80,#a8a298);}
+  .photo .beam{position:absolute;left:0;right:0;top:54%;height:9%;background:linear-gradient(#9a948a,#857f76);}
+  .photo .tv{position:absolute;left:34%;bottom:6%;width:46%;height:24%;background:linear-gradient(135deg,#14131a,#2a2740);border-radius:3px;transform:skewY(-4deg);}
+  .photo .conduit{position:absolute;left:46%;top:6%;width:3px;height:46%;background:#222;}
+
+  .colorbar{position:absolute;bottom:18px;left:50%;display:flex;gap:18px;align-items:center;
+    background:var(--surface);border:0.5px solid rgba(0,0,0,.05);border-radius:999px;padding:11px 20px;box-shadow:0 8px 22px rgba(0,0,0,.14);
+    opacity:0;pointer-events:none;transform:translateX(-50%) translateY(10px);transition:opacity .18s ease,transform .18s ease;}
+  .colorbar.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+  .sw{width:30px;height:30px;border-radius:50%;cursor:pointer;box-sizing:border-box;transition:transform .15s ease;}
+  .sw[data-on="1"]{transform:scale(1.12);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--ink);}
+  .sw.lite{border:1px solid var(--border);}
+
+  .sizebar{position:absolute;right:14px;top:50%;display:flex;flex-direction:column;gap:6px;align-items:center;
+    background:var(--surface);border:0.5px solid rgba(0,0,0,.05);border-radius:999px;padding:8px 6px;box-shadow:0 8px 22px rgba(0,0,0,.14);
+    opacity:0;pointer-events:none;transform:translateY(-50%) translateX(12px);transition:opacity .18s ease,transform .18s ease;}
+  .sizebar.show{opacity:1;pointer-events:auto;transform:translateY(-50%) translateX(0);}
+  .size{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s ease;}
+  .size[data-on="1"]{background:var(--orangeSoft);}
+  .size span{display:block;border-radius:50%;background:#B4B2A9;transition:background .15s ease;}
+  .size[data-on="1"] span{background:var(--orange);}
+
+  .bottom{flex:0 0 auto;background:var(--surface);border-top:1px solid var(--hair);padding:10px 0 16px;}
+  .tools{display:flex;align-items:center;padding:0 14px 12px;gap:8px;}
+  .crop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:62px;height:56px;
+    border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--inkSoft);cursor:pointer;flex:0 0 auto;}
+  .crop .lbl{font-size:10px;color:var(--inkFaint);font-weight:600;}
+  .div{width:1px;height:34px;background:var(--hair);margin:0 8px;}
+  .toolgrp{display:flex;gap:8px;}
+  .tool{width:48px;height:48px;border-radius:12px;border:none;background:var(--chip);color:var(--inkSoft);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .tool[data-on="1"]{background:var(--orange);color:var(--ink);}
+  .save{display:block;width:calc(100% - 32px);margin:0 16px;height:52px;border-radius:999px;background:var(--orange);
+    color:var(--ink);font-size:16px;font-weight:600;border:none;cursor:pointer;box-shadow:0 6px 16px rgba(254,122,67,.32);}
+
+  .cropbar{flex:0 0 auto;display:none;align-items:center;justify-content:space-between;padding:18px 24px 28px;background:var(--surface);border-top:1px solid var(--hair);}
+  .cropbar.show{display:flex;}
+  .cropbar .c{background:none;border:none;font-size:16px;cursor:pointer;padding:10px;color:var(--inkSoft);font-weight:500;}
+  .cropbar .done{color:var(--orange600);font-weight:600;}
+
+  .croplayer{position:absolute;inset:0;display:none;pointer-events:none;}
+  .croplayer.show{display:block;}
+  .cropbox{position:absolute;left:12%;top:15%;right:12%;bottom:15%;box-shadow:0 0 0 9999px rgba(0,0,0,.5);border:1px solid #fff;}
+  .cropbox .g{position:absolute;background:rgba(255,255,255,.4);}
+  .gv1{left:33.3%;top:0;bottom:0;width:1px;} .gv2{left:66.6%;top:0;bottom:0;width:1px;}
+  .gh1{top:33.3%;left:0;right:0;height:1px;} .gh2{top:66.6%;left:0;right:0;height:1px;}
+  .h{position:absolute;width:22px;height:22px;border:3px solid #fff;}
+  .h.tl{left:-2px;top:-2px;border-right:none;border-bottom:none;}
+  .h.tr{right:-2px;top:-2px;border-left:none;border-bottom:none;}
+  .h.bl{left:-2px;bottom:-2px;border-right:none;border-top:none;}
+  .h.br{right:-2px;bottom:-2px;border-left:none;border-top:none;}
+
+  svg.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#6b6b66;font-size:13px;}
+</style>
+</head>
+<body>
+  <div class="device">
+    <div class="phone">
+      <div class="status">
+        <span>12:57</span>
+        <span class="bars"></span>
+      </div>
+
+      <div class="top">
+        <button class="iconbtn" aria-label="გაუქმება">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+        <span class="ttl">ფოტოს მონიშვნა</span>
+        <span class="sp"></span>
+      </div>
+
+      <div class="canvas">
+        <div class="photo">
+          <div class="wallL"></div><div class="beam"></div><div class="conduit"></div><div class="tv"></div>
+          <svg viewBox="0 0 300 400" style="position:absolute;inset:0;width:100%;height:100%">
+            <path d="M48 70 Q40 130 64 168" stroke="#EF4444" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M42 250 Q150 300 250 360" stroke="#EF4444" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M70 235 Q170 285 252 348" stroke="#EF4444" stroke-width="5" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <div class="sizebar" id="sizeBar">
+          <span class="size" data-s="2"><span style="width:7px;height:7px"></span></span>
+          <span class="size" data-on="1" data-s="4"><span style="width:12px;height:12px"></span></span>
+          <span class="size" data-s="8"><span style="width:18px;height:18px"></span></span>
+        </div>
+
+        <div class="colorbar" id="colorBar">
+          <span class="sw" data-on="1" style="background:#EF4444"></span>
+          <span class="sw" style="background:#F59E0B"></span>
+          <span class="sw" style="background:#10B981"></span>
+          <span class="sw" style="background:#1A1A1A"></span>
+          <span class="sw lite" style="background:#FFFFFF"></span>
+        </div>
+
+        <div class="croplayer" id="cropLayer">
+          <div class="cropbox">
+            <div class="g gv1"></div><div class="g gv2"></div><div class="g gh1"></div><div class="g gh2"></div>
+            <div class="h tl"></div><div class="h tr"></div><div class="h bl"></div><div class="h br"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom" id="bottom">
+        <div class="tools" id="tools">
+          <button class="crop" id="cropEnter" aria-label="მოჭრა">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M8 5v10a1 1 0 0 0 1 1h10"/><path d="M5 8h10a1 1 0 0 1 1 1v10"/></svg>
+            <span class="lbl">მოჭრა</span>
+          </button>
+          <span class="div"></span>
+          <div class="toolgrp">
+            <button class="tool" data-tool="pen" aria-label="კალამი">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4l10.5-10.5a2.83 2.83 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="tool" data-tool="arrow" aria-label="ისარი">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M17 7 7 17"/><path d="M8 7h9v9"/></svg>
+            </button>
+            <button class="tool" data-tool="shape" aria-label="ფიგურა">
+              <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+            <button class="tool" data-tool="text" aria-label="ტექსტი">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M6 5h12M12 5v14"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="save">შენახვა</button>
+      </div>
+
+      <div class="cropbar" id="cropBar">
+        <button class="c" id="cropCancel">გაუქმება</button>
+        <button class="c done" id="cropDone">მზადაა</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">დააჭირე ფანქარს — ფერი და სისქე გამოჩნდება · tap the pencil to reveal color &amp; size</div>
+
+<script>
+  var colorBar=document.getElementById('colorBar');
+  var sizeBar=document.getElementById('sizeBar');
+  var tools=document.getElementById('tools');
+  var bottom=document.getElementById('bottom');
+  var cropLayer=document.getElementById('cropLayer');
+  var cropBar=document.getElementById('cropBar');
+  var state={tool:null,open:false,crop:false};
+
+  function render(){
+    tools.querySelectorAll('.tool').forEach(function(b){b.dataset.on=(b.dataset.tool===state.tool)?'1':'0';});
+    var reveal=state.tool&&state.open&&state.tool!=='text'&&!state.crop;
+    colorBar.classList.toggle('show',!!reveal);
+    sizeBar.classList.toggle('show',!!reveal);
+    bottom.style.display=state.crop?'none':'block';
+    cropLayer.classList.toggle('show',state.crop);
+    cropBar.classList.toggle('show',state.crop);
+  }
+  tools.querySelectorAll('.tool').forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=b.dataset.tool;
+      if(state.tool===t){state.open=!state.open;} else {state.tool=t;state.open=true;}
+      render();
+    });
+  });
+  colorBar.querySelectorAll('.sw').forEach(function(s){
+    s.addEventListener('click',function(){
+      colorBar.querySelectorAll('.sw').forEach(function(x){x.dataset.on='0';});
+      s.dataset.on='1';
+    });
+  });
+  sizeBar.querySelectorAll('.size').forEach(function(s){
+    s.addEventListener('click',function(){
+      sizeBar.querySelectorAll('.size').forEach(function(x){x.dataset.on='0';});
+      s.dataset.on='1';
+    });
+  });
+  document.getElementById('cropEnter').addEventListener('click',function(){state.crop=true;render();});
+  document.getElementById('cropCancel').addEventListener('click',function(){state.crop=false;render();});
+  document.getElementById('cropDone').addEventListener('click',function(){state.crop=false;render();});
+  render();
+</script>
+</body>
+</html>

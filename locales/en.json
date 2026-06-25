@@ -1,4 +1,109 @@
 {
+  "success": {
+    "act": {
+      "title": "Act ready",
+      "subtitle": "Inspection saved."
+    },
+    "incident": {
+      "title": "Incident ready",
+      "subtitle": "Incident registered and logged."
+    },
+    "report": {
+      "title": "Report ready",
+      "subtitle": "Report saved. PDF ready to share."
+    },
+    "instruction": {
+      "title": "Instruction ready",
+      "subtitle": "Instruction completed. Protocol ready to share."
+    },
+    "signatures": {
+      "heading": "Signatures",
+      "viewOnly": "View only",
+      "addPerson": "Add person",
+      "addHint": "Empty field to sign",
+      "signed": "Signed",
+      "awaiting": "Awaiting",
+      "you": "You",
+      "participant": "Participant",
+      "blankLine": "Signature line",
+      "emptyField": "Empty field"
+    },
+    "certificates": {
+      "heading": "Certificates",
+      "add": "Add certificate",
+      "addHint": "From system or upload",
+      "attached": "Attached"
+    },
+    "status": {
+      "safe": "Safe",
+      "severe": "Severe incident"
+    },
+    "actions": {
+      "sharePdf": "Share PDF",
+      "sharePdfLocked": "PDF limit reached",
+      "backHome": "Back to home"
+    },
+    "a11y": {
+      "back": "Back to edit",
+      "openSignatures": "Manage signatures",
+      "viewSignatures": "View signatures"
+    }
+  },
+  "details": {
+    "info": {
+      "heading": "Information",
+      "project": "Project",
+      "object": "Object",
+      "location": "Location",
+      "date": "Date",
+      "expert": "Expert",
+      "expertRole": "Labor safety expert",
+      "topic": "Topic",
+      "period": "Period",
+      "code": "Code",
+      "injured": "Injured person",
+      "role": "Role",
+      "witnesses": "Witnesses",
+      "participants": "Participants"
+    },
+    "tabs": {
+      "info": "Info",
+      "signatures": "Signatures",
+      "certificates": "Certificates"
+    },
+    "content": {
+      "act": "Inspection points",
+      "incident": "Incident details",
+      "report": "Slides",
+      "instruction": "Topic",
+      "ok": "OK",
+      "issue": "Issue",
+      "empty": "Nothing to show"
+    },
+    "type": {
+      "act": "Inspection act",
+      "incident": "Incident act",
+      "report": "Report",
+      "instruction": "Instruction protocol"
+    },
+    "actions": {
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "sharePdf": "Share PDF"
+    },
+    "duplicate": {
+      "done": "Copied as a new draft",
+      "failed": "Couldn’t duplicate"
+    },
+    "delete": {
+      "title": "Delete document",
+      "confirm": "Delete this document?"
+    },
+    "a11y": {
+      "back": "Back"
+    }
+  },
   "geocode": {
     "searching": "Searching for address…",
     "notFound": "Address not found on the map"
@@ -301,7 +406,7 @@
     "tourHistoryBody": "Your inspection history",
     "tourNewInspection": "New inspection",
     "tourNewInspectionBody": "Tap to start a new inspection",
-    "inspectorFallback": "Inspector",
+    "inspectorFallback": "Expert",
     "memberSaveError": "Could not save participant",
     "templateMissing": "No template",
     "chooseTemplateTitle": "Choose template",
@@ -897,11 +1002,11 @@
     "participantRequired": "Add at least one participant",
     "participantHint": "At least 1 participant required",
     "flowTitle": "Briefing",
-    "inspectorChipLabel": "Inspector",
-    "inspectorChipHint": "Inspector signature",
+    "inspectorChipLabel": "Expert",
+    "inspectorChipHint": "Expert signature",
     "signerChipHint": "Go to signer",
-    "inspectorEyebrow": "Inspector signature",
-    "inspectorFallbackName": "Inspector",
+    "inspectorEyebrow": "Expert signature",
+    "inspectorFallbackName": "Expert",
     "inspectorSignPrompt": "Please sign below",
     "workerEyebrow": "Signing",
     "alreadySigned": "Already signed — overwrite",
@@ -910,7 +1015,7 @@
     "clearBtnA11y": "Clear signature",
     "savingLabel": "Saving...",
     "confirmButton": "Confirm →",
-    "skippedInterstitialBody": "You can return to them or continue to the inspector signature.",
+    "skippedInterstitialBody": "You can return to them or continue to the expert signature.",
     "loadingLabel": "Loading...",
     "signHereHint": "Sign inside the box"
   },
@@ -1243,7 +1348,17 @@
     "clearAllA11y": "Clear all",
     "clearAllA11yHint": "Tap to remove all annotations",
     "cancelTextA11yHint": "Tap to cancel adding text",
-    "addTextA11yHint": "Tap to add text to the photo"
+    "addTextA11yHint": "Tap to add text to the photo",
+    "cropTitle": "Crop photo",
+    "cropFree": "Free",
+    "cropApply": "Apply",
+    "cropA11y": "Crop",
+    "cropA11yHint": "Tap to crop the photo",
+    "rotateA11y": "Rotate",
+    "rotateA11yHint": "Tap to rotate the photo 90 degrees",
+    "resetTitle": "Clear annotations?",
+    "resetBody": "Cropping or rotating will remove your current annotations.",
+    "resetConfirm": "Continue"
   },
   "wizard": {
     "discardTitle": "Discard changes?",
@@ -1356,6 +1471,7 @@
     "pdfCreated": "PDF created",
     "pdfSavedLocally": "PDF saved locally; will sync when connection returns",
     "pdfCreateFailed": "Could not create PDF",
+    "pdfCreateFailedSaved": "Incident saved — PDF generation failed. Try again from the incident page.",
     "headerTitle": "Incident",
     "notFound": "Incident not found",
     "draftChip": "Draft",
@@ -1365,6 +1481,7 @@
     "fieldName": "Full name",
     "fieldRole": "Position",
     "fieldLocation": "Location",
+    "fieldLocationExact": "Exact location",
     "fieldProject": "Project",
     "sectionDescription": "Incident circumstances",
     "sectionCause": "Probable cause",
@@ -1372,13 +1489,39 @@
     "sectionWitnesses": "Witnesses",
     "sectionPhotos": "Photo material",
     "labourWarning": "The Labour Inspection Service must be notified within 24 hours:",
+    "labourNoticeWarning": "Labour Inspection Service must be notified within 24 hours: 0322 43 00 43",
     "pdfShare": "Share PDF",
     "pdfUpdate": "Update",
     "pdfGenerate": "Generate PDF",
     "pdfGenerateLocked": "🔒 Generate PDF",
     "newIncident": "New incident",
     "reportSubject": "Occupational Safety Incident Report",
-    "pdfDone": "Done ✓"
+    "pdfDone": "Done ✓",
+    "flowTitle": "Incident",
+    "selectTypeError": "Select an incident type to continue",
+    "savedDraft": "Draft saved",
+    "createFailed": "Could not register incident",
+    "step1Title": "What type of incident occurred?",
+    "step2Title": "Who was involved and where?",
+    "nearMissNoteShort": "Near miss — no one was physically harmed.",
+    "fieldInjuredName": "Injured person's full name",
+    "fieldInjuredRole": "Position / role",
+    "fieldDateTime": "Date and time",
+    "step3Title": "Describe what happened",
+    "fieldWhatHappened": "What happened?",
+    "fieldProbableCause": "Probable cause",
+    "fieldActionsTaken": "Actions taken",
+    "fieldWitnessName": "Witness full name",
+    "addWitnessA11y": "Add witness",
+    "addPhoto": "+ Add photo",
+    "step4Title": "Review and sign",
+    "summaryInjured": "Injured",
+    "summaryPhotos": "Photos",
+    "photosUnit": "photos",
+    "specialistFallback": "Safety Specialist",
+    "inspectorRole": "Occupational Safety Specialist",
+    "signedChip": "Signed",
+    "saveWithoutSignature": "Save as draft"
   },
   "slingsId": {
     "typeSectionHeader": "Type / Kind",

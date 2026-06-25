@@ -40,7 +40,14 @@ export const COLORS = [
   { label: 'white', value: '#FFFFFF' },
 ];
 
-export const WIDTHS = [2, 4, 6, 8, 10, 12];
+/**
+ * Discrete stroke widths surfaced by the floating size picker (thin / medium /
+ * thick). Replaces the old drag slider — three taps instead of a gesture that
+ * re-measured its track and made the thumb jump. The stored brush width is always
+ * one of these, so the active preset highlights exactly. Single source of truth
+ * for stroke widths (the old `WIDTHS` list was removed with the slider).
+ */
+export const SIZE_PRESETS = [3, 6, 10] as const;
 
 export const SCREEN = Dimensions.get('window');
 

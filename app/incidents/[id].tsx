@@ -1,193 +1,138 @@
+// Incident details — reached by tapping a saved incident in a list. Renders
+// DocumentDetails (type="incident"): description/cause/actions narrative,
+// EDITABLE signatures (the expert's saved signature is auto-applied; blank rows
+// can be added), NO certificates (the inspection_attachments table is
+// inspection-scoped — see AGENTS.md). The post-save success screen is the
+// separate /incidents/[id]/success route. Replaces the old detail page.
+//
+// REGULATORY: captured signatures live only in this screen's state and are never
+// persisted — only the rendered PDF is uploaded (see features/signatures/AGENTS.md).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
-import { hashPdf } from '../../lib/pdfSecurity';
-import { SubscriptionNotice } from '../../components/SubscriptionNotice';
-import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CircleAlert, Hourglass, User, Briefcase, MapPin, Building2, Users, TriangleAlert, Share2, FileText, SquarePen, type LucideIcon } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { A11yText as Text } from '../../components/primitives/A11yText';
-import { RefreshControl } from '../../components/primitives';
-import { Button } from '../../components/ui';
-import { useTheme } from '../../lib/theme';
-import { incidentColors } from '../../lib/statusColors';
-import { SkeletonListCard } from '../../components/Skeleton';
-import { useSession } from '../../lib/session';
-import { useToast } from '../../lib/toast';
-import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
-import { queryClient } from '../../lib/queryClient';
-import { useIncident, useProject, invalidateRecordLists } from '../../lib/apiHooks';
-import { STORAGE_BUCKETS } from '../../lib/supabase';
-import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
-import { generatePdfName } from '../../lib/pdfName';
-import {
-  signatureAsDataUrl,
-  pdfPhotoEmbed,
-  imageForDisplay,
-} from '../../lib/imageUrl';
-import { shareStoredPdf } from '../../lib/sharePdf';
-import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
-import * as FileSystem from 'expo-file-system/legacy';
-import { logError } from '../../lib/logError';
-import { friendlyError } from '../../lib/errorMap';
-import { haptic } from '../../lib/haptics';
-import { reopenDocument } from '../../lib/documents/reopen';
-import { formatShortDateTime } from '../../lib/formatDate';
-import type { Incident, Project } from '../../types/models';
+import { Alert, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { TriangleAlert } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
+import { DocumentDetails, NoteBlocksContent, type DocumentInfoRow } from '../../components/document-details';
 import { ErrorScreen } from '../../components/ErrorScreen';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import {
-  INCIDENT_TYPE_FULL_LABEL,
-  INCIDENT_TYPE_LABEL,
-} from '../../types/models';
-import { useTranslation } from 'react-i18next';
+import { SkeletonListCard } from '../../components/Skeleton';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
+import { useTheme } from '../../lib/theme';
+import { useSession } from '../../lib/session';
+import { useToast } from '../../lib/toast';
+import { useSignaturesState } from '../../features/signatures';
+import { useIncident, useProject, invalidateRecordLists } from '../../lib/apiHooks';
+import { queryClient } from '../../lib/queryClient';
+import { incidentsApi, storageApi } from '../../lib/services';
+import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
+import { hashPdf } from '../../lib/pdfSecurity';
+import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
+import { generatePdfName } from '../../lib/pdfName';
+import { signatureAsDataUrl, pdfPhotoEmbed } from '../../lib/imageUrl';
+import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
+import { STORAGE_BUCKETS } from '../../lib/supabase';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
+import { reopenDocument } from '../../lib/documents/reopen';
+import { duplicateDocument } from '../../lib/documents/duplicate';
+import { haptic } from '../../lib/haptics';
+import { friendlyError } from '../../lib/errorMap';
+import { logError } from '../../lib/logError';
+import { formatShortDateTime } from '../../lib/formatDate';
+import { shortCode } from '../../lib/shared/documentName';
+import { INCIDENT_TYPE_FULL_LABEL, INCIDENT_TYPE_LABEL } from '../../types/models';
+import * as FileSystem from 'expo-file-system/legacy';
 
-export default function IncidentDetail() {
-  const { theme, isDark } = useTheme();
+export default function IncidentDetailScreen() {
+  const { theme } = useTheme();
   const { t } = useTranslation();
-  const s = useMemo(() => makeStyles(theme), [theme]);
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const toast = useToast();
   const session = useSession();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const incidentQ = useIncident(id);
-  const projectQ = useProject(incidentQ.data?.project_id);
+  const { data: incident, isLoading } = useIncident(id);
+  const { data: project } = useProject(incident?.project_id);
 
-  const [incident, setIncident] = useState<Incident | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [photoDisplayUrls, setPhotoDisplayUrls] = useState<string[]>([]);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [pdfPhase, setPdfPhase] = useState<string | null>(null);
+  const signatures = useSignaturesState();
+  const [sharing, setSharing] = useState(false);
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const { data: pdfUsage } = usePdfUsage();
   const invalidatePdfUsage = useInvalidatePdfUsage();
 
-  useEffect(() => { if (incidentQ.data !== undefined) setIncident(incidentQ.data); }, [incidentQ.data]);
-  useEffect(() => { if (projectQ.data !== undefined) setProject(projectQ.data); }, [projectQ.data]);
-  useEffect(() => {
-    if (incidentQ.data && !incidentQ.isLoading) setLoaded(true);
-  }, [incidentQ.data, incidentQ.isLoading]);
-
-  const inspector = useMemo(() => {
-    if (session.state.status !== 'signedIn') return { name: '', sigPath: null };
+  const creatorName = useMemo(() => {
+    if (session.state.status !== 'signedIn') return '';
     const u = session.state.user;
-    const name = u
+    return u
       ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
       : session.state.session.user.email ?? '';
-    return { name, sigPath: u?.saved_signature_url ?? null };
   }, [session.state]);
 
-  // Load photo display URLs on mount only. The incident + project data
-  // already flow from React Query hooks above, so back-navigation is instant.
+  // Auto-apply the expert's saved signature on entry (the user can re-sign via
+  // the signature modal). Incidents are a separate signature basis from acts:
+  // the captured base64 lives only in state; only the rendered PDF is uploaded.
   useEffect(() => {
-    if (!incident) return;
+    if (session.state.status !== 'signedIn') return;
+    const sigPath = session.state.user?.saved_signature_url;
+    if (!sigPath || signatures.creatorSignature) return;
     let cancelled = false;
-    (async () => {
-      if (incident.photos?.length) {
-        const urls = await Promise.all(
-          incident.photos.map(path =>
-            imageForDisplay(STORAGE_BUCKETS.incidentPhotos, path).catch(() => ''),
-          ),
-        );
-        if (!cancelled) setPhotoDisplayUrls(urls.filter(Boolean));
-      } else {
-        setPhotoDisplayUrls([]);
-      }
-    })();
+    signatureAsDataUrl(STORAGE_BUCKETS.signatures, sigPath)
+      .then((dataUrl) => {
+        if (cancelled || !dataUrl) return;
+        signatures.setCreatorSignature(dataUrl.replace(/^data:[^,]+,/, ''));
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
-  }, [incident?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.state.status]);
 
-  const badge = incident ? incidentColors(isDark)[incident.type] : null;
-  const isNearMiss = incident?.type === 'nearmiss';
-
-  // ── share / generate PDF ─────────────────────────────────────────────────
-
-  const sharePdf = async () => {
-    if (!incident?.pdf_url) return;
-    try {
-      await shareStoredPdf(incident.pdf_url);
-    } catch (e) {
-      toast.error(friendlyError(e, t('incidents.pdfShareFailed')));
-    }
-  };
-
-  const generatePdf = async () => {
+  const sharePdf = useCallback(async () => {
     if (!incident || !project) return;
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
-    setGeneratingPdf(true);
-    setPdfPhase(t('incidents.pdfPreparing'));
+    setSharing(true);
     try {
-      let sigDataUrl: string | undefined;
-      if (inspector.sigPath) {
-        sigDataUrl = await signatureAsDataUrl(
-          STORAGE_BUCKETS.signatures,
-          inspector.sigPath,
-        ).catch(() => undefined);
-      }
-      setPdfPhase(t('incidents.pdfAddingPhotos'));
+      const creator = signatures.creatorSignature;
+      const sigDataUrl = creator ? `data:image/png;base64,${creator.pngBase64}` : undefined;
       const photoDataUrls = await Promise.all(
-        (incident.photos ?? []).map(p =>
+        (incident.photos ?? []).map((p) =>
           pdfPhotoEmbed(STORAGE_BUCKETS.incidentPhotos, p).catch(() => ''),
         ),
-      ).then(urls => urls.filter(Boolean));
+      ).then((urls) => urls.filter(Boolean));
 
-      setPdfPhase(t('incidents.pdfBuilding'));
       const html = buildIncidentPdfHtml({
         incident,
         project,
-        inspectorName: inspector.name,
+        inspectorName: creatorName,
         inspectorSignatureDataUrl: sigDataUrl,
+        additionalSignatureRows: signatures.additionalRows.length,
         photoDataUrls,
       });
-      // Keep the pretty-named copy for background upload
-      const incidentTypeLabel = INCIDENT_TYPE_FULL_LABEL[incident.type];
-      const docType = `ინციდენტი_${incidentTypeLabel}`;
+      const docType = `ინციდენტი_${INCIDENT_TYPE_FULL_LABEL[incident.type]}`;
       const pdfName = generatePdfName(project.company_name || project.name, docType, new Date(incident.date_time), incident.id);
       const pdfPath = `incidents/${pdfName}`;
       const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
       const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
-        title: incidentTypeLabel,
-        author: inspector.name || undefined,
+        title: INCIDENT_TYPE_FULL_LABEL[incident.type],
+        author: creatorName || undefined,
         documentId: incident.id,
         subject: t('incidents.reportSubject'),
       });
       const pdfHash = localUri ? await hashPdf(localUri).catch(() => undefined) : undefined;
       invalidatePdfUsage();
       if (localUri) {
-
-        setPdfPhase(t('incidents.pdfDone'));
-        toast.success(t('incidents.pdfCreated'));
-
-        // Background: upload PDF + update incident row.
-        // If this fails, queue for retry so the user isn't blocked.
         (async () => {
           try {
             await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-            const updated = await incidentsApi.update(incident.id, {
+            await incidentsApi.update(incident.id, {
               pdf_url: pdfPath,
               status: 'completed',
               ...(pdfHash ? { pdf_hash: pdfHash } : {}),
             });
-            setIncident(updated);
             invalidateRecordLists(queryClient);
-            // Clean up the temp copy after successful upload
             FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
           } catch (e) {
-            logError(e, 'incidentId.backgroundUpload');
+            logError(e, 'incidentDetail.backgroundUpload');
             const stagedUri = await stagePdfForQueue(localUri, pdfName);
             await queuePdfUpload({
               localUri: stagedUri,
@@ -199,25 +144,18 @@ export default function IncidentDetail() {
                 payload: { incidentId: incident.id, pdf_url: pdfPath, status: 'completed', pdf_hash: pdfHash },
               },
             });
-            toast.info(t('incidents.pdfSavedLocally'));
           }
         })();
-      } else {
-        setPdfPhase(t('incidents.pdfDone'));
-        toast.success(t('incidents.pdfCreated'));
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, t('incidents.pdfCreateFailed')));
     } finally {
-      setGeneratingPdf(false);
-      setPdfPhase(null);
+      setSharing(false);
     }
-  };
+  }, [incident, project, creatorName, signatures, pdfUsage, invalidatePdfUsage, session.state, toast, t]);
 
-  // Reopen the incident back to draft and route into the create form in edit
-  // mode (hydrated by ?editId). Re-completing regenerates the PDF.
-  const onEdit = async () => {
+  const onEdit = useCallback(async () => {
     if (!incident || reopening) return;
     setReopening(true);
     try {
@@ -228,11 +166,25 @@ export default function IncidentDetail() {
       toast.error(friendlyError(e, t('common.error')));
       setReopening(false);
     }
-  };
+  }, [incident, reopening, router, toast, t]);
 
-  const deleteIncident = () => {
+  const onDuplicate = useCallback(async () => {
+    if (!incident || duplicating) return;
+    setDuplicating(true);
+    try {
+      haptic.medium();
+      const { id: newId } = await duplicateDocument({ kind: 'incident', id: incident.id }, queryClient);
+      toast.success(t('details.duplicate.done'));
+      router.replace(`/incidents/new?editId=${newId}&projectId=${incident.project_id}` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, t('details.duplicate.failed')));
+      setDuplicating(false);
+    }
+  }, [incident, duplicating, router, toast, t]);
+
+  const onDelete = useCallback(() => {
     if (!incident) return;
-    Alert.alert(t('incidents.deleteTitle'), t('incidents.deleteBody'), [
+    Alert.alert(t('details.delete.title'), t('details.delete.confirm'), [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -249,18 +201,15 @@ export default function IncidentDetail() {
         },
       },
     ]);
-  };
-
-  // ── loading ──────────────────────────────────────────────────────────────
+  }, [incident, router, toast, t]);
 
   if (!id) {
     return <ErrorScreen onGoHome={() => router.replace('/(tabs)/home')} onRetry={() => router.back()} />;
   }
 
-  if (!loaded) {
+  if (isLoading || !incident) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
         <ScreenHeader title={t('incidents.headerTitle')} />
         <View style={{ flex: 1, padding: 16 }}>
           <SkeletonListCard rows={5} />
@@ -269,391 +218,58 @@ export default function IncidentDetail() {
     );
   }
 
-  if (!incident) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <ScreenHeader title={t('incidents.headerTitle')} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <CircleAlert size={48} color={theme.colors.borderStrong} strokeWidth={1.5} />
-          <Text style={{ color: theme.colors.inkFaint, fontSize: 15 }}>{t('incidents.notFound')}</Text>
-        </View>
-      </View>
-    );
+  const isNearMiss = incident.type === 'nearmiss';
+  const tone = incident.type === 'minor' || incident.type === 'nearmiss' ? 'muted' : 'severe';
+
+  const info: DocumentInfoRow[] = [
+    { label: t('details.info.project'), value: project ? (project.company_name || project.name) : '—' },
+    { label: t('details.info.location'), value: incident.location || '—' },
+    { label: t('details.info.date'), value: formatShortDateTime(incident.date_time) },
+  ];
+  if (!isNearMiss && incident.injured_name) {
+    info.push({ label: t('details.info.injured'), value: incident.injured_name });
   }
+  if (!isNearMiss && incident.injured_role) {
+    info.push({ label: t('details.info.role'), value: incident.injured_role });
+  }
+  info.push({ label: t('details.info.expert'), value: creatorName || '—' });
+  info.push({ label: t('details.info.code'), value: shortCode(incident.id) });
+
+  const blocks = [
+    { text: incident.description ?? '' },
+    { label: t('incidents.sectionCause'), text: incident.cause ?? '' },
+    { label: t('incidents.sectionActions'), text: incident.actions_taken ?? '' },
+    {
+      label: t('details.info.witnesses'),
+      text: (incident.witnesses ?? []).join(', '),
+    },
+  ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
-      <ScreenHeader
-        title={t('incidents.headerTitle')}
-        right={
-          <Pressable
-            onPress={onEdit}
-            disabled={reopening}
-            hitSlop={12}
-            accessibilityLabel={t('common.edit')}
-            style={{ paddingHorizontal: 4, opacity: reopening ? 0.5 : 1 }}
-          >
-            <SquarePen size={20} color={theme.colors.ink} strokeWidth={1.5} />
-          </Pressable>
-        }
-      />
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: insets.bottom + 120,
-          gap: 14,
-        }}
-        refreshControl={<RefreshControl queries={[incidentQ, projectQ]} />}
+    <>
+      <DocumentDetails
+        type="incident"
+        tileIcon={TriangleAlert}
+        title={INCIDENT_TYPE_FULL_LABEL[incident.type] ?? incident.type}
+        typeLabel={t('details.type.incident')}
+        status={{ tone, label: INCIDENT_TYPE_LABEL[incident.type] ?? incident.type }}
+        info={info}
+        contentLabel={t('details.content.incident')}
+        contentTab={t('details.content.incident')}
+        signatures={{ mode: 'edit', state: signatures, creatorName }}
+        onEdit={onEdit}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+        editing={reopening}
+        duplicating={duplicating}
+        onSharePdf={sharePdf}
+        sharing={sharing}
+        pdfLocked={pdfUsage?.isLocked}
+        onBack={() => router.back()}
       >
-        {/* Header card */}
-        <View style={s.headerCard}>
-          {badge && (
-            <View style={[s.typeBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-              <Text style={[s.typeBadgeText, { color: badge.text }]}>
-                {INCIDENT_TYPE_LABEL[incident.type]}
-              </Text>
-            </View>
-          )}
-          <Text style={s.typeFullLabel}>
-            {INCIDENT_TYPE_FULL_LABEL[incident.type] ?? incident.type}
-          </Text>
-          <Text style={s.dateLine}>
-            {formatShortDateTime(incident.date_time)}
-          </Text>
-          {incident.status === 'draft' && (
-            <View style={s.draftChip}>
-              <Hourglass size={12} color={theme.colors.certTint} strokeWidth={1.5} />
-              <Text style={s.draftChipText}>{t('incidents.draftChip')}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Incident details */}
-        <View style={s.sectionCard}>
-          <Text style={s.sectionTitle}>
-            {isNearMiss ? t('incidents.sectionCircumstance') : t('incidents.sectionVictim')}
-          </Text>
-          {isNearMiss ? (
-            <Text style={s.nearMissNote}>
-              {t('incidents.nearMissNote')}
-            </Text>
-          ) : (
-            <>
-              {incident.injured_name ? (
-                <DetailRow
-                  Icon={User}
-                  label={t('incidents.fieldName')}
-                  value={incident.injured_name}
-                  theme={theme}
-                  s={s}
-                />
-              ) : null}
-              {incident.injured_role ? (
-                <DetailRow
-                  Icon={Briefcase}
-                  label={t('incidents.fieldRole')}
-                  value={incident.injured_role}
-                  theme={theme}
-                  s={s}
-                />
-              ) : null}
-            </>
-          )}
-          <DetailRow
-            Icon={MapPin}
-            label={t('incidents.fieldLocation')}
-            value={incident.location || '-'}
-            theme={theme}
-            s={s}
-          />
-          {project && (
-            <DetailRow
-              Icon={Building2}
-              label={t('incidents.fieldProject')}
-              value={project.company_name || project.name}
-              theme={theme}
-              s={s}
-            />
-          )}
-        </View>
-
-        {/* Description */}
-        {incident.description ? (
-          <View style={s.sectionCard}>
-            <Text style={s.sectionTitle}>{t('incidents.sectionDescription')}</Text>
-            <Text style={s.bodyText}>{incident.description}</Text>
-          </View>
-        ) : null}
-
-        {/* Cause */}
-        {incident.cause ? (
-          <View style={s.sectionCard}>
-            <Text style={s.sectionTitle}>{t('incidents.sectionCause')}</Text>
-            <Text style={s.bodyText}>{incident.cause}</Text>
-          </View>
-        ) : null}
-
-        {/* Actions */}
-        {incident.actions_taken ? (
-          <View style={s.sectionCard}>
-            <Text style={s.sectionTitle}>{t('incidents.sectionActions')}</Text>
-            <Text style={s.bodyText}>{incident.actions_taken}</Text>
-          </View>
-        ) : null}
-
-        {/* Witnesses */}
-        {incident.witnesses?.length > 0 && (
-          <View style={s.sectionCard}>
-            <Text style={s.sectionTitle}>{t('incidents.sectionWitnesses')}</Text>
-            {incident.witnesses.map((w, i) => (
-              <View key={`${i}-${w}`} style={s.witnessRow}>
-                <User size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
-                <Text style={s.witnessText}>{w}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Photos */}
-        {photoDisplayUrls.length > 0 && (
-          <View style={s.sectionCard}>
-            <Text style={s.sectionTitle}>{t('incidents.sectionPhotos')}</Text>
-            <View style={s.photoGrid}>
-              {photoDisplayUrls.map((uri, i) => (
-                <View key={`${i}-${uri}`} style={s.photoThumb}>
-                  <Image
-                    source={{ uri }}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                    transition={200}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Labour inspection notice */}
-        {(incident.type === 'severe' || incident.type === 'fatal') && (
-          <View style={s.warningBanner}>
-            <TriangleAlert size={18} color={theme.colors.danger} strokeWidth={1.5} />
-            <Text style={s.warningText}>
-              {t('incidents.labourWarning')}{'\n'}
-              <Text
-                style={{ fontWeight: '700', textDecorationLine: 'underline' }}
-                onPress={() => Linking.openURL('tel:0322430043')}
-              >
-                0322 43 00 43
-              </Text>
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Bottom action bar */}
-      <View style={[s.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        {incident.pdf_url ? (
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Button
-              title={t('incidents.pdfShare')}
-              leftIcon={Share2}
-              variant="ghost"
-              onPress={sharePdf}
-              style={{ flex: 1 }}
-            />
-            <Button
-              title={generatingPdf && pdfPhase ? pdfPhase : t('incidents.pdfUpdate')}
-              variant="secondary"
-              loading={generatingPdf}
-              onPress={generatePdf}
-              style={{ flex: 0.6 }}
-            />
-          </View>
-        ) : incident.status === 'draft' ? (
-          <View style={{ gap: 10 }}>
-            <Button
-              title={generatingPdf && pdfPhase ? pdfPhase : pdfUsage?.isLocked ? t('incidents.pdfGenerateLocked') : t('incidents.pdfGenerate')}
-              leftIcon={FileText}
-              loading={generatingPdf}
-              onPress={generatePdf}
-              style={{ width: '100%' }}
-            />
-            <Button
-              title={t('incidents.newIncident')}
-              variant="link"
-              onPress={() => router.push(`/incidents/new?projectId=${incident.project_id}` as any)}
-              style={{ width: '100%' }}
-            />
-          </View>
-        ) : null}
-      </View>
+        <NoteBlocksContent blocks={blocks} />
+      </DocumentDetails>
       <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-    </View>
+    </>
   );
-}
-
-function DetailRow({
-  Icon, label, value, theme, s,
-}: {
-  Icon: LucideIcon;
-  label: string;
-  value: string;
-  theme: any;
-  s: ReturnType<typeof makeStyles>;
-}) {
-  return (
-    <View style={s.detailRow}>
-      <Icon size={15} color={theme.colors.inkSoft} style={{ marginTop: 1 }} strokeWidth={1.5} />
-      <View style={{ flex: 1 }}>
-        <Text style={s.detailLabel}>{label}</Text>
-        <Text style={s.detailValue}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-function makeStyles(theme: any) {
-  return StyleSheet.create({
-    headerCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      padding: 18,
-      gap: 8,
-      shadowColor: theme.colors.ink,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 10,
-      elevation: 3,
-    },
-    typeBadge: {
-      alignSelf: 'flex-start',
-      borderRadius: 6,
-      borderWidth: 1,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-    },
-    typeBadgeText: {
-      fontSize: 11,
-      fontWeight: '700',
-    },
-    typeFullLabel: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: theme.colors.ink,
-    },
-    dateLine: {
-      fontSize: 13,
-      color: theme.colors.inkSoft,
-    },
-    draftChip: {
-      alignSelf: 'flex-start',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: theme.colors.warnSoft,
-      borderRadius: 16,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-    },
-    draftChipText: {
-      fontSize: 11,
-      fontWeight: '700',
-      color: theme.colors.certTint,
-    },
-
-    sectionCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 14,
-      padding: 14,
-      gap: 10,
-      shadowColor: theme.colors.ink,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 6,
-      elevation: 2,
-    },
-    sectionTitle: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.colors.inkSoft,
-      textTransform: 'uppercase',
-      letterSpacing: 0.4,
-      marginBottom: 2,
-    },
-    nearMissNote: {
-      fontSize: 14,
-      color: theme.colors.inkSoft,
-      fontStyle: 'italic',
-    },
-    detailRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    detailLabel: {
-      fontSize: 12,
-      color: theme.colors.inkFaint,
-    },
-    detailValue: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.colors.ink,
-    },
-    bodyText: {
-      fontSize: 14,
-      color: theme.colors.ink,
-      lineHeight: 22,
-    },
-
-    witnessRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    witnessText: {
-      fontSize: 14,
-      color: theme.colors.ink,
-    },
-
-    photoGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    photoThumb: {
-      width: 96,
-      height: 96,
-      borderRadius: 8,
-      overflow: 'hidden',
-      backgroundColor: theme.colors.surfaceSecondary,
-    },
-
-    warningBanner: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 10,
-      backgroundColor: theme.colors.dangerSoft,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.colors.dangerBorder,
-      padding: 12,
-    },
-    warningText: {
-      flex: 1,
-      fontSize: 13,
-      color: theme.colors.danger,
-      lineHeight: 20,
-    },
-
-    bottomBar: {
-      backgroundColor: theme.colors.surface,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.border,
-      paddingHorizontal: 24,
-      paddingTop: 12,
-    },
-  });
 }

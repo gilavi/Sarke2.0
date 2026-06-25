@@ -147,6 +147,12 @@ One file: [`hooks/usePhotoPicker.ts`](../hooks/usePhotoPicker.ts) (formerly `use
 
 The picker opens `/photo-picker` (live camera + gallery + GPS via `photoPickerBus`); `pickPhotosWithAnnotation` opens it with `?multi=1` for the multi-select UX (pinch-to-zoom on capture, recent-strip multi-select with a "დასრულება (n)" bar, multi-select system library). The bus callback delivers `string[] | null`. The annotator opens `/photo-annotate` — the user may save without drawing. Never call `ImagePicker.launchCameraAsync` or `ImagePicker.launchImageLibraryAsync` directly outside this hook or `app/photo-picker.tsx` — the lint check blocks it.
 
+## In-app image edits (crop / rotate / EXIF-normalize)
+
+One file: [`lib/imageEditing.ts`](../lib/imageEditing.ts) — the canonical owner for the **geometric** edits the user drives in the photo annotator. Exports `cropImage(uri, pixelRect)`, `rotateImage(uri, deg)`, and `normalizeImage(uri)` (a no-op manipulate that bakes EXIF orientation + materializes a remote URI to a local file), each returning `{ uri, width, height }`.
+
+Upload-time **resize/compress** is a separate concern owned by [`lib/photoCompression.ts`](../lib/photoCompression.ts) — don't fold the two together. **Don't** call `expo-image-manipulator`'s `manipulateAsync` `crop`/`rotate` actions directly outside these two files; reach for the purpose-named export here. The crop UI + pure geometry live in [`components/photo-annotator/`](../components/photo-annotator/AGENTS.md) (`CropOverlay`, `cropGeometry.ts`, `useImageEditSession.ts`); `cropGeometry.displayRectToPixels` is the one place display-space rects become integer source-pixel crops (round-then-clamp so the native crop never gets a 1px-overshoot rect).
+
 ## Report slide photos + layout
 
 One file: [`lib/reportSlides.ts`](../lib/reportSlides.ts). A report slide (`ReportSlide`, stored as JSON in the `reports.slides` column — no SQL schema) carries **1–2 photos** (`MAX_SLIDE_PHOTOS`) and a chosen render `layout`. The canonical store is `ReportSlide.images: SlideImage[]`, but older reports persisted a single photo in the now-`@deprecated` `image_path` / `annotated_image_path` fields.
@@ -342,7 +348,7 @@ const localUri = await generateAndSharePdf(html, pdfName, true, userId);
 
 ## Document display names (shared with web)
 
-One file: [`lib/shared/documentName.ts`](../lib/shared/documentName.ts). Exports `inspectionDisplayName`, `reportDisplayName`, `certificateDisplayName`, `orderDisplayName`. **Pure TypeScript** — no React/RN/DOM/i18n imports — so it is the single source of truth imported by **both** the Expo app (relative import, e.g. `../lib/shared/documentName`) and the `web-app/` dashboard (`@root/lib/shared/documentName`, re-exported via `web-app/src/lib/documentNames.ts`).
+One file: [`lib/shared/documentName.ts`](../lib/shared/documentName.ts). Exports `inspectionDisplayName`, `reportDisplayName`, `certificateDisplayName`, `orderDisplayName`, and `shortCode` (display-only reference code — see the DocumentDetails section below). **Pure TypeScript** — no React/RN/DOM/i18n imports — so it is the single source of truth imported by **both** the Expo app (relative import, e.g. `../lib/shared/documentName`) and the `web-app/` dashboard (`@root/lib/shared/documentName`, re-exported via `web-app/src/lib/documentNames.ts`).
 
 `inspectionDisplayName` returns the **short UI display name**: it maps the formal `templates.name` stored in the DB (e.g. `დამცავი ქამრების შემოწმების აქტი`) to the short form shown in list rows, cards, and screen titles (e.g. `დამცავი ქამრები`) via the `INSPECTION_SHORT_NAME` map in this same file. A name that's already short (or not in the map) falls through unchanged; an empty/missing name falls back to the generic Georgian label. The other three helpers return the document's title/type string (or a generic fallback), never a raw `id` slice.
 
@@ -415,6 +421,18 @@ Used by all three project forms (`components/home/ProjectPickerSheet.tsx`, `app/
 One owner: [`lib/documents/reopen.ts`](../lib/documents/reopen.ts) — `reopenDocument(target, queryClient)`. Un-completes a finished document (inspection Act, report, order, incident, briefing) back to `draft` so the **existing** create/wizard/edit flow can edit it, then invalidates the record lists. The caller routes into the matching create/edit screen; re-completion goes through each family's normal completion path (regenerating the PDF, and for inspections re-capturing the in-memory signature).
 
 `target` is the `ReopenTarget` union — `genericInspection` flips the parent `inspections` row (freeze trigger relaxed in migration `20260623150000_allow_inspection_reopen.sql`), `equipmentInspection` flips the `<type>_inspections` row via `inspectionRegistry[source].reopen(id)`, the rest call `<api>.update(id, { status: 'draft' })`. **Don't** write `status: 'draft'` ad-hoc from a detail screen — go through `reopenDocument` so the regime split, list invalidation, and the equipment-vs-generic table choice stay in one place. See [`lib/documents/AGENTS.md`](../lib/documents/AGENTS.md).
+
+## Duplicate a finished document as a new draft
+
+One owner: [`lib/documents/duplicate.ts`](../lib/documents/duplicate.ts) — `duplicateDocument(target, queryClient)`. Clones a saved document into a fresh **draft** (returns `{ id }`), then invalidates the record lists; the caller routes into the matching edit flow. Sibling of `reopenDocument`. It copies everything the schema persists: incident → all fields + photo path refs + the expert signature path; report → title + deep-copied slides; briefing → topics + participants (with their persisted base64 sigs) + the expert signature; act (`genericInspection`) → inspection + answers + attachments, with answer/cert photo **blobs server-copied to new paths** (via `storageApi.copy`) so the editable draft owns independent files. Photo refs are *shared* for incident/report (their delete paths never remove blobs); act photos are *copied* because the wizard can delete them. Captured act signatures are never persisted, so there is nothing to copy there. **Don't** hand-roll a clone in a screen — add the type to this owner. See [`lib/documents/AGENTS.md`](../lib/documents/AGENTS.md).
+
+`storageApi.copy(bucket, fromPath, toPath)` ([`lib/services/real/storage.ts`](../lib/services/real/storage.ts)) is the canonical server-side blob copy used for this; the mock returns `toPath`.
+
+## Saved-record details screen (DocumentDetails)
+
+One owner: [`components/document-details/`](../components/document-details/AGENTS.md) — `DocumentDetails` (prop `type: act | incident | report | instruction`). The screen reached by **tapping a saved record** in a list (top bar + header + Edit/Duplicate/Delete chips + sticky tabs + read-only info + type-specific content + signature/certificate lists + Share-PDF footer). It is the non-celebratory sibling of [`components/success/FlowSuccessScreen.tsx`](../components/success/FlowSuccessScreen.tsx) (the **post-save** screen) and **replaces** the old one-off detail/PDF-preview pages. It reuses the success module's signature/certificate sections (no new sheets) and renders `info` read-only (Project/Expert aren't reassignable in our schema — use Edit). The act success + details screens share their data/PDF/signature logic via [`features/inspection-result/`](../features/inspection-result/AGENTS.md) (`useActResult` + `shareActPdf`) so they never drift. **Don't** point a list-item tap at a success/`done` screen — route saved records to `DocumentDetails`.
+
+`shortCode(id)` in [`lib/shared/documentName.ts`](../lib/shared/documentName.ts) returns the short display **code** (first UUID segment, uppercased) shown on the details Info row. This is a deliberate display-only code — distinct from a display *name*, so it does not violate the "no `id.slice` fallback for names" rule above.
 
 ## Adding a new primitive
 

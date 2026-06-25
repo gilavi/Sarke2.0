@@ -97,6 +97,10 @@ export function SuccessScreen({ title, subtitle, children, primary, actions }: P
   );
 }
 
+/** Press-feedback style for an action card (extracted for testability). */
+export const actionCardPressStyle = (pressed: boolean) =>
+  pressed ? { opacity: 0.85, transform: [{ scale: 0.99 }] } : null;
+
 /** A single secondary action card (icon bubble + title/subtitle + chevron). */
 export function SuccessActionCard({ icon, title, subtitle, onPress }: SuccessAction) {
   const { theme } = useTheme();
@@ -105,10 +109,7 @@ export function SuccessActionCard({ icon, title, subtitle, onPress }: SuccessAct
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionCard,
-        pressed && { opacity: 0.85, transform: [{ scale: 0.99 }] },
-      ]}
+      style={({ pressed }) => [styles.actionCard, actionCardPressStyle(pressed)]}
     >
       <View style={styles.actionIcon}>
         {React.createElement(icon, { size: 22, color: theme.colors.accent, strokeWidth: 1.5 })}

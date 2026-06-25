@@ -1,8 +1,13 @@
-// PhotoAnnotator.tsx - Full-screen photo annotation canvas
+// PhotoAnnotator.tsx - Full-screen photo edit canvas (crop / rotate / annotate)
 //
-// Inspectors draw on photos before upload: circle defects, arrow to cracks,
-// write measurements. Uses SVG + PanResponder for drawing and
-// react-native-view-shot to merge annotations with the original photo.
+// Inspectors edit photos before upload: crop to frame, rotate, then draw —
+// circle defects, arrow to cracks, write measurements. Crop/rotate go through
+// expo-image-manipulator (lib/imageEditing.ts via useImageEditSession); drawing
+// uses SVG + PanResponder, flattened with react-native-view-shot.
+//
+// The photo box is sized to its true aspect (useImageEditSession.photoLayout) and
+// the image is `contain`, so display→pixel is one uniform scale and captureRef
+// preserves the real photo aspect (no silent cover-crop).
 
 import {
   useCallback,
@@ -14,29 +19,47 @@ import {
 import {
   Alert,
   Image,
+  LayoutAnimation,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle as SvgCircle, G, Line, Path, Polygon, Rect, Text as SvgText } from 'react-native-svg';
-import { ArrowRight, Check, Circle, Move, Pencil, Square, Trash2, Type, Undo2, X } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { RotateCw, Trash2, Undo2, X } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import { a11y } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 
-import { COLORS, WIDTHS, SCREEN, uid, pointsToPathD, arrowHead, annotationBounds, hitTestAnnotation, translateAnnotation } from './schema';
+import { COLORS, SIZE_PRESETS, uid, pointsToPathD, arrowHead, annotationBounds, hitTestAnnotation, translateAnnotation } from './schema';
 import type { Annotation, PhotoAnnotatorProps, Point, Tool } from './schema';
 import { getstyles, getmodalStyles } from './styles';
+import { useImageEditSession } from './useImageEditSession';
+import { AnnotatorToolbar } from './AnnotatorToolbar';
+import { AnnotatorColorBar } from './AnnotatorColorBar';
+import { AnnotatorSizeBar } from './AnnotatorSizeBar';
+import { CropOverlay } from './CropOverlay';
+import { displayRectToPixels, type CropRect } from './cropGeometry';
 
+// Tools that draw a colored stroke — these reveal both the floating color and
+// size controls. Text also uses color (so it gets the color bar) but has a fixed
+// width (no size bar). Move uses neither.
+const STROKE_TOOLS: Tool[] = ['pen', 'arrow', 'circle', 'rect'];
+const COLOR_TOOLS: Tool[] = [...STROKE_TOOLS, 'text'];
+
+// Animate the contextual style panel + crop/draw toolbar swap (Android opt-in).
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+const animateLayout = () => LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
 /* ─────────────────────────── Component ─────────────────────────── */
 
@@ -47,12 +70,13 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   const modalStyles = useMemo(() => getmodalStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
 
-  const [imgW, setImgW] = useState(0);
-  const [imgH, setImgH] = useState(0);
+  // Working image + dims + crop/rotate transforms.
+  const { workingUri, imgW, imgH, photoLayout, busy, applyCrop, applyRotate } = useImageEditSession(sourceUri, insets);
+
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
-  const [width, setWidth] = useState(4);
+  const [width, setWidth] = useState<number>(SIZE_PRESETS[1]);
   const [current, setCurrent] = useState<Annotation | null>(null);
   const [textModalVisible, setTextModalVisible] = useState(false);
   const [textInput, setTextInput] = useState('');
@@ -60,6 +84,11 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   const [saving, setSaving] = useState(false);
   // Move tool: id of the annotation currently selected for dragging.
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Crop mode; the live crop rect lives in a ref (CropOverlay owns it). Crop is
+  // always free-form (aspect presets removed) and rotate lives in the header.
+  const [cropMode, setCropMode] = useState(false);
+  const cropRectRef = useRef<CropRect | null>(null);
 
   const photoContainerRef = useRef<View>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
@@ -86,39 +115,6 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   useEffect(() => {
     if (tool !== 'move' && selectedId !== null) setSelectedId(null);
   }, [tool, selectedId]);
-
-  /* Load photo dimensions */
-  useEffect(() => {
-    Image.getSize(
-      sourceUri,
-      (w, h) => {
-        setImgW(w);
-        setImgH(h);
-      },
-      () => {
-        // fallback: assume 4:3
-        setImgW(4);
-        setImgH(3);
-      },
-    );
-  }, [sourceUri]);
-
-  /* Compute photo container layout to preserve aspect ratio */
-  const photoLayout = useMemo(() => {
-    if (!imgW || !imgH) return null;
-    const headerH = 56 + insets.top;
-    const toolbarH = 200; // approximate bottom area
-    const maxW = SCREEN.width;
-    const maxH = SCREEN.height - headerH - toolbarH;
-    const aspect = imgW / imgH;
-    let w = maxW;
-    let h = w / aspect;
-    if (h > maxH) {
-      h = maxH;
-      w = h * aspect;
-    }
-    return { w, h };
-  }, [imgW, imgH, insets.top]);
 
   /* PanResponder for drawing */
   const panResponder = useRef(
@@ -259,6 +255,69 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     haptic.light();
   }, [textInput, textPos, color]);
 
+  // Crop/rotate change the coordinate space, so existing annotations no longer
+  // map — confirm before discarding them, then run the transform.
+  const runWithAnnotationReset = useCallback(
+    (action: () => void) => {
+      if (annotationsRef.current.length === 0) {
+        action();
+        return;
+      }
+      Alert.alert(t('photoAnnotator.resetTitle'), t('photoAnnotator.resetBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('photoAnnotator.resetConfirm'),
+          style: 'destructive',
+          onPress: () => {
+            setAnnotations([]);
+            action();
+          },
+        },
+      ]);
+    },
+    [t],
+  );
+
+  const handleTool = useCallback((next: Tool) => {
+    animateLayout();
+    setTool(next);
+  }, []);
+
+  const enterCrop = useCallback(() => {
+    setSelectedId(null);
+    animateLayout();
+    setCropMode(true);
+    haptic.light();
+  }, []);
+
+  const cancelCrop = useCallback(() => {
+    animateLayout();
+    setCropMode(false);
+  }, []);
+
+  const onRotate = useCallback(() => {
+    runWithAnnotationReset(() => {
+      applyRotate(90);
+      haptic.light();
+    });
+  }, [runWithAnnotationReset, applyRotate]);
+
+  const onCropApply = useCallback(() => {
+    const rect = cropRectRef.current;
+    if (!rect || !photoLayout || !imgW) {
+      setCropMode(false);
+      return;
+    }
+    const scale = imgW / photoLayout.w;
+    const px = displayRectToPixels(rect, scale, imgW, imgH);
+    runWithAnnotationReset(async () => {
+      await applyCrop(px);
+      animateLayout();
+      setCropMode(false);
+      haptic.light();
+    });
+  }, [photoLayout, imgW, imgH, applyCrop, runWithAnnotationReset]);
+
   const save = useCallback(async () => {
     if (!photoContainerRef.current) return;
     setSaving(true);
@@ -279,7 +338,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     } finally {
       setSaving(false);
     }
-  }, [onSave]);
+  }, [onSave, t]);
 
   /* Render helpers */
   const renderAnnotation = (a: Annotation, isCurrent = false) => {
@@ -382,15 +441,6 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     return null;
   };
 
-  const toolButtons: { key: Tool; Icon: LucideIcon }[] = [
-    { key: 'move', Icon: Move },
-    { key: 'pen', Icon: Pencil },
-    { key: 'arrow', Icon: ArrowRight },
-    { key: 'circle', Icon: Circle },
-    { key: 'rect', Icon: Square },
-    { key: 'text', Icon: Type },
-  ];
-
   // Bounding box of the selected annotation, drawn as a dashed outline while
   // the move tool is active so the user can see what they're dragging.
   const selectedBounds = useMemo(() => {
@@ -403,147 +453,117 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     <SafeAreaView style={styles.screen} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Pressable onPress={onCancel} hitSlop={12} style={styles.headerBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelA11yHint'), 'button')}>
+        <Pressable onPress={cropMode ? cancelCrop : onCancel} hitSlop={12} style={styles.headerBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelA11yHint'), 'button')}>
           <X size={26} color={theme.colors.ink} strokeWidth={1.5} />
         </Pressable>
-        <Text style={styles.headerTitle}>{t('photoAnnotator.headerTitle')}</Text>
-        <Pressable onPress={save} disabled={saving} hitSlop={12} style={styles.headerBtn} {...a11y(t('common.save'), t('photoAnnotator.saveA11yHint'), 'button')}>
-          {saving ? (
-            <Text style={{ color: theme.colors.accent, fontWeight: '600' }}>...</Text>
-          ) : (
-            <Check size={26} color={theme.colors.accent} strokeWidth={1.5} />
-          )}
-        </Pressable>
+        <Text style={styles.headerTitle}>{cropMode ? t('photoAnnotator.cropTitle') : t('photoAnnotator.headerTitle')}</Text>
+        {cropMode ? (
+          <Pressable onPress={onRotate} hitSlop={12} style={styles.headerBtn} {...a11y(t('photoAnnotator.rotateA11y'), t('photoAnnotator.rotateA11yHint'), 'button')}>
+            <RotateCw size={24} color={theme.colors.ink} strokeWidth={1.6} />
+          </Pressable>
+        ) : (
+          <View style={styles.headerRight}>
+            <Pressable onPress={undo} disabled={annotations.length === 0} hitSlop={8} style={styles.headerBtn} {...a11y(t('photoAnnotator.undoA11y'), t('photoAnnotator.undoA11yHint'), 'button')}>
+              <Undo2 size={24} color={annotations.length ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.6} />
+            </Pressable>
+            <Pressable onPress={clearAll} hitSlop={8} style={styles.headerBtn} {...a11y(t('photoAnnotator.clearAllA11y'), t('photoAnnotator.clearAllA11yHint'), 'button')}>
+              <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.6} />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {/* ── Photo Canvas ── */}
       <View style={styles.canvasWrap}>
         {photoLayout && (
-          <View
-            ref={photoContainerRef}
-            style={styles.photoContainer}
-            onLayout={(e) => {
-              const { width: w, height: h } = e.nativeEvent.layout;
-              setContainerSize({ w, h });
-            }}
-            {...panResponder.panHandlers}
-          >
-            <Image
-              source={{ uri: sourceUri }}
-              style={StyleSheet.absoluteFill}
-              resizeMode="cover"
-            />
-            <Svg
-              width={containerSize.w || photoLayout.w}
-              height={containerSize.h || photoLayout.h}
-              style={StyleSheet.absoluteFill}
+          // photoBox is sized to the photo and centered by canvasWrap. Both the
+          // captured photo View and the floating-controls overlay fill it, so the
+          // pills hug the *image* edges (not the letterbox) at every aspect ratio.
+          <View style={[styles.photoBox, { width: photoLayout.w, height: photoLayout.h }]}>
+            <View
+              ref={photoContainerRef}
+              style={styles.photoFill}
+              onLayout={(e) => {
+                const { width: w, height: h } = e.nativeEvent.layout;
+                setContainerSize({ w, h });
+              }}
+              {...(cropMode ? {} : panResponder.panHandlers)}
             >
-              {annotations.map((a) => renderAnnotation(a))}
-              {current && renderAnnotation(current, true)}
-              {selectedBounds && (
-                <Rect
-                  x={selectedBounds.minX - 8}
-                  y={selectedBounds.minY - 8}
-                  width={selectedBounds.maxX - selectedBounds.minX + 16}
-                  height={selectedBounds.maxY - selectedBounds.minY + 16}
-                  stroke={theme.colors.accent}
-                  strokeWidth={1.5}
-                  strokeDasharray="6 4"
-                  fill="none"
-                  rx={6}
+              <Image
+                source={{ uri: workingUri }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="contain"
+              />
+              <Svg
+                width={containerSize.w || photoLayout.w}
+                height={containerSize.h || photoLayout.h}
+                style={StyleSheet.absoluteFill}
+              >
+                {annotations.map((a) => renderAnnotation(a))}
+                {current && renderAnnotation(current, true)}
+                {selectedBounds && (
+                  <Rect
+                    x={selectedBounds.minX - 8}
+                    y={selectedBounds.minY - 8}
+                    width={selectedBounds.maxX - selectedBounds.minX + 16}
+                    height={selectedBounds.maxY - selectedBounds.minY + 16}
+                    stroke={theme.colors.accent}
+                    strokeWidth={1.5}
+                    strokeDasharray="6 4"
+                    fill="none"
+                    rx={6}
+                  />
+                )}
+              </Svg>
+              {cropMode && (
+                <CropOverlay
+                  layout={photoLayout}
+                  ratio={null}
+                  accent={theme.colors.accent}
+                  onRectChange={(r) => {
+                    cropRectRef.current = r;
+                  }}
                 />
               )}
-            </Svg>
+            </View>
+
+            {/* Floating brush controls — a sibling of the captured photo View (so
+                they never bake into the saved image), filling the same photo box.
+                `box-none` lets draw touches fall through to the canvas everywhere
+                except the pills themselves. Color shows for stroke + text tools;
+                the size picker only for stroke tools (text width is fixed). */}
+            {!cropMode && COLOR_TOOLS.includes(tool) && (
+              <View pointerEvents="box-none" style={styles.floatingLayer}>
+                <View pointerEvents="box-none" style={styles.colorBarSlot}>
+                  <AnnotatorColorBar color={color} onColor={setColor} theme={theme} t={t} />
+                </View>
+                {STROKE_TOOLS.includes(tool) && (
+                  <View pointerEvents="box-none" style={styles.sizeBarSlot}>
+                    <AnnotatorSizeBar value={width} onChange={setWidth} color={color} theme={theme} t={t} />
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
       </View>
 
       {/* ── Bottom Toolbar ── */}
-      <View style={styles.toolbar}>
-        {/* Color row */}
-        <View style={styles.row}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
-            {COLORS.map((c) => (
-              <Pressable
-                key={c.value}
-                onPress={() => setColor(c.value)}
-                hitSlop={8}
-                style={[
-                  styles.colorBtn,
-                  { backgroundColor: c.value },
-                  color === c.value && styles.colorBtnActive,
-                ]}
-                {...a11y(`${t('photoAnnotator.colorA11yPrefix')}${c.label}`, t('photoAnnotator.colorA11yHint'), 'button')}
-              >
-                {c.value === '#FFFFFF' && <View style={styles.whiteBtnRing} />}
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Tool row */}
-        <View style={styles.row}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
-            {toolButtons.map(({ key, Icon }) => (
-              <Pressable
-                key={key}
-                onPress={() => setTool(key)}
-                style={[styles.toolBtn, tool === key && styles.toolBtnActive]}
-                {...a11y(`${t('photoAnnotator.toolA11yPrefix')}${key}`, t('photoAnnotator.toolA11yHint'), 'button')}
-              >
-                <Icon
-                  size={22}
-                  color={tool === key ? theme.colors.white : theme.colors.ink}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
-            ))}
-            <View style={styles.divider} />
-            <Pressable onPress={undo} disabled={annotations.length === 0} style={styles.toolBtn} {...a11y(t('photoAnnotator.undoA11y'), t('photoAnnotator.undoA11yHint'), 'button')}>
-              <Undo2
-                size={22}
-                color={annotations.length === 0 ? theme.colors.hairline : theme.colors.ink}
-                strokeWidth={1.5}
-              />
-            </Pressable>
-            <Pressable onPress={clearAll} style={styles.toolBtn} {...a11y(t('photoAnnotator.clearAllA11y'), t('photoAnnotator.clearAllA11yHint'), 'button')}>
-              <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.5} />
-            </Pressable>
-          </ScrollView>
-        </View>
-
-        {/* Width row */}
-        <View style={styles.row}>
-          <View style={styles.rowContent}>
-            {WIDTHS.map((w) => (
-              <Pressable
-                key={w}
-                onPress={() => setWidth(w)}
-                hitSlop={4}
-                style={[styles.widthBtn, width === w && styles.widthBtnActive]}
-                {...a11y(`${t('photoAnnotator.widthA11yPrefix')}${w}px`, t('photoAnnotator.widthA11yHint'), 'button')}
-              >
-                <View
-                  style={{
-                    width: w,
-                    height: w,
-                    borderRadius: w / 2,
-                    backgroundColor: color,
-                    borderWidth: color === '#FFFFFF' ? 1 : 0,
-                    borderColor: theme.colors.hairline,
-                  }}
-                />
-              </Pressable>
-            ))}
-            <Text style={styles.widthLabel}>{width}px</Text>
-          </View>
-        </View>
-
-        {/* Save button */}
-        <Pressable onPress={save} disabled={saving} style={styles.saveBtn} {...a11y(t('common.save'), t('photoAnnotator.saveA11yHint'), 'button')}>
-          <Text style={styles.saveBtnText}>{saving ? t('photoAnnotator.saving') : t('common.save')}</Text>
-        </Pressable>
-      </View>
+      <AnnotatorToolbar
+        styles={styles}
+        theme={theme}
+        t={t}
+        cropMode={cropMode}
+        bottomInset={insets.bottom}
+        tool={tool}
+        onTool={handleTool}
+        onSave={save}
+        saving={saving}
+        onCrop={enterCrop}
+        onCropApply={onCropApply}
+        onCropCancel={cancelCrop}
+        busy={busy}
+      />
 
       {/* ── Text Input Modal ── */}
       <Modal
