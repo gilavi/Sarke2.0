@@ -124,15 +124,23 @@ export default function HomeScreen() {
   const { scrollHandler, containerStyle, heroStyle, compactStyle, backdropStyle } =
     useScrollHeader({ fullHeight: HEADER_FULL, compactHeight: HEADER_COMPACT });
 
+  // certsQ (qualifications) + templatesQ refetch directly; `invalidateRecordLists`
+  // covers projects AND the five record-widget lists (inspections/reports/orders/
+  // incidents/briefings), which live inside HomeRecordsSection and so aren't
+  // reachable as query objects here. Without this, pulling to refresh reloaded
+  // projects but never the record widgets — the "refresh doesn't work" half of
+  // the empty-Home bug. invalidateRecordLists is awaited, so the spinner holds
+  // until the records actually refetch.
   const refreshControl = useMemo(
     () => (
       <RefreshControl
         key={HEADER_FULL}
-        queries={[certsQ, templatesQ, projectsQ]}
+        queries={[certsQ, templatesQ]}
+        onRefresh={() => invalidateRecordLists(qc)}
         progressViewOffset={HEADER_FULL}
       />
     ),
-    [HEADER_FULL, certsQ, templatesQ, projectsQ]
+    [HEADER_FULL, certsQ, templatesQ, qc]
   );
 
   return (

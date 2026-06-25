@@ -1,6 +1,54 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-23 | Branch: `main`
+**Updated:** 2026-06-25 | Branch: `main`
+
+---
+
+## 2026-06-25 — Photo editor gains crop + rotate; report-PDF photos no longer overflow
+
+The photo annotator is now a full **edit** surface — crop (free + 1:1 / 4:3 / 16:9 presets) and 90° rotate, on top of the existing draw/annotate tools — and a related report-PDF photo-fit bug is fixed.
+
+- **Crop + rotate.** New **Crop** and **Rotate** buttons in the annotator toolbar. Crop opens a draggable/resizable rectangle with a dim mask + thirds grid and aspect-preset chips; rotate turns the photo 90° clockwise. Both run through `expo-image-manipulator` via the new canonical owner **[`lib/imageEditing.ts`](../lib/imageEditing.ts)** (`cropImage` / `rotateImage` / `normalizeImage`). Reaches every flow that opens the annotator (report slide photos, single inspection captures); flows that skip the annotator (incidents, certs, orders, multi-batch) are unchanged.
+- **New module files** under [`components/photo-annotator/`](../components/photo-annotator/AGENTS.md): `useImageEditSession.ts` (working-image state + transforms), `CropOverlay.tsx` (crop gesture UI), `cropGeometry.ts` (pure crop math — unit-tested in `tests/unit/cropGeometry.test.ts`), and `AnnotatorToolbar.tsx` (extracted toolbar). The screen component **shrank** (580→559 lines) despite the new features.
+- **Latent-bug fix (feeds the report fix):** the annotator's photo box now sizes to the image's true aspect with `resizeMode="contain"`. Previously it was `flex:1` + `cover`, so `captureRef` silently cover-cropped every saved photo to the phone's canvas aspect. Now saved photos keep their real proportions; an EXIF/remote `normalizeImage` pass on mount keeps crop geometry correct for re-annotated (signed-URL) photos.
+- **Report-PDF overflow fix** — [`lib/reportPdf.ts`](../lib/reportPdf.ts): the `text-photo` and `two-side` layouts used `object-fit: cover`, which chopped photos to fill a fixed box and read as overflow. All four photo layouts now use `object-fit: contain` + `max-width`, so every photo sits whole inside its slide frame. Pairs with the new cropper (users crop to control framing).
+- New `photoAnnotator.*` i18n keys (crop/rotate/apply/reset-confirm) in `en.json` + `ka.json`. OTA-deliverable (no native changes — `expo-image-manipulator` was already a dependency).
+
+---
+
+## 2026-06-25 — Incident flow i18n completed (28 keys added)
+
+The incident creation flow (`app/incidents/new.tsx`) used 28 `t()` keys that had no translations in either locale file — they would have silently fallen back to the raw key string on any device. All keys are now filled with professional-grade copy and verified in sync between `en.json` and `ka.json`.
+
+- **`locales/en.json`** — 28 new keys in the `incidents` namespace: step titles (`step1Title`…`step4Title`), field labels (`fieldLocationExact`, `fieldInjuredName`, `fieldInjuredRole`, `fieldDateTime`, `fieldWhatHappened`, `fieldProbableCause`, `fieldActionsTaken`, `fieldWitnessName`), UX copy (`nearMissNoteShort`, `labourNoticeWarning`, `addWitnessA11y`, `addPhoto`, `signedChip`, `saveWithoutSignature`), summary labels, and error/toast messages (`selectTypeError`, `savedDraft`, `createFailed`, `pdfCreateFailedSaved`).
+- **`locales/ka.json`** — identical 28 keys in Georgian, written using `json.dump(ensure_ascii=False)` (direct Edit-tool writes to Georgian source fail on character-encoding normalization). Verified: zero Latin bleed-through, zero missing keys relative to `en.json`.
+- **`app/incidents/new.tsx`** line 422 — hardcoded Georgian email subject replaced with `t('incidents.reportSubject')` (key already existed).
+
+OTA-deliverable (locale files only, no native changes).
+
+---
+
+## 2026-06-25 — Home now loads its record widgets on first arrival (and on pull-to-refresh)
+
+Home showed your projects but no record widgets (Inspections / Reports / Brdzaneba / Incidents / Briefings) after first login, and pulling to refresh didn't fix it — only History/Projects (which use different cache entries or mount later) showed the data. This was the **same JWT-propagation race** documented for projects (see [BUG_REPORT.md](reports/BUG_REPORT.md), "Home shows empty projects after first login"), fixed for projects on 2026-05-27 but never extended to the record lists.
+
+- **`lib/apiHooks.ts`** — new **`warmHomeCaches(qc)`** force-refetches (`staleTime: 0`) every Home query — projects, qualifications, templates, **the five cross-project record-widget feeds**, and the Resume-draft card's most-recent-draft query — under the exact keys the widgets read. This overwrites any entry a mount-time query cached as an RLS-empty `[]` while the JWT was still propagating.
+- **`lib/session.tsx`** — the post-login warm-up now calls `warmHomeCaches(queryClient)` (was a projects-only prefetch), fired once the users-row fetch proves the token is live.
+- **`app/(tabs)/home.tsx`** — pull-to-refresh now also reloads the record widgets (via the now-awaitable `invalidateRecordLists`), so the spinner holds until the records actually refetch. Previously it only refetched projects/qualifications/templates.
+- New unit tests in `tests/unit/warmHomeCaches.test.ts` lock the key parity, `staleTime: 0`, and the awaitable invalidation. OTA-deliverable (no native changes).
+
+---
+
+## 2026-06-24 — Unified success screen (act / incident / report / instruction)
+
+The four flows now end on **one** redesigned success screen: an animated black check disc, a hero status pill, inline **signatures** and **certificates** lists, a coral **Share PDF** pill, and a quiet "back to home" link.
+
+- New presentational **`FlowSuccessScreen`** ([`components/success/FlowSuccessScreen.tsx`](../components/success/FlowSuccessScreen.tsx)) parameterized by a `flow` prop — the config decides only title/subtitle, signature mode (`edit` for act+incident, `view` for instruction), and whether certificates show (act only). It reuses DS primitives (`Button` primary = coral pill, `IconButton` outline = back, `Badge` = status pills) and **opens the existing `SignaturesScreen` modal + `CertificatesManager` screen** — no new sheets. New `SuccessCheckDisc` (reduce-motion-aware) + signature/certificate list sections. See [`components/success/AGENTS.md`](../components/success/AGENTS.md).
+- Wired into all four flows: the generic act result ([`app/inspections/[id].tsx`](../app/inspections/[id].tsx), with the legal-PDF `downloadPdf` preserved verbatim; `[id]/done.tsx` now redirects here), [`app/incidents/[id]/success.tsx`](../app/incidents/[id]/success.tsx) (auto-applies the saved inspector signature, regenerates the report with signatures on share), [`app/reports/[id]/success.tsx`](../app/reports/[id]/success.tsx), and [`app/briefings/[id]/done.tsx`](../app/briefings/[id]/done.tsx) (view-only signers). `lib/incidentPdf.ts` gained `additionalSignatureRows` for blank hand-sign lines.
+- **Regulatory:** captured inspection signatures still live only in result-screen state and are never persisted (see [`features/signatures/AGENTS.md`](../features/signatures/AGENTS.md)).
+- New `success.*` i18n keys (ka + en) in [`locales/`](../locales); CMS seed regenerated (apply with `node scripts/seed-ui-strings.mjs` → `supabase db query --linked --yes --file …`). Dev preview at `/success-preview`. **Unit tests cover 100%** of `components/success/` (statements/branches/functions/lines) — `tests/unit/{flowSuccessScreen,successCheckDisc,successListRow,successSignatureSection,successCertificateSection,successScreen,inspectionDoneView}.test.tsx` + `useSignaturesState.test.ts`.
+
+Not yet migrated: the 9 **equipment** act result screens (`InspectionResultView`) and **orders** still use the prior `InspectionDoneView` / `SuccessScreen` — a follow-up. OTA-deliverable (no native changes).
 
 ---
 
