@@ -1,22 +1,22 @@
-// PhotoAnnotator.tsx - Full-screen photo edit canvas (crop / rotate / annotate)
+// PhotoAnnotator.tsx - Full-screen photo edit canvas (crop / annotate)
 //
-// Inspectors edit photos before upload: crop to frame, rotate, then draw —
-// circle defects, arrow to cracks, write measurements. Crop/rotate go through
-// expo-image-manipulator (lib/imageEditing.ts via useImageEditSession); drawing
-// uses SVG + PanResponder, flattened with react-native-view-shot.
+// Inspectors edit photos before upload: frame the shot (pinch-to-zoom + drag
+// crop), then draw — circle defects, arrow to cracks, write measurements. The
+// editor is ALWAYS dark (the image is the hero; standard for photo editors) and
+// has two modes behind a segmented control:
+//   - Crop   : PinchZoomCrop transforms the image inside a fixed window; on
+//              commit the transform is mapped to a source-pixel crop and applied
+//              via expo-image-manipulator (lib/imageEditing → useImageEditSession).
+//   - Markup : SVG + PanResponder drawing, flattened with react-native-view-shot.
 //
-// The photo box is sized to its true aspect (useImageEditSession.photoLayout) and
-// the image is `contain`, so display→pixel is one uniform scale and captureRef
-// preserves the real photo aspect (no silent cover-crop).
+// The markup photo box is sized to the image's true aspect (photoLayout) with the
+// image `contain`, so display→pixel is one uniform scale and captureRef keeps the
+// real aspect. That SAME box is the crop window, so the crop the user frames maps
+// back to pixels exactly (cropGeometry.zoomPanToPixels).
 
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
+  ActivityIndicator,
   Alert,
   Image,
   LayoutAnimation,
@@ -26,36 +26,30 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   UIManager,
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle as SvgCircle, G, Line, Path, Polygon, Rect, Text as SvgText } from 'react-native-svg';
-import { RotateCw, Trash2, Undo2, X } from 'lucide-react-native';
+import { Check, Trash2, Undo2, X } from 'lucide-react-native';
 import { captureRef } from 'react-native-view-shot';
 import { a11y } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
-import { useTheme } from '../../lib/theme';
-import { FloatingLabelInput } from '../inputs/FloatingLabelInput';
 
 import { COLORS, SIZE_PRESETS, uid, pointsToPathD, arrowHead, annotationBounds, hitTestAnnotation, translateAnnotation } from './schema';
 import type { Annotation, PhotoAnnotatorProps, Point, Tool } from './schema';
-import { getstyles, getmodalStyles } from './styles';
+import { EDITOR, getstyles, getmodalStyles } from './styles';
 import { useImageEditSession } from './useImageEditSession';
 import { AnnotatorToolbar } from './AnnotatorToolbar';
-import { AnnotatorColorBar } from './AnnotatorColorBar';
-import { AnnotatorSizeBar } from './AnnotatorSizeBar';
-import { CropOverlay } from './CropOverlay';
-import { displayRectToPixels, type CropRect } from './cropGeometry';
+import { PinchZoomCrop, type PinchZoomCropHandle } from './PinchZoomCrop';
+import { isIdentityZoomPan, zoomPanToPixels } from './cropGeometry';
 
-// Tools that draw a colored stroke — these reveal both the floating color and
-// size controls. Text also uses color (so it gets the color bar) but has a fixed
-// width (no size bar). Move uses neither.
-const STROKE_TOOLS: Tool[] = ['pen', 'arrow', 'circle', 'rect'];
-const COLOR_TOOLS: Tool[] = [...STROKE_TOOLS, 'text'];
+type EditMode = 'crop' | 'markup';
 
-// Animate the contextual style panel + crop/draw toolbar swap (Android opt-in).
+// Animate the crop/markup sheet swap (Android opt-in).
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -64,15 +58,15 @@ const animateLayout = () => LayoutAnimation.configureNext(LayoutAnimation.Preset
 /* ─────────────────────────── Component ─────────────────────────── */
 
 export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnnotatorProps) {
-  const { theme } = useTheme();
   const { t } = useTranslation();
-  const styles = useMemo(() => getstyles(theme), [theme]);
-  const modalStyles = useMemo(() => getmodalStyles(theme), [theme]);
+  const styles = useMemo(() => getstyles(), []);
+  const modalStyles = useMemo(() => getmodalStyles(), []);
   const insets = useSafeAreaInsets();
 
   // Working image + dims + crop/rotate transforms.
-  const { workingUri, imgW, imgH, photoLayout, busy, applyCrop, applyRotate } = useImageEditSession(sourceUri, insets);
+  const { workingUri, imgW, imgH, photoLayout, busy, applyCrop } = useImageEditSession(sourceUri, insets);
 
+  const [mode, setMode] = useState<EditMode>('markup');
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
@@ -85,11 +79,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   // Move tool: id of the annotation currently selected for dragging.
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Crop mode; the live crop rect lives in a ref (CropOverlay owns it). Crop is
-  // always free-form (aspect presets removed) and rotate lives in the header.
-  const [cropMode, setCropMode] = useState(false);
-  const cropRectRef = useRef<CropRect | null>(null);
-
+  const cropRef = useRef<PinchZoomCropHandle>(null);
   const photoContainerRef = useRef<View>(null);
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
@@ -212,7 +202,7 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     }),
   ).current;
 
-  /* Actions */
+  /* Markup actions */
   const undo = useCallback(() => {
     setAnnotations((prev) => prev.slice(0, -1));
     haptic.light();
@@ -225,7 +215,6 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
         text: t('common.delete'),
         style: 'destructive',
         onPress: () => {
-          // Clearing every annotation is a destructive reset → Heavy.
           setAnnotations([]);
           haptic.heavy();
         },
@@ -240,23 +229,15 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
     }
     setAnnotations((prev) => [
       ...prev,
-      {
-        id: uid(),
-        tool: 'text',
-        color,
-        width: 0,
-        text: textInput.trim(),
-        x: textPos.x,
-        y: textPos.y,
-      },
+      { id: uid(), tool: 'text', color, width: 0, text: textInput.trim(), x: textPos.x, y: textPos.y },
     ]);
     setTextModalVisible(false);
     setTextInput('');
     haptic.light();
   }, [textInput, textPos, color]);
 
-  // Crop/rotate change the coordinate space, so existing annotations no longer
-  // map — confirm before discarding them, then run the transform.
+  // Entering crop changes the coordinate space, so existing annotations no longer
+  // map — confirm before discarding them, then run the action.
   const runWithAnnotationReset = useCallback(
     (action: () => void) => {
       if (annotationsRef.current.length === 0) {
@@ -279,66 +260,75 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
   );
 
   const handleTool = useCallback((next: Tool) => {
-    animateLayout();
     setTool(next);
   }, []);
 
-  const enterCrop = useCallback(() => {
-    setSelectedId(null);
-    animateLayout();
-    setCropMode(true);
+  /* Crop */
+  // Read the live pinch/zoom transform and bake it into the pixels. No-op for an
+  // untouched (identity) transform. Returns the URI to finalize.
+  const commitCrop = useCallback(async (): Promise<string> => {
+    const tf = cropRef.current?.getTransform();
+    if (!tf || !photoLayout || !imgW || !imgH || isIdentityZoomPan(tf)) return workingUri;
+    const px = zoomPanToPixels({ w: photoLayout.w, h: photoLayout.h }, { w: imgW, h: imgH }, tf);
+    const r = await applyCrop(px);
     haptic.light();
-  }, []);
+    return r.uri;
+  }, [photoLayout, imgW, imgH, applyCrop, workingUri]);
 
-  const cancelCrop = useCallback(() => {
-    animateLayout();
-    setCropMode(false);
-  }, []);
+  const onMode = useCallback(
+    (next: EditMode) => {
+      if (next === mode || busy) return;
+      if (next === 'crop') {
+        setSelectedId(null);
+        runWithAnnotationReset(() => {
+          animateLayout();
+          setMode('crop');
+        });
+      } else {
+        // Leaving crop → commit the framed crop, then switch to markup.
+        (async () => {
+          await commitCrop();
+          animateLayout();
+          setMode('markup');
+        })();
+      }
+    },
+    [mode, busy, runWithAnnotationReset, commitCrop],
+  );
 
-  const onRotate = useCallback(() => {
-    runWithAnnotationReset(() => {
-      applyRotate(90);
-      haptic.light();
-    });
-  }, [runWithAnnotationReset, applyRotate]);
+  const onResetCrop = useCallback(() => cropRef.current?.reset(), []);
 
-  const onCropApply = useCallback(() => {
-    const rect = cropRectRef.current;
-    if (!rect || !photoLayout || !imgW) {
-      setCropMode(false);
-      return;
-    }
-    const scale = imgW / photoLayout.w;
-    const px = displayRectToPixels(rect, scale, imgW, imgH);
-    runWithAnnotationReset(async () => {
-      await applyCrop(px);
-      animateLayout();
-      setCropMode(false);
-      haptic.light();
-    });
-  }, [photoLayout, imgW, imgH, applyCrop, runWithAnnotationReset]);
+  /* Finalize */
+  const finalize = useCallback(
+    async (uri: string) => {
+      // No annotations → return the (possibly cropped) image at full resolution,
+      // skipping the captureRef downscale.
+      if (annotationsRef.current.length === 0 || !photoContainerRef.current) {
+        onSave(uri);
+        return;
+      }
+      setSaving(true);
+      // Drop the move-tool selection outline and let the frame repaint so it isn't
+      // baked into the flattened image.
+      setSelectedId(null);
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      try {
+        const out = await captureRef(photoContainerRef, { format: 'jpg', quality: 0.9, result: 'tmpfile' });
+        onSave(out);
+      } catch (e) {
+        haptic.error();
+        Alert.alert(t('photoAnnotator.saveFailed'), t('photoAnnotator.saveTryAgain'));
+        setSaving(false);
+      }
+    },
+    [onSave, t],
+  );
 
-  const save = useCallback(async () => {
-    if (!photoContainerRef.current) return;
-    setSaving(true);
-    // Drop the move-tool selection outline and let the frame repaint so it
-    // isn't baked into the flattened image.
-    setSelectedId(null);
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-    try {
-      const uri = await captureRef(photoContainerRef, {
-        format: 'jpg',
-        quality: 0.9,
-        result: 'tmpfile',
-      });
-      onSave(uri);
-    } catch (e) {
-      haptic.error();
-      Alert.alert(t('photoAnnotator.saveFailed'), t('photoAnnotator.saveTryAgain'));
-    } finally {
-      setSaving(false);
-    }
-  }, [onSave, t]);
+  const onDone = useCallback(async () => {
+    if (saving || busy) return;
+    const uri = mode === 'crop' ? await commitCrop() : workingUri;
+    await finalize(uri);
+  }, [mode, saving, busy, commitCrop, finalize, workingUri]);
 
   /* Render helpers */
   const renderAnnotation = (a: Annotation, isCurrent = false) => {
@@ -347,102 +337,40 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
 
     if (a.tool === 'pen' && a.points && a.points.length > 1) {
       return (
-        <Path
-          key={key}
-          d={pointsToPathD(a.points)}
-          stroke={a.color}
-          strokeWidth={a.width}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          opacity={opacity}
-        />
+        <Path key={key} d={pointsToPathD(a.points)} stroke={a.color} strokeWidth={a.width} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={opacity} />
       );
     }
-
     if (a.tool === 'arrow' && a.start && a.end) {
       return (
         <G key={key}>
-          <Line
-            x1={a.start.x}
-            y1={a.start.y}
-            x2={a.end.x}
-            y2={a.end.y}
-            stroke={a.color}
-            strokeWidth={a.width}
-            strokeLinecap="round"
-            opacity={opacity}
-          />
-          <Polygon
-            points={arrowHead(a.start, a.end, 10 + a.width)}
-            fill={a.color}
-            opacity={opacity}
-          />
+          <Line x1={a.start.x} y1={a.start.y} x2={a.end.x} y2={a.end.y} stroke={a.color} strokeWidth={a.width} strokeLinecap="round" opacity={opacity} />
+          <Polygon points={arrowHead(a.start, a.end, 10 + a.width)} fill={a.color} opacity={opacity} />
         </G>
       );
     }
-
     if (a.tool === 'circle' && a.start && a.end) {
       const r = Math.sqrt((a.end.x - a.start.x) ** 2 + (a.end.y - a.start.y) ** 2);
-      return (
-        <SvgCircle
-          key={key}
-          cx={a.start.x}
-          cy={a.start.y}
-          r={r}
-          stroke={a.color}
-          strokeWidth={a.width}
-          fill="none"
-          opacity={opacity}
-        />
-      );
+      return <SvgCircle key={key} cx={a.start.x} cy={a.start.y} r={r} stroke={a.color} strokeWidth={a.width} fill="none" opacity={opacity} />;
     }
-
     if (a.tool === 'rect' && a.start && a.end) {
       const x = Math.min(a.start.x, a.end.x);
       const y = Math.min(a.start.y, a.end.y);
       const w = Math.abs(a.end.x - a.start.x);
       const h = Math.abs(a.end.y - a.start.y);
-      return (
-        <Rect
-          key={key}
-          x={x}
-          y={y}
-          width={w}
-          height={h}
-          stroke={a.color}
-          strokeWidth={a.width}
-          fill="none"
-          rx={4}
-          opacity={opacity}
-        />
-      );
+      return <Rect key={key} x={x} y={y} width={w} height={h} stroke={a.color} strokeWidth={a.width} fill="none" rx={4} opacity={opacity} />;
     }
-
     if (a.tool === 'text' && a.text !== undefined) {
       return (
-        <SvgText
-          key={key}
-          x={a.x}
-          y={a.y}
-          fill={a.color}
-          fontSize={16}
-          fontWeight="bold"
-          textAnchor="start"
-          opacity={opacity}
-          stroke={a.color === '#FFFFFF' ? '#1A1A1A' : '#FFFFFF'}
-          strokeWidth={0.5}
-        >
+        <SvgText key={key} x={a.x} y={a.y} fill={a.color} fontSize={16} fontWeight="bold" textAnchor="start" opacity={opacity} stroke={a.color === '#FFFFFF' ? '#1A1A1A' : '#FFFFFF'} strokeWidth={0.5}>
           {a.text}
         </SvgText>
       );
     }
-
     return null;
   };
 
-  // Bounding box of the selected annotation, drawn as a dashed outline while
-  // the move tool is active so the user can see what they're dragging.
+  // Bounding box of the selected annotation, drawn as a dashed outline while the
+  // move tool is active so the user can see what they're dragging.
   const selectedBounds = useMemo(() => {
     if (tool !== 'move' || !selectedId) return null;
     const a = annotations.find((x) => x.id === selectedId);
@@ -451,137 +379,109 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      {/* ── Header ── */}
+      <StatusBar style="light" />
+
+      {/* ── Header: ✕ cancel · title · ✓ done ── */}
       <View style={styles.header}>
-        <Pressable onPress={cropMode ? cancelCrop : onCancel} hitSlop={12} style={styles.headerBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelA11yHint'), 'button')}>
-          <X size={26} color={theme.colors.ink} strokeWidth={1.5} />
+        <Pressable onPress={onCancel} hitSlop={8} style={styles.headerBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelA11yHint'), 'button')}>
+          <X size={22} color={EDITOR.ink} strokeWidth={2} />
         </Pressable>
-        <Text style={styles.headerTitle}>{cropMode ? t('photoAnnotator.cropTitle') : t('photoAnnotator.headerTitle')}</Text>
-        {cropMode ? (
-          <Pressable onPress={onRotate} hitSlop={12} style={styles.headerBtn} {...a11y(t('photoAnnotator.rotateA11y'), t('photoAnnotator.rotateA11yHint'), 'button')}>
-            <RotateCw size={24} color={theme.colors.ink} strokeWidth={1.6} />
-          </Pressable>
-        ) : (
-          <View style={styles.headerRight}>
-            <Pressable onPress={undo} disabled={annotations.length === 0} hitSlop={8} style={styles.headerBtn} {...a11y(t('photoAnnotator.undoA11y'), t('photoAnnotator.undoA11yHint'), 'button')}>
-              <Undo2 size={24} color={annotations.length ? theme.colors.ink : theme.colors.inkFaint} strokeWidth={1.6} />
-            </Pressable>
-            <Pressable onPress={clearAll} hitSlop={8} style={styles.headerBtn} {...a11y(t('photoAnnotator.clearAllA11y'), t('photoAnnotator.clearAllA11yHint'), 'button')}>
-              <Trash2 size={22} color={theme.colors.danger} strokeWidth={1.6} />
-            </Pressable>
-          </View>
-        )}
+        <Text style={styles.headerTitle}>{t('photoAnnotator.headerTitle')}</Text>
+        <Pressable onPress={onDone} disabled={saving || busy} style={styles.doneBtn} {...a11y(t('common.done'), t('photoAnnotator.doneA11yHint'), 'button')}>
+          {saving || busy ? <ActivityIndicator color={EDITOR.onAccent} size="small" /> : <Check size={22} color={EDITOR.onAccent} strokeWidth={2.4} />}
+        </Pressable>
       </View>
 
-      {/* ── Photo Canvas ── */}
+      {/* ── Photo canvas ── */}
       <View style={styles.canvasWrap}>
         {photoLayout && (
-          // photoBox is sized to the photo and centered by canvasWrap. Both the
-          // captured photo View and the floating-controls overlay fill it, so the
-          // pills hug the *image* edges (not the letterbox) at every aspect ratio.
           <View style={[styles.photoBox, { width: photoLayout.w, height: photoLayout.h }]}>
-            <View
-              ref={photoContainerRef}
-              style={styles.photoFill}
-              onLayout={(e) => {
-                const { width: w, height: h } = e.nativeEvent.layout;
-                setContainerSize({ w, h });
-              }}
-              {...(cropMode ? {} : panResponder.panHandlers)}
-            >
-              <Image
-                source={{ uri: workingUri }}
-                style={StyleSheet.absoluteFill}
-                resizeMode="contain"
-              />
-              <Svg
-                width={containerSize.w || photoLayout.w}
-                height={containerSize.h || photoLayout.h}
-                style={StyleSheet.absoluteFill}
-              >
-                {annotations.map((a) => renderAnnotation(a))}
-                {current && renderAnnotation(current, true)}
-                {selectedBounds && (
-                  <Rect
-                    x={selectedBounds.minX - 8}
-                    y={selectedBounds.minY - 8}
-                    width={selectedBounds.maxX - selectedBounds.minX + 16}
-                    height={selectedBounds.maxY - selectedBounds.minY + 16}
-                    stroke={theme.colors.accent}
-                    strokeWidth={1.5}
-                    strokeDasharray="6 4"
-                    fill="none"
-                    rx={6}
-                  />
-                )}
-              </Svg>
-              {cropMode && (
-                <CropOverlay
-                  layout={photoLayout}
-                  ratio={null}
-                  accent={theme.colors.accent}
-                  onRectChange={(r) => {
-                    cropRectRef.current = r;
+            {mode === 'markup' ? (
+              <>
+                <View
+                  ref={photoContainerRef}
+                  style={styles.photoFill}
+                  onLayout={(e) => {
+                    const { width: w, height: h } = e.nativeEvent.layout;
+                    setContainerSize({ w, h });
                   }}
-                />
-              )}
-            </View>
-
-            {/* Floating brush controls — a sibling of the captured photo View (so
-                they never bake into the saved image), filling the same photo box.
-                `box-none` lets draw touches fall through to the canvas everywhere
-                except the pills themselves. Color shows for stroke + text tools;
-                the size picker only for stroke tools (text width is fixed). */}
-            {!cropMode && COLOR_TOOLS.includes(tool) && (
-              <View pointerEvents="box-none" style={styles.floatingLayer}>
-                <View pointerEvents="box-none" style={styles.colorBarSlot}>
-                  <AnnotatorColorBar color={color} onColor={setColor} theme={theme} t={t} />
+                  {...panResponder.panHandlers}
+                >
+                  <Image source={{ uri: workingUri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
+                  <Svg width={containerSize.w || photoLayout.w} height={containerSize.h || photoLayout.h} style={StyleSheet.absoluteFill}>
+                    {annotations.map((a) => renderAnnotation(a))}
+                    {current && renderAnnotation(current, true)}
+                    {selectedBounds && (
+                      <Rect
+                        x={selectedBounds.minX - 8}
+                        y={selectedBounds.minY - 8}
+                        width={selectedBounds.maxX - selectedBounds.minX + 16}
+                        height={selectedBounds.maxY - selectedBounds.minY + 16}
+                        stroke={EDITOR.accent}
+                        strokeWidth={1.5}
+                        strokeDasharray="6 4"
+                        fill="none"
+                        rx={6}
+                      />
+                    )}
+                  </Svg>
                 </View>
-                {STROKE_TOOLS.includes(tool) && (
-                  <View pointerEvents="box-none" style={styles.sizeBarSlot}>
-                    <AnnotatorSizeBar value={width} onChange={setWidth} color={color} theme={theme} t={t} />
-                  </View>
-                )}
-              </View>
+
+                {/* Floating undo / clear — sibling of the captured View, so it never
+                    bakes into the saved image. */}
+                <View style={styles.histrip}>
+                  <Pressable onPress={undo} disabled={annotations.length === 0} hitSlop={6} style={styles.histripBtn} {...a11y(t('photoAnnotator.undoA11y'), t('photoAnnotator.undoA11yHint'), 'button')}>
+                    <Undo2 size={18} color={annotations.length ? EDITOR.ink : EDITOR.inkFaint} strokeWidth={1.9} />
+                  </Pressable>
+                  <View style={styles.histripSep} />
+                  <Pressable onPress={clearAll} hitSlop={6} style={styles.histripBtn} {...a11y(t('photoAnnotator.clearAllA11y'), t('photoAnnotator.clearAllA11yHint'), 'button')}>
+                    <Trash2 size={17} color={EDITOR.danger} strokeWidth={1.9} />
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <PinchZoomCrop ref={cropRef} uri={workingUri} box={photoLayout} hint={t('photoAnnotator.cropHintOverlay')} />
             )}
           </View>
         )}
       </View>
 
-      {/* ── Bottom Toolbar ── */}
+      {/* ── Bottom sheet ── */}
       <AnnotatorToolbar
         styles={styles}
-        theme={theme}
         t={t}
-        cropMode={cropMode}
+        mode={mode}
+        onMode={onMode}
         bottomInset={insets.bottom}
+        busy={busy}
+        onResetCrop={onResetCrop}
         tool={tool}
         onTool={handleTool}
-        onSave={save}
-        saving={saving}
-        onCrop={enterCrop}
-        onCropApply={onCropApply}
-        onCropCancel={cancelCrop}
-        busy={busy}
+        color={color}
+        onColor={setColor}
+        width={width}
+        onWidth={setWidth}
       />
 
-      {/* ── Text Input Modal ── */}
-      <Modal
-        visible={textModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setTextModalVisible(false)}
-      >
+      {/* ── Text input modal ── */}
+      <Modal visible={textModalVisible} transparent animationType="fade" onRequestClose={() => setTextModalVisible(false)}>
         <Pressable style={modalStyles.overlay} onPress={() => setTextModalVisible(false)}>
-          <Pressable onPress={() => {}}>
-            <View style={modalStyles.card}>
-            <FloatingLabelInput
-              label={t('photoAnnotator.addText')}
+          {/* The card IS the stop-propagation Pressable — it carries the width, so
+              the modal sizes correctly instead of collapsing to its content. */}
+          <Pressable style={modalStyles.card} onPress={() => {}}>
+            <Text style={modalStyles.title}>{t('photoAnnotator.addText')}</Text>
+            <TextInput
+              style={modalStyles.input}
               value={textInput}
               onChangeText={setTextInput}
+              placeholder={t('photoAnnotator.textPlaceholder')}
+              placeholderTextColor={EDITOR.inkFaint}
+              selectionColor={EDITOR.accent}
               maxLength={60}
               autoFocus
-              style={{ marginBottom: 0 }}
+              returnKeyType="done"
+              onSubmitEditing={addTextAnnotation}
+              accessibilityLabel={t('photoAnnotator.addText')}
             />
             <View style={modalStyles.actions}>
               <Pressable onPress={() => setTextModalVisible(false)} style={modalStyles.cancelBtn} {...a11y(t('common.cancel'), t('photoAnnotator.cancelTextA11yHint'), 'button')}>
@@ -591,7 +491,6 @@ export default function PhotoAnnotator({ sourceUri, onSave, onCancel }: PhotoAnn
                 <Text style={modalStyles.confirmText}>{t('common.add')}</Text>
               </Pressable>
             </View>
-          </View>
           </Pressable>
         </Pressable>
       </Modal>

@@ -14,12 +14,13 @@ export interface PhotoLayout {
   h: number;
 }
 
-// Reserved vertical chrome around the canvas (header + bottom toolbar). The
-// toolbar is now a single tools row + Save pill (the color/size panel floats over
-// the canvas instead of stacking below), so it reserves less than the old
-// two-row layout.
+// Reserved vertical chrome around the canvas (header + bottom sheet). The sheet
+// is the taller markup layout (segmented control + tools row + color/size row);
+// the crop layout is shorter, so reserving the markup height keeps the image
+// clear of the sheet in both modes (and the canvas box stays constant across a
+// mode switch — load-bearing: the crop math reuses the box the user framed in).
 const HEADER_BASE = 56;
-const TOOLBAR_APPROX = 172;
+const TOOLBAR_APPROX = 168;
 
 export function useImageEditSession(sourceUri: string, insets: EdgeInsets) {
   const [workingUri, setWorkingUri] = useState(sourceUri);
@@ -118,6 +119,9 @@ export function useImageEditSession(sourceUri: string, insets: EdgeInsets) {
           setImgW(r.width);
           setImgH(r.height);
         }
+        // Return the fresh result so the caller can finalize the cropped image
+        // without waiting for the async `workingUri` state to settle.
+        return r;
       } finally {
         setBusy(false);
       }

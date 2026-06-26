@@ -1,43 +1,50 @@
-// Bottom toolbar for PhotoAnnotator. Owns no state — every control is driven by
-// props. Two modes:
-//  - draw : ONE row — a distinct Crop chip, then the horizontally-scrollable draw
-//           tools — then the primary Save pill. The color + size controls are NOT
-//           here anymore: they float over the canvas (AnnotatorColorBar /
-//           AnnotatorSizeBar), so the footer never grows to two rows.
-//  - crop : Cancel / Apply (aspect presets removed; rotate lives in the header).
+// Bottom sheet for PhotoAnnotator. Owns no state — every control is driven by
+// props. A segmented Crop / Markup control sits at the top; below it the
+// mode-specific controls:
+//   - crop   : an interaction hint + Reset (pinch-to-zoom / drag does the framing,
+//              so there are no rect handles or aspect chips here).
+//   - markup : the draw tools row, then a color-swatch + brush-size options row
+//              (moved out of the old floating canvas pills into the sheet, so they
+//              no longer occlude the photo and never risk baking into the capture).
 
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import {
   ArrowRight,
   Circle,
-  Crop,
+  Hand,
   Move,
   Pencil,
+  RefreshCw,
   Square,
   Type,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { a11y } from '../../lib/accessibility';
+import { haptic } from '../../lib/haptics';
+import { COLORS, COLOR_TOOLS, SIZE_PRESETS, STROKE_TOOLS } from './schema';
 import type { Tool } from './schema';
-import { ON_ACCENT_INK } from './styles';
+import { EDITOR } from './styles';
+
+type EditMode = 'crop' | 'markup';
 
 interface AnnotatorToolbarProps {
   styles: any;
-  theme: any;
   t: (key: string, opts?: Record<string, unknown>) => string;
-  cropMode: boolean;
-  /** Home-indicator safe-area inset, reserved below the Save / Apply pills. */
+  mode: EditMode;
+  onMode: (m: EditMode) => void;
+  /** Home-indicator safe-area inset, reserved below the sheet. */
   bottomInset: number;
-  // draw mode
+  /** A crop commit is in flight — lock the segmented control. */
+  busy: boolean;
+  // crop
+  onResetCrop: () => void;
+  // markup
   tool: Tool;
   onTool: (tool: Tool) => void;
-  onSave: () => void;
-  saving: boolean;
-  onCrop: () => void;
-  // crop mode
-  onCropApply: () => void;
-  onCropCancel: () => void;
-  busy: boolean;
+  color: string;
+  onColor: (c: string) => void;
+  width: number;
+  onWidth: (w: number) => void;
 }
 
 const drawTools: { key: Tool; Icon: LucideIcon }[] = [
@@ -49,57 +56,140 @@ const drawTools: { key: Tool; Icon: LucideIcon }[] = [
   { key: 'move', Icon: Move },
 ];
 
-export function AnnotatorToolbar(props: AnnotatorToolbarProps) {
-  const { styles, theme, t, cropMode } = props;
-  const toolbarStyle = [styles.toolbar, { paddingBottom: 16 + props.bottomInset }];
+// Visual dot diameter per preset index — a clear thin/medium/thick read,
+// decoupled from the (smaller) literal stroke px.
+const DOT = [7, 11, 15];
 
-  if (cropMode) {
-    return (
-      <View style={toolbarStyle}>
-        <View style={styles.cropActions}>
-          <Pressable onPress={props.onCropCancel} style={styles.cropCancelBtn} {...a11y(t('common.cancel'), undefined, 'button')}>
-            <Text style={styles.cropCancelText}>{t('common.cancel')}</Text>
-          </Pressable>
-          <Pressable onPress={props.onCropApply} disabled={props.busy} style={styles.cropApplyBtn} {...a11y(t('photoAnnotator.cropApply'), undefined, 'button')}>
-            {props.busy ? (
-              <ActivityIndicator color={ON_ACCENT_INK} />
-            ) : (
-              <Text style={styles.saveBtnText}>{t('photoAnnotator.cropApply')}</Text>
-            )}
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
+export function AnnotatorToolbar(props: AnnotatorToolbarProps) {
+  const { styles, t, mode } = props;
 
   return (
-    <View style={toolbarStyle}>
-      <View style={styles.toolsRow}>
-        <Pressable onPress={props.onCrop} style={styles.cropChip} {...a11y(t('photoAnnotator.cropA11y'), t('photoAnnotator.cropA11yHint'), 'button')}>
-          <Crop size={22} color={theme.colors.inkSoft} strokeWidth={1.6} />
-          <Text style={styles.cropChipLabel}>{t('photoAnnotator.cropA11y')}</Text>
-        </Pressable>
-        <View style={styles.divider} />
-        {/* flex:1 is load-bearing: a horizontal ScrollView in a flex row needs a
-            bounded width or it takes its full content width and the rightmost
-            tools render off-screen / unreachable. */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolScrollView} contentContainerStyle={styles.toolScroll}>
-          {drawTools.map(({ key, Icon }) => (
+    <View style={[styles.sheet, { paddingBottom: 10 + props.bottomInset }]}>
+      {/* Segmented Crop / Markup */}
+      <View style={[styles.seg, props.busy && { opacity: 0.55 }]}>
+        {(['crop', 'markup'] as EditMode[]).map((m) => {
+          const active = mode === m;
+          return (
             <Pressable
-              key={key}
-              onPress={() => props.onTool(key)}
-              style={[styles.toolBtn, props.tool === key && styles.toolBtnActive]}
-              {...a11y(`${t('photoAnnotator.toolA11yPrefix')}${key}`, t('photoAnnotator.toolA11yHint'), 'button')}
+              key={m}
+              disabled={props.busy}
+              onPress={() => {
+                if (!active) {
+                  props.onMode(m);
+                  haptic.light();
+                }
+              }}
+              style={[styles.segItem, active && styles.segItemActive]}
+              {...a11y(t(m === 'crop' ? 'photoAnnotator.tabCrop' : 'photoAnnotator.tabMarkup'), undefined, 'button')}
             >
-              <Icon size={22} color={props.tool === key ? ON_ACCENT_INK : theme.colors.inkSoft} strokeWidth={1.6} />
+              <Text style={[styles.segLabel, active && styles.segLabelActive]}>
+                {t(m === 'crop' ? 'photoAnnotator.tabCrop' : 'photoAnnotator.tabMarkup')}
+              </Text>
             </Pressable>
-          ))}
-        </ScrollView>
+          );
+        })}
       </View>
 
-      <Pressable onPress={props.onSave} disabled={props.saving} style={styles.saveBtn} {...a11y(t('common.save'), t('photoAnnotator.saveA11yHint'), 'button')}>
-        <Text style={styles.saveBtnText}>{props.saving ? t('photoAnnotator.saving') : t('common.save')}</Text>
-      </Pressable>
+      {mode === 'crop' ? (
+        <View style={styles.cropRow}>
+          <View style={styles.cropHint}>
+            <Hand size={15} color={EDITOR.inkFaint} strokeWidth={1.7} />
+            <Text style={styles.cropHintText} numberOfLines={1}>
+              {t('photoAnnotator.cropHint')}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              props.onResetCrop();
+              haptic.light();
+            }}
+            style={styles.resetPill}
+            {...a11y(t('photoAnnotator.reset'), t('photoAnnotator.resetCropA11yHint'), 'button')}
+          >
+            <RefreshCw size={15} color={EDITOR.ink} strokeWidth={1.8} />
+            <Text style={styles.resetText}>{t('photoAnnotator.reset')}</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          {/* Draw tools */}
+          <View style={styles.toolsRow}>
+            {drawTools.map(({ key, Icon }) => {
+              const active = props.tool === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => props.onTool(key)}
+                  style={[styles.toolBtn, active && styles.toolBtnActive]}
+                  {...a11y(`${t('photoAnnotator.toolA11yPrefix')}${key}`, t('photoAnnotator.toolA11yHint'), 'button')}
+                >
+                  <Icon size={21} color={active ? EDITOR.onAccent : EDITOR.inkSoft} strokeWidth={1.7} />
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Color swatches + brush sizes */}
+          <View style={styles.optRow}>
+            {COLOR_TOOLS.includes(props.tool) ? (
+              <View style={styles.swatchGroup}>
+                {COLORS.map((c) => {
+                  const active = props.color === c.value;
+                  return (
+                    <Pressable
+                      key={c.value}
+                      onPress={() => {
+                        props.onColor(c.value);
+                        haptic.light();
+                      }}
+                      hitSlop={6}
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: c.value },
+                        c.value === '#FFFFFF' && styles.swatchLite,
+                        active && styles.swatchActive,
+                      ]}
+                      {...a11y(`${t('photoAnnotator.colorA11yPrefix')}${c.label}`, t('photoAnnotator.colorA11yHint'), 'button')}
+                    />
+                  );
+                })}
+              </View>
+            ) : (
+              <Text style={styles.optHint}>{t('photoAnnotator.moveHint')}</Text>
+            )}
+
+            {STROKE_TOOLS.includes(props.tool) && (
+              <View style={styles.sizeGroup}>
+                {SIZE_PRESETS.map((w, i) => {
+                  const active = props.width === w;
+                  const d = DOT[i];
+                  return (
+                    <Pressable
+                      key={w}
+                      onPress={() => {
+                        props.onWidth(w);
+                        haptic.light();
+                      }}
+                      hitSlop={6}
+                      style={styles.sizeCell}
+                      {...a11y(`${t('photoAnnotator.widthA11yPrefix')}${w}px`, t('photoAnnotator.widthA11yHint'), 'button')}
+                    >
+                      <View
+                        style={{
+                          width: d,
+                          height: d,
+                          borderRadius: d / 2,
+                          backgroundColor: active ? EDITOR.accent : EDITOR.inkFaint,
+                        }}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 }

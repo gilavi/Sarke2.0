@@ -12,6 +12,11 @@ export interface PhotoAnnotatorProps {
 
 export type Tool = 'move' | 'pen' | 'arrow' | 'circle' | 'rect' | 'text';
 
+/** Tools that draw a colored stroke — they reveal both the color + size pickers. */
+export const STROKE_TOOLS: Tool[] = ['pen', 'arrow', 'circle', 'rect'];
+/** Tools that use color (stroke tools + text). Text width is fixed → no size picker. */
+export const COLOR_TOOLS: Tool[] = [...STROKE_TOOLS, 'text'];
+
 export interface Point { x: number; y: number }
 
 export interface Annotation {

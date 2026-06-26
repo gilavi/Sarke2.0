@@ -1335,7 +1335,7 @@
     "saveFailed": "Save failed",
     "saveTryAgain": "Try again",
     "addText": "Add text",
-    "headerTitle": "Annotate photo",
+    "headerTitle": "Edit photo",
     "saving": "Saving...",
     "cancelA11yHint": "Tap to cancel annotation",
     "saveA11yHint": "Tap to save annotated photo",
@@ -1359,8 +1359,17 @@
     "rotateA11y": "Rotate",
     "rotateA11yHint": "Tap to rotate the photo 90 degrees",
     "resetTitle": "Clear annotations?",
-    "resetBody": "Cropping or rotating will remove your current annotations.",
-    "resetConfirm": "Continue"
+    "resetBody": "Cropping will remove your current annotations.",
+    "resetConfirm": "Continue",
+    "tabCrop": "Crop",
+    "tabMarkup": "Markup",
+    "textPlaceholder": "Type text",
+    "reset": "Reset",
+    "cropHint": "Zoom & drag to frame",
+    "cropHintOverlay": "Pinch to zoom · drag to reposition",
+    "moveHint": "Drag items to reposition",
+    "doneA11yHint": "Tap to finish editing",
+    "resetCropA11yHint": "Tap to reset the crop"
   },
   "wizard": {
     "discardTitle": "Discard changes?",

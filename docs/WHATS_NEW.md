@@ -1,6 +1,40 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-25 | Branch: `main`
+**Updated:** 2026-06-26 | Branch: `main`
+
+---
+
+## 2026-06-26 — Photo editor redesign: pinch-to-zoom crop + dark chrome
+
+The photo **edit** screen (`components/photo-annotator/` — crop + draw before upload) got a full presentation-layer redesign and a simpler cropper.
+
+- **Cropper is now pinch-to-zoom + drag.** Dropped the draggable/resizable crop rectangle and the aspect-ratio chips. The crop window is the whole photo box; you pinch to zoom (1–6×) and drag to reposition, and whatever the frame holds is the crop (output keeps the source aspect). New gesture cropper [`PinchZoomCrop`](../components/photo-annotator/PinchZoomCrop.tsx) uses `react-native-gesture-handler` + `reanimated`; the live transform maps to a source-pixel crop via the new, unit-tested `cropGeometry.zoomPanToPixels` / `panClamp` / `isIdentityZoomPan` (12 new cases) and is applied through `expo-image-manipulator` exactly as before.
+- **Always-dark editor chrome.** The editor no longer follows the app's light/dark theme — it's a fixed dark surface (the image is the hero, standard for photo editors). New local `EDITOR` palette in `styles.ts`; brand orange (`#FE7A43`) stays the accent.
+- **Unified Crop / Markup.** A segmented control swaps the two modes in one screen; the header is `✕ cancel · "Edit photo" · ✓ done` (the orange ✓ replaces the old Save pill — it commits any pending crop, then flattens). Undo/clear float over the canvas; a Reset pill restores the crop.
+- **Color + brush-size moved into the sheet.** The floating canvas pills (`AnnotatorColorBar` / `AnnotatorSizeBar`, now deleted) became a flat row in the bottom sheet — no longer occluding the photo, and structurally outside the `captureRef` target so they still never bake into the saved image.
+- **Removed:** manual 90° rotate and aspect presets (simpler-cropper direction). EXIF orientation is still normalized on load, so photos come in upright. `applyRotate`/`displayRectToPixels` and the rect helpers remain in the codebase (still unit-tested) and the UI is a few lines to re-add.
+- **Scope.** `components/photo-annotator/` only; `lib/imageEditing.ts` (crop engine) unchanged. No schema/native change — OTA-deliverable. New i18n keys (`tabCrop`/`tabMarkup`/`reset`/`cropHint`/`cropHintOverlay`/`moveHint`/…, ka + en).
+
+---
+
+## 2026-06-26 — Inspection-type illustrations load fast (caching + right-sized assets)
+
+The inspection-act illustrations (`InspectionTypeAvatar`) were loading slowly across many screens (list rows, type pickers, calendar). Two causes, two fixes:
+
+- **Re-decoding on every screen.** The avatar used React Native's plain `<Image>`, which doesn't keep a decoded copy — each screen re-decoded the same PNGs. Switched to [`expo-image`](../components/InspectionTypeAvatar.tsx) with `cachePolicy="memory-disk"` + `transition={0}`, so each illustration decodes once and is served from memory everywhere after.
+- **Oversized source art.** The 12 PNGs under `assets/images/ilu/` were 1024×1024 (~4.2 MB total) but are never shown larger than ~132 px (avatars are 32–56 px). Downscaled them to 256 px max (aspect preserved) → **~580 KB total**, an ~86% cut. Smaller bundle and a cheap first decode. The `web-app/` keeps its own copies under `web-app/dist/ilu/` — unaffected.
+- **Scope.** Visual output unchanged at avatar sizes. OTA-deliverable on the JS side; the asset shrink ships with the next bundle.
+
+---
+
+## 2026-06-26 — General-equipment step feels like a report, not a questionnaire
+
+The equipment list step (step 2) of the **general-equipment** inspection wizard now renders each item as a **report-style card** instead of a row of toggle buttons.
+
+- **What changed.** Step 2 dropped the simple `ChecklistItemRow` (editable name + 3 toggles, no per-row note/photo) and now maps each row to [`EquipmentRow`](../components/generalEquipment/AGENTS.md) — a card with a numbered badge, a name field (with history suggestions), a delete control, and the 3 monochrome status chips. Picking **ხარვეზი** (needs-service) or **გამოუსადეგარია** (unusable) expands an accordion with a **photo strip first, then a comment** field. "Good" rows stay collapsed — a clean one-tap line.
+- **Why.** The old row read like a კითხვარი (questionnaire). The report flow is: name → status → (when flagged) upload image → add comment. It also closed a real gap: the toggle-only row had no way to enter the note `validateMissing` required for flagged rows, so degraded rows couldn't satisfy completion validation.
+- **Data.** No schema change — `EquipmentItem.note` + `photo_paths` and the PDF/result mapping already existed; only the wizard step had stopped capturing them. Per-row photos upload to `answer-photos` under `<inspId>/equipment/<rowId>`. `model`/`serialNumber` stay in the type but are no longer surfaced in the wizard.
+- **Scope.** General-equipment only. The previously-orphaned `EquipmentRow` component is back in use (model/serial inputs removed, accordion reordered to image-first). OTA-deliverable — no native changes.
 
 ---
 

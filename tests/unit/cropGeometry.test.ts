@@ -19,6 +19,10 @@ import {
   displayRectToPixels,
   swapDimsForRotate,
   MIN_CROP,
+  panClamp,
+  isIdentityZoomPan,
+  zoomPanToPixels,
+  MAX_ZOOM,
 } from '../../components/photo-annotator/cropGeometry';
 
 const BOUNDS = { w: 300, h: 200 };
@@ -158,5 +162,92 @@ describe('displayRectToPixels', () => {
 describe('swapDimsForRotate', () => {
   it('swaps w and h', () => {
     expect(swapDimsForRotate({ w: 1200, h: 800 })).toEqual({ w: 800, h: 1200 });
+  });
+});
+
+describe('panClamp', () => {
+  it('is zero at scale 1 (no room to pan)', () => {
+    expect(panClamp({ w: 300, h: 200 }, 1)).toEqual({ maxX: 0, maxY: 0 });
+  });
+
+  it('grows with zoom: half the slack each side', () => {
+    // at 2× the image is twice the box, so it can pan ± half a box each axis
+    expect(panClamp({ w: 300, h: 200 }, 2)).toEqual({ maxX: 150, maxY: 100 });
+  });
+
+  it('treats sub-1 scale as 1', () => {
+    expect(panClamp({ w: 300, h: 200 }, 0.5)).toEqual({ maxX: 0, maxY: 0 });
+  });
+});
+
+describe('isIdentityZoomPan', () => {
+  it('true for the untouched transform', () => {
+    expect(isIdentityZoomPan({ scale: 1, tx: 0, ty: 0 })).toBe(true);
+  });
+  it('tolerates sub-pixel jitter', () => {
+    expect(isIdentityZoomPan({ scale: 1.0001, tx: 0.4, ty: -0.3 })).toBe(true);
+  });
+  it('false once zoomed', () => {
+    expect(isIdentityZoomPan({ scale: 1.5, tx: 0, ty: 0 })).toBe(false);
+  });
+  it('false once panned', () => {
+    expect(isIdentityZoomPan({ scale: 1, tx: 12, ty: 0 })).toBe(false);
+  });
+});
+
+describe('zoomPanToPixels', () => {
+  const BOX = { w: 300, h: 200 };
+  const IMG = { w: 1200, h: 800 };
+
+  it('identity transform == the whole image', () => {
+    const px = zoomPanToPixels(BOX, IMG, { scale: 1, tx: 0, ty: 0 });
+    expect(px).toEqual({ originX: 0, originY: 0, width: 1200, height: 800 });
+  });
+
+  it('centered 2× zoom keeps the middle half of the image', () => {
+    const px = zoomPanToPixels(BOX, IMG, { scale: 2, tx: 0, ty: 0 });
+    expect(px).toEqual({ originX: 300, originY: 200, width: 600, height: 400 });
+  });
+
+  it('panning the image right at 2× reveals its left edge (originX → 0)', () => {
+    // max pan at 2× is +150 display px; that pins the window to the image left
+    const px = zoomPanToPixels(BOX, IMG, { scale: 2, tx: 150, ty: 0 });
+    expect(px.originX).toBe(0);
+    expect(px.width).toBe(600);
+  });
+
+  it('panning left at 2× reveals the right edge (origin + width == imgW)', () => {
+    const px = zoomPanToPixels(BOX, IMG, { scale: 2, tx: -150, ty: 0 });
+    expect(px.originX + px.width).toBe(IMG.w);
+  });
+
+  it('over-pan is clamped so the crop never leaves the image', () => {
+    const px = zoomPanToPixels(BOX, IMG, { scale: 2, tx: 9999, ty: -9999 });
+    expect(px.originX).toBeGreaterThanOrEqual(0);
+    expect(px.originY + px.height).toBeLessThanOrEqual(IMG.h);
+    expect(px.originX + px.width).toBeLessThanOrEqual(IMG.w);
+  });
+
+  it('guards against a zero-size box (no NaN/Infinity)', () => {
+    const px = zoomPanToPixels({ w: 0, h: 0 }, IMG, { scale: 2, tx: 10, ty: 10 });
+    expect(Number.isFinite(px.originX)).toBe(true);
+    expect(Number.isFinite(px.width)).toBe(true);
+    expect(px.width).toBeGreaterThanOrEqual(1);
+    expect(px.height).toBeGreaterThanOrEqual(1);
+    expect(panClamp({ w: 0, h: 0 }, 3)).toEqual({ maxX: 0, maxY: 0 });
+  });
+
+  it('always stays within bounds and non-degenerate for arbitrary zooms', () => {
+    for (const s of [1, 1.3, 2.7, 4, MAX_ZOOM]) {
+      for (const tx of [-500, -40, 0, 40, 500]) {
+        const px = zoomPanToPixels(BOX, IMG, { scale: s, tx, ty: tx / 2 });
+        expect(px.width).toBeGreaterThanOrEqual(1);
+        expect(px.height).toBeGreaterThanOrEqual(1);
+        expect(px.originX).toBeGreaterThanOrEqual(0);
+        expect(px.originY).toBeGreaterThanOrEqual(0);
+        expect(px.originX + px.width).toBeLessThanOrEqual(IMG.w);
+        expect(px.originY + px.height).toBeLessThanOrEqual(IMG.h);
+      }
+    }
   });
 });
