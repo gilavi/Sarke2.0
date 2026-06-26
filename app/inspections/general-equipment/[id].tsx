@@ -8,6 +8,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { CirclePlus, Info, Camera, CircleX, Check, X, TriangleAlert } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { Button } from '../../../components/primitives/Button';
@@ -16,11 +17,12 @@ import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { ChecklistItemRow, ChecklistLegend } from '../../../components/inspection-parts';
 import type { ChecklistRowOption } from '../../../components/inspection-parts';
-import { InspectionResultView } from '../../../components/InspectionResultView';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
-import { inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
@@ -61,7 +63,17 @@ const GE_LEGEND = [
   { icon: X,             label: 'გამოუსადეგარია' },
 ];
 
+// Result vocabulary for the completed detail page. Values mirror the typed
+// `GECondition` strings so each equipment row's `condition` maps 1:1 to a pill
+// (labels + tones mirror the PDF condition symbols in schemas/generalEquipment).
+const GENERAL_EQUIPMENT_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'good',          label: 'კარგი',          short: 'კარგი',          mark: '✓', tone: 'good' },
+  { value: 'needs_service', label: 'საჭ. მომსახურება', short: 'საჭ. მომს.',    mark: '⚠', tone: 'warn' },
+  { value: 'unusable',      label: 'გამოუსადეგარი',  short: 'გამოუს.',        mark: '✗', tone: 'bad' },
+];
+
 export default function GeneralEquipmentScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { pickPhotosWithAnnotation } = usePhotoPicker();
@@ -75,8 +87,6 @@ export default function GeneralEquipmentScreen() {
   // ── Field suggestion histories ────────────────────────────────────────────
   const conclusionHistory  = useFieldHistory(userId, 'ge:conclusion');
 
-  const [attachmentCount, setAttachmentCount] = useState(0);
-
   // Enabled finish button + on-press field errors (see useSubmitGuard).
   const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
 
@@ -85,11 +95,10 @@ export default function GeneralEquipmentScreen() {
     inspection, setInspection, inspectionRef,
     projectName,
     loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<GeneralEquipmentInspection>({
     id,
     firstStep: DETAILS_STEP,
@@ -160,13 +169,6 @@ export default function GeneralEquipmentScreen() {
     },
     loadingTitle: 'შემოწმება',
   });
-
-  // ── Load attachments when completed ──────────────────────────────────────
-  useEffect(() => {
-    if (inspection?.status !== 'completed') return;
-    inspectionAttachmentsApi.listByInspection(inspection.id)
-      .then(a => setAttachmentCount(a.length)).catch(() => {});
-  }, [inspection?.status, inspection?.id]);
 
   // ── Equipment row updates ─────────────────────────────────────────────────
 
@@ -303,30 +305,68 @@ export default function GeneralEquipmentScreen() {
     );
   }
 
-  // ── Completed inspection result view ──────────────────────────────────────
+  // ── Completed inspection detail page ──────────────────────────────────────
 
   if (inspection.status === 'completed' && !celebrating) {
+    // No overall verdict exists for general equipment - derive the summary
+    // status from the worst condition across filled rows (mirrors the PDF
+    // problem-row highlighting): any unusable → severe, else any
+    // needs-service → muted, otherwise safe.
+    const filledRows = inspection.equipment.filter((r) => r.name.trim());
+    const hasUnusable = filledRows.some((r) => r.condition === 'unusable');
+    const hasNeedsService = filledRows.some((r) => r.condition === 'needs_service');
+    const statusTone = hasUnusable ? 'severe' : hasNeedsService ? 'muted' : 'safe';
+    const statusLabel = hasUnusable
+      ? 'გამოუსადეგარია'
+      : hasNeedsService
+        ? 'საჭიროებს მომსახურებას'
+        : 'ვარგისია';
+
+    const sections: ChecklistSection[] = [
+      {
+        title: 'აღჭურვილობის სია',
+        items: filledRows.map((row) => {
+          const meta = [row.model.trim(), row.serialNumber.trim()].filter(Boolean).join(' · ');
+          return {
+            id: row.id,
+            label: row.name,
+            description: meta || undefined,
+            result: row.condition,
+            comment: row.note ?? null,
+            photoPaths: row.photo_paths ?? [],
+          };
+        }),
+      },
+    ];
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="ტექ. აღჭურვილობა"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={attachmentCount}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => {
-          inspectionAttachmentsApi.listByInspection(inspection.id)
-            .then(a => setAttachmentCount(a.length)).catch(() => {});
-          void buildPreview();
-        }}
-      />
+      <>
+        <EquipmentResultDetails
+          title="ტექნიკური აღჭურვილობა"
+          status={filledRows.length > 0 ? { tone: statusTone, label: statusLabel } : null}
+          info={[
+            { label: t('details.info.object'), value: inspection.objectName || '—' },
+            { label: t('details.info.location'), value: inspection.address || '—' },
+            ...(inspection.inspectionType
+              ? [{ label: 'შემოწმების სახე', value: INSPECTION_TYPE_LABEL[inspection.inspectionType] }]
+              : []),
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={GENERAL_EQUIPMENT_RESULT_OPTIONS}
+          notes={inspection.conclusion}
+          summaryPhotos={inspection.summaryPhotos ?? []}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

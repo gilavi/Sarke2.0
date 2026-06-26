@@ -6,10 +6,13 @@ import {
 
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection as ResultChecklistSection, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { forkliftApi } from '../../../lib/forkliftService';
@@ -59,9 +62,17 @@ const FORKLIFT_VERDICT_OPTIONS: VerdictOption<ForkliftVerdict>[] = [
   { value: 'rejected', label: FORKLIFT_VERDICT_LABEL.rejected, tone: 'danger'  },
 ];
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills).
+const FORKLIFT_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'good',      label: 'კარგია',         short: 'კარგია',     mark: '✓', tone: 'good' },
+  { value: 'deficient', label: 'ნაკლი',          short: 'ნაკლი',      mark: '⚠', tone: 'warn' },
+  { value: 'unusable',  label: 'გამოუსადეგარია', short: 'გამოუსად.',  mark: '✗', tone: 'bad'  },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function ForkliftInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -73,12 +84,11 @@ export default function ForkliftInspectionScreen() {
   // PDF preview/download, limit notice. Type-specific bits are passed as callbacks.
   const {
     inspection, setInspection, inspectionRef,
-    projectName, saving, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
+    projectName, loading, completing, celebrating, generatingPdf,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<ForkliftInspection>({
     id,
     firstStep: INFO_STEP,
@@ -307,23 +317,52 @@ export default function ForkliftInspectionScreen() {
   // ── Completed ─────────────────────────────────────────────────────────────────
 
   if (inspection.status === 'completed' && !celebrating) {
+    const verdictTone = inspection.verdict === 'approved' ? 'safe'
+      : inspection.verdict === 'rejected' ? 'severe' : 'muted';
+    const sections: ResultChecklistSection[] = FORKLIFT_CATEGORIES.map((cat) => ({
+      title: FORKLIFT_CATEGORY_LABELS[cat],
+      items: FORKLIFT_ITEMS
+        .filter((entry) => entry.category === cat)
+        .map((entry) => {
+          const st = inspection.items.find((i) => i.id === entry.id);
+          return {
+            id: entry.id,
+            label: entry.label,
+            description: entry.description,
+            result: st?.result ?? null,
+            comment: st?.comment ?? null,
+            photoPaths: st?.photo_paths ?? [],
+          };
+        }),
+    }));
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="ჩანგლიანი დამტვირთველი"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => void buildPreview()}
-      />
+      <>
+        <EquipmentResultDetails
+          title="ჩანგლიანი დამტვირთველი"
+          status={inspection.verdict ? { tone: verdictTone, label: FORKLIFT_VERDICT_LABEL[inspection.verdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.company || '—' },
+            { label: 'მარკა / მოდელი', value: inspection.brandModel || '—' },
+            { label: 'ინვენტ. / სერიული ნომერი', value: inspection.inventoryNumber || '—' },
+            ...(inspection.engineType ? [{ label: 'ძრავის ტიპი', value: ENGINE_TYPE_LABEL[inspection.engineType] }] : []),
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={FORKLIFT_RESULT_OPTIONS}
+          notes={inspection.notes}
+          summaryPhotos={inspection.summaryPhotos ?? []}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

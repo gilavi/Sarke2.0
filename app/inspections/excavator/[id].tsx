@@ -17,18 +17,20 @@ import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
-import { InspectionResultView } from '../../../components/InspectionResultView';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { excavatorApi } from '../../../lib/excavatorService';
-import { inspectionAttachmentsApi } from '../../../lib/services';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
 import { excavatorSchema } from '../../../lib/inspection/schemas/excavator';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
+import { useTranslation } from 'react-i18next';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
@@ -98,7 +100,15 @@ const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills).
+const EXCAVATOR_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'good', label: 'კარგია', short: 'კარგია', mark: '✓', tone: 'good' },
+  { value: 'deficient', label: 'ნაკლი', short: 'ნაკლი', mark: '?', tone: 'warn' },
+  { value: 'unusable', label: 'გამოუსადეგარია', short: 'გამოუსად.', mark: '✗', tone: 'bad' },
+];
+
 export default function ExcavatorInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
   const styles = useMemo(() => getstyles(theme), [theme]);
@@ -114,7 +124,6 @@ export default function ExcavatorInspectionScreen() {
   const serialNumberHistory = useFieldHistory(userId, 'excavator:serialNumber');
   const registrationNumberHistory = useFieldHistory(userId, 'excavator:registrationNumber');
 
-  const [attachmentCount, setAttachmentCount] = useState(0);
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   // Enabled finish button + on-press field errors (see useSubmitGuard).
@@ -132,12 +141,11 @@ export default function ExcavatorInspectionScreen() {
   const {
     inspection, setInspection, inspectionRef,
     projectName,
-    saving, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
+    loading, completing, celebrating, generatingPdf,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<ExcavatorInspection>({
     id,
     firstStep: PLATE_STEP,
@@ -209,14 +217,6 @@ export default function ExcavatorInspectionScreen() {
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summaryPhotosKey, !!inspection]);
-
-  // ── Load attachment count when completed ──────────────────────────────────
-
-  useEffect(() => {
-    if (inspection?.status !== 'completed') return;
-    inspectionAttachmentsApi.listByInspection(inspection.id)
-      .then(a => setAttachmentCount(a.length)).catch(() => {});
-  }, [inspection?.status, inspection?.id]);
 
   // ── Checklist item update (flat → section mapping) ─────────────────────────
 
@@ -449,29 +449,63 @@ export default function ExcavatorInspectionScreen() {
     );
   }
 
-  // ── Completed inspection result view ───────────────────────────────────────
+  // ── Completed inspection detail page ───────────────────────────────────────
   if (inspection.status === 'completed' && !celebrating) {
+    const verdictTone = inspection.verdict === 'approved' ? 'safe'
+      : inspection.verdict === 'rejected' ? 'severe' : 'muted';
+
+    const buildSection = (
+      title: string,
+      catalog: ExcavatorChecklistEntry[],
+      states: ExcavatorChecklistItemState[],
+    ): ChecklistSection => ({
+      title,
+      items: catalog.map((entry) => {
+        const st = states.find((i) => i.id === entry.id);
+        return {
+          id: `${entry.id}:${title}`,
+          label: entry.label,
+          description: entry.description,
+          result: st?.result ?? null,
+          comment: st?.comment ?? null,
+          photoPaths: st?.photo_paths ?? [],
+        };
+      }),
+    });
+
+    const sections: ChecklistSection[] = [
+      buildSection('1. ძრავი (Engine)', ENGINE_ITEMS, inspection.engineItems),
+      buildSection('2. სავალი ნაწილი (Undercarriage)', UNDERCARRIAGE_ITEMS, inspection.undercarriageItems),
+      buildSection('4. კაბინა (Cabin)', CABIN_ITEMS, inspection.cabinItems),
+      buildSection('5. უსაფრთხოება (Safety)', SAFETY_ITEMS, inspection.safetyItems),
+    ];
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="ექსკავატორი"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={attachmentCount}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => {
-          inspectionAttachmentsApi.listByInspection(inspection.id)
-            .then(a => setAttachmentCount(a.length)).catch(() => {});
-          void buildPreview();
-        }}
-      />
+      <>
+        <EquipmentResultDetails
+          title="ექსკავატორი"
+          status={inspection.verdict ? { tone: verdictTone, label: EXCAVATOR_VERDICT_LABEL[inspection.verdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.projectName || '—' },
+            { label: 'სახელმწიფო / ს.ნ ნომერი', value: inspection.registrationNumber || '—' },
+            { label: 'სერიული ნომერი', value: inspection.serialNumber || '—' },
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={EXCAVATOR_RESULT_OPTIONS}
+          notes={inspection.notes}
+          summaryPhotos={inspection.summaryPhotos ?? []}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

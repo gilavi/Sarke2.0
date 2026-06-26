@@ -2,8 +2,8 @@
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import {
@@ -11,6 +11,9 @@ import {
   IdentificationGrid,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection as ResultChecklistSection, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { mobileLadderApi } from '../../../lib/mobileLadderService';
@@ -48,9 +51,18 @@ const ML_VERDICT_OPTIONS: VerdictOption<MLVerdict>[] = [
   { value: 'banned', label: ML_VERDICT_LABELS.banned, tone: 'danger'  },
 ];
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills).
+// Values are the raw MLResult enum stored on each item.
+const MOBILE_LADDER_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'safe',    label: ML_RESULT_TO_CHIP.safe,    short: ML_RESULT_TO_CHIP.safe,    mark: '✓', tone: 'good' },
+  { value: 'damaged', label: ML_RESULT_TO_CHIP.damaged, short: ML_RESULT_TO_CHIP.damaged, mark: '✗', tone: 'bad' },
+  { value: 'na',      label: ML_RESULT_TO_CHIP.na,      short: ML_RESULT_TO_CHIP.na,      mark: 'Z', tone: 'neutral' },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function MobileLadderInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -64,11 +76,10 @@ export default function MobileLadderInspectionScreen() {
   const {
     inspection, setInspection, inspectionRef,
     projectName, saving, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, updateMany: updateIdentification, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<MobileLadderInspection>({
     id,
     firstStep: IDENTIFICATION_STEP,
@@ -284,23 +295,59 @@ export default function MobileLadderInspectionScreen() {
   }
 
   if (inspection.status === 'completed' && !celebrating) {
+    const verdictTone = inspection.verdict === 'safe' ? 'safe'
+      : inspection.verdict === 'banned' ? 'severe' : 'muted';
+
+    const buildSection = (key: 'A' | 'B', title: string): ResultChecklistSection => ({
+      title,
+      items: ML_CHECKLIST_ITEMS.filter((e) => e.section === key).map((entry) => {
+        const st = inspection.items.find((i) => i.id === entry.id);
+        return {
+          id: entry.id,
+          label: entry.label,
+          description: entry.description || undefined,
+          result: st?.result ?? null,
+          comment: st?.comment ?? null,
+          photoPaths: st?.photo_paths ?? [],
+        };
+      }),
+    });
+
+    const sections: ResultChecklistSection[] = [
+      buildSection('A', 'III - სტრუქტურული მდგომარეობა'),
+      buildSection('B', 'IV - სამობილო სისტემა'),
+    ];
+
+    const info = [
+      { label: t('details.info.project'), value: inspection.company || '—' },
+      { label: 'სახეობა / Type', value: inspection.ladderType || '—' },
+      { label: 'მწარმოებელი / Model', value: inspection.model || '—' },
+      { label: 'სიმაღლე (მ)', value: inspection.heightM != null ? `${inspection.heightM} მ` : '—' },
+      { label: 'მაქს. დატვირთვა (კგ)', value: inspection.maxLoadKg != null ? `${inspection.maxLoadKg} კგ` : '—' },
+      { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+      { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+      { label: t('details.info.code'), value: shortCode(inspection.id) },
+    ];
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="მობილური კიბე"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => void buildPreview()}
-      />
+      <>
+        <EquipmentResultDetails
+          title="კიბის შემოწმება"
+          status={inspection.verdict ? { tone: verdictTone, label: ML_VERDICT_LABELS[inspection.verdict] } : null}
+          info={info}
+          sections={sections}
+          resultOptions={MOBILE_LADDER_RESULT_OPTIONS}
+          notes={inspection.verdictComment}
+          summaryPhotos={inspection.summaryPhotos ?? []}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

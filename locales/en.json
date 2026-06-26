@@ -78,7 +78,9 @@
       "instruction": "Topic",
       "ok": "OK",
       "issue": "Issue",
-      "empty": "Nothing to show"
+      "empty": "Nothing to show",
+      "notes": "Notes",
+      "photos": "Photos"
     },
     "type": {
       "act": "Inspection act",

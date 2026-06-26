@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-06-25 — Equipment inspections open a real Details screen (not the PDF)
+
+Tapping a saved **equipment** inspection (bobcat, excavator, forklift, cargo-platform, fall-protection, general-equipment, lifting-accessories, mobile-ladder, safety-net) now opens the same structured **Details** screen as acts/incidents/reports — not the full-screen WebView PDF preview it used to show.
+
+- **What changed.** Each equipment screen is a monolith (wizard + completed view). The completed branch rendered `components/InspectionResultView` (a WebView PDF). It now renders [`EquipmentResultDetails`](../features/inspection-result/AGENTS.md): the reusable `DocumentDetails` shell with a header + verdict pill, an **Edit** chip, read-only info, the checklist rendered natively (per-point OK/deficient/unusable badge + comment + photo thumbnails), conclusion notes + summary photos, editable signatures, and a **Share PDF** footer. `InspectionResultView` is now orphaned.
+- **Native checklist content** — [`EquipmentChecklistContent`](../components/document-details/AGENTS.md) renders normalized `ChecklistSection[]` + `ResultOption[]` (from `lib/inspection/schema`); each screen maps its own typed data in (type-specific knowledge stays in the type-specific screen).
+- **Harness** is a template-based generic act, so a completed harness now redirects to the shared act detail (`/inspections/[id]`) instead of its vestigial result view.
+- **Parity, not regression:** the old PDF view offered Edit + Signatures + Share; the detail page keeps all three (no Duplicate/Delete for equipment — no orchestrator/record-delete API yet). `DocumentDetails`' Duplicate/Delete chips are now optional.
+- **Perf:** removed the now-dead auto-PDF-preview build in `useInspectionFlow` (it resolved every photo to a data URL on each completed-inspection mount for a preview nothing rendered). New `details.content.notes`/`photos` i18n keys (ka + en). OTA-deliverable — no native changes.
+
+---
+
 ## 2026-06-25 — Saved records open a real Details screen (not the success screen)
 
 Tapping a saved record (act / incident / report / instruction) now opens a reusable, type-aware **Details** screen instead of the post-save success screen.

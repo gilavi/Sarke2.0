@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Check, TriangleAlert, X } from 'lucide-react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
@@ -9,7 +10,9 @@ import { InspectionShell } from '../../../components/inspection-steps/Inspection
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import { ConclusionStep } from '../../../components/inspection-steps';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
-import { InspectionResultView } from '../../../components/InspectionResultView';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection, RenderItem, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { SectionHeader } from '../../../components/SectionHeader';
 import {
   ChecklistItemRow,
@@ -70,6 +73,16 @@ const FP_LEGEND = [
   { icon: X,             label: 'კრიტიკული' },
 ];
 
+// Result vocabulary for the completed detail page (mirrors the PDF result chips
+// in lib/inspection/schemas/fallProtection.ts). `na` is the legacy "not present"
+// state still found on older rows.
+const FALL_PROTECTION_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'safe',     label: 'უსაფრთხოა',        short: 'უსაფრთხოა', tone: 'good' },
+  { value: 'minor',    label: 'მცირე დაზიანება',  short: 'მცირე',     tone: 'warn' },
+  { value: 'critical', label: 'კრიტიკული',        short: 'კრიტიკ.',   tone: 'bad' },
+  { value: 'na',       label: 'არ გააჩნია',       short: 'არ გააჩნია', tone: 'neutral' },
+];
+
 // ── Step constants ────────────────────────────────────────────────────────────
 
 const INFO_STEP       = 0;
@@ -93,6 +106,7 @@ const REGISTRY_COLS: DynamicTableColumn[] = [
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function FallProtectionInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -110,11 +124,10 @@ export default function FallProtectionInspectionScreen() {
   const {
     inspection, setInspection, inspectionRef,
     projectName, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<FallProtectionInspection>({
     id,
     firstStep: INFO_STEP,
@@ -340,23 +353,84 @@ export default function FallProtectionInspectionScreen() {
   }
 
   if (inspection.status === 'completed' && !celebrating) {
+    // Overall verdict = worst per-device verdict (banned → minor → safe).
+    const verdicts = inspection.deviceData.map((d) => d.verdict);
+    const overallVerdict: FPVerdict | null =
+      verdicts.includes('banned') ? 'banned'
+        : verdicts.includes('minor') ? 'minor'
+        : verdicts.some((v) => v === 'safe') ? 'safe'
+        : null;
+    const verdictTone =
+      overallVerdict === 'safe' ? 'safe'
+        : overallVerdict === 'banned' ? 'severe'
+        : 'muted';
+
+    // One section per device: standard 12 items + the 13th custom item.
+    // The device's verdict label heads the section; merged device-summary
+    // photos ride along on the custom-item row (item rows keep their own).
+    const sections: ChecklistSection[] = inspection.devices.map((device, di) => {
+      const data = inspection.deviceData[di];
+      const meta = [device.type, device.location, device.floor].filter(Boolean).join(' · ');
+      const verdictLabel = data?.verdict ? FP_VERDICT_LABELS[data.verdict] : null;
+      const title = [device.id, meta].filter(Boolean).join(' · ')
+        + (verdictLabel ? ` — ${verdictLabel}` : '');
+
+      const items: RenderItem[] = (data?.items ?? []).map((st) => {
+        const entry = FP_CHECKLIST_ITEMS.find((e) => e.id === st.id);
+        return {
+          id: st.id,
+          label: entry?.label ?? `#${st.id}`,
+          result: st.result,
+          comment: st.comment,
+          photoPaths: st.photo_paths ?? [],
+        };
+      });
+
+      if (data) {
+        const ci = data.customItem;
+        items.push({
+          id: `${device.id}-custom`,
+          label: ci.label || 'სხვა',
+          result: ci.result,
+          comment: data.verdictComment || ci.comment || null,
+          photoPaths: [...(ci.photo_paths ?? []), ...(data.photoPaths ?? [])],
+        });
+      }
+
+      return { title, items };
+    });
+
+    const inspTypeLabel =
+      inspection.inspectionType === 'primary' ? 'პირველადი'
+        : inspection.inspectionType === 'secondary' ? 'განმეორებითი'
+        : '—';
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="დამჭერი მოწყობილობა"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => void buildPreview()}
-      />
+      <>
+        <EquipmentResultDetails
+          title="დამჭერი მოწყობილობა"
+          status={overallVerdict ? { tone: verdictTone, label: FP_VERDICT_LABELS[overallVerdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.company || '—' },
+            { label: 'მისამართი', value: inspection.address || '—' },
+            { label: 'უსაფრთხოების ხელმძღვანელი', value: inspection.safetyLeaderName || '—' },
+            { label: 'ტელეფონი', value: inspection.safetyLeaderPhone || '—' },
+            { label: 'შემოწმების სახე', value: inspTypeLabel },
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={FALL_PROTECTION_RESULT_OPTIONS}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

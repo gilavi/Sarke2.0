@@ -59,10 +59,13 @@ export interface DocumentDetailsProps {
   signatures?: DocumentSignatures | null;
   /** Certificates section; omit or `null` to hide (incident/report/instruction). */
   certificates?: DocumentCertificates | null;
-  /** Action chips. Delete is rendered in the danger style and should confirm. */
+  /** Action chips. Delete is rendered in the danger style and should confirm.
+   *  Duplicate + Delete are optional (equipment inspections expose neither —
+   *  no duplicate orchestrator support + no record-level delete API yet); their
+   *  chips are hidden when the handler is omitted. Edit is always shown. */
   onEdit: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
   editing?: boolean;
   duplicating?: boolean;
   /** Footer primary action — Share PDF. */

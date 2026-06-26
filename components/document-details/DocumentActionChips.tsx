@@ -44,8 +44,10 @@ function Chip({ icon: Icon, label, onPress, danger, disabled }: ChipProps) {
 
 interface Props {
   onEdit: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
+  /** Optional — chip hidden when omitted (equipment has no duplicate). */
+  onDuplicate?: () => void;
+  /** Optional — chip hidden when omitted (equipment has no delete). */
+  onDelete?: () => void;
   editing?: boolean;
   duplicating?: boolean;
 }
@@ -59,13 +61,17 @@ export function DocumentActionChips({ onEdit, onDuplicate, onDelete, editing, du
       contentContainerStyle={staticStyles.row}
     >
       <Chip icon={Pencil} label={t('details.actions.edit')} onPress={onEdit} disabled={editing} />
-      <Chip
-        icon={Copy}
-        label={t('details.actions.duplicate')}
-        onPress={onDuplicate}
-        disabled={duplicating}
-      />
-      <Chip icon={Trash2} label={t('details.actions.delete')} onPress={onDelete} danger />
+      {onDuplicate ? (
+        <Chip
+          icon={Copy}
+          label={t('details.actions.duplicate')}
+          onPress={onDuplicate}
+          disabled={duplicating}
+        />
+      ) : null}
+      {onDelete ? (
+        <Chip icon={Trash2} label={t('details.actions.delete')} onPress={onDelete} danger />
+      ) : null}
     </ScrollView>
   );
 }

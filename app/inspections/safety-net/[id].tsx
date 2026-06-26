@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
-import { InspectionResultView } from '../../../components/InspectionResultView';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
 import {
   ChecklistSection,
   DynamicTable,
@@ -13,6 +14,8 @@ import {
   IdentificationGrid,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
+import type { ChecklistSection as ResultChecklistSection, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { safetyNetApi } from '../../../lib/safetyNetService';
@@ -54,9 +57,22 @@ const SN_VERDICT_OPTIONS: VerdictOption<SNVerdict>[] = [
   { value: 'fail', label: SN_VERDICT_LABEL.fail, tone: 'danger'  },
 ];
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills).
+// Combines the visual-checklist results (good/fix/na) and the post-test
+// pass/fail results — `EquipmentChecklistContent` resolves each item's result
+// against this single map.
+const SAFETY_NET_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'good', label: 'კარგი',      short: 'კარგი',     tone: 'good'    },
+  { value: 'fix',  label: 'გამოსასწ.',  short: 'გამოსასწ.', tone: 'warn'    },
+  { value: 'na',   label: 'N/A',         short: 'N/A',        tone: 'neutral' },
+  { value: 'pass', label: 'გამოც.',     short: 'გამოც.',    tone: 'good'    },
+  { value: 'fail', label: 'პრობლ.',     short: 'პრობლ.',    tone: 'bad'     },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function SafetyNetInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -69,12 +85,11 @@ export default function SafetyNetInspectionScreen() {
   // behaviour matches the pre-refactor screen exactly.
   const {
     inspection, setInspection, inspectionRef,
-    projectName, saving, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
+    projectName, loading, completing, celebrating, generatingPdf,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<SafetyNetInspection>({
     id,
     firstStep: NET_DATA_STEP,
@@ -309,24 +324,63 @@ export default function SafetyNetInspectionScreen() {
     );
   }
 
+  // ── Completed inspection detail page ───────────────────────────────────────
   if (inspection.status === 'completed' && !celebrating) {
+    const verdictTone = inspection.verdict === 'fail' ? 'severe' : 'safe';
+    const sections: ResultChecklistSection[] = [
+      {
+        title: 'ვიზუალური შემოწმება',
+        items: SN_VISUAL_ITEMS.map((entry) => {
+          const st = inspection.items.find((i) => i.id === entry.id);
+          return {
+            id: entry.id,
+            label: entry.label,
+            description: entry.description || undefined,
+            result: st?.result ?? null,
+            comment: st?.comment ?? null,
+            photoPaths: st?.photo_paths ?? [],
+          };
+        }),
+      },
+      {
+        title: 'ტვირთის ჩაგდების შემდეგ შემოწმება',
+        items: SN_POST_TEST_ITEMS.map((entry) => {
+          const st = inspection.postTestItems.find((i) => i.id === entry.id);
+          return {
+            id: entry.id,
+            label: entry.label,
+            result: st?.result ?? null,
+          };
+        }),
+      },
+    ];
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="უსაფრთხოების ბადე"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => void buildPreview()}
-      />
+      <>
+        <EquipmentResultDetails
+          title="ბადის შემოწმება"
+          status={inspection.verdict ? { tone: verdictTone, label: SN_VERDICT_LABEL[inspection.verdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.company || '—' },
+            { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
+            { label: 'ბადის ზომა', value: inspection.netSize || '—' },
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={SAFETY_NET_RESULT_OPTIONS}
+          notes={inspection.verdictComment}
+          summaryPhotos={inspection.summaryPhotos}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

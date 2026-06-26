@@ -92,8 +92,6 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   completing: boolean;
   celebrating: boolean;
   generatingPdf: boolean;
-  previewHtml: string | null;
-  previewBusy: boolean;
   step: number;
   setStep: React.Dispatch<React.SetStateAction<number>>;
   direction: 'next' | 'prev';
@@ -111,7 +109,6 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   /** Reopen a completed inspection back to draft (flips the view to its wizard). */
   reopen: () => Promise<boolean>;
   handlePdf: (signatures?: SignaturesSnapshot | null) => Promise<void>;
-  buildPreview: (signatures?: SignaturesSnapshot | null) => Promise<void>;
   /** Clear the persisted step and navigate back (used when leaving from step 1). */
   exit: () => Promise<void>;
 }
@@ -134,8 +131,6 @@ export function useInspectionFlow<T extends BaseInspection>(
   const [completing, setCompleting] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-  const [previewBusy, setPreviewBusy] = useState(false);
   const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
 
   const [step, setStep] = useState(cfg.firstStep);
@@ -370,31 +365,6 @@ export function useInspectionFlow<T extends BaseInspection>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectName, session.state, invalidatePdfUsage, toast, pdfUsage, buildSignaturesSection]);
 
-  // ── Completed-view preview ───────────────────────────────────────────────────
-  const buildPreview = useCallback(async (signatures?: SignaturesSnapshot | null) => {
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    setPreviewBusy(true);
-    try {
-      const html = await renderInspectionPdf(schema, {
-        inspection: insp,
-        projectName: projectName || t('common.project'),
-        signaturesSession: buildSignaturesSection(signatures),
-      });
-      setPreviewHtml(html);
-    } catch (e) {
-      toast.error(friendlyError(e, t('errors.pdfFailed')));
-    } finally {
-      setPreviewBusy(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectName, toast, buildSignaturesSection]);
-
-  useEffect(() => {
-    if (inspection?.status === 'completed') void buildPreview();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inspection?.status]);
-
   const exit = useCallback(async () => {
     await AsyncStorage.removeItem(persistKey);
     router.back();
@@ -411,10 +381,9 @@ export function useInspectionFlow<T extends BaseInspection>(
     inspection, setInspection, inspectionRef,
     projectName, setProjectName, creatorName,
     loading, saving, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked: !!pdfUsage?.isLocked,
     update, updateMany, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit,
+    complete, reopen, handlePdf, exit,
   };
 }

@@ -2,8 +2,8 @@
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
-import { InspectionResultView } from '../../../components/InspectionResultView';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import {
@@ -14,6 +14,9 @@ import {
   SlingsCharacteristicsStep,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection as ChecklistSectionData, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 import { liftingAccessoriesApi } from '../../../lib/liftingAccessoriesService';
@@ -40,6 +43,12 @@ import {
   type LARemovedRow,
 } from '../../../types/liftingAccessories';
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills).
+const LIFTING_ACCESSORIES_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'ok',   label: 'გამართულია',  short: 'გამართ.',   mark: '✓', tone: 'good' },
+  { value: 'fail', label: 'გაუმართავია', short: 'გაუმართ.',  mark: '✗', tone: 'bad'  },
+];
+
 // ── Step constants ────────────────────────────────────────────────────────────
 
 const IDENTIFICATION_STEP  = 1;
@@ -58,6 +67,7 @@ const LA_VERDICT_OPTIONS: VerdictOption<LAVerdict>[] = [
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function LiftingAccessoriesInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -73,12 +83,11 @@ export default function LiftingAccessoriesInspectionScreen() {
   // behaviour matches the pre-refactor screen exactly.
   const {
     inspection, setInspection, inspectionRef,
-    projectName, saving, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
+    projectName, loading, completing, celebrating, generatingPdf,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, updateMany, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<LiftingAccessoriesInspection>({
     id,
     firstStep: IDENTIFICATION_STEP,
@@ -327,23 +336,56 @@ export default function LiftingAccessoriesInspectionScreen() {
   }
 
   if (inspection.status === 'completed' && !celebrating) {
+    const verdictTone = inspection.verdict === 'pass' ? 'safe'
+      : inspection.verdict === 'fail' ? 'severe' : 'muted';
+
+    const buildSection = (sectionKey: 'A' | 'B', title: string): ChecklistSectionData => ({
+      title,
+      items: LA_CHECKLIST_ITEMS.filter(e => e.section === sectionKey).map(entry => {
+        const state = inspection.items.find(i => i.id === entry.id);
+        return {
+          id: entry.id,
+          label: entry.label,
+          description: entry.description || undefined,
+          result: state?.result ?? null,
+          comment: state?.comment ?? null,
+          photoPaths: state?.photo_paths ?? [],
+        };
+      }),
+    });
+
+    const sections: ChecklistSectionData[] = [
+      buildSection('A', 'III - ვიზუალური შემოწმება'),
+      buildSection('B', 'IV - ფუნქციური შემოწმება'),
+    ];
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="სტროპები და ჩამჭერები"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => void buildPreview()}
-      />
+      <>
+        <EquipmentResultDetails
+          title="სტროპები და ჩამჭერები"
+          status={inspection.verdict ? { tone: verdictTone, label: LA_VERDICT_LABELS[inspection.verdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.company || '—' },
+            { label: 'სერ. NN / ID', value: inspection.serialNumber || '—' },
+            { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
+            { label: 'WLL (კგ)', value: inspection.wllKg || '—' },
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={LIFTING_ACCESSORIES_RESULT_OPTIONS}
+          notes={inspection.verdictComment}
+          summaryPhotos={inspection.summaryPhotos}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

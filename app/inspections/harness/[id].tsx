@@ -7,14 +7,13 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
 import { Button } from '../../../components/ui';
 import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
-import { InspectionResultView } from '../../../components/InspectionResultView';
 import { HarnessListFlow } from '../../../components/HarnessListFlow';
 import { useTheme } from '../../../lib/theme';
 import { useSession } from '../../../lib/session';
@@ -501,28 +500,13 @@ export default function HarnessInspectionScreen() {
   }
 
   // ── Completed ──────────────────────────────────────────────────────────────
+  // Harness is a template-based generic act (inspections + answers), so a
+  // completed harness belongs on the shared act detail page. Normal navigation
+  // already routes taps there (routeForInspection) and completion replaces to
+  // /done; this redirect is the safety net if a completed harness is ever
+  // reached on the wizard route directly.
   if (inspection?.status === 'completed') {
-    const creatorName =
-      session.state.status === 'signedIn'
-        ? `${session.state.user?.first_name ?? ''} ${session.state.user?.last_name ?? ''}`.trim()
-        : '';
-    return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="დამცავი ქამრების შემოწმება"
-        previewHtml={null}
-        previewBusy={false}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={false}
-        downloading={false}
-        limitNoticeVisible={false}
-        creatorName={creatorName}
-        onLimitNoticeClose={() => {}}
-        onDownloadPdf={() => {}}
-        onSheetSaved={() => {}}
-      />
-    );
+    return <Redirect href={`/inspections/${inspection.id}` as never} />;
   }
 
   if (!inspection) return null;

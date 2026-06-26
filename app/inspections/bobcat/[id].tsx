@@ -14,16 +14,17 @@ import { PlateInput, type PlateInputHandle } from '../../../components/inputs/Pl
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
-import { InspectionResultView } from '../../../components/InspectionResultView';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
+import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
 
 import { bobcatApi } from '../../../lib/bobcatService';
-import { inspectionAttachmentsApi } from '../../../lib/services';
 import { PhotoSection } from '../../../components/inspection-parts';
 
 import { bobcatSchema } from '../../../lib/inspection/schemas/bobcat';
-import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { SuggestionPills } from '../../../components/SuggestionPills';
@@ -57,6 +58,14 @@ const CHECKLIST_STEP  = 3;
 const CONCLUSION_STEP = 4;
 const TOTAL_STEPS     = 5;
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills).
+const BOBCAT_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'good', label: 'კარგია', short: 'კარგია', tone: 'good' },
+  { value: 'deficient', label: 'ნაკლი', short: 'ნაკლი', tone: 'warn' },
+  { value: 'unusable', label: 'გამოუსადეგარია', short: 'გამოუსად.', tone: 'bad' },
+  { value: 'neutral', label: 'არ გააჩნია', short: 'არ გააჩნია', tone: 'neutral' },
+];
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function BobcatInspectionScreen() {
@@ -77,7 +86,6 @@ export default function BobcatInspectionScreen() {
   const registrationNumberHistory = useFieldHistory(userId, 'bobcat:registrationNumber');
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const [attachmentCount, setAttachmentCount] = useState(0);
 
   // Enabled finish button + on-press field errors (see useSubmitGuard).
   const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
@@ -93,12 +101,11 @@ export default function BobcatInspectionScreen() {
   const {
     inspection, setInspection, inspectionRef,
     projectName,
-    saving, loading, completing,
-    previewHtml, previewBusy,
+    loading, completing,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit,
+    complete, reopen, handlePdf, exit,
     generatingPdf, creatorName,
   } = useInspectionFlow<BobcatInspection>({
     id,
@@ -342,29 +349,55 @@ export default function BobcatInspectionScreen() {
     );
   }
 
-  // ── Completed inspection result view ───────────────────────────────────────
+  // ── Completed inspection detail page ───────────────────────────────────────
   if (inspection.status === 'completed') {
+    const verdictTone = inspection.verdict === 'approved' ? 'safe'
+      : inspection.verdict === 'rejected' ? 'severe' : 'muted';
+    const sections: ChecklistSection[] = CATEGORIES.map((cat) => ({
+      title: BOBCAT_CATEGORY_LABELS[cat],
+      items: catalog
+        .filter((e) => e.category === cat)
+        .map((entry) => {
+          const st = inspection.items.find((i) => i.id === entry.id);
+          const result = st?.result ?? null;
+          const mapped = result === 'unusable' && entry.unusableIsNeutral ? 'neutral' : result;
+          return {
+            id: entry.id,
+            label: entry.label,
+            description: entry.description,
+            result: mapped,
+            comment: st?.comment ?? null,
+            photoPaths: st?.photo_paths ?? [],
+          };
+        }),
+    }));
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName={screenTitle}
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={attachmentCount}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => {
-          inspectionAttachmentsApi.listByInspection(inspection.id)
-            .then(a => setAttachmentCount(a.length)).catch(() => {});
-          void buildPreview();
-        }}
-      />
+      <>
+        <EquipmentResultDetails
+          title={screenTitle}
+          status={inspection.verdict ? { tone: verdictTone, label: VERDICT_LABEL[inspection.verdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.company || '—' },
+            { label: t('inspections.equipmentModelLabel'), value: inspection.equipmentModel || '—' },
+            { label: t('inspections.registrationNumberLabel'), value: inspection.registrationNumber || '—' },
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={BOBCAT_RESULT_OPTIONS}
+          notes={inspection.notes}
+          summaryPhotos={inspection.summaryPhotos ?? []}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

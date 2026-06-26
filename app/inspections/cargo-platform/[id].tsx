@@ -11,11 +11,12 @@ import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInpu
 import { Selector } from '../../../components/ui/Selector';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
-import { InspectionResultView } from '../../../components/InspectionResultView';
+import { EquipmentResultDetails } from '../../../features/inspection-result';
+import type { ChecklistSection as ChecklistSectionData, ResultOption } from '../../../lib/inspection/schema';
+import { shortCode } from '../../../lib/shared/documentName';
 import {
   ChecklistSection,
   DynamicTable,
-  PhotoSection,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -59,6 +60,14 @@ const CP_VERDICT_OPTIONS: VerdictOption<CPVerdict>[] = [
   { value: 'rejected',    label: CP_VERDICT_LABEL.rejected,    tone: 'danger'  },
 ];
 
+// Result vocabulary for the completed detail page (mirrors the PDF result pills
+// in lib/inspection/schemas/cargoPlatform.ts → resultPill).
+const CARGO_PLATFORM_RESULT_OPTIONS: ResultOption[] = [
+  { value: 'good', label: 'კარგი',          short: 'კარგი',    mark: '✓', tone: 'good' },
+  { value: 'fix',  label: 'გამოსასწორებელი', short: 'გამოსასწ.', mark: '✗', tone: 'warn' },
+  { value: 'na',   label: 'N/A',            short: 'N/A',      mark: '-', tone: 'neutral' },
+];
+
 // ── Guardrail selector options (DS Selector, chips presentation) ───────────────
 const GUARDRAIL_OPTIONS = [
   { value: 'none',     label: 'არ გააჩნია' },
@@ -73,6 +82,7 @@ const GUARDRAIL_HEIGHT_OPTIONS = [
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function CargoPlatformInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -88,12 +98,11 @@ export default function CargoPlatformInspectionScreen() {
   // behaviour matches the pre-refactor screen exactly.
   const {
     inspection, setInspection, inspectionRef,
-    projectName, saving, loading, completing, celebrating, generatingPdf,
-    previewHtml, previewBusy,
+    projectName, loading, completing, celebrating, generatingPdf,
     step, setStep, direction, animateSteps,
     limitNoticeVisible, setLimitNoticeVisible, pdfLocked,
     update, scheduleSave,
-    complete, reopen, handlePdf, buildPreview, exit, creatorName,
+    complete, reopen, handlePdf, exit, creatorName,
   } = useInspectionFlow<CargoPlatformInspection>({
     id,
     firstStep: PLATFORM_STEP,
@@ -325,24 +334,54 @@ export default function CargoPlatformInspectionScreen() {
     );
   }
 
+  // ── Completed inspection detail page ───────────────────────────────────────
   if (inspection.status === 'completed' && !celebrating) {
+    const verdictTone = inspection.verdict === 'approved' ? 'safe'
+      : inspection.verdict === 'rejected' ? 'severe' : 'muted';
+    const sections: ChecklistSectionData[] = (['A', 'B'] as CPSection[]).map((sec) => ({
+      title: CP_SECTION_LABELS[sec],
+      items: CP_ITEMS
+        .filter((e) => e.section === sec)
+        .map((entry) => {
+          const st = inspection.items.find((i) => i.id === entry.id);
+          return {
+            id: entry.id,
+            label: entry.label,
+            description: entry.description,
+            result: st?.result ?? null,
+            comment: st?.comment ?? null,
+            photoPaths: st?.photo_paths ?? [],
+          };
+        }),
+    }));
+
     return (
-      <InspectionResultView
-        inspectionId={inspection.id}
-        templateName="ტვირთის მიმღები პლატფორმა"
-        previewHtml={previewHtml}
-        previewBusy={previewBusy}
-        previewError={null}
-        attachmentCount={0}
-        pdfLocked={pdfLocked}
-        downloading={generatingPdf}
-        limitNoticeVisible={limitNoticeVisible}
-        onLimitNoticeClose={() => setLimitNoticeVisible(false)}
-        creatorName={creatorName}
-        onEdit={() => void reopen()}
-        onDownloadPdf={(sig) => void handlePdf(sig)}
-        onSheetSaved={() => void buildPreview()}
-      />
+      <>
+        <EquipmentResultDetails
+          title="პლატფორმის შემოწმება"
+          status={inspection.verdict ? { tone: verdictTone, label: CP_VERDICT_LABEL[inspection.verdict] } : null}
+          info={[
+            { label: t('details.info.project'), value: inspection.company || '—' },
+            { label: t('details.info.location'), value: inspection.address || '—' },
+            { label: 'სართული / ზონა', value: inspection.floorZone || '—' },
+            { label: 'პლატფორმის ტიპი / მოდელი', value: inspection.platformTypeModel || '—' },
+            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+            { label: t('details.info.code'), value: shortCode(inspection.id) },
+          ]}
+          sections={sections}
+          resultOptions={CARGO_PLATFORM_RESULT_OPTIONS}
+          notes={inspection.verdictComment}
+          summaryPhotos={inspection.summaryPhotos ?? []}
+          creatorName={creatorName}
+          onEdit={() => void reopen()}
+          onShare={(sig) => void handlePdf(sig)}
+          onBack={() => router.back()}
+          sharing={generatingPdf}
+          pdfLocked={pdfLocked}
+        />
+        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
+      </>
     );
   }
 

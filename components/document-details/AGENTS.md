@@ -18,8 +18,17 @@ routes).
 - `DocumentDetails` — the shell. Props in `types.ts` (`DocumentDetailsProps`):
   `type`, `tileIcon`, `title`, `typeLabel`, `status?`, `info[]`, `contentLabel`,
   `contentTab`, `children`, `signatures?`, `certificates?`, `onEdit`,
-  `onDuplicate`, `onDelete`, `onSharePdf`, `onBack`, plus loading flags.
+  `onDuplicate?`, `onDelete?`, `onSharePdf`, `onBack`, plus loading flags.
+  `onDuplicate`/`onDelete` are optional — their chips hide when omitted (the
+  equipment detail page passes only `onEdit`).
 - `InspectionPointsContent` — act content (template questions → OK/issue rows).
+- `EquipmentChecklistContent` — content for the typed equipment detail page
+  (`features/inspection-result/EquipmentResultDetails`). Takes normalized
+  `sections: ChecklistSection[]` + `resultOptions: ResultOption[]` (from
+  `lib/inspection/schema`) + `notes?` + `summaryPhotos?`; renders section headers,
+  one row per point with a tone'd result badge + comment + inline photo
+  thumbnails, then the conclusion notes + summary photos. Photos resolve lazily
+  via `imageForDisplay` from the `answer-photos` bucket.
 - `NoteBlocksContent` / `NoteBlock` — incident + instruction content (titled note
   cards).
 - `ReportSlidesContent` — report content (horizontal slide thumbnail strip;
