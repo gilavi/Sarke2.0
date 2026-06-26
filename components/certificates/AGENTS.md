@@ -27,7 +27,8 @@ hid the Save button under the keyboard, and used a one-off back button.
 - Attachments are NOT a React Query cache; each result screen loads them
   into local state. Cross-screen refresh is signalled via
   `lib/certDirty.ts` (`markCertsDirty` / `consumeCertsDirty`), consumed
-  in a `useFocusEffect` on `InspectionResultView` and `app/inspections/[id].tsx`.
+  in a `useFocusEffect` on `features/inspection-result/EquipmentResultDetails`
+  and `app/inspections/[id].tsx`.
 - `inspection_attachments` rows FK to `inspections.id`; photos live in the
   `certificates` storage bucket (distinct from the `certificates` table of
   generated PDFs and from `qualifications`).

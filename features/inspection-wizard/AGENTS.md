@@ -66,9 +66,11 @@ queue.
 
 ## Signatures are NOT owned here
 The wizard does not own or display any signature UI. Signatures are
-captured on the **inspection result screen** post-completion (via
-`InspectionResultView`'s embedded `useSignaturesState` + the
-`features/signatures/SignaturesScreen` modal). The wizard's
+captured on the **equipment result detail screen** post-completion
+(via `features/inspection-result/EquipmentResultDetails`' embedded
+`useSignaturesState` + the `features/signatures/SignaturesScreen`
+modal; captured signatures live in component state only and are never
+persisted — same regulatory rule). The wizard's
 `ConclusionStep` returned to its decision/notes/photos shape after the
 2026-05-26 relocation — do not add a signatures section back to it.
 

@@ -64,9 +64,10 @@ NOT from the wizard.
 
 - **State lives on the result screen.** `useSignaturesState` is
   instantiated by the inspection result screen (the
-  `InspectionResultView` shell for the 9 equipment + harness types,
-  and inline in `app/inspections/[id].tsx` for the generic harness
-  /scaffold result). The state survives as long as the screen
+  `features/inspection-result/EquipmentResultDetails` shell for the 9
+  equipment + harness types, and inline in `app/inspections/[id].tsx`
+  for the generic harness/scaffold result). The state survives as long
+  as the screen
   stays mounted; leaving the screen and returning starts fresh. No
   cross-screen / cross-session persistence. The snapshot is handed
   to the parent's PDF builder via the `onDownloadPdf` callback at
