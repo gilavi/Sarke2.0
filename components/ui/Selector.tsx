@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
-import { SelectorOptionChip, SelectorOptionRow } from './SelectorOption';
+import { SelectorOptionCard, SelectorOptionChip, SelectorOptionRow } from './SelectorOption';
 import { getSelectorStyles } from './Selector.styles';
 
 /**
@@ -35,14 +35,15 @@ export interface SelectorOption {
   disabled?: boolean;
 }
 
-export type SelectorPresentation = 'rows' | 'list' | 'chips';
+export type SelectorPresentation = 'rows' | 'list' | 'chips' | 'grid';
 
 interface CommonProps {
   options: SelectorOption[];
   /** Group caption shown above the options. */
   label?: string;
   /** 'chips' (default) wraps compact pills; 'rows' is bordered cards; 'list' is
-   *  a divided full-bleed list (for sheets / scrollable pickers). */
+   *  a divided full-bleed list (for sheets / scrollable pickers); 'grid' is a
+   *  2-column illustration-card picker (each option supplies a big `leading`). */
   presentation?: SelectorPresentation;
   /** rows/list trailing affordance: 'radio' (default) or 'check' (a check icon
    *  on the selected option, nothing on the rest — the "type card" look). */
@@ -95,7 +96,23 @@ export function Selector(props: SelectorProps) {
     <View style={[styles.group, style]} testID={testID}>
       {label ? <Text style={styles.groupLabel}>{label}</Text> : null}
 
-      {presentation !== 'chips' ? (
+      {presentation === 'grid' ? (
+        <View style={styles.gridWrap}>
+          {options.map((opt) => (
+            <SelectorOptionCard
+              key={opt.value}
+              opt={opt}
+              active={isSelected(opt.value)}
+              error={error}
+              isMulti={isMulti}
+              onPress={() => handlePress(opt)}
+              styles={styles}
+              theme={theme}
+              a11yRole={a11yRole}
+            />
+          ))}
+        </View>
+      ) : presentation !== 'chips' ? (
         <View style={presentation === 'list' ? styles.listContainer : styles.rowList}>
           {options.map((opt) => (
             <SelectorOptionRow

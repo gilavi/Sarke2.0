@@ -7,6 +7,7 @@ export { ConclusionStep } from './ConclusionStep';
 export { VerdictSelector } from './VerdictSelector';
 export { VerdictSuggestionBanner } from './VerdictSuggestionBanner';
 export { ProjectPickerStep } from './ProjectPickerStep';
+export { TemplatePickerStep } from './TemplatePickerStep';
 export type { InspectionShellProps } from './InspectionShell';
 export type { InspectionShellSkeletonProps } from './InspectionShellSkeleton';
 export type { ChecklistItem, ChecklistItemState, ChecklistResult, ChecklistStepProps } from './ChecklistStep';

@@ -69,6 +69,31 @@ export function getSelectorStyles(theme: Theme) {
     checkboxActive: { borderColor: theme.colors.ink, backgroundColor: theme.colors.ink },
     checkboxInner: { width: 9, height: 9, borderRadius: 2, backgroundColor: theme.colors.white },
 
+    // grid (illustration cards, 2 columns) — for the inspection type picker.
+    // Active fill is an alpha-ink tint (set per-option in SelectorOptionCard) so
+    // the card keeps its surface and is gently tinted rather than blocked out.
+    gridWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+    card: {
+      width: '48%',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: 14,
+      paddingHorizontal: 10,
+      borderRadius: 18,
+      borderWidth: 1.5,
+      borderColor: theme.colors.hairline,
+      backgroundColor: 'transparent',
+    },
+    cardIlu: { width: '100%', alignItems: 'center', justifyContent: 'center' },
+    cardLabel: {
+      fontSize: 13.5,
+      fontWeight: '600',
+      lineHeight: 18,
+      color: theme.colors.inkSoft,
+      textAlign: 'center',
+    },
+    cardLabelActive: { color: theme.colors.ink, fontWeight: '700' },
+
     // chips
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     chip: {
