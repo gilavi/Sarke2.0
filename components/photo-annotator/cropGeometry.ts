@@ -191,3 +191,79 @@ export function displayRectToPixels(
 export function swapDimsForRotate(size: Size): Size {
   return { w: size.h, h: size.w };
 }
+
+/* ───────────────── Pinch-zoom / pan crop (no aspect presets) ─────────────────
+ *
+ * The simplified cropper (no resizable rect, no aspect chips) frames a photo by
+ * pinch-to-zoom + drag. The crop WINDOW is the whole photo box, whose aspect ==
+ * the image aspect, so at scale 1 the image exactly fills it (no crop). The image
+ * is scaled by `scale` about the box CENTER and translated by (tx, ty) display px
+ * — exactly the RN transform `[{translateX:tx},{translateY:ty},{scale}]` with the
+ * default center transform-origin. Zooming in (scale ≥ 1) shrinks the visible
+ * source region; the output keeps the source aspect (no ratio picker).
+ */
+
+/** A pinch-zoom / pan transform of the photo, in display space. */
+export interface ZoomPan {
+  /** Uniform scale, ≥ 1 (1 = whole image, no crop). */
+  scale: number;
+  /** Horizontal pan of the image center, display px (+ = image moved right). */
+  tx: number;
+  /** Vertical pan of the image center, display px (+ = image moved down). */
+  ty: number;
+}
+
+export const MAX_ZOOM = 6;
+
+/**
+ * Largest pan (display px, per axis) that keeps the scaled image fully covering
+ * the crop window — i.e. no empty gap creeps into the frame. Zero at scale 1.
+ */
+export function panClamp(box: Size, scale: number): { maxX: number; maxY: number } {
+  if (!(box.w > 0) || !(box.h > 0)) return { maxX: 0, maxY: 0 };
+  const s = Math.max(1, scale);
+  return { maxX: (box.w * (s - 1)) / 2, maxY: (box.h * (s - 1)) / 2 };
+}
+
+/** True when a transform is (within tolerance) the identity — nothing to crop. */
+export function isIdentityZoomPan(t: ZoomPan, eps = 0.75): boolean {
+  return Math.abs(t.scale - 1) < 1e-3 && Math.abs(t.tx) < eps && Math.abs(t.ty) < eps;
+}
+
+/**
+ * Map a pinch-zoom/pan transform to the SOURCE-pixel crop rect that the window
+ * shows. `box` is the on-screen photo box (== photoLayout, aspect == image
+ * aspect); `img` is the source pixel size. Pan is assumed pre-clamped by
+ * `panClamp` (this also clamps defensively). Rounds THEN clamps so
+ * `origin + size <= dim` — a 1px overshoot makes the native crop throw.
+ *
+ * Derivation: with center origin the image center sits at boxCenter + (tx,ty),
+ *   originX = imgW·(s-1)/(2s) − (imgW/boxW)·tx / s,   width = imgW / s
+ * and symmetrically for Y.
+ */
+export function zoomPanToPixels(box: Size, img: Size, t: ZoomPan): PixelRect {
+  // Defensive: a zero/negative box would divide to Infinity → NaN crop. Callers
+  // only render the cropper once photoLayout (and thus the box) is positive, but
+  // this is a pure helper, so guard it.
+  if (!(box.w > 0) || !(box.h > 0) || !(img.w > 0) || !(img.h > 0)) {
+    return { originX: 0, originY: 0, width: Math.max(1, Math.round(img.w) || 1), height: Math.max(1, Math.round(img.h) || 1) };
+  }
+  const s = Math.max(1, t.scale);
+  const { maxX, maxY } = panClamp(box, s);
+  const tx = Math.min(maxX, Math.max(-maxX, t.tx));
+  const ty = Math.min(maxY, Math.max(-maxY, t.ty));
+
+  const kx = img.w / box.w; // source px per display px at scale 1
+  const ky = img.h / box.h;
+
+  let originX = Math.round((img.w * (s - 1)) / (2 * s) - (kx * tx) / s);
+  let originY = Math.round((img.h * (s - 1)) / (2 * s) - (ky * ty) / s);
+  let width = Math.round(img.w / s);
+  let height = Math.round(img.h / s);
+
+  originX = Math.max(0, Math.min(originX, img.w - 1));
+  originY = Math.max(0, Math.min(originY, img.h - 1));
+  width = Math.max(1, Math.min(width, img.w - originX));
+  height = Math.max(1, Math.min(height, img.h - originY));
+  return { originX, originY, width, height };
+}

@@ -1,255 +1,336 @@
-﻿import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { primary } from '../../lib/design-tokens';
 
-// Foreground for content sitting on the orange accent pill (Save / Crop apply /
-// active tool). The accent stays orange in BOTH themes, but theme.colors.ink
-// flips to near-white in dark mode and would wash out — so on-accent text/icons
-// use a fixed dark ink ("black text on orange" is the brand convention).
+// Foreground for content sitting on the orange accent (Done button, active tool,
+// active size dot). The accent is orange in BOTH app themes, so on-accent text/
+// icons use a fixed dark ink ("black on orange" is the brand convention).
 export const ON_ACCENT_INK = '#1A1A1A';
 
-/* ─────────────────────────── Styles ─────────────────────────── */
+/* ───────────────────────── Editor chrome palette ─────────────────────────
+ * The photo editor is ALWAYS dark, regardless of the app's light/dark setting —
+ * the standard for photo editors (the image is the hero and pops against dark
+ * chrome). These are fixed values, not theme tokens, so the editor never flips
+ * to a washed-out light surface. Annotation colors (schema.COLORS) and the
+ * brand accent are the only colors shared with the rest of the app.
+ */
+export const EDITOR = {
+  bg: '#0D0D0D', // screen + canvas surround
+  panel: '#151515', // bottom sheet
+  ghost: 'rgba(255,255,255,0.09)', // ghost circular buttons
+  ghostBorder: 'rgba(255,255,255,0.10)',
+  hairline: 'rgba(255,255,255,0.08)',
+  track: 'rgba(255,255,255,0.06)', // segmented control / size pill track
+  ink: '#F5F5F5',
+  inkSoft: '#9A9A9A',
+  inkFaint: '#6A6A6A',
+  accent: primary[500], // brand orange #FE7A43
+  onAccent: ON_ACCENT_INK,
+  danger: '#EF6A6A',
+  scrim: 'rgba(16,16,16,0.82)', // floating pills over the image
+  scrimBorder: 'rgba(255,255,255,0.12)',
+  // Crop-window chrome
+  cropFrame: 'rgba(255,255,255,0.9)',
+  cropGrid: 'rgba(255,255,255,0.3)',
+} as const;
 
-export function getstyles(theme: any) {
+/* ─────────────────────────── Chrome styles ─────────────────────────── */
+
+export function getstyles() {
   return StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    height: 56,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.hairline,
-    backgroundColor: theme.colors.card,
-  },
-  headerBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  canvasWrap: {
-    flex: 1,
-    backgroundColor: theme.colors.subtleSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    screen: {
+      flex: 1,
+      backgroundColor: EDITOR.bg,
+    },
 
-  // ── Floating brush controls overlay (sibling of the captured photo View) ──
-  // box-none container that fills the photo box; the two slots park the pills at
-  // the image edges without intercepting draw touches in between.
-  floatingLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  colorBarSlot: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 16,
-    alignItems: 'center',
-  },
-  sizeBarSlot: {
-    position: 'absolute',
-    right: 12,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-  },
-  // photoBox is sized inline to photoLayout.{w,h} (so its aspect == the image
-  // aspect) and centered by canvasWrap. It holds two absolute-fill children: the
-  // captured photo View and the floating-controls overlay.
-  photoBox: {
-    position: 'relative',
-  },
-  // The captured View (== captureRef target). Fills photoBox, so display→pixel is
-  // one uniform scale and captureRef preserves the true photo aspect.
-  photoFill: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.background,
-    overflow: 'hidden',
-  },
-  toolbar: {
-    backgroundColor: theme.colors.card,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.hairline,
-    paddingTop: 10,
-    paddingBottom: 16,
-    gap: 12,
-  },
+    // ── Header: ✕ cancel · title · ✓ done ──
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 14,
+      height: 56,
+    },
+    headerBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: EDITOR.ghost,
+    },
+    headerTitle: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: 16,
+      fontWeight: '600',
+      color: EDITOR.ink,
+      letterSpacing: 0.1,
+    },
+    doneBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: EDITOR.accent,
+    },
 
-  // ── Tools row: distinct crop chip + scrollable draw tools ──
-  toolsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 8,
-  },
-  cropChip: {
-    width: 60,
-    height: 56,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-  },
-  cropChipLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: theme.colors.inkFaint,
-  },
-  divider: {
-    width: 1,
-    height: 34,
-    backgroundColor: theme.colors.hairline,
-  },
-  // flex:1 bounds the ScrollView to the row's remaining width so it actually
-  // scrolls instead of overflowing (RN default flexShrink is 0).
-  toolScrollView: {
-    flex: 1,
-  },
-  toolScroll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 4,
-  },
-  toolBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: theme.colors.subtleSurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toolBtnActive: {
-    backgroundColor: theme.colors.accent,
-  },
+    // ── Canvas ──
+    canvasWrap: {
+      flex: 1,
+      backgroundColor: EDITOR.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    // photoBox is sized inline to photoLayout.{w,h} (aspect == image aspect) and
+    // centered by canvasWrap.
+    photoBox: {
+      position: 'relative',
+    },
+    // The captured markup View (== captureRef target). Fills photoBox, so
+    // display→pixel is one uniform scale and captureRef keeps the true aspect.
+    photoFill: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: EDITOR.bg,
+      overflow: 'hidden',
+    },
 
-  // ── Primary save (orange pill, black text) ──
-  saveBtn: {
-    marginHorizontal: 16,
-    marginTop: 2,
-    height: 52,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadow.button,
-  },
-  saveBtnText: {
-    color: ON_ACCENT_INK,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+    // ── Floating undo / clear pill (markup) — sibling of the captured View so it
+    //    never bakes into the saved JPG. ──
+    histrip: {
+      position: 'absolute',
+      left: 12,
+      top: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      backgroundColor: EDITOR.scrim,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: EDITOR.scrimBorder,
+      borderRadius: 999,
+      paddingHorizontal: 6,
+      paddingVertical: 5,
+    },
+    histripBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    histripSep: {
+      width: StyleSheet.hairlineWidth,
+      height: 18,
+      backgroundColor: 'rgba(255,255,255,0.16)',
+      marginHorizontal: 2,
+    },
 
-  // ── Crop mode actions (cancel / apply, no aspect chips) ──
-  cropActions: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-  },
-  cropCancelBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: theme.radius.full,
-    borderWidth: 1.5,
-    borderColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cropCancelText: {
-    color: theme.colors.accent,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cropApplyBtn: {
-    flex: 1,
-    height: 52,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadow.button,
-  },
-});
+    /* ─────────────── Bottom sheet (toolbar) ─────────────── */
+    sheet: {
+      backgroundColor: EDITOR.panel,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: EDITOR.hairline,
+      paddingTop: 12,
+    },
+
+    // Segmented Crop / Markup control
+    seg: {
+      flexDirection: 'row',
+      alignSelf: 'center',
+      width: 200,
+      backgroundColor: EDITOR.track,
+      borderRadius: 999,
+      padding: 3,
+      marginBottom: 12,
+    },
+    segItem: {
+      flex: 1,
+      paddingVertical: 8,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    segItemActive: {
+      backgroundColor: EDITOR.accent,
+    },
+    segLabel: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: EDITOR.inkSoft,
+    },
+    segLabelActive: {
+      color: EDITOR.onAccent,
+    },
+
+    // Crop helper row (hint + reset)
+    cropRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 6,
+      minHeight: 44,
+    },
+    cropHint: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      flexShrink: 1,
+    },
+    cropHintText: {
+      fontSize: 12,
+      color: EDITOR.inkFaint,
+      flexShrink: 1,
+    },
+    resetPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      backgroundColor: EDITOR.ghost,
+      borderRadius: 999,
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+    },
+    resetText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: EDITOR.ink,
+    },
+
+    // Markup tools row
+    toolsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    toolBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: EDITOR.ghost,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    toolBtnActive: {
+      backgroundColor: EDITOR.accent,
+    },
+
+    // Markup options (color swatches + size dots)
+    optRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 4,
+      minHeight: 40,
+    },
+    swatchGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    swatch: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    swatchLite: {
+      borderColor: 'rgba(255,255,255,0.25)',
+    },
+    swatchActive: {
+      borderColor: '#FFFFFF',
+    },
+    sizeGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: EDITOR.track,
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+    },
+    sizeCell: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    optHint: {
+      fontSize: 12,
+      color: EDITOR.inkFaint,
+      paddingVertical: 6,
+    },
+  });
 }
 
-export function getmodalStyles(theme: any) {
+/* ─────────────── Text-tool modal (dark, matches the editor) ─────────────── */
+
+export function getmodalStyles() {
   return StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-    gap: 14,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.ink,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.hairline,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: theme.colors.ink,
-    backgroundColor: theme.colors.subtleSurface,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: theme.radius.md,
-    borderWidth: 1.5,
-    borderColor: theme.colors.accent,
-  },
-  cancelText: {
-    color: theme.colors.accent,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  confirmBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.accent,
-  },
-  confirmText: {
-    color: theme.colors.white,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-});
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    // The card is the stop-propagation Pressable itself — giving it a concrete
+    // width (100% up to maxWidth) avoids the classic collapse where an unsized
+    // wrapper makes `width:'100%'` resolve to the content width (a tiny modal).
+    card: {
+      width: '100%',
+      maxWidth: 340,
+      backgroundColor: EDITOR.panel,
+      borderRadius: 18,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: EDITOR.hairline,
+      padding: 20,
+      gap: 16,
+    },
+    title: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: EDITOR.ink,
+    },
+    input: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.18)',
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: EDITOR.ink,
+      backgroundColor: EDITOR.track,
+    },
+    actions: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    cancelBtn: {
+      flex: 1,
+      paddingVertical: 13,
+      alignItems: 'center',
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.2)',
+    },
+    cancelText: {
+      color: EDITOR.ink,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    confirmBtn: {
+      flex: 1,
+      paddingVertical: 13,
+      alignItems: 'center',
+      borderRadius: 12,
+      backgroundColor: EDITOR.accent,
+    },
+    confirmText: {
+      color: EDITOR.onAccent,
+      fontWeight: '700',
+      fontSize: 15,
+    },
+  });
 }
