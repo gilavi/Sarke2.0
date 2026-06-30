@@ -160,7 +160,9 @@
     "help": "დახმარება",
     "error": "შეცდომა",
     "viewAction": "ნახვა",
-    "areYouSure": "დარწმუნებული ხართ?"
+    "areYouSure": "დარწმუნებული ხართ?",
+    "deleteFailed": "წაშლა ვერ მოხერხდა",
+    "requiredField": "სავალდებულო ველი"
   },
   "a11y": {
     "close": "დახურვა",
@@ -324,7 +326,17 @@
     "resendIn": "ხელახლა გაგზავნა ({{n}}წ)",
     "codeSent": "კოდი გამოგზავნილია",
     "codeExpired": "კოდის ვადა ამოიწურა. მოითხოვეთ ახალი.",
-    "invalidCode": "არასწორი კოდი. გთხოვთ, სცადოთ კიდევ ერთხელ."
+    "invalidCode": "არასწორი კოდი. გთხოვთ, სცადოთ კიდევ ერთხელ.",
+    "confirmPasswordLabel": "გაიმეორეთ პაროლი",
+    "enterCodeN": "შეიყვანეთ {{n}}-ნიშნა კოდი",
+    "enterEmail": "შეიყვანეთ ელ. ფოსტა",
+    "invalidEmail": "ელ. ფოსტა არასწორია",
+    "newPasswordHint": "მინიმუმ 6 სიმბოლო",
+    "newPasswordLabel": "ახალი პაროლი",
+    "newPasswordTitle": "ახალი პაროლის შექმნა",
+    "passwordChanged": "პაროლი წარმატებით შეიცვალა",
+    "passwordMismatch": "პაროლები არ ემთხვევა",
+    "sessionExpired": "სესიის ვადა ამოიწურა, გაიარეთ ავტორიზაცია ხელახლა"
   },
   "home": {
     "greetingNight": "მოგესალმებით",
@@ -937,7 +949,9 @@
     "viewAllReportsA11y": "ყველა რეპორტის ნახვა",
     "slideCount_one": "{{count}} სლაიდი",
     "slideCount_other": "{{count}} სლაიდი",
-    "deleteTitle": "წაშლა?"
+    "deleteTitle": "წაშლა?",
+    "participantCount": "{{count}} მონაწილე",
+    "slideCount": "{{count}} სლაიდი"
   },
   "drafts": {
     "title": "დრაფტები",
@@ -1190,7 +1204,8 @@
     "confirmButton": "დადასტურება →",
     "skippedInterstitialBody": "შეგიძლიათ დაუბრუნდეთ მათ ან გააგრძელოთ ექსპერტის ხელმოწერაზე.",
     "loadingLabel": "იტვირთება...",
-    "signHereHint": "ხელი მოაწერეთ ჩარჩოში"
+    "signHereHint": "ხელი მოაწერეთ ჩარჩოში",
+    "pdfGenerateFailed": "PDF-ის გენერაცია ვერ მოხერხდა"
   },
   "pdf": {
     "tocTitle": "შინაარსი",

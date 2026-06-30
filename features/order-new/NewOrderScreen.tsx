@@ -1,7 +1,7 @@
 // NewOrderScreen.tsx - orchestrator for the order wizard.
 // All step renderers, types, validation, and styles live in sibling files.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
@@ -31,14 +31,9 @@ import { queryClient } from '../../lib/queryClient';
 import { invalidateRecordLists } from '../../lib/apiHooks';
 import {
   buildAlcoholControlOrderHtml,
-  buildCraneOperatorOrderHtml,
-  buildCraneTechnicalOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
-  buildFireSafetyOrderHtml,
-  buildLaborSafetyOrderHtml,
 } from '../../lib/orderPdf';
 import { storageApi, projectsApi } from '../../lib/services';
-import { pdfPhotoEmbed } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
@@ -46,11 +41,7 @@ import { useScrollToError } from '../../hooks/useScrollToError';
 
 import type {
   AlcoholControlOrderFormData,
-  CraneOperatorOrderFormData,
-  CraneTechnicalOrderFormData,
   FireSafetyOrderEnterpriseFormData,
-  FireSafetyOrderFormData,
-  LaborSafetyOrderFormData,
   Project,
 } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
@@ -89,48 +80,22 @@ import { StepSignaturesFireSafety } from './StepSignaturesFireSafety';
 import type { OrderDocumentType } from '../../types/models';
 
 /**
- * Resolve a stored cert/inspection photo path (in the `answer-photos` bucket)
- * to a PDF-embeddable `data:` URL. Returns null (and logs) on failure so a bad
- * or missing photo never aborts PDF generation.
+ * Build the PDF HTML for the two *classic* (in-wizard) order types that finish
+ * with a summary + immediate PDF: enterprise fire-safety and alcohol-control.
+ * Every act-style type (crane, scaffold, simple fire-safety, labor-safety,
+ * training) generates its PDF on the success screen — see `OrderActSuccessView`.
  */
-async function resolvePdfPhoto(path: string | null): Promise<string | null> {
-  if (!path) return null;
-  try {
-    return await pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, path);
-  } catch (e) {
-    logError(e, 'orderNew.cranePhotoEmbed');
-    return null;
-  }
-}
-
 function buildHtml(
   docType: OrderDocumentType | null,
   form: CombinedForm,
   projectName: string,
-  cranePhotos?: { cert?: string | null; insp?: string | null },
 ): string {
   const fd = buildFormData(form, docType);
-  if (docType === 'alcohol_control') {
-    return buildAlcoholControlOrderHtml({ formData: fd as AlcoholControlOrderFormData, projectName });
-  }
-  if (docType === 'fire_safety_order') {
-    return buildFireSafetyOrderHtml({ formData: fd as FireSafetyOrderFormData, projectName });
-  }
   if (docType === 'fire_safety_order_enterprise') {
     return buildFireSafetyOrderEnterpriseHtml({ formData: fd as FireSafetyOrderEnterpriseFormData, projectName });
   }
-  if (docType === 'crane_operator_order') {
-    return buildCraneOperatorOrderHtml({
-      formData: fd as CraneOperatorOrderFormData,
-      projectName,
-      certPhotoDataUrl: cranePhotos?.cert,
-      inspCertPhotoDataUrl: cranePhotos?.insp,
-    });
-  }
-  if (docType === 'crane_technical_order') {
-    return buildCraneTechnicalOrderHtml({ formData: fd as CraneTechnicalOrderFormData, projectName });
-  }
-  return buildLaborSafetyOrderHtml({ formData: fd as LaborSafetyOrderFormData, projectName });
+  // alcohol_control — the only other classic type that reaches this path.
+  return buildAlcoholControlOrderHtml({ formData: fd as AlcoholControlOrderFormData, projectName });
 }
 
 export default function NewOrderScreen() {
@@ -141,7 +106,7 @@ export default function NewOrderScreen() {
   const toast = useToast();
   const session = useSession();
   const { t } = useTranslation();
-  const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { projectId, editId } = useLocalSearchParams<{ projectId: string; editId?: string }>();
 
   const [step, setStep] = useState<Step>(1);
   // Enabled forward/submit button + on-press field errors (see useSubmitGuard).
@@ -169,6 +134,8 @@ export default function NewOrderScreen() {
     projectsApi.getById(projectId).then(p => {
       if (!p) return;
       setProject(p);
+      // Edit mode: keep the saved form values; don't autofill from the project.
+      if (editId) return;
       setForm(f => ({
         ...f,
         companyName: p.company_name || p.name,
@@ -178,7 +145,28 @@ export default function NewOrderScreen() {
         objectAddress: p.address ?? '',
       }));
     }).catch(() => null);
-  }, [projectId]);
+  }, [projectId, editId]);
+
+  // Edit mode: hydrate docType + form from the (reopened) order. buildFormData
+  // keeps identical field names, so the stored form_data maps straight back
+  // onto CombinedForm.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (!editId || hydratedRef.current) return;
+    hydratedRef.current = true;
+    let mounted = true;
+    (async () => {
+      try {
+        const order = await ordersApi.getById(editId);
+        if (!order || !mounted) return;
+        setDocType(order.documentType);
+        setForm(f => ({ ...f, ...(order.formData as Partial<CombinedForm>) }));
+      } catch {
+        // best-effort: leave the blank form if hydration fails
+      }
+    })();
+    return () => { mounted = false; };
+  }, [editId]);
 
   // Auto-generate order number when a crane order is selected
   useEffect(() => {
@@ -240,12 +228,21 @@ export default function NewOrderScreen() {
     if (!projectId || !docType) return;
     setSaving(true);
     try {
-      await ordersApi.create({
-        projectId,
-        documentType: docType,
-        formData: buildFormData(form, docType),
-        status: 'draft',
-      });
+      if (editId) {
+        await ordersApi.update(editId, {
+          documentType: docType,
+          formData: buildFormData(form, docType),
+          status: 'draft',
+        });
+      } else {
+        await ordersApi.create({
+          projectId,
+          documentType: docType,
+          formData: buildFormData(form, docType),
+          status: 'draft',
+        });
+      }
+      invalidateRecordLists(queryClient);
       toast.success(t('orders.orderSaved'));
       router.back();
     } catch (e) {
@@ -265,12 +262,18 @@ export default function NewOrderScreen() {
     }
     setSaving(true);
     try {
-      const saved = await ordersApi.create({
-        projectId,
-        documentType: docType,
-        formData: buildFormData(form, docType),
-        status: 'completed',
-      });
+      const saved = editId
+        ? await ordersApi.update(editId, {
+            documentType: docType,
+            formData: buildFormData(form, docType),
+            status: 'completed',
+          })
+        : await ordersApi.create({
+            projectId,
+            documentType: docType,
+            formData: buildFormData(form, docType),
+            status: 'completed',
+          });
       invalidateRecordLists(queryClient);
       router.replace(`/orders/${saved.id}/success` as any);
     } catch (e) {
@@ -298,33 +301,30 @@ export default function NewOrderScreen() {
     setSaving(true);
     let savedId = '';
     try {
-      const saved = await ordersApi.create({
-        projectId,
-        documentType: docType,
-        formData: buildFormData(form, docType),
-        status: 'completed',
-      });
+      const saved = editId
+        ? await ordersApi.update(editId, {
+            documentType: docType,
+            formData: buildFormData(form, docType),
+            status: 'completed',
+          })
+        : await ordersApi.create({
+            projectId,
+            documentType: docType,
+            formData: buildFormData(form, docType),
+            status: 'completed',
+          });
       savedId = saved.id;
       invalidateRecordLists(queryClient);
 
       const projectName = project.company_name || project.name;
-      // Crane orders embed the operator's certificate + crane inspection photos.
-      // Resolve the stored paths to data URLs before the (synchronous) builder.
-      const cranePhotos = isCraneVariant(docType)
-        ? {
-            cert: await resolvePdfPhoto(form.craneOperatorCertPhoto),
-            insp: await resolvePdfPhoto(form.craneInspCertPhoto),
-          }
-        : undefined;
-      const html = buildHtml(docType, form, projectName, cranePhotos);
+      const html = buildHtml(docType, form, projectName);
       const pdfName = generatePdfName(projectName, docSlug(docType), new Date(form.orderDate), savedId);
       const pdfPath = `orders/${pdfName}`;
 
+      // Only the two classic types reach this path; enterprise fire-safety names
+      // the appointed person, alcohol-control names the responsible person.
       const orderAuthor =
-        docType === 'alcohol_control' ? form.responsiblePersonName :
-        isFireSafetyVariant(docType) ? form.appointedName :
-        isCraneVariant(docType) ? form.craneOperatorName :
-        form.specialistName;
+        docType === 'alcohol_control' ? form.responsiblePersonName : form.appointedName;
       const orderTitle = docType ? ORDER_DOCUMENT_TYPE_LABEL[docType] : t('orders.orderTitle');
       const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
         title: orderTitle,

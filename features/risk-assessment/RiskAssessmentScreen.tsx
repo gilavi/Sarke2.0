@@ -3,7 +3,7 @@
 // debounced autosave and an on-demand "share PDF" that finalizes the document.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +13,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
-import { Pressable } from 'react-native';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { Button } from '../../components/ui';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
@@ -28,7 +27,8 @@ import { useRiskAssessment, useProject } from '../../lib/apiHooks';
 import { riskAssessmentApi } from '../../lib/riskAssessmentService';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { generatePdfName } from '../../lib/pdfName';
-import { hashPdf } from '../../lib/pdfSecurity';
+import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
+import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { queryClient } from '../../lib/queryClient';
@@ -68,6 +68,9 @@ export function RiskAssessmentScreen() {
   const [entries, setEntries] = useState<RAEntry[]>([]);
   const [signatories, setSignatories] = useState<Record<string, RASignatory>>({});
   const [sharing, setSharing] = useState(false);
+  const [limitNoticeVisible, setLimitNoticeVisible] = useState(false);
+  const { data: pdfUsage } = usePdfUsage();
+  const invalidatePdfUsage = useInvalidatePdfUsage();
   const hydrated = useRef(false);
 
   // Hydrate local state once from the loaded record.
@@ -100,6 +103,7 @@ export function RiskAssessmentScreen() {
 
   const onSharePdf = async () => {
     if (!ra) return;
+    if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setSharing(true);
     try {
       await riskAssessmentApi.patch(raId, { header, entries, signatories });
@@ -116,7 +120,7 @@ export function RiskAssessmentScreen() {
         documentId: raId,
         subject: 'შრომის უსაფრთხოება',
       });
-      const pdfHash = localUri ? await hashPdf(localUri).catch(() => undefined) : undefined;
+      invalidatePdfUsage();
       if (localUri) {
         (async () => {
           try {
@@ -129,9 +133,8 @@ export function RiskAssessmentScreen() {
           }
         })();
       }
-      void pdfHash;
     } catch (e) {
-      if (e instanceof PdfLimitReachedError) { toast.error(t('orders.pdfGenerateFailed')); return; }
+      if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
       toast.error(friendlyError(e, t('orders.pdfGenerateFailed')));
     } finally {
       setSharing(false);
@@ -195,9 +198,14 @@ export function RiskAssessmentScreen() {
 
       <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
         <View style={[s.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
-          <Button title={t('orders.generatePdf')} leftIcon={FileText} loading={sharing} onPress={onSharePdf} style={{ width: '100%' }} />
+          <Button
+            title={pdfUsage?.isLocked ? `🔒 ${t('orders.generatePdf')}` : t('orders.generatePdf')}
+            leftIcon={FileText} loading={sharing} onPress={onSharePdf} style={{ width: '100%' }}
+          />
         </View>
       </KeyboardStickyView>
+
+      <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
     </View>
   );
 }

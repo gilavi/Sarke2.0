@@ -118,9 +118,10 @@ Backs the `app/orders/new.tsx` route.
   director's optional digital signature + the count of added blank rows
   are passed to the per-type builder as `directorSignatureBase64` /
   `extraSignatureRows`. **Nothing signature-related is persisted**
-  (regulatory; matches inspections). The leftover crane branch in
-  `NewOrderScreen.buildHtml` / `saveAndGeneratePdf` is inert for
-  act-style types (only the 4 classic types run it).
+  (regulatory; matches inspections). `NewOrderScreen.buildHtml` /
+  `saveAndGeneratePdf` build the PDF **only** for the two classic
+  in-wizard types (`alcohol_control`, `fire_safety_order_enterprise`);
+  act-style PDFs are built in `OrderActSuccessView`.
 - The crane auto-generated order number (`KR-<year>/<seq>`) only fires
   when `docType` is a crane variant AND `form.orderNumber === ''` —
   re-selecting the docType after the user typed a number won't

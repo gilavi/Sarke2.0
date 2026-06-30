@@ -37,14 +37,16 @@ describe('types/models constant tables', () => {
     expect(INCIDENT_TYPE_FULL_LABEL.nearmiss).toContain('near miss');
   });
 
-  it('ORDER_DOCUMENT_TYPE_LABEL covers all six order types', () => {
+  it('ORDER_DOCUMENT_TYPE_LABEL covers all eight order types', () => {
     expect(ORDER_DOCUMENT_TYPE_LABEL.labor_safety_specialist).toBeTruthy();
     expect(ORDER_DOCUMENT_TYPE_LABEL.alcohol_control).toBeTruthy();
     expect(ORDER_DOCUMENT_TYPE_LABEL.fire_safety_order).toBeTruthy();
     expect(ORDER_DOCUMENT_TYPE_LABEL.fire_safety_order_enterprise).toBeTruthy();
     expect(ORDER_DOCUMENT_TYPE_LABEL.crane_operator_order).toBeTruthy();
     expect(ORDER_DOCUMENT_TYPE_LABEL.crane_technical_order).toBeTruthy();
-    expect(Object.keys(ORDER_DOCUMENT_TYPE_LABEL)).toHaveLength(6);
+    expect(ORDER_DOCUMENT_TYPE_LABEL.scaffold_supervision_order).toBeTruthy();
+    expect(ORDER_DOCUMENT_TYPE_LABEL.training_schedule_order).toBeTruthy();
+    expect(Object.keys(ORDER_DOCUMENT_TYPE_LABEL)).toHaveLength(8);
   });
 
   it('labels are Georgian strings (non-empty unicode)', () => {

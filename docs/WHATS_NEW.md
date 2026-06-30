@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-01 — Full text audit (100% bilingual) + code-review fixes
+
+- **Complete UI-string audit.** Swept every screen for hard-coded / missing strings, then brought `locales/en.json` + `locales/ka.json` to **exact parity: 1707 keys, zero gaps in either language** (167 previously ka-only keys got English translations; 15 missing-in-both were defined). The live CMS `ui_strings` table was re-seeded (insert-only) **and** the 167 NULL `en` rows were back-filled (without clobbering any existing edits or `ka` values) — prod is now **1707 keys, 0 NULL en, 0 NULL ka**. A new `tests/unit/i18nParity.test.ts` guards key-set parity, `{{placeholder}}` consistency, and no-blank-values so the two files can't drift again.
+- **Code-review pass (cleaner code / fewer bugs):**
+  - **Order edit restored (regression fix).** The app-wide UI-refinement commit (`381ab62`) silently dropped `editId` handling from `NewOrderScreen`, so "edit order" from the detail/success screens started a blank form and **created a duplicate** instead of updating. Restored edit-mode hydration + `update`-vs-`create` across all three save paths (draft / act-style finish / classic PDF).
+  - **Dead-code removal.** `NewOrderScreen.buildHtml` / `saveAndGeneratePdf` carried inert crane/fire/labor branches + an unused photo-resolution path (all act-style PDFs are built in `OrderActSuccessView`). Trimmed to the only two types that reach it (`alcohol_control`, `fire_safety_order_enterprise`); removed the now-unused imports.
+  - **Risk-assessment share flow.** Dropped a dead `pdfHash` computation (the `risk_assessments` table has no hash column) and wired the PDF free-tier limit to the shared `SubscriptionNotice` paywall (was a generic error toast); the generate button now shows the 🔒 locked state like orders.
+
+---
+
 ## 2026-07-01 — Risk-assessment register (new category) + CMS string sync
 
 - **New project category: რისკების შეფასება (risk assessment).** A per-project register (modeled on the breathalyzer journal) backed by one new table `risk_assessments`, with two document types: a full **risk assessment** (multi-row hazard table with a×ш probability×severity scoring + residual risk, finalised against a 5×5 matrix + legend in the PDF) and the **იდს განსაზღვრა** PPE-by-job-position matrix. New `features/risk-assessment/` (editor + row cards + signatures), `types/riskAssessment.ts` (scoring helpers + matrix), `lib/riskAssessmentService.ts`, `lib/riskAssessmentPdf.ts` (A4-landscape table + matrix), apiHooks (`qk.riskAssessment`, `useRiskAssessment(s)`, added to `invalidateRecordLists`), and a `RiskAssessmentSection` in project-detail. Route: `app/projects/[id]/risk-assessment/[raId].tsx`. **Migration `20260701120000_risk_assessments.sql` must be applied to the live DB** for it to function.

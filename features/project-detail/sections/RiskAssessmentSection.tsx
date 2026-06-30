@@ -10,7 +10,6 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
-import { ViewMoreRow } from '../../../components/projects/ProjectRowHelpers';
 import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
 import { useToast } from '../../../lib/toast';
@@ -19,8 +18,8 @@ import { riskAssessmentApi } from '../../../lib/riskAssessmentService';
 import { queryClient } from '../../../lib/queryClient';
 import { invalidateRecordLists } from '../../../lib/apiHooks';
 import { friendlyError } from '../../../lib/errorMap';
-import { fmtDate } from '../../../lib/pdfShared';
-import { RA_DOC_TITLE, type RiskAssessment, type RADocType } from '../../../types/riskAssessment';
+import { fmtDate } from '../../../lib/pdf/order/_shared';
+import { type RiskAssessment, type RADocType } from '../../../types/riskAssessment';
 import { getStyles } from '../styles';
 
 export function RiskAssessmentSection({
@@ -81,20 +80,20 @@ export function RiskAssessmentSection({
         <SectionEmptyState type="documents" subtitle={t('risk.emptySubtitle')} />
       ) : (
         <View style={{ marginTop: 4 }}>
-          {riskAssessments.slice(0, 3).map((ra, i, arr) => {
-            const showBorder = i < arr.length - 1 || riskAssessments.length > 3;
+          {riskAssessments.map((ra, i, arr) => {
+            const title = ra.docType === 'ppe_determination' ? t('risk.ppeTitle') : t('risk.title');
             return (
               <Pressable
                 key={ra.id}
                 onPress={() => router.push(`/projects/${id}/risk-assessment/${ra.id}` as any)}
-                style={[styles.listRow, showBorder && styles.listRowBorder]}
-                {...a11y(RA_DOC_TITLE[ra.docType], undefined, 'button')}
+                style={[styles.listRow, i < arr.length - 1 && styles.listRowBorder]}
+                {...a11y(title, undefined, 'button')}
               >
                 <View style={[styles.statusIcon, { backgroundColor: theme.colors.subtleSurface }]}>
                   <ShieldAlert size={14} color={theme.colors.inkSoft} strokeWidth={1.5} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.listRowTitle}>{RA_DOC_TITLE[ra.docType]}</Text>
+                  <Text style={styles.listRowTitle}>{title}</Text>
                   <Text style={styles.listRowSubtitle}>
                     {fmtDate(ra.createdAt)} · {t('risk.entriesCount', { count: ra.entries.length })}
                     {ra.status === 'completed' ? ` · ${t('risk.statusCompleted')}` : ''}
@@ -104,13 +103,6 @@ export function RiskAssessmentSection({
               </Pressable>
             );
           })}
-          {riskAssessments.length > 3 ? (
-            <ViewMoreRow
-              items={riskAssessments.slice(3).map(() => ({ category: null }))}
-              total={riskAssessments.length - 3}
-              onPress={() => router.push(`/projects/${id}/risk-assessment/${riskAssessments[0].id}` as any)}
-            />
-          ) : null}
         </View>
       )}
 

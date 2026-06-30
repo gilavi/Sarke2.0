@@ -124,11 +124,6 @@ export const RA_CATEGORY_BG: Record<RAVerdictCategory, string> = {
   low: '#D1FAE5',
 };
 
-export const RA_DOC_TITLE: Record<RADocType, string> = {
-  risk_assessment: 'რისკების შეფასება',
-  ppe_determination: 'ინდ. დაცვის საშუალებების განსაზღვრა',
-};
-
 /** Empty row factories. */
 export function emptyHazardEntry(id: string): RiskHazardEntry {
   return {

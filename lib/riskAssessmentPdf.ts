@@ -5,7 +5,7 @@
  * Render with `generateAndSharePdf` from lib/pdfOpen.ts.
  */
 
-import { escHtml, fmtDate } from './pdfShared';
+import { escHtml, fmtDate } from './pdf/order/_shared';
 import {
   riskScore,
   riskCategory,
