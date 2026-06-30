@@ -1,7 +1,7 @@
-import { Pressable, View } from 'react-native';
-import { CircleCheck } from 'lucide-react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { Selector } from '../../components/ui/Selector';
 import type { OrderDocumentType } from '../../types/models';
 import { ORDER_DOCUMENT_TYPE_LABEL } from '../../types/models';
 import { DOC_TYPES } from './orderFormSchema';
@@ -21,34 +21,18 @@ export function Step1DocType({
   return (
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>{t('orders.docType')}</Text>
-      {DOC_TYPES.map(({ type, Icon }) => {
-        const selected = docType === type;
-        return (
-          <Pressable
-            key={type}
-            onPress={() => setDocType(type)}
-            style={[
-              s.typeCard,
-              showError && { borderColor: theme.colors.danger },
-              selected && s.typeCardSelected,
-            ]}
-          >
-            <View style={[s.typeIcon, selected && s.typeIconSelected]}>
-              <Icon
-                size={22}
-                color={selected ? theme.colors.white : theme.colors.accent}
-                strokeWidth={1.5}
-              />
-            </View>
-            <Text style={[s.typeLabel, selected && { color: theme.colors.accent, fontWeight: '700' }]}>
-              {ORDER_DOCUMENT_TYPE_LABEL[type]}
-            </Text>
-            {selected && (
-              <CircleCheck size={22} color={theme.colors.accent} strokeWidth={1.5} />
-            )}
-          </Pressable>
-        );
-      })}
+      <Selector
+        presentation="rows"
+        indicator="check"
+        value={docType}
+        onChange={(v) => setDocType(v as OrderDocumentType)}
+        error={showError}
+        options={DOC_TYPES.map(({ type, Icon }) => ({
+          value: type,
+          label: ORDER_DOCUMENT_TYPE_LABEL[type],
+          icon: Icon,
+        }))}
+      />
       {showError && (
         <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.danger, marginTop: 2 }}>
           {t('orders.selectDocType')}

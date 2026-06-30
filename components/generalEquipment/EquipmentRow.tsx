@@ -27,6 +27,19 @@ interface Props {
   onDeletePhoto: (path: string) => void;
 }
 
+/**
+ * Report-style equipment card for the general-equipment inspection wizard.
+ *
+ * Each card reads like a mini-report rather than a questionnaire row:
+ * an editable name, a monochrome status toggle (good / needs-service /
+ * unusable), and — only once a row is flagged as needs-service or unusable —
+ * an accordion that reveals a photo strip and a comment field (image first,
+ * then comment). "Good" rows stay collapsed to a single clean line.
+ *
+ * Photo upload/delete and all field writes are delegated to the parent route
+ * via the `onChange` / `onAddPhoto` / `onDeletePhoto` callbacks; this component
+ * holds only local input drafts.
+ */
 export const EquipmentRow = memo(function EquipmentRow({
   index,
   item,
@@ -45,13 +58,9 @@ export const EquipmentRow = memo(function EquipmentRow({
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const nameHistory = useFieldHistory(userId, 'ge:equipmentName');
-  const modelHistory = useFieldHistory(userId, 'ge:equipmentModel');
-  const serialHistory = useFieldHistory(userId, 'ge:equipmentSerial');
 
-  const [nameDraft,   setNameDraft]   = useState(item.name);
-  const [modelDraft,  setModelDraft]  = useState(item.model);
-  const [serialDraft, setSerialDraft] = useState(item.serialNumber);
-  const [noteDraft,   setNoteDraft]   = useState(item.note ?? '');
+  const [nameDraft, setNameDraft] = useState(item.name);
+  const [noteDraft, setNoteDraft] = useState(item.note ?? '');
 
   const expanded = item.condition === 'needs_service' || item.condition === 'unusable';
 
@@ -111,58 +120,6 @@ export const EquipmentRow = memo(function EquipmentRow({
           visible={focusedField === 'name' || (!nameDraft.trim() && nameHistory.suggestions.length > 0)}
         />
 
-        {/* Model + Serial - 2 columns */}
-        <View style={styles.twoCol}>
-          <View style={styles.colHalf}>
-            <FloatingLabelInput
-              label={t('generalEquipment.modelLabel')}
-              value={modelDraft}
-              onChangeText={text => {
-                setModelDraft(text);
-                onChange({ model: text });
-              }}
-              onFocus={() => setFocusedField('model')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (modelDraft.trim()) modelHistory.addToHistory(modelDraft.trim());
-              }}
-            />
-            <SuggestionPills
-              suggestions={modelHistory.suggestions}
-              onSelect={v => {
-                setModelDraft(v);
-                onChange({ model: v });
-                setFocusedField(null);
-              }}
-              visible={focusedField === 'model' || (!modelDraft.trim() && modelHistory.suggestions.length > 0)}
-            />
-          </View>
-          <View style={styles.colHalf}>
-            <FloatingLabelInput
-              label={t('generalEquipment.serialLabel')}
-              value={serialDraft}
-              onChangeText={text => {
-                setSerialDraft(text);
-                onChange({ serialNumber: text });
-              }}
-              onFocus={() => setFocusedField('serial')}
-              onBlur={() => {
-                setFocusedField(null);
-                if (serialDraft.trim()) serialHistory.addToHistory(serialDraft.trim());
-              }}
-            />
-            <SuggestionPills
-              suggestions={serialHistory.suggestions}
-              onSelect={v => {
-                setSerialDraft(v);
-                onChange({ serialNumber: v });
-                setFocusedField(null);
-              }}
-              visible={focusedField === 'serial' || (!serialDraft.trim() && serialHistory.suggestions.length > 0)}
-            />
-          </View>
-        </View>
-
         {/* Condition chips */}
         <View style={styles.chips}>
           <Pressable
@@ -197,24 +154,13 @@ export const EquipmentRow = memo(function EquipmentRow({
         </View>
       </View>
 
-      {/* Accordion: note + photos */}
+      {/* Accordion: photos first, then comment (image → comment, report style) */}
       {expanded && (
         <Animated.View
           entering={reduceMotion ? undefined : FadeInDown.duration(160)}
           exiting={reduceMotion ? undefined : FadeOut.duration(100)}
           style={[styles.accordion, accordionStyle]}
         >
-          <FloatingLabelInput
-            label={t('generalEquipment.noteLabel') + ' *'}
-            value={noteDraft}
-            onChangeText={text => {
-              setNoteDraft(text);
-              onChange({ note: text || null });
-            }}
-            multiline
-            numberOfLines={2}
-          />
-
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -232,6 +178,17 @@ export const EquipmentRow = memo(function EquipmentRow({
               <Text style={styles.addPhotoLabel}>{t('generalEquipment.addPhoto')}</Text>
             </Pressable>
           </ScrollView>
+
+          <FloatingLabelInput
+            label={t('generalEquipment.noteLabel') + ' *'}
+            value={noteDraft}
+            onChangeText={text => {
+              setNoteDraft(text);
+              onChange({ note: text || null });
+            }}
+            multiline
+            numberOfLines={2}
+          />
         </Animated.View>
       )}
     </View>
@@ -293,9 +250,6 @@ function getstyles(theme: Theme) {
       backgroundColor: theme.colors.dangerTint,
       alignItems: 'center', justifyContent: 'center',
     },
-
-    twoCol: { flexDirection: 'row', gap: 8 },
-    colHalf: { flex: 1 },
 
     chips: { flexDirection: 'row', gap: 6 },
     chip: {

@@ -27,12 +27,6 @@ export function Step4CraneSpecs({
       />
 
       <FloatingLabelInput
-        label={t('orders.craneNumberLabel')}
-        value={form.craneNumber}
-        onChangeText={v => setForm(f => ({ ...f, craneNumber: v }))}
-      />
-
-      <FloatingLabelInput
         label={t('orders.craneMaxLoadLabel')}
         value={form.craneMaxLoad}
         onChangeText={v => setForm(f => ({ ...f, craneMaxLoad: v }))}

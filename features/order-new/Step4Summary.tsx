@@ -55,9 +55,11 @@ export function Step4Summary({
         {docType === 'labor_safety_specialist' ? (
           <>
             <SummaryRow label={t('orders.specialist')} value={form.specialistName || '-'} s={s} />
-            <SummaryRow label={t('orders.idNumber')} value={form.specialistPersonalId || '-'} s={s} />
-            <SummaryRow label={t('orders.certNumber')} value={form.certificateNumber || '-'} s={s} />
+            <SummaryRow label={t('orders.objectAddress')} value={form.objectAddress || '-'} s={s} />
+            <SummaryRow label={t('orders.activityField')} value={form.activityField || '-'} s={s} />
           </>
+        ) : docType === 'training_schedule_order' ? (
+          <SummaryRow label={t('orders.director')} value={form.directorName || '-'} s={s} />
         ) : docType === 'fire_safety_order' ? (
           <>
             <SummaryRow label={t('orders.assignedPerson')} value={form.appointedName || '-'} s={s} />
@@ -83,8 +85,6 @@ export function Step4Summary({
             <SummaryRow label={t('orders.certNumberShort')} value={form.craneOperatorCertNumber || '-'} s={s} />
             <SummaryRow label={t('orders.crane')} value={form.craneModel || '-'} s={s} />
             {form.craneMaxLoad ? <SummaryRow label={t('orders.load')} value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
-            <SummaryRow label={t('orders.directorSigned')} value={form.directorSignature ? t('orders.signed') : '-'} s={s} />
-            <SummaryRow label={t('orders.operatorSigned')} value={form.operatorSignature ? t('orders.signed') : '-'} s={s} />
           </>
         ) : docType === 'crane_technical_order' ? (
           <>
@@ -93,8 +93,6 @@ export function Step4Summary({
             <SummaryRow label={t('orders.certNumberShort')} value={form.craneOperatorCertNumber || '-'} s={s} />
             <SummaryRow label={t('orders.crane')} value={form.craneModel || '-'} s={s} />
             {form.craneMaxLoad ? <SummaryRow label={t('orders.load')} value={`${form.craneMaxLoad} ტ.`} s={s} /> : null}
-            <SummaryRow label={t('orders.directorSigned')} value={form.directorSignature ? t('orders.signed') : '-'} s={s} />
-            <SummaryRow label={t('orders.specialistSigned')} value={form.operatorSignature ? t('orders.signed') : '-'} s={s} />
           </>
         ) : (
           <>

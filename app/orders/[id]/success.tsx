@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Home, Folder, SquarePen } from 'lucide-react-native';
 import { Card } from '../../../components/ui';
 import { SuccessScreen } from '../../../components/success';
+import { OrderActSuccessView } from '../../../features/order-new/OrderActSuccessView';
+import { isActStyleOrder } from '../../../features/order-new/orderFormSchema';
 import { useTheme } from '../../../lib/theme';
 import { ordersApi } from '../../../lib/ordersApi';
+import { projectsApi } from '../../../lib/services';
 import { reopenDocument } from '../../../lib/documents/reopen';
 import { queryClient } from '../../../lib/queryClient';
 import { haptic } from '../../../lib/haptics';
-import { ORDER_DOCUMENT_TYPE_LABEL, type Order, type OrderDocumentType } from '../../../types/models';
+import { ORDER_DOCUMENT_TYPE_LABEL, type Order, type OrderDocumentType, type Project } from '../../../types/models';
 import { useTranslation } from 'react-i18next';
 
 export default function OrderSuccessScreen() {
@@ -20,11 +23,34 @@ export default function OrderSuccessScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [reopening, setReopening] = useState(false);
 
   useEffect(() => {
-    if (id) ordersApi.getById(id).then(setOrder).catch(() => {});
+    if (!id) return;
+    ordersApi.getById(id).then(o => {
+      setOrder(o);
+      if (o) projectsApi.getById(o.projectId).then(setProject).catch(() => {});
+    }).catch(() => {}).finally(() => setLoaded(true));
   }, [id]);
+
+  // Don't render a success variant until the order is loaded — otherwise crane
+  // orders briefly flash the classic SuccessScreen before swapping to the
+  // act-style OrderActSuccessView (the two are picked by documentType).
+  if (!loaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={theme.colors.accent} />
+      </View>
+    );
+  }
+
+  // Act-style orders (crane, scaffold) finish on the unified success screen:
+  // add signature graphs and share the PDF on demand.
+  if (order && isActStyleOrder(order.documentType)) {
+    return <OrderActSuccessView order={order} project={project} />;
+  }
 
   const ORDER_SUCCESS_TITLE: Partial<Record<OrderDocumentType, string>> = {
     labor_safety_specialist: t('orders.successTitleLaborSafetySpecialist'),
@@ -80,7 +106,7 @@ export default function OrderSuccessScreen() {
           {order ? ORDER_DOCUMENT_TYPE_LABEL[order.documentType] : t('orders.docFallback')}
         </Text>
         <Text style={[styles.eyebrow, { marginTop: 6, color: theme.colors.accent }]}>
-          {t('orders.orderNumberDisplay', { number: order?.formData.orderNumber ?? id?.slice(0, 4).toUpperCase() })}
+          {t('orders.orderNumberDisplay', { number: (order?.formData as { orderNumber?: string })?.orderNumber ?? id?.slice(0, 4).toUpperCase() })}
         </Text>
       </Card>
     </SuccessScreen>

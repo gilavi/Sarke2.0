@@ -18,3 +18,9 @@ export type { CraneOperatorOrderPdfArgs } from './craneOperator';
 
 export { buildCraneTechnicalOrderHtml } from './craneTechnical';
 export type { CraneTechnicalOrderPdfArgs } from './craneTechnical';
+
+export { buildScaffoldSupervisionOrderHtml } from './scaffoldSupervision';
+export type { ScaffoldSupervisionOrderPdfArgs } from './scaffoldSupervision';
+
+export { buildTrainingScheduleOrderHtml } from './trainingSchedule';
+export type { TrainingScheduleOrderPdfArgs } from './trainingSchedule';

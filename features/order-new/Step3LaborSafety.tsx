@@ -2,10 +2,14 @@ import { View, type LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
-import { DateTimeField } from '../../components/DateTimeField';
 import type { CombinedForm } from './orderFormSchema';
 import type { OrderStyles } from './styles';
 
+/**
+ * Step 3 — labor-safety responsible person (doc #6). The source collects the
+ * object address, activity field, and responsible-person name only (the
+ * position is fixed "შრომის უსაფრთხოების სპეციალისტი"; no ID / certificate).
+ */
 export function Step3LaborSafety({
   form, setForm, s, attempted, registerField,
 }: {
@@ -20,15 +24,23 @@ export function Step3LaborSafety({
     <View style={{ gap: 12 }}>
       <Text style={s.stepTitle}>{t('orders.specialistTitle')}</Text>
 
-      <View onLayout={registerField('facilityName')}>
+      <View onLayout={registerField('objectAddress')}>
         <FloatingLabelInput
-          label={t('orders.facilityNameAndAddress')}
+          label={t('orders.objectAddress')}
           required
-          value={form.facilityName}
-          onChangeText={v => setForm(f => ({ ...f, facilityName: v }))}
-          error={attempted && !form.facilityName.trim() ? t('orders.requiredField') : undefined}
-          multiline
-          numberOfLines={2}
+          value={form.objectAddress}
+          onChangeText={v => setForm(f => ({ ...f, objectAddress: v }))}
+          error={attempted && !form.objectAddress.trim() ? t('orders.requiredField') : undefined}
+        />
+      </View>
+
+      <View onLayout={registerField('activityField')}>
+        <FloatingLabelInput
+          label={t('orders.activityField')}
+          required
+          value={form.activityField}
+          onChangeText={v => setForm(f => ({ ...f, activityField: v }))}
+          error={attempted && !form.activityField.trim() ? t('orders.requiredField') : undefined}
         />
       </View>
 
@@ -41,35 +53,6 @@ export function Step3LaborSafety({
           error={attempted && !form.specialistName.trim() ? t('orders.requiredField') : undefined}
         />
       </View>
-
-      <View onLayout={registerField('specialistPersonalId')}>
-        <FloatingLabelInput
-          label={t('orders.personalId11digits')}
-          required
-          value={form.specialistPersonalId}
-          onChangeText={v => setForm(f => ({ ...f, specialistPersonalId: v }))}
-          error={attempted && form.specialistPersonalId.trim().length !== 11 ? t('orders.requiredField') : undefined}
-          keyboardType="numeric"
-          maxLength={11}
-        />
-      </View>
-
-      <View onLayout={registerField('certificateNumber')}>
-        <FloatingLabelInput
-          label={t('orders.certNumberLabel')}
-          required
-          value={form.certificateNumber}
-          onChangeText={v => setForm(f => ({ ...f, certificateNumber: v }))}
-          error={attempted && !form.certificateNumber.trim() ? t('orders.requiredField') : undefined}
-        />
-      </View>
-
-      <DateTimeField
-        label={t('orders.certIssueDate')}
-        value={new Date(form.certificateDate)}
-        onChange={d => setForm(f => ({ ...f, certificateDate: d.toISOString() }))}
-        mode="date"
-      />
     </View>
   );
 }

@@ -1,16 +1,28 @@
-﻿import type { FireSafetyOrderFormData } from '../../../types/models';
-import { escHtml, fmtDate } from './_shared';
+import type { FireSafetyOrderFormData } from '../../../types/models';
+import { escHtml, fmtDate, renderBlankSignatureRows } from './_shared';
 
 export interface FireSafetyOrderPdfArgs {
   formData: FireSafetyOrderFormData;
   projectName: string;
+  /** Director's captured signature (base64 PNG) from the success screen; falls
+   *  back to `formData.directorSignature`. The appointed-person block stays
+   *  blank (hand-signed on the printed copy). */
+  directorSignatureBase64?: string | null;
+  /** Extra blank hand-sign slots added on the success screen. */
+  extraSignatureRows?: number;
 }
 
 /**
- * Builds HTML for "სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნის შესახებ".
- * Signatures (base64 PNG) are embedded directly if present.
+ * Builds HTML for "სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნის
+ * შესახებ". Body text (legal basis, duties ა–ი) mirrors the authoritative
+ * source document.
  */
-export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs): string {
+export function buildFireSafetyOrderHtml({
+  formData: f,
+  directorSignatureBase64,
+  extraSignatureRows,
+}: FireSafetyOrderPdfArgs): string {
+  const directorSig = directorSignatureBase64 ?? f.directorSignature;
   const orderDate = fmtDate(f.orderDate);
 
   const sigImg = (b64: string | null | undefined, label: string) =>
@@ -39,12 +51,6 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
     text-align: center;
     font-size: 13pt;
     font-weight: bold;
-    margin-bottom: 2pt;
-  }
-  .company-sub {
-    text-align: center;
-    font-style: italic;
-    font-size: 10.5pt;
     margin-bottom: 14pt;
   }
   h1 {
@@ -63,21 +69,21 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
   .header-line {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20pt;
+    margin-bottom: 18pt;
     font-size: 11pt;
   }
-  table.company-info {
+  table.info-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 18pt;
+    margin-bottom: 14pt;
     font-size: 10.5pt;
   }
-  table.company-info td {
+  table.info-table td {
     border: 1px solid #000;
     padding: 4pt 8pt;
     vertical-align: top;
   }
-  table.company-info td:first-child {
+  table.info-table td:first-child {
     font-weight: bold;
     width: 40%;
   }
@@ -86,61 +92,47 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
     font-weight: bold;
     margin-bottom: 6pt;
     margin-top: 14pt;
-    text-decoration: underline;
   }
   ul.legal-basis {
     list-style: none;
     padding-left: 0;
-    margin-bottom: 16pt;
+    margin-bottom: 10pt;
   }
   ul.legal-basis li {
     padding-left: 18pt;
     text-indent: -18pt;
     margin-bottom: 4pt;
+    text-align: justify;
   }
   ul.legal-basis li::before {
     content: "• ";
     font-weight: bold;
   }
-  .decree-title {
-    font-size: 12pt;
+  .decree-cmd {
+    font-size: 13pt;
     font-weight: bold;
     text-align: center;
-    margin-bottom: 10pt;
+    letter-spacing: 4pt;
+    margin: 10pt 0;
   }
-  ol.decree {
-    padding-left: 0;
-    list-style: none;
-    counter-reset: decree-counter;
-  }
-  ol.decree > li {
-    counter-increment: decree-counter;
-    padding-left: 24pt;
-    text-indent: -24pt;
-    margin-bottom: 8pt;
-  }
-  ol.decree > li::before {
-    content: counter(decree-counter) ". ";
-    font-weight: bold;
+  .appointment {
+    margin-bottom: 12pt;
+    text-align: justify;
   }
   ol.duties {
     list-style: none;
-    padding-left: 24pt;
-    counter-reset: duty-counter;
+    padding-left: 16pt;
     margin-top: 4pt;
   }
   ol.duties li {
-    counter-increment: duty-counter;
-    padding-left: 20pt;
-    text-indent: -20pt;
-    margin-bottom: 4pt;
+    padding-left: 0;
+    margin-bottom: 6pt;
+    text-align: justify;
   }
-  ol.duties li::before {
-    content: counter(duty-counter, lower-georgian) ") ";
-  }
-  .decree-footer {
-    margin-top: 10pt;
+  .confirm-effective {
+    margin-top: 14pt;
     font-style: italic;
+    margin-bottom: 10pt;
   }
   table.signature-table {
     width: 100%;
@@ -187,69 +179,61 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
 </head>
 <body>
 
-<!-- Company header -->
 <div class="company-header">${escHtml(f.companyName)}</div>
-<div class="company-sub">შრომის უსაფრთხოების სამსახური</div>
 
-<!-- Decree title -->
 <h1>ბ რ ძ ა ნ ე ბ ა</h1>
 <h2>სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნის შესახებ</h2>
 
-<!-- City / date -->
 <div class="header-line">
-  <span>ქ. ${escHtml(f.city)}</span>
+  <span>${f.city ? `ქ. ${escHtml(f.city)}` : ''}</span>
   <span>${orderDate} წ.</span>
 </div>
 
-<!-- Company info table -->
-<table class="company-info">
+<div class="section-title">კომპანიის ინფო</div>
+<table class="info-table">
   <tr><td>კომპანიის დასახელება</td><td>${escHtml(f.companyName)}</td></tr>
-  <tr><td>საიდენტიფიკაციო კოდი</td><td>${escHtml(f.identificationCode)}</td></tr>
+  ${f.identificationCode ? `<tr><td>საიდენტიფიკაციო კოდი</td><td>${escHtml(f.identificationCode)}</td></tr>` : ''}
   <tr><td>იურიდიული მისამართი</td><td>${escHtml(f.legalAddress)}</td></tr>
   <tr><td>დირექტორი</td><td>${escHtml(f.directorName)}</td></tr>
 </table>
 
-<!-- Legal basis -->
 <div class="section-title">სამართლებრივი საფუძველი</div>
 <ul class="legal-basis">
   <li>„საზოგადოებრივი უსაფრთხოების შესახებ" საქართველოს კანონი;</li>
-  <li>საქართველოს მთავრობის 2015 წლის 23 ივლისის №370 დადგენილება;</li>
+  <li>საქართველოს მთავრობის 2015 წლის 23 ივლისის №370 დადგენილება (სახანძრო უსაფრთხოების წესები);</li>
   <li>„შრომის უსაფრთხოების შესახებ" საქართველოს ორგანული კანონის მე-5 მუხლი.</li>
 </ul>
 
-<!-- Decree body -->
-<p class="decree-title">ვ ბ რ ძ ა ნ ე ბ:</p>
-<ol class="decree">
-  <li>
-    <strong>${escHtml(f.appointedName)}</strong>, ტელ.: ${escHtml(f.appointedPhone)},
-    დაინიშნოს სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად ობიექტზე -
-    <strong>„${escHtml(f.objectName)}"</strong>${f.objectAddress ? `, ${escHtml(f.objectAddress)}` : ''}.
-  </li>
-  <li>
-    პასუხისმგებელ პირს დაევალოს:
-    <ol class="duties">
-      <li>ობიექტის სახანძრო-ტექნიკური მდგომარეობის რეგულარული შემოწმება და კონტროლი;</li>
-      <li>სახანძრო ევაკუაციის გეგმის შემუშავება, განახლება და ხელმისაწვდომობის უზრუნველყოფა;</li>
-      <li>პირველადი სახანძრო-ხანძარსაწინააღმდეგო ინვენტარის (ცეცხლმაქრების, კოლოფების) სათანადო მდგომარეობის კონტროლი;</li>
-      <li>თანამშრომელთა სახანძრო უსაფრთხოების ინსტრუქტაჟის ჩატარება ობიექტზე სამუშაოდ დაშვებამდე და ყოველ 6 თვეში;</li>
-      <li>სახანძრო სიგნალიზაციისა და ხანძარის ჩაქრობის ავტომატური სისტემების მუშაობის კონტროლი;</li>
-      <li>სახანძრო-ევაკუაციური გამოსასვლელებისა და გზების გაწმენდა ყოველგვარი დამაბრკოლებლისაგან;</li>
-      <li>სახანძრო სავარჯიშოს (ევაკუაცია) ჩატარება წელიწადში მინიმუმ ერთხელ, ჩანიშვნა ჟურნალში;</li>
-      <li>ხანძრის შემთხვევაში - 112-ის გამოძახება, თანამშრომლების ევაკუაცია, ხელმძღვანელობის ინფორმირება და ინციდენტის დოკუმენტირება.</li>
-    </ol>
-  </li>
-  <li>ობიექტზე უზრუნველყოფილ იქნეს სახანძრო-ევაკუაციური ნიშნების, განათებული გამოსასვლელების, პირველადი ხანძარსაწინააღმდეგო საშუალებებისა და სიგნალიზაციის ყოველდღიური მზადყოფნა.</li>
-</ol>
-<p class="decree-footer">ბრძანება ძალაში შედის ხელმოწერის დღიდან.</p>
+<p class="decree-cmd">ვ ბ რ ძ ა ნ ე ბ:</p>
 
-<!-- Signature table -->
-<table class="signature-table" style="margin-top:24pt;">
+<p class="appointment">
+  <strong>1.</strong> ობიექტზე — <strong>„${escHtml(f.objectName)}"</strong>${f.objectAddress ? `, ${escHtml(f.objectAddress)}` : ''} —
+  სახანძრო უსაფრთხოებაზე პასუხისმგებელ პირად დაინიშნოს
+  <strong>${escHtml(f.appointedName)}</strong>${f.appointedPhone ? `, ტელეფონის N: ${escHtml(f.appointedPhone)}` : ''}.
+</p>
+
+<div class="section-title">2. პასუხისმგებელ პირს დაევალოს:</div>
+<ol class="duties">
+  <li>ა) ობიექტის სახანძრო უსაფრთხოების წესების შემუშავება, დანერგვა და მათი დაცვის კონტროლი;</li>
+  <li>ბ) ცეცხსაქრების ყოველთვიური ვიზუალური შემოწმება და წელიწადში ერთხელ — ტექნიკური მომსახურება/გადატენვა აკრედიტებულ კომპანიაში;</li>
+  <li>გ) სახანძრო ნიშნების, ევაკუაციის გეგმისა და საევაკუაციო გასასვლელების, მარშრუტების უზრუნველყოფა და კონტროლი;</li>
+  <li>დ) სახანძრო სისტემის (კვამლის დეტექტორი, განგაშის საყვირი, ავარიული ნათება, საევაკუაციო მიმართულების მანათობელი ნიშნები, ავარიული ციმციმა, ხმოვანი სიგნალი) ასეთის არსებობის შემთხვევაში სრული პერიოდული შემოწმება არაუმეტეს 6 თვეში ერთხელ შესაბამისი კომპეტენციის მქონე პირის/კომპანიის დახმარებით; აგრეთვე ნებისმიერი ისეთი სიტუაციის წარმოქმნისას, რომელსაც შეუძლია სახანძრო სისტემაზე უარყოფითი გავლენის მოხდენა (მაგ.: მექანიკური დაზიანება, რემონტი და ა.შ.);</li>
+  <li>ე) ადვილად აალებადი მასალების, ნივთიერებების შენახვისა და ექსპლუატაციის წესების კონტროლი (ასეთის არსებობის შემთხვევაში);</li>
+  <li>ვ) ცხელი სამუშაოების (შედუღება, აბრაზიული ჭრა, ღია ცეცხლი) დაშვებისას ნებართვის (Permit to Work) გაცემა და ცეცხმაქრის ადგილზე უზრუნველყოფა;</li>
+  <li>ზ) ხანძრის წარმოშობის შემთხვევაში — საგანგებო სიტუაციების მართვის სამსახურის (112) მყისიერი ინფორმირება, ევაკუაციის ხელმძღვანელობა და მოკვლევაში მონაწილეობა;</li>
+  <li>თ) პერიოდულად შეამოწმოს პირველადი დახმარების საშუალებები და საჭიროების შემთხვევაში დროულად მოახდინოს მათი შევსება საჭირო ინვენტარით;</li>
+  <li>ი) საჭირო პერიოდულობით შეამოწმოს ჰიდრანტები (ასეთის არსებობის შემთხვევაში) შესაბამისი კომპეტენციის მქონე პირის/კომპანიის დახმარებით.</li>
+</ol>
+
+<p class="confirm-effective">ბრძანება ძალაში შედის ხელმოწერის დღიდან.</p>
+
+<table class="signature-table">
   <tr>
     <td>
       <div class="sig-role">დირექტორი</div>
       <div>${escHtml(f.directorName)}</div>
-      ${sigImg(f.directorSignature, 'Director signature')}
-      <span class="sig-label">ხელმოწერა · ${sigDate(f.directorSignedAt)}</span>
+      ${sigImg(directorSig, 'Director signature')}
+      <span class="sig-label">ხელმოწერა, სახელი გვარი · ${sigDate(f.directorSignedAt)}</span>
     </td>
     <td>
       <div class="sig-role">ბრძანების გამცემი</div>
@@ -269,8 +253,8 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
     </td>
   </tr>
 </table>
+${renderBlankSignatureRows(extraSignatureRows ?? f.signatureExtraRows)}
 
-<!-- Footer -->
 <div class="footer">
   <span>გვერდი 1 / 1</span>
   <span>ბრძანება №${escHtml(f.orderNumber)} - სახანძრო უსაფრთხოება</span>
@@ -279,4 +263,3 @@ export function buildFireSafetyOrderHtml({ formData: f }: FireSafetyOrderPdfArgs
 </body>
 </html>`;
 }
-

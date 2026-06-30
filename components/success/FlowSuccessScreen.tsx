@@ -29,7 +29,7 @@ import { SuccessCheckDisc } from './SuccessCheckDisc';
 import { SuccessSignatureSection, type SuccessParticipant } from './SuccessSignatureSection';
 import { SuccessCertificateSection, type SuccessCertificateItem } from './SuccessCertificateSection';
 
-export type SuccessFlow = 'act' | 'incident' | 'report' | 'instruction';
+export type SuccessFlow = 'act' | 'incident' | 'report' | 'instruction' | 'order';
 export interface SuccessHero {
   tone: 'safe' | 'severe';
   label: string;
@@ -43,6 +43,7 @@ const FLOW_CONFIG: Record<
   incident: { titleKey: 'success.incident.title', subtitleKey: 'success.incident.subtitle', signatures: 'edit', certificates: false },
   report: { titleKey: 'success.report.title', subtitleKey: 'success.report.subtitle', signatures: false, certificates: false },
   instruction: { titleKey: 'success.instruction.title', subtitleKey: 'success.instruction.subtitle', signatures: 'view', certificates: false },
+  order: { titleKey: 'success.order.title', subtitleKey: 'success.order.subtitle', signatures: 'edit', certificates: false },
 };
 
 export interface FlowSuccessScreenProps {

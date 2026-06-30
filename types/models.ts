@@ -550,6 +550,23 @@ export interface LaborSafetyOrderFormData {
   specialistPersonalId: string;
   certificateNumber: string;
   certificateDate: string;
+  /** ობიექტის მისამართი — object address (source doc #6). */
+  objectAddress: string;
+  /** საქმიანობის სფერო — activity field (source doc #6). */
+  activityField: string;
+  /** Director's base64 signature + extra blank rows are act-style success args. */
+  directorSignature?: string | null;
+  directorSignedAt?: string | null;
+  signatureExtraRows?: number;
+}
+
+export interface TrainingScheduleOrderFormData {
+  orderDate: string; // ISO
+  companyName: string;
+  directorName: string;
+  directorSignature?: string | null;
+  directorSignedAt?: string | null;
+  signatureExtraRows?: number;
 }
 
 export interface AlcoholControlOrderFormData {
@@ -584,6 +601,8 @@ export interface FireSafetyOrderFormData {
   /** base64 PNG, no data: prefix */
   appointedSignature: string | null;
   appointedSignedAt: string | null;
+  /** Number of extra blank hand-sign slots (act-style success-screen graphs). */
+  signatureExtraRows?: number;
 }
 
 export interface FireSafetyOrderEnterpriseFormData {
@@ -629,12 +648,16 @@ export interface CraneOperatorOrderFormData {
   craneMaxLoad: string;
   /** Storage path in answer-photos bucket. Optional. */
   craneInspCertPhoto: string | null;
-  /** base64 PNG, no data: prefix */
+  /** base64 PNG, no data: prefix. Crane orders no longer capture digital
+   *  signatures — these stay null and the PDF prints blank signing lines. */
   directorSignature: string | null;
   directorSignedAt: string | null;
-  /** base64 PNG, no data: prefix */
+  /** base64 PNG, no data: prefix. See note above. */
   operatorSignature: string | null;
   operatorSignedAt: string | null;
+  /** Number of extra blank hand-sign slots to print below the director +
+   *  operator blocks (mirrors the inspection "add line" flow). */
+  signatureExtraRows?: number;
 }
 
 export interface CraneTechnicalOrderFormData {
@@ -659,11 +682,32 @@ export interface CraneTechnicalOrderFormData {
   directorSignedAt: string | null;
   operatorSignature: string | null;
   operatorSignedAt: string | null;
+  /** Number of extra blank hand-sign slots to print (see CraneOperatorOrderFormData). */
+  signatureExtraRows?: number;
 }
 
-export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData | CraneOperatorOrderFormData | CraneTechnicalOrderFormData;
+export interface ScaffoldSupervisionOrderFormData {
+  orderNumber: string;
+  city: string;
+  orderDate: string; // ISO
+  companyName: string;
+  objectAddress: string;
+  directorName: string;
+  // Appointed scaffolding supervisor — name, position, phone only (no ID/cert).
+  appointedName: string;
+  appointedPosition: string;
+  appointedPhone: string;
+  directorSignature: string | null;
+  directorSignedAt: string | null;
+  appointedSignature: string | null;
+  appointedSignedAt: string | null;
+  /** Number of extra blank hand-sign slots (success-screen graphs). */
+  signatureExtraRows?: number;
+}
 
-export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise' | 'crane_operator_order' | 'crane_technical_order';
+export type OrderFormData = LaborSafetyOrderFormData | AlcoholControlOrderFormData | FireSafetyOrderFormData | FireSafetyOrderEnterpriseFormData | CraneOperatorOrderFormData | CraneTechnicalOrderFormData | ScaffoldSupervisionOrderFormData | TrainingScheduleOrderFormData;
+
+export type OrderDocumentType = 'labor_safety_specialist' | 'alcohol_control' | 'fire_safety_order' | 'fire_safety_order_enterprise' | 'crane_operator_order' | 'crane_technical_order' | 'scaffold_supervision_order' | 'training_schedule_order';
 
 export interface Order {
   id: string;
@@ -686,6 +730,8 @@ export const ORDER_DOCUMENT_TYPE_LABEL: Record<OrderDocumentType, string> = {
   fire_safety_order_enterprise: 'საწარმოს სახანძრო უსაფრთხოებაზე პასუხისმგებელი პირის დანიშვნა',
   crane_operator_order: 'კოშკურა ამწის ოპერატორის დანიშვნა',
   crane_technical_order: 'ამწის ტექ. გამართულობა',
+  scaffold_supervision_order: 'ხარაჩოს ზედამხედველი პირის დანიშვნა',
+  training_schedule_order: 'სწავლება-ინსტრუქტაჟის გეგმა-გრაფიკი',
 };
 
 /** A BOG payment callback row. Added in migration 0031. */

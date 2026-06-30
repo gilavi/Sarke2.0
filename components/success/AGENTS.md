@@ -26,12 +26,12 @@ This replaced ~6 byte-identical copies of the same `Screen` +
   fields (`typeLabel`, `projectName`, `dateText`, `verdict`,
   `conclusion`) + `onViewPdf`.
 - `FlowSuccessScreen` — the **unified** post-completion success screen for
-  the act / incident / report / instruction flows (the redesigned UI:
+  the act / incident / report / instruction / order flows (the redesigned UI:
   black check disc, hero status pill, signature + certificate lists, coral
   Share-PDF pill, quiet "back to home" link). One presentational component
   parameterized by a `flow` prop; the flow config decides only title/subtitle,
-  whether signatures show (`edit` for act+incident, `view` for instruction),
-  and whether certificates show (act only). Each route passes the signing
+  whether signatures show (`edit` for act+incident+order, `view` for
+  instruction), and whether certificates show (act only). Each route passes the signing
   state, certificate items, hero, and the share/back handlers in. Reuses the
   DS primitives (`Button` primary = coral pill, `IconButton` outline = back,
   `Badge` = status pills) and the existing `SignaturesScreen` modal +

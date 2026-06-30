@@ -1,6 +1,6 @@
 // orderFormSchema.ts - types, initial state, helpers for the order wizard.
 
-import { ShieldCheck, Ban, Flame, Wrench } from 'lucide-react-native';
+import { ShieldCheck, Ban, Flame, Wrench, Building2, GraduationCap } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import type {
   AlcoholControlOrderFormData,
@@ -9,15 +9,29 @@ import type {
   FireSafetyOrderEnterpriseFormData,
   FireSafetyOrderFormData,
   LaborSafetyOrderFormData,
+  ScaffoldSupervisionOrderFormData,
+  TrainingScheduleOrderFormData,
   OrderDocumentType,
 } from '../../types/models';
 
-export type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
 export function getTotalSteps(docType: OrderDocumentType | null): number {
+  // Crane: 1 type · 2 company · 3 operator · 4 certificate · 5 serial number ·
+  //        6 crane specs. Signatures + PDF happen on the success screen
+  //        (act-style FlowSuccessScreen), not in the wizard.
   if (docType === 'crane_operator_order' || docType === 'crane_technical_order') return 6;
-  if (docType === 'fire_safety_order' || docType === 'fire_safety_order_enterprise') return 5;
-  return 4;
+  // Scaffold: 1 type · 2 company · 3 supervisor. Also act-style (no summary/sig).
+  if (docType === 'scaffold_supervision_order') return 3;
+  // Simple fire safety is act-style (3 steps); the enterprise variant stays
+  // classic (5 steps: + summary + in-wizard signatures).
+  if (docType === 'fire_safety_order') return 3;
+  if (docType === 'fire_safety_order_enterprise') return 5;
+  // Labor safety is act-style (type · company · person).
+  if (docType === 'labor_safety_specialist') return 3;
+  // Training schedule is mostly static — type · company only.
+  if (docType === 'training_schedule_order') return 2;
+  return 4; // alcohol_control (classic: + summary)
 }
 
 export function isFireSafetyVariant(docType: OrderDocumentType | null): boolean {
@@ -26,6 +40,18 @@ export function isFireSafetyVariant(docType: OrderDocumentType | null): boolean 
 
 export function isCraneVariant(docType: OrderDocumentType | null): boolean {
   return docType === 'crane_operator_order' || docType === 'crane_technical_order';
+}
+
+/** Order types that finish like an act: no in-wizard summary/signature step;
+ *  signature graphs + on-demand PDF live on the success screen. */
+export function isActStyleOrder(docType: OrderDocumentType | null): boolean {
+  return (
+    isCraneVariant(docType) ||
+    docType === 'scaffold_supervision_order' ||
+    docType === 'fire_safety_order' ||
+    docType === 'labor_safety_specialist' ||
+    docType === 'training_schedule_order'
+  );
 }
 
 /** @deprecated Use isCraneVariant */
@@ -46,6 +72,7 @@ export interface CombinedForm {
   specialistPersonalId: string;
   certificateNumber: string;
   certificateDate: string;
+  activityField: string; // საქმიანობის სფერო (doc #6)
   // alcohol_control
   responsiblePersonName: string;
   responsiblePersonPosition: string;
@@ -77,6 +104,8 @@ export interface CombinedForm {
   craneInspCertPhoto: string | null;
   operatorSignature: string | null;
   operatorSignedAt: string | null;
+  // Number of extra blank hand-sign slots for the crane signature step.
+  signatureExtraRows: number;
 }
 
 export const INITIAL_FORM: CombinedForm = {
@@ -92,6 +121,7 @@ export const INITIAL_FORM: CombinedForm = {
   specialistPersonalId: '',
   certificateNumber: '',
   certificateDate: new Date().toISOString(),
+  activityField: '',
   responsiblePersonName: '',
   responsiblePersonPosition: '',
   responsiblePersonPersonalId: '',
@@ -119,6 +149,7 @@ export const INITIAL_FORM: CombinedForm = {
   craneInspCertPhoto: null,
   operatorSignature: null,
   operatorSignedAt: null,
+  signatureExtraRows: 0,
 };
 
 export const DOC_TYPES: { type: OrderDocumentType; Icon: LucideIcon }[] = [
@@ -128,6 +159,8 @@ export const DOC_TYPES: { type: OrderDocumentType; Icon: LucideIcon }[] = [
   { type: 'fire_safety_order_enterprise', Icon: Flame },
   { type: 'crane_operator_order',         Icon: Wrench },
   { type: 'crane_technical_order',        Icon: Wrench },
+  { type: 'scaffold_supervision_order',   Icon: Building2 },
+  { type: 'training_schedule_order',      Icon: GraduationCap },
 ];
 
 export type AnyOrderFormData =
@@ -136,7 +169,9 @@ export type AnyOrderFormData =
   | FireSafetyOrderFormData
   | FireSafetyOrderEnterpriseFormData
   | CraneOperatorOrderFormData
-  | CraneTechnicalOrderFormData;
+  | CraneTechnicalOrderFormData
+  | ScaffoldSupervisionOrderFormData
+  | TrainingScheduleOrderFormData;
 
 export function buildFormData(
   form: CombinedForm,
@@ -177,6 +212,7 @@ export function buildFormData(
       directorSignedAt: form.directorSignedAt,
       appointedSignature: form.appointedSignature,
       appointedSignedAt: form.appointedSignedAt,
+      signatureExtraRows: form.signatureExtraRows,
     };
   }
   if (docType === 'fire_safety_order_enterprise') {
@@ -222,6 +258,7 @@ export function buildFormData(
       directorSignedAt: form.directorSignedAt,
       operatorSignature: form.operatorSignature,
       operatorSignedAt: form.operatorSignedAt,
+      signatureExtraRows: form.signatureExtraRows,
     };
   }
   if (docType === 'crane_technical_order') {
@@ -246,14 +283,49 @@ export function buildFormData(
       directorSignedAt: form.directorSignedAt,
       operatorSignature: form.operatorSignature,
       operatorSignedAt: form.operatorSignedAt,
+      signatureExtraRows: form.signatureExtraRows,
     };
   }
+  if (docType === 'scaffold_supervision_order') {
+    return {
+      orderNumber: form.orderNumber,
+      city: form.city,
+      orderDate: form.orderDate,
+      companyName: form.companyName,
+      objectAddress: form.objectAddress,
+      directorName: form.directorName,
+      appointedName: form.appointedName,
+      appointedPosition: form.appointedPosition,
+      appointedPhone: form.appointedPhone,
+      directorSignature: form.directorSignature,
+      directorSignedAt: form.directorSignedAt,
+      appointedSignature: form.appointedSignature,
+      appointedSignedAt: form.appointedSignedAt,
+      signatureExtraRows: form.signatureExtraRows,
+    };
+  }
+  if (docType === 'training_schedule_order') {
+    return {
+      orderDate: form.orderDate,
+      companyName: form.companyName,
+      directorName: form.directorName,
+      directorSignature: form.directorSignature,
+      directorSignedAt: form.directorSignedAt,
+      signatureExtraRows: form.signatureExtraRows,
+    };
+  }
+  // labor_safety_specialist
   return {
     ...base,
     specialistName: form.specialistName,
     specialistPersonalId: form.specialistPersonalId,
     certificateNumber: form.certificateNumber,
     certificateDate: form.certificateDate,
+    objectAddress: form.objectAddress,
+    activityField: form.activityField,
+    directorSignature: form.directorSignature,
+    directorSignedAt: form.directorSignedAt,
+    signatureExtraRows: form.signatureExtraRows,
   };
 }
 
@@ -263,6 +335,8 @@ export function docSlug(docType: OrderDocumentType | null): string {
   if (docType === 'fire_safety_order_enterprise') return 'brdzaneba_saxandzro_sawarmoo';
   if (docType === 'crane_operator_order') return 'brdzaneba_amwis_operatori';
   if (docType === 'crane_technical_order') return 'brdzaneba_amwis_teqnikuri';
+  if (docType === 'scaffold_supervision_order') return 'brdzaneba_xaracho';
+  if (docType === 'training_schedule_order') return 'swavleba_grafiki';
   return 'brdzaneba_shus_danishvna';
 }
 
@@ -300,6 +374,12 @@ export function missingFieldsForStep(
       reqText('directorName');
       return missing;
     }
+    if (docType === 'training_schedule_order') {
+      // Training schedule is mostly static — only company + director matter.
+      reqText('companyName');
+      reqText('directorName');
+      return missing;
+    }
     reqText('orderNumber');
     reqText('city');
     reqText('companyName');
@@ -308,10 +388,9 @@ export function missingFieldsForStep(
   }
   if (step === 3) {
     if (docType === 'labor_safety_specialist') {
-      reqText('facilityName');
       reqText('specialistName');
-      reqPersonalId('specialistPersonalId');
-      reqText('certificateNumber');
+      reqText('objectAddress');
+      reqText('activityField');
       return missing;
     }
     if (docType === 'alcohol_control') {
@@ -339,21 +418,28 @@ export function missingFieldsForStep(
     if (docType === 'crane_operator_order' || docType === 'crane_technical_order') {
       reqText('craneOperatorName');
       reqPersonalId('craneOperatorPersonalId');
-      reqText('craneOperatorCertNumber');
+      return missing;
+    }
+    if (docType === 'scaffold_supervision_order') {
+      reqText('appointedName');
       return missing;
     }
     return missing;
   }
-  // step 4 crane: crane specs - no required fields
-  // step 5 fire safety / step 6 crane: signature step - check signatures
-  if (step === 5 && isFireSafetyVariant(docType)) {
-    reqSig('directorSignature');
-    reqSig('appointedSignature');
+  // step 4 crane: certificate step — certificate number is required.
+  if (step === 4 && isCraneVariant(docType)) {
+    reqText('craneOperatorCertNumber');
     return missing;
   }
-  if (step === 6 && isCraneOperatorVariant(docType)) {
+  // step 5 crane: serial number · step 6 crane: crane specs — no required
+  // fields. (Crane has no summary/signature steps; signatures are added on
+  // the success screen.)
+  // Only the classic enterprise fire-safety variant keeps an in-wizard
+  // signature step; simple fire safety is act-style (signed on the success
+  // screen).
+  if (step === 5 && docType === 'fire_safety_order_enterprise') {
     reqSig('directorSignature');
-    reqSig('operatorSignature');
+    reqSig('appointedSignature');
     return missing;
   }
   return missing;

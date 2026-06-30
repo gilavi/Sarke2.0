@@ -1,6 +1,62 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-26 | Branch: `main`
+**Updated:** 2026-06-30 | Branch: `new-docs`
+
+---
+
+## 2026-07-01 — Labor-safety + training-schedule orders; breathalyzer label
+
+Three more organizational documents:
+
+- **Doc #6 — labor-safety responsible person** (`labor_safety_specialist`). The PDF had an invented legal basis (№381/2018, art. 5) + a fabricated 7-duty list + a certificate reference not in the source. Rewrote [laborSafety.ts](../lib/pdf/order/laborSafety.ts) to the real document: legal basis citing **art. 7** + the Labor Code, the info table (company, ID, **object address**, **activity field**, responsible person, fixed position), the 4 source responsibility paragraphs, and the effective + amendment clauses; **director-only** signature. Dropped the certificate-number/personal-ID inputs (not in the source), added object-address + activity-field inputs. Now **act-style** (type · company · person → success screen).
+- **Doc #7 — training/instruction plan-schedule** (`training_schedule_order`, **new type**). A mostly-static document — [trainingSchedule.ts](../lib/pdf/order/trainingSchedule.ts) hardcodes the legal basis, the 6 training topics, the 9 occasions, and the "every 3 months / during paid work hours / free" clauses; only the **company name + director** are filled in (2-step wizard → success screen with the director signature graph).
+- **Doc #5 — breathalyzer log** was already implemented faithfully; only aligned the PDF device label to the source ("მოწყობილობის ს/ნ").
+- **Generalized** `OrderActSuccessView` + `isActStyleOrder` to cover labor safety + training. No schema change — OTA-deliverable. Tests + AGENTS updated.
+
+---
+
+## 2026-06-30 — Fire-safety order corrected to source + act-style
+
+The simple fire-safety responsible-person order (`fire_safety_order`) had **invented duties** (a generic 8-item list — fire drills, "ცეცხლმაქრების, კოლოფების", etc. — none in the source). Rewrote [fireSafety.ts](../lib/pdf/order/fireSafety.ts) against the authoritative document: the 3-bullet legal basis (incl. №370/2015), the 9 real duties (ა–ი — extinguisher checks, fire-system 6-month inspection, Permit-to-Work for hot work, 112 + evacuation, hydrants, …), and dropped the invented "შრომის უსაფრთხოების სამსახური" subhead + the extra fabricated clause.
+
+It also **moved to the act-style flow** (`isActStyleOrder`): 3-step wizard (type · company · person) → the shared `FlowSuccessScreen`, where signature graphs are added and the PDF is generated on demand by `OrderActSuccessView`. **Scope:** the simple `fire_safety_order` only — the **enterprise** variant (`fire_safety_order_enterprise`) stays classic (in-wizard summary + digital signatures) until its source is provided. No schema change — OTA-deliverable. Tests + AGENTS updated.
+
+---
+
+## 2026-06-30 — Scaffolding-supervision order (new type) + black doc-type picker
+
+- **New order type: `scaffold_supervision_order`** ("ხარაჩოს ზედამხედველი პირის დანიშვნა"). A simpler decree than the crane orders — company → supervisor (name / position / phone) → done; fixed duties ა–ე from the source document, director + responsible-person signatures. New [scaffoldSupervision.ts](../lib/pdf/order/scaffoldSupervision.ts) builder (no certificate/equipment/photo blocks). It's **act-style**: 3-step wizard → the shared `FlowSuccessScreen` where signature graphs are added and the PDF is generated on demand.
+- **Generalized the act-style success.** `CraneOrderSuccessView` → [`OrderActSuccessView`](../features/order-new/OrderActSuccessView.tsx), now driven by `isActStyleOrder` (crane ×2 + scaffold) and dispatching the per-type PDF builder. Same regulatory/quota properties (signatures never persisted; PDF generated once on share).
+- **Doc-type picker reuses the canonical black selector.** Step 1 dropped its bespoke orange radio cards for [`components/ui/Selector`](../components/ui/Selector.tsx) (`presentation="rows"`, `indicator="check"`) — the ink-selected card already used by incidents / briefings / reports. Consistent look, one less one-off.
+- No schema change — OTA-deliverable. Tests + the two order AGENTS.md updated.
+
+---
+
+## 2026-06-30 — Crane-operator order PDF corrected to the official source
+
+The crane-operator appointment order (`crane_operator_order`, one of the six **ბრძანება** order types) had a PDF that diverged from the authoritative organizational document. Corrected the [builder](../lib/pdf/order/craneOperator.ts) against the real source:
+
+- **Accurate duties.** Replaced the previous invented clause list (which had a nonsense "საბაჟო კონტროლები" item and a wrong "15 მ/წ" wind threshold) with the source's 9 operational clauses (ა–ი): operate only when technically sound, observe passport load limits, no unstable loads, **stop work in wind ≥10 მ/წ**, no people under raised load, control-panel access control, daily visual check (rope/hook/brake/straps), stop+notify on any defect, and **PPE + a fall-protection harness for work ≥2 m**.
+- **Correct title/subtitle.** Title is now "დ ი რ ე ქ ტ ო რ ი ს ბ რ ძ ა ნ ე ბ ა" and the subtitle "...დანიშვნისა და უსაფრთხო ექსპლუატაციის უზრუნველყოფის შესახებ"; dropped the invented "ტექნიკური და სამშენებლო სამსახური" subhead.
+- **Photos now render.** The operator certificate photo and the crane inspection-certificate photo were already captured (stored in `answer-photos`) but never appeared in the PDF — they're now embedded. The wizard resolves the stored paths to data URLs via `pdfPhotoEmbed` before the (synchronous) builder runs, mirroring the inspection PDF pipeline. New reusable [`renderOrderPhoto`](../lib/pdf/order/_shared.ts) helper renders a consistent captioned figure across order PDFs.
+- **Scope.** `crane_operator_order` first; `crane_technical_order` (doc #2) corrected the same way in a follow-up below. No schema change — OTA-deliverable. Unit tests extended in `tests/unit/orderPdfBuilders.test.ts` (duties, photo embedding, regression guards, `renderOrderPhoto`).
+
+### Follow-up (same day) — wizard split + signature graphs
+
+- **Certificate fields moved to their own step.** The crane wizard now flows: company → operator basics (name/ID/position/phone) → **certificate** (number/validity/photo, `Step4CraneCertificate`) → **serial number** (`StepCraneSerial`, a focused identification step like the inspection ones) → crane specs (model/load/photo) → summary → signatures (8 steps). Cert number is required on the certificate step.
+- **Signatures are blank graphs, not digital captures.** The crane signature step no longer opens a `SignatureCanvas`; it renders blank "signature graph" cards (director + responsible person) plus an optional **+ add line** for extra signers (`signatureExtraRows`), exactly like the inspection signature flow. The PDF prints empty labeled hand-sign blocks (new shared `renderBlankSignatureRows`). Applies to both crane variants; nothing signature-related is persisted for crane orders anymore.
+
+### Follow-up (same day) — crane orders finish like an act
+
+The crane order no longer ends with a **summary** step or an in-wizard **signature** step. Instead it mirrors a შემოწმების აქტი:
+
+- **Wizard → success screen.** The crane wizard is now 6 steps (type · company · operator · certificate · serial · specs). The final button saves the record and routes to the shared **`FlowSuccessScreen`** (now extended with an `order` flow), where signature graphs are added via the same `SignaturesScreen` the acts use, and the **PDF is generated on demand** (`CraneOrderSuccessView`) — resolving photos, building the crane HTML with the in-memory signature snapshot (director signature + N blank rows), sharing, uploading, and setting `pdfUrl`.
+- **Regulatory + quota wins.** Nothing signature-related is persisted (matches inspection acts), and the PDF is generated once, on share, instead of in the wizard.
+- **Scope.** Crane variants only — the other 4 order types keep their existing summary + signature steps and the classic success screen. Removed the now-unused `StepSignaturesCrane` / `SignatureSlotCard`. No schema change — OTA-deliverable.
+
+### Follow-up (same day) — doc #2: crane technical-fitness order corrected to source
+
+`crane_technical_order` (the technical-fitness appointment) had the same divergence as the operator order — invented title/subhead, hallucinated duties (e.g. "ბრჭყალების", "ლებედკის" — not in the source), and no embedded photos. Rewrote [craneTechnical.ts](../lib/pdf/order/craneTechnical.ts) against the authoritative document: correct title ("დ ი რ ე ქ ტ ო რ ი ს ბ რ ძ ა ნ ე ბ ა"), the №429 legal basis, the 7 inspection components (ა–ზ) verbatim plus the static/dynamic load-test + act + stop-on-defect bullets, and the certificate + inspection photos (via `renderOrderPhoto`). It shares the same 6-step wizard + act-style success screen as the operator order. Tests extended for the technical duties, photos and signature args.
 
 ---
 

@@ -15,8 +15,8 @@ import { Button } from '../../../components/primitives/Button';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
 import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
-import { ChecklistItemRow, ChecklistLegend } from '../../../components/inspection-parts';
-import type { ChecklistRowOption } from '../../../components/inspection-parts';
+import { ChecklistLegend } from '../../../components/inspection-parts';
+import { EquipmentRow } from '../../../components/generalEquipment/EquipmentRow';
 import { EquipmentResultDetails } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
@@ -50,12 +50,6 @@ const DETAILS_STEP    = 1;
 const CHECKLIST_STEP  = 2;
 const CONCLUSION_STEP = 3;
 const TOTAL_STEPS     = 4;
-
-const GE_OPTIONS: ChecklistRowOption[] = [
-  { value: 'good',      icon: Check,         a11yLabel: 'ვარგისია' },
-  { value: 'deficient', icon: TriangleAlert, a11yLabel: 'ხარვეზი' },
-  { value: 'unusable',  icon: X,             a11yLabel: 'გამოუსადეგარია' },
-];
 
 const GE_LEGEND = [
   { icon: Check,         label: 'ვარგისია' },
@@ -172,11 +166,11 @@ export default function GeneralEquipmentScreen() {
 
   // ── Equipment row updates ─────────────────────────────────────────────────
 
-  const updateCondition = useCallback((itemId: string, condition: EquipmentItem['condition']) => {
+  const updateEquipmentRow = useCallback((itemId: string, patch: Partial<EquipmentItem>) => {
     setInspection(prev => {
       if (!prev) return prev;
       const equipment = prev.equipment.map((r) =>
-        r.id === itemId ? { ...r, condition } : r,
+        r.id === itemId ? { ...r, ...patch } : r,
       );
       const next = { ...prev, equipment };
       scheduleSave(next);
@@ -194,15 +188,58 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  const updateEquipmentName = useCallback((itemId: string, name: string) => {
+  const removeEquipmentRow = useCallback((itemId: string) => {
     setInspection(prev => {
       if (!prev) return prev;
-      const equipment = prev.equipment.map(r => r.id === itemId ? { ...r, name } : r);
+      const equipment = prev.equipment.filter(r => r.id !== itemId);
       const next = { ...prev, equipment };
       scheduleSave(next);
       return next;
     });
   }, [scheduleSave, setInspection]);
+
+  // ── Photo handling - per equipment row ────────────────────────────────────
+
+  const handleAddEquipmentPhoto = useCallback(async (itemId: string) => {
+    const results = await pickPhotosWithAnnotation();
+    if (results.length === 0) return;
+    const insp = inspectionRef.current;
+    if (!insp) return;
+    for (const result of results) {
+      try {
+        const path = await generalEquipmentApi.uploadPhoto(insp.id, 'equipment', itemId, result.uri);
+        setInspection(prev => {
+          if (!prev) return prev;
+          const equipment = prev.equipment.map(r =>
+            r.id === itemId ? { ...r, photo_paths: [...r.photo_paths, path] } : r,
+          );
+          const next = { ...prev, equipment };
+          scheduleSave(next);
+          return next;
+        });
+      } catch (e) {
+        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      }
+    }
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
+
+  const handleDeleteEquipmentPhoto = useCallback(async (itemId: string, path: string) => {
+    try {
+      await generalEquipmentApi.deletePhoto(path);
+    } catch (e) {
+      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
+      return;
+    }
+    setInspection(prev => {
+      if (!prev) return prev;
+      const equipment = prev.equipment.map(r =>
+        r.id === itemId ? { ...r, photo_paths: r.photo_paths.filter(p => p !== path) } : r,
+      );
+      const next = { ...prev, equipment };
+      scheduleSave(next);
+      return next;
+    });
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Photo handling - summary ──────────────────────────────────────────────
 
@@ -274,16 +311,6 @@ export default function GeneralEquipmentScreen() {
   useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
   const verdictOptions = useMemo<VerdictOption[]>(() => [], []);
-
-  const handleConditionChange = useCallback((itemId: string, result: string | null) => {
-    const conditionMap: Record<string, EquipmentItem['condition']> = {
-      good: 'good',
-      deficient: 'needs_service',
-      unusable: 'unusable',
-    };
-    const newCondition = result !== null ? (conditionMap[result] ?? null) : null;
-    updateCondition(itemId, newCondition);
-  }, [updateCondition]);
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
@@ -434,19 +461,17 @@ export default function GeneralEquipmentScreen() {
             <View style={{ paddingBottom: 2 }}>
               <ChecklistLegend items={GE_LEGEND} />
             </View>
-            {inspection.equipment.map(item => (
-              <ChecklistItemRow
+            {inspection.equipment.map((item, idx) => (
+              <EquipmentRow
                 key={item.id}
-                label={item.name || '-'}
-                editableLabel={{
-                  value: item.name,
-                  onChange: name => updateEquipmentName(item.id, name),
-                  placeholder: 'დასახელება...',
-                }}
-                options={GE_OPTIONS}
-                value={item.condition === 'needs_service' ? 'deficient' : item.condition}
-                onChange={v => handleConditionChange(item.id, v)}
-                dense
+                index={idx}
+                item={item}
+                canDelete={inspection.equipment.length > 1}
+                userId={userId}
+                onChange={patch => updateEquipmentRow(item.id, patch)}
+                onDelete={() => removeEquipmentRow(item.id)}
+                onAddPhoto={() => handleAddEquipmentPhoto(item.id)}
+                onDeletePhoto={path => handleDeleteEquipmentPhoto(item.id, path)}
               />
             ))}
             <View style={{ paddingHorizontal: 8, paddingTop: 4 }}>

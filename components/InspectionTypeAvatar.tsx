@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { Image, StyleSheet, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 import { StatusBadge, type InspectionStatus } from './StatusBadge';
 import { useTheme } from '../lib/theme';
 
@@ -79,7 +80,15 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
         <Image
           source={source}
           style={{ width: imgSize, height: imgSize }}
-          resizeMode="contain"
+          contentFit="contain"
+          // Keep the decoded bitmap in expo-image's in-memory + disk cache so the
+          // illustration decodes once and is reused instantly across every screen
+          // that shows it (list rows, pickers, calendar). Plain RN <Image> re-decoded
+          // these ~1MB-in-memory PNGs on each screen, which was the slowness.
+          cachePolicy="memory-disk"
+          // Bundled static asset — no fade needed; show immediately once decoded.
+          transition={0}
+          recyclingKey={typeof source === 'number' ? String(source) : undefined}
         />
       </View>
 

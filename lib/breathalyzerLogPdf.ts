@@ -239,7 +239,7 @@ export async function buildBreathalizerLogPdfHtml(args: {
         <div class="header-meta">
           <strong>${escHtml(companyName || projectName)}</strong><br>
           ობიექტი: ${escHtml(projectName)}<br>
-          სერიული ნომერი: ${sn}
+          მოწყობილობის ს/ნ: ${sn}
         </div>
       </div>
       <div class="header-right">

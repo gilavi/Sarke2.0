@@ -1,18 +1,36 @@
-﻿import type { LaborSafetyOrderFormData } from '../../../types/models';
-import { escHtml, fmtDate } from './_shared';
+import type { LaborSafetyOrderFormData } from '../../../types/models';
+import { escHtml, fmtDate, renderBlankSignatureRows } from './_shared';
 
 export interface OrderPdfArgs {
   formData: LaborSafetyOrderFormData;
   projectName: string;
+  /** Director's captured signature (base64 PNG) from the success screen; falls
+   *  back to `formData.directorSignature`. */
+  directorSignatureBase64?: string | null;
+  /** Extra blank hand-sign slots added on the success screen. */
+  extraSignatureRows?: number;
 }
 
 /**
- * Builds a plain, document-like HTML string matching the
- * "ბრძანება შრომის უსაფრთხოების სპეციალისტის დანიშვნა" template.
+ * Builds HTML for "ობიექტზე შრომის უსაფრთხოებაზე პასუხისმგებელი პირის გამოყოფის
+ * შესახებ" — appointment of the labor-safety responsible person. Body text
+ * (legal basis, responsibility paragraphs) mirrors the authoritative source.
  */
-export function buildLaborSafetyOrderHtml({ formData: f }: OrderPdfArgs): string {
+export function buildLaborSafetyOrderHtml({
+  formData: f,
+  directorSignatureBase64,
+  extraSignatureRows,
+}: OrderPdfArgs): string {
+  const directorSig = directorSignatureBase64 ?? f.directorSignature;
   const orderDate = fmtDate(f.orderDate);
-  const certDate  = fmtDate(f.certificateDate);
+
+  const sigImg = (b64: string | null | undefined, label: string) =>
+    b64
+      ? `<img src="data:image/png;base64,${escHtml(b64)}" alt="${label}" style="max-height:60pt;max-width:180pt;display:block;margin:4pt auto;"/>`
+      : `<span class="sig-underline"></span>`;
+
+  const sigDate = (iso: string | null | undefined) =>
+    iso ? escHtml(new Date(iso).toLocaleDateString('ka-GE')) : '<span class="sig-underline"></span>';
 
   return `<!DOCTYPE html>
 <html lang="ka">
@@ -28,95 +46,55 @@ export function buildLaborSafetyOrderHtml({ formData: f }: OrderPdfArgs): string
     color: #000;
     line-height: 1.55;
   }
+  .company-header {
+    text-align: center;
+    font-size: 13pt;
+    font-weight: bold;
+    margin-bottom: 14pt;
+  }
   h1 {
-    font-size: 14pt;
+    font-size: 16pt;
     font-weight: bold;
     text-align: center;
-    margin-bottom: 4pt;
+    letter-spacing: 6pt;
+    margin-bottom: 6pt;
   }
   h2 {
-    font-size: 12pt;
-    font-weight: bold;
+    font-size: 11pt;
+    font-weight: normal;
     text-align: center;
     margin-bottom: 16pt;
   }
   .header-line {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 20pt;
+    margin-bottom: 14pt;
     font-size: 11pt;
   }
-  table.company-info {
+  .legal-basis {
+    font-size: 10.5pt;
+    font-style: italic;
+    margin-bottom: 12pt;
+    text-align: justify;
+  }
+  table.info-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 18pt;
+    margin-bottom: 14pt;
     font-size: 10.5pt;
   }
-  table.company-info td {
+  table.info-table td {
     border: 1px solid #000;
     padding: 4pt 8pt;
     vertical-align: top;
   }
-  table.company-info td:first-child {
+  table.info-table td:first-child {
     font-weight: bold;
-    width: 40%;
+    width: 42%;
   }
-  .section-title {
-    font-size: 11pt;
-    font-weight: bold;
-    margin-bottom: 6pt;
-    margin-top: 14pt;
-    text-decoration: underline;
-  }
-  ul.legal-basis {
-    list-style: none;
-    padding-left: 0;
-    margin-bottom: 16pt;
-  }
-  ul.legal-basis li {
-    padding-left: 18pt;
-    text-indent: -18pt;
-    margin-bottom: 4pt;
-  }
-  ul.legal-basis li::before {
-    content: "• ";
-    font-weight: bold;
-  }
-  .decree-title {
-    font-size: 12pt;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 10pt;
-  }
-  ol.decree {
-    padding-left: 0;
-    list-style: none;
-    counter-reset: decree-counter;
-  }
-  ol.decree > li {
-    counter-increment: decree-counter;
-    padding-left: 24pt;
-    text-indent: -24pt;
+  .body-para {
     margin-bottom: 8pt;
-  }
-  ol.decree > li::before {
-    content: counter(decree-counter) ". ";
-    font-weight: bold;
-  }
-  ol.duties {
-    list-style: none;
-    padding-left: 24pt;
-    counter-reset: duty-counter;
-    margin-top: 4pt;
-  }
-  ol.duties li {
-    counter-increment: duty-counter;
-    padding-left: 20pt;
-    text-indent: -20pt;
-    margin-bottom: 4pt;
-  }
-  ol.duties li::before {
-    content: counter(duty-counter, lower-alpha) ") ";
+    text-align: justify;
   }
   table.signature-table {
     width: 100%;
@@ -124,23 +102,17 @@ export function buildLaborSafetyOrderHtml({ formData: f }: OrderPdfArgs): string
     margin-top: 20pt;
     font-size: 10.5pt;
   }
-  table.signature-table th {
-    border: 1px solid #000;
-    padding: 5pt 8pt;
-    text-align: center;
-    font-weight: bold;
-    background: #f5f5f5;
-  }
   table.signature-table td {
     border: 1px solid #000;
-    padding: 16pt 8pt 5pt;
+    padding: 8pt;
     vertical-align: bottom;
     text-align: center;
+    width: 50%;
   }
   .sig-underline {
     border-bottom: 1px solid #000;
     display: inline-block;
-    width: 100%;
+    width: 80%;
     min-height: 18pt;
   }
   .sig-label {
@@ -149,101 +121,107 @@ export function buildLaborSafetyOrderHtml({ formData: f }: OrderPdfArgs): string
     display: block;
     margin-top: 2pt;
   }
+  .sig-role {
+    font-weight: bold;
+    margin-bottom: 6pt;
+  }
+  .footer {
+    position: fixed;
+    bottom: 10mm;
+    left: 25mm;
+    right: 25mm;
+    border-top: 0.5px solid #ccc;
+    padding-top: 4pt;
+    font-size: 8.5pt;
+    color: #555;
+    display: flex;
+    justify-content: space-between;
+  }
 </style>
 </head>
 <body>
 
-<!-- Order number + title -->
-<h1>ბრძანება №${escHtml(f.orderNumber)}</h1>
-<h2>შრომის უსაფრთხოების სპეციალისტის დანიშვნის შესახებ</h2>
+<div class="company-header">${escHtml(f.companyName)}</div>
 
-<!-- City / date header -->
+<h1>ბ რ ძ ა ნ ე ბ ა</h1>
+<h2>ობიექტზე შრომის უსაფრთხოებაზე პასუხისმგებელი პირის გამოყოფის შესახებ</h2>
+
 <div class="header-line">
-  <span>ქ. ${escHtml(f.city)}</span>
+  <span>${f.identificationCode ? `ს/ნ: ${escHtml(f.identificationCode)}` : ''}</span>
   <span>${orderDate} წ.</span>
 </div>
 
-<!-- Company info table -->
-<table class="company-info">
-  <tr>
-    <td>ორგანიზაციის დასახელება</td>
-    <td>${escHtml(f.companyName)}</td>
-  </tr>
-  <tr>
-    <td>საიდენტიფიკაციო კოდი</td>
-    <td>${escHtml(f.identificationCode)}</td>
-  </tr>
-  <tr>
-    <td>იურიდიული მისამართი</td>
-    <td>${escHtml(f.legalAddress)}</td>
-  </tr>
-  <tr>
-    <td>დირექტორი</td>
-    <td>${escHtml(f.directorName)}</td>
-  </tr>
+<p class="legal-basis">
+  სამართლებრივი საფუძველი: საქართველოს ორგანული კანონი „შრომის უსაფრთხოების შესახებ"
+  (მათ შორის, მე-7 მუხლი — შრომის უსაფრთხოების სპეციალისტის დანიშვნის თაობაზე) და
+  საქართველოს ორგანული კანონი „საქართველოს შრომის კოდექსი".
+</p>
+
+<table class="info-table">
+  <tr><td>საწარმოს დასახელება</td><td>${escHtml(f.companyName)}</td></tr>
+  ${f.identificationCode ? `<tr><td>საიდენტიფიკაციო ნომერი</td><td>${escHtml(f.identificationCode)}</td></tr>` : ''}
+  <tr><td>ობიექტის მისამართი</td><td>${escHtml(f.objectAddress)}</td></tr>
+  <tr><td>საქმიანობის სფერო</td><td>${escHtml(f.activityField)}</td></tr>
+  <tr><td>პასუხისმგებელი პირი</td><td>${escHtml(f.specialistName)}</td></tr>
+  <tr><td>თანამდებობა</td><td>შრომის უსაფრთხოების სპეციალისტი</td></tr>
 </table>
 
-<!-- Legal basis -->
-<div class="section-title">სამართლებრივი საფუძველი</div>
-<ul class="legal-basis">
-  <li>საქართველოს ორგანული კანონის „შრომის უსაფრთხოების შესახებ" მე-5 მუხლის პირველი პუნქტი (დამსაქმებლის ვალდებულებები);</li>
-  <li>საქართველოს ორგანული კანონის „შრომის უსაფრთხოების შესახებ" მე-5 მუხლის მე-9 პუნქტი (დამსაქმებლის ვალდებულება - ჰყავდეს შრომის უსაფრთხოების სპეციალისტი);</li>
-  <li>საქართველოს მთავრობის 2018 წლის 27 ივლისის №381 დადგენილება;</li>
-  <li>კომპანიის წესდება და შიდა დებულებები.</li>
-</ul>
+<p class="body-para">
+  საქართველოს ორგანული კანონის „შრომის უსაფრთხოების შესახებ" შესაბამისად, ობიექტზე
+  შრომის უსაფრთხოების სპეციალისტად დაინიშნოს ზემოთ ცხრილში მითითებული პირი
+  (შემდგომში — „პასუხისმგებელი პირი"), რომელსაც ეკისრება ობიექტზე შრომის
+  უსაფრთხოების ნორმების დანერგვისა და მართვის ფუნქცია.
+</p>
+<p class="body-para">
+  პასუხისმგებელმა პირმა უნდა უზრუნველყოს შრომის უსაფრთხოების შესაბამისი
+  დოკუმენტაციის (რისკების შეფასება, ინსტრუქციები, უსაფრთხო სამუშაო პირობების
+  სტანდარტები) მომზადება და განახლება მოქმედი კანონმდებლობის მოთხოვნათა
+  გათვალისწინებით.
+</p>
+<p class="body-para">
+  პასუხისმგებელმა პირმა პერიოდულად, კანონითა და შიდა გეგმით განსაზღვრული ვადებში
+  უნდა ჩაატაროს დასაქმებულთა ინსტრუქტაჟი და სწავლება შრომის უსაფრთხოების საკითხებზე,
+  ასევე გააკონტროლოს მათი შესრულება პრაქტიკაში.
+</p>
+<p class="body-para">
+  პასუხისმგებელი პირი თავის უფლებამოსილებას ახორციელებს კეთილსინდისიერად,
+  კომპეტენტურად და ობიექტურად, კომპანიის და დასაქმებულთა ინტერესების
+  პრიორიტეტულობის გათვალისწინებით.
+</p>
+<p class="body-para">
+  ამ ბრძანების საფუძველზე პასუხისმგებელი პირის დანიშვნა არ ათავისუფლებს დამსაქმებელს
+  იმ ვალდებულებებისა და პასუხისმგებლობისგან, რომელიც მას ეკისრება საქართველოს მოქმედი
+  კანონმდებლობით, მათ შორის „შრომის უსაფრთხოების შესახებ" ორგანული კანონითა და შრომის
+  კოდექსით.
+</p>
+<p class="body-para" style="font-style:italic;">
+  ბრძანება ძალაში შედის ხელმოწერისთანავე და მოქმედებს შესაბამისი სამუშაოს/ობიექტის
+  ფუნქციონირების მთელი პერიოდის განმავლობაში, შემდგომი ბრძანებით გაუქმებამდე.
+  ბრძანებაში ცვლილების ან დამატების შეტანის უფლება აქვს მხოლოდ დირექტორს, ცალკე
+  გამოცემული ბრძანების საფუძველზე.
+</p>
 
-<!-- Decree -->
-<p class="decree-title">ვ ბ რ ძ ა ნ ე ბ:</p>
-<ol class="decree">
-  <li>
-    ობიექტზე - <strong>„${escHtml(f.facilityName)}"</strong> - შრომის უსაფრთხოების სპეციალისტად დაინიშნოს
-    <strong>${escHtml(f.specialistName)}</strong>
-    (პ/ნ ${escHtml(f.specialistPersonalId)}),
-    რომელმაც გაიარა აკრედიტებული პროგრამა და ფლობს სერტიფიკატს №${escHtml(f.certificateNumber)},
-    გაცემული ${certDate}.
-  </li>
-  <li>
-    შრომის უსაფრთხოების სპეციალისტი ვალდებულია:
-    <ol class="duties">
-      <li>რისკის შეფასების დოკუმენტებისა და პრევენციის პოლიტიკის შემუშავება, განახლება და კონტროლი;</li>
-      <li>თანამშრომელთა შესავალი, სამუშაო ადგილზე, განმეორებითი და საგანგებო ინსტრუქტაჟების ჩატარება და დოკუმენტირება;</li>
-      <li>ინდივიდუალური დამცავი საშუალებებით სრული უზრუნველყოფისა და გაცემის აღრიცხვის კონტროლი;</li>
-      <li>სამუშაო ადგილის საფრთხეების იდენტიფიცირება, რისკის შეფასება და საკონტროლო ზომების განხორციელება;</li>
-      <li>უბედური შემთხვევების რეგისტრაცია, გამოძიება და კანონით დადგენილ ვადებში შრომის ინსპექციის ინფორმირება;</li>
-      <li>სამუშაო ობიექტის პერიოდული შემოწმება და გამოვლენილ დარღვევებზე დაუყოვნებელი რეაგირება;</li>
-      <li>ანგარიშის წარდგენა დამსაქმებლისა და სახელმწიფო სამეთვალყურეო სამსახურისათვის.</li>
-    </ol>
-  </li>
-  <li>შრომის უსაფრთხოების სპეციალისტი უშუალოდ ექვემდებარება კომპანიის დირექტორს.</li>
-  <li>ბრძანების შესრულებაზე პასუხისმგებლობა დაეკისროს კომპანიის HSE მენეჯერს / დირექტორს.</li>
-  <li>წინამდებარე ბრძანება ძალაში შედის ხელმოწერის დღიდან და მოქმედებს ობიექტზე სამუშაოს დასრულებამდე ან ცალკე ბრძანებით გაუქმებამდე.</li>
-</ol>
-
-<!-- Signature table -->
-<p style="margin-top:20pt; font-weight:bold;">გაცნობა</p>
-<p style="margin-bottom:10pt; font-size:10.5pt;">გავეცანი ბრძანებას და ვიღებ ვალდებულებებს:</p>
 <table class="signature-table">
   <tr>
-    <th>როლი</th>
-    <th>სახელი, გვარი</th>
-    <th>ხელმოწერა</th>
-    <th>თარიღი</th>
-  </tr>
-  <tr>
-    <td>დირექტორი</td>
-    <td>${escHtml(f.directorName)}</td>
-    <td><span class="sig-underline"></span><span class="sig-label">ხელმოწერა</span></td>
-    <td><span class="sig-underline"></span><span class="sig-label">თარიღი</span></td>
-  </tr>
-  <tr>
-    <td>დანიშნული სპეციალისტი</td>
-    <td>${escHtml(f.specialistName)}</td>
-    <td><span class="sig-underline"></span><span class="sig-label">ხელმოწერა</span></td>
-    <td><span class="sig-underline"></span><span class="sig-label">გაცნობის თარიღი</span></td>
+    <td>
+      <div class="sig-role">დირექტორი</div>
+      <div>${escHtml(f.directorName)}</div>
+      ${sigImg(directorSig, 'Director signature')}
+      <span class="sig-label">ხელმოწერა, სახელი გვარი · ${sigDate(f.directorSignedAt)}</span>
+    </td>
+    <td>
+      <div class="sig-role">თარიღი</div>
+      <span class="sig-label">${sigDate(f.directorSignedAt)}</span>
+    </td>
   </tr>
 </table>
+${renderBlankSignatureRows(extraSignatureRows ?? f.signatureExtraRows)}
+
+<div class="footer">
+  <span>გვერდი 1 / 1</span>
+  <span>ბრძანება №${escHtml(f.orderNumber)} - შრომის უსაფრთხოების პასუხისმგებელი</span>
+</div>
 
 </body>
 </html>`;
 }
-

@@ -38,6 +38,7 @@ import {
   buildLaborSafetyOrderHtml,
 } from '../../lib/orderPdf';
 import { storageApi, projectsApi } from '../../lib/services';
+import { pdfPhotoEmbed } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
@@ -60,6 +61,7 @@ import {
   canAdvanceStep,
   docSlug,
   getTotalSteps,
+  isActStyleOrder,
   isCraneOperatorVariant,
   isCraneVariant,
   isFireSafetyVariant,
@@ -71,22 +73,41 @@ import { makeStyles } from './styles';
 import { Step1DocType } from './Step1DocType';
 import { Step2Company } from './Step2Company';
 import { Step2CraneCompany } from './Step2CraneCompany';
+import { Step2TrainingCompany } from './Step2TrainingCompany';
 import { Step3LaborSafety } from './Step3LaborSafety';
 import { Step3AlcoholControl } from './Step3AlcoholControl';
 import { Step3FireSafety } from './Step3FireSafety';
 import { Step3FireSafetyEnterprise } from './Step3FireSafetyEnterprise';
 import { Step3CraneOperator } from './Step3CraneOperator';
+import { Step3Scaffold } from './Step3Scaffold';
+import { Step4CraneCertificate } from './Step4CraneCertificate';
+import { StepCraneSerial } from './StepCraneSerial';
 import { Step4CraneSpecs } from './Step4CraneSpecs';
 import { Step4Summary } from './Step4Summary';
 import { StepSignaturesFireSafety } from './StepSignaturesFireSafety';
-import { StepSignaturesCrane } from './StepSignaturesCrane';
 
 import type { OrderDocumentType } from '../../types/models';
+
+/**
+ * Resolve a stored cert/inspection photo path (in the `answer-photos` bucket)
+ * to a PDF-embeddable `data:` URL. Returns null (and logs) on failure so a bad
+ * or missing photo never aborts PDF generation.
+ */
+async function resolvePdfPhoto(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  try {
+    return await pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, path);
+  } catch (e) {
+    logError(e, 'orderNew.cranePhotoEmbed');
+    return null;
+  }
+}
 
 function buildHtml(
   docType: OrderDocumentType | null,
   form: CombinedForm,
   projectName: string,
+  cranePhotos?: { cert?: string | null; insp?: string | null },
 ): string {
   const fd = buildFormData(form, docType);
   if (docType === 'alcohol_control') {
@@ -99,7 +120,12 @@ function buildHtml(
     return buildFireSafetyOrderEnterpriseHtml({ formData: fd as FireSafetyOrderEnterpriseFormData, projectName });
   }
   if (docType === 'crane_operator_order') {
-    return buildCraneOperatorOrderHtml({ formData: fd as CraneOperatorOrderFormData, projectName });
+    return buildCraneOperatorOrderHtml({
+      formData: fd as CraneOperatorOrderFormData,
+      projectName,
+      certPhotoDataUrl: cranePhotos?.cert,
+      inspCertPhotoDataUrl: cranePhotos?.insp,
+    });
   }
   if (docType === 'crane_technical_order') {
     return buildCraneTechnicalOrderHtml({ formData: fd as CraneTechnicalOrderFormData, projectName });
@@ -229,6 +255,31 @@ export default function NewOrderScreen() {
     }
   };
 
+  // ── act-style orders (crane, scaffold): save + go to the success screen ───────
+  // No PDF here — it's generated on the success screen after signature graphs
+  // are added.
+  const saveActOrderAndFinish = async () => {
+    if (!projectId || !docType) {
+      toast.error(t('orders.projectNotFound'));
+      return;
+    }
+    setSaving(true);
+    try {
+      const saved = await ordersApi.create({
+        projectId,
+        documentType: docType,
+        formData: buildFormData(form, docType),
+        status: 'completed',
+      });
+      invalidateRecordLists(queryClient);
+      router.replace(`/orders/${saved.id}/success` as any);
+    } catch (e) {
+      toast.error(friendlyError(e, t('orders.saveFailed')));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ── generate PDF ────────────────────────────────────────────────────────────
   const saveAndGeneratePdf = async () => {
     if (!projectId || !project || !docType) {
@@ -237,12 +288,9 @@ export default function NewOrderScreen() {
     }
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
 
-    // Validate signatures for types that require them
+    // Fire-safety still captures digital signatures; crane orders use blank
+    // hand-sign graphs on the printed PDF, so nothing to validate there.
     if (isFireSafetyVariant(docType) && (!form.directorSignature || !form.appointedSignature)) {
-      toast.error(t('orders.bothSignaturesRequired'));
-      return;
-    }
-    if (isCraneVariant(docType) && (!form.directorSignature || !form.operatorSignature)) {
       toast.error(t('orders.bothSignaturesRequired'));
       return;
     }
@@ -260,7 +308,15 @@ export default function NewOrderScreen() {
       invalidateRecordLists(queryClient);
 
       const projectName = project.company_name || project.name;
-      const html = buildHtml(docType, form, projectName);
+      // Crane orders embed the operator's certificate + crane inspection photos.
+      // Resolve the stored paths to data URLs before the (synchronous) builder.
+      const cranePhotos = isCraneVariant(docType)
+        ? {
+            cert: await resolvePdfPhoto(form.craneOperatorCertPhoto),
+            insp: await resolvePdfPhoto(form.craneInspCertPhoto),
+          }
+        : undefined;
+      const html = buildHtml(docType, form, projectName, cranePhotos);
       const pdfName = generatePdfName(projectName, docSlug(docType), new Date(form.orderDate), savedId);
       const pdfPath = `orders/${pdfName}`;
 
@@ -327,11 +383,14 @@ export default function NewOrderScreen() {
         {step === 1 && (
           <Step1DocType docType={docType} setDocType={setDocType} theme={theme} s={s} attempted={attempted} />
         )}
-        {step === 2 && !isCraneOperatorVariant(docType) && (
+        {step === 2 && !isCraneOperatorVariant(docType) && docType !== 'training_schedule_order' && (
           <Step2Company form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 2 && isCraneOperatorVariant(docType) && (
           <Step2CraneCompany form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
+        )}
+        {step === 2 && docType === 'training_schedule_order' && (
+          <Step2TrainingCompany form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
         )}
         {step === 3 && docType === 'labor_safety_specialist' && (
           <Step3LaborSafety form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
@@ -348,41 +407,48 @@ export default function NewOrderScreen() {
         {step === 3 && docType === 'crane_operator_order' && (
           <Step3CraneOperator
             form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField}
-            onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
-            onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
           />
         )}
         {step === 3 && docType === 'crane_technical_order' && (
           <Step3CraneOperator
             form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField}
-            onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
-            onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
             positionLabel={t('orders.qualificationSpecialty')}
             positionField="craneOperatorQualification"
             stepTitle={t('orders.techResponsible')}
           />
         )}
-        {step === 4 && isCraneOperatorVariant(docType) && (
+        {step === 3 && docType === 'scaffold_supervision_order' && (
+          <Step3Scaffold form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField} />
+        )}
+        {step === 4 && isCraneVariant(docType) && (
+          <Step4CraneCertificate
+            form={form} setForm={setForm} s={s} attempted={attempted} registerField={registerField}
+            onPickPhoto={() => handlePickPhoto('craneOperatorCertPhoto')}
+            onDeletePhoto={() => handleDeletePhoto('craneOperatorCertPhoto')}
+          />
+        )}
+        {step === 5 && isCraneVariant(docType) && (
+          <StepCraneSerial form={form} setForm={setForm} s={s} />
+        )}
+        {step === 6 && isCraneVariant(docType) && (
           <Step4CraneSpecs
             form={form} setForm={setForm} s={s}
             onPickPhoto={() => handlePickPhoto('craneInspCertPhoto')}
             onDeletePhoto={() => handleDeletePhoto('craneInspCertPhoto')}
           />
         )}
-        {/* Summary: step 4 for standard types, step 4 for fire safety, step 5 for crane */}
-        {(
-          (step === 4 && !isFireSafetyVariant(docType) && !isCraneVariant(docType)) ||
-          (step === 4 && isFireSafetyVariant(docType)) ||
-          (step === 5 && isCraneVariant(docType))
+        {/* Summary + in-wizard signatures: classic types only (labor safety,
+            alcohol, enterprise fire safety). Act-style types (crane, scaffold,
+            simple fire safety) finish on the success screen where signature
+            graphs are added and the PDF is generated. */}
+        {step === 4 && (
+          docType === 'alcohol_control' ||
+          docType === 'fire_safety_order_enterprise'
         ) && (
           <Step4Summary form={form} docType={docType} project={project} s={s} />
         )}
-        {/* Combined signature step: step 5 fire safety, step 6 crane */}
-        {step === 5 && isFireSafetyVariant(docType) && (
+        {step === 5 && docType === 'fire_safety_order_enterprise' && (
           <StepSignaturesFireSafety form={form} setForm={setForm} theme={theme} s={s} attempted={attempted} registerField={registerField} />
-        )}
-        {step === 6 && isCraneOperatorVariant(docType) && (
-          <StepSignaturesCrane form={form} setForm={setForm} theme={theme} s={s} docType={docType} attempted={attempted} registerField={registerField} />
         )}
       </KeyboardSafeArea>
 
@@ -397,6 +463,25 @@ export default function NewOrderScreen() {
               onPress={() => guard(canAdvance, goNext, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
               style={{ width: '100%' }}
             />
+          ) : isActStyleOrder(docType) ? (
+            // Act-style (crane, scaffold): finish → save the record and go to the
+            // success screen, where signature graphs are added and the PDF shared.
+            <View style={{ gap: 10 }}>
+              <Button
+                title={t('orders.finishButton')}
+                rightIcon={ArrowRight}
+                loading={saving}
+                onPress={() => guard(canAdvance, saveActOrderAndFinish, () => scrollToFirstError(missingFieldsForStep(step, docType, form)))}
+                style={{ width: '100%' }}
+              />
+              <Button
+                title={t('orders.saveWithoutPdf')}
+                variant="link"
+                disabled={saving}
+                onPress={saveDraft}
+                style={{ width: '100%' }}
+              />
+            </View>
           ) : (
             <View style={{ gap: 10 }}>
               <Button
