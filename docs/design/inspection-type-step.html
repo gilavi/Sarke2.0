@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inspection type picker — first-step grid (shipped design)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/dist/tabler-icons.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box}
+:root{
+  --brand:#FE7A43;        /* primary[500] */
+  --ink:#1A1A1A;          /* neutral[900] */
+  --ink-soft:#4E4A44;     /* neutral[600] */
+  --muted:#736F67;        /* neutral[500] */
+  --faint:#9C988F;        /* neutral[400] */
+  --line:#E9E7E0;         /* neutral[100] */
+  --line2:#D6D6D1;        /* neutral[200] */
+  --chip:#F2F1EC;         /* neutral[50]  */
+  --sel:rgba(26,26,26,.06); /* alpha-ink selected fill (monochrome) */
+  --font-sans:'Inter',system-ui,-apple-system,sans-serif;
+}
+body{margin:0;min-height:100vh;background:#E7E8EA;padding:28px 16px 56px;
+  font-family:'Noto Sans Georgian',var(--font-sans);
+  display:flex;flex-direction:column;align-items:center;gap:18px}
+
+.legend{max-width:430px;text-align:center;color:#3a3d42}
+.legend h1{font-size:17px;font-weight:700;margin:0 0 4px;color:#16181c}
+.legend p{font-size:13px;line-height:1.5;margin:0;color:#5b6168}
+
+.phone{width:396px;padding:11px;background:#111317;border-radius:46px;box-shadow:0 24px 60px rgba(17,19,23,.28)}
+.screen{width:374px;height:780px;background:#fff;border-radius:36px;overflow:hidden;
+  display:flex;flex-direction:column;position:relative;
+  font-family:'Noto Sans Georgian',var(--font-sans),system-ui,-apple-system,sans-serif}
+
+.statusbar{height:52px;padding:0 26px;display:flex;align-items:center;justify-content:space-between;position:relative}
+.statusbar .time{font-size:14px;font-weight:600;color:var(--ink)}
+.notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:100px;height:26px;background:#111317;border-radius:16px}
+.statusbar .sys{display:flex;align-items:center;gap:6px;font-size:16px;color:var(--ink)}
+
+.flowhead{padding:4px 12px 2px;display:flex;align-items:center;justify-content:space-between}
+.hbtn{width:40px;height:40px;border-radius:50%;border:none;background:var(--chip);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.htitle{display:flex;flex-direction:column;align-items:center;gap:1px}
+.htitle .t{font-size:16px;font-weight:600;color:var(--ink)}
+.htitle .s{font-size:12.5px;color:var(--muted)}
+
+.progress{padding:9px 20px 6px;display:flex;align-items:center;gap:12px}
+.track{flex:1;height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.fill{height:100%;border-radius:999px;background:var(--brand)}
+.pcount{font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+
+.content{flex:1;padding:6px 16px 20px;overflow-y:auto;display:flex;flex-direction:column}
+.caption .ct{font-size:19px;font-weight:700;color:var(--ink);letter-spacing:-.2px}
+.caption .cs{display:block;margin-top:3px;font-size:13px;color:var(--muted)}
+
+.grid{margin-top:16px;display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
+.card{position:relative;display:flex;flex-direction:column;align-items:center;
+  padding:14px 10px;border:1.5px solid var(--line);border-radius:18px;background:transparent;
+  cursor:pointer;font-family:inherit;gap:10px;transition:border-color .15s,background .15s,transform .12s;-webkit-tap-highlight-color:transparent}
+.card:active{transform:scale(.97)}
+.ilu{width:100%;display:flex;align-items:center;justify-content:center}
+.ilu img{width:104px;height:104px;object-fit:contain;display:block}
+.lbl{font-size:13.5px;font-weight:600;line-height:1.3;color:var(--ink-soft);text-align:center;overflow-wrap:anywhere}
+/* Selected: monochrome ink border + low-alpha ink fill (no solid grey block). */
+.card.sel{border-color:var(--ink);background:var(--sel)}
+.card.sel .lbl{color:var(--ink);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="legend">
+  <h1>შემოწმების აქტი — ნაბიჯი 1: შაბლონის არჩევა</h1>
+  <p>The old action sheet is gone. Picking the template is the first full-screen step, a 2-column grid
+     of illustration cards (transparent, equal-weight art). <b>Tapping a card advances the flow</b> — no
+     Next button on this step. Selection is monochrome: an ink border + a faint alpha-ink fill (no solid
+     grey). Same entry from Home, Projects, and everywhere else.</p>
+</div>
+
+<div class="phone">
+  <div class="screen">
+
+    <div class="statusbar">
+      <span class="time">9:41</span>
+      <div class="notch"></div>
+      <div class="sys"><i class="ti ti-antenna-bars-4"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></div>
+    </div>
+
+    <div class="flowhead">
+      <button class="hbtn" type="button" aria-label="უკან"><i class="ti ti-chevron-left" style="font-size:24px;color:var(--ink)"></i></button>
+      <div class="htitle">
+        <span class="t">შემოწმების აქტი</span>
+        <span class="s">Digomi 2021</span>
+      </div>
+      <button class="hbtn" type="button" aria-label="დახურვა"><i class="ti ti-x" style="font-size:20px;color:#6B7280"></i></button>
+    </div>
+
+    <div class="progress">
+      <div class="track"><div class="fill" style="width:50%"></div></div>
+      <span class="pcount">1 / 2</span>
+    </div>
+
+    <div class="content">
+      <div class="caption">
+        <span class="ct">აირჩიეთ შაბლონი</span>
+        <span class="cs">რომელი ობიექტის შემოწმება გსურთ?</span>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  // Faithful to the seeded is_system templates + their (now normalized,
+  // transparent) illustrations. მობილური ხარაჩო uses the ხარაჩო art.
+  var ILU='../../assets/images/ilu/';
+  var TYPES=[
+    {v:'bobcat',            l:'ციცხვიანი დამტვირთველი',     img:'bulldozer-sm.png'},
+    {v:'bobcat_large',      l:'დიდი ციცხვიანი დამტვირთველი', img:'bulldozer.png'},
+    {v:'excavator',         l:'ექსკავატორი',                img:'excavator.png'},
+    {v:'general_equipment', l:'ტექნიკური აღჭურვილობა',       img:'clamp.png'},
+    {v:'cargo_platform',    l:'ტვირთის მიმღები პლატფორმა',    img:'cargo.png'},
+    {v:'safety_net',        l:'უსაფრთხოების ბადე',           img:'safety-net.png'},
+    {v:'xaracho',           l:'ფასადის ხარაჩო',             img:'scaffolding.png'},
+    {v:'mobile_scaffold',   l:'მობილური ხარაჩო',            img:'scaffolding.png'},
+    {v:'harness',           l:'დამცავი ქამრები',            img:'harness.png'},
+    {v:'mobile_ladder',     l:'მობილური კიბე',              img:'mobile-staircase.png'},
+    {v:'fall_protection',   l:'ვარდნისგან დაცვა',           img:'harness.png'},
+    {v:'forklift',          l:'ჩანგლიანი დამტვირთველი',      img:'forklift.png'}
+  ];
+
+  var grid=document.getElementById('grid');
+  grid.innerHTML=TYPES.map(function(t){
+    return '<button type="button" class="card" data-v="'+t.v+'">'+
+             '<div class="ilu"><img src="'+ILU+t.img+'" alt=""></div>'+
+             '<span class="lbl">'+t.l+'</span>'+
+           '</button>';
+  }).join('');
+
+  // Tap selects (and, in the app, advances to the project step / wizard).
+  grid.addEventListener('click',function(e){
+    var card=e.target.closest('.card'); if(!card) return;
+    grid.querySelectorAll('.card').forEach(function(c){c.classList.remove('sel')});
+    card.classList.add('sel');
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -28,14 +28,21 @@ Local legacy helpers (split from the original `components/ui.tsx`):
 
 ## Internal files
 One file per export above, plus `index.ts`. `Selector` splits its mapped
-options into `SelectorOption.tsx` (`SelectorOptionChip` + `SelectorOptionRow`)
-so each option can own its own press/selection animated values.
+options into `SelectorOption.tsx` (`SelectorOptionChip` + `SelectorOptionRow`
++ `SelectorOptionCard`) so each option can own its own press/selection
+animated values.
 
 ## Gotchas / non-obvious things
 - `Selector` options carry the canonical press squish ([`PressBounce`](../animations/PressBounce.tsx))
   + a selection spring-in ([`useSelectionPop`](../animations/useSelectionPop.ts)) + a 150ms
   border/fill tween. The per-option shared values live in `SelectorOption.tsx` (a `.map()` can't
   call hooks); the parent passes `styles`/`theme` down. `CustomDropdown`'s trigger uses `PressBounce`.
+- `Selector presentation="grid"` is the 2-column illustration-card picker
+  (`SelectorOptionCard`): each option supplies a big `leading` (e.g.
+  `InspectionTypeAvatar transparent`) + label below. Selection is monochrome
+  — an ink border + a **low-alpha ink fill** (`withOpacity(ink, 0.06)`), so
+  the card keeps its surface and is gently tinted, never a solid grey block.
+  Used by `TemplatePickerStep` (the inspection-type first step).
 - `SectionHeader` (legacy here) and `SectionHeaderNew` (the newer
   modular header at `components/SectionHeader.tsx`) coexist. New
   call sites should import `SectionHeaderNew` (or the newer

@@ -85,7 +85,7 @@ export interface InspectionFlowResult<T extends BaseInspection> {
   projectName: string;
   setProjectName: React.Dispatch<React.SetStateAction<string>>;
   /** Signed-in user's display name (`first_name last_name`), or '' when
-   *  signed out. Pass this to `InspectionResultView.creatorName`. */
+   *  signed out. Pass this to `EquipmentResultDetails.creatorName`. */
   creatorName: string;
   loading: boolean;
   saving: boolean;

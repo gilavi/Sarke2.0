@@ -16,7 +16,7 @@ equipment inspections (bobcat, excavator, forklift, cargo-platform,
 fall-protection, general-equipment, lifting-accessories, mobile-ladder,
 safety-net). Those screens are monoliths (wizard + completed view in one file);
 when `status === 'completed'` they now render `EquipmentResultDetails` instead of
-the old full-screen WebView PDF (`components/InspectionResultView`, now orphaned).
+the old full-screen WebView PDF (`components/InspectionResultView`, deleted 2026-06-26).
 Each screen maps its own typed data into normalized props (the type-specific
 knowledge stays in the type-specific screen). Harness is a template-based generic
 act, so a completed harness redirects to `/inspections/[id]` (this module's act

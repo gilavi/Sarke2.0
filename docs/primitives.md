@@ -36,9 +36,9 @@ One module: [`features/records/`](../features/records/) owns the per-type record
 
 One component: [`components/ui/Selector.tsx`](../components/ui/Selector.tsx) — the canonical single/multi option picker.
 
-`<Selector label="..." options={[{ value, label, icon?, leading?, subtitle? }]} value={v} onChange={setV} />` for single-select; add `mode="multi" values={...} onValuesChange={...}` for multi. Three presentations: `"chips"` (default, compact pills), `"rows"` (bordered cards), `"list"` (divided full-bleed rows for sheets/scrollable pickers — supports a custom `leading` element e.g. an avatar). Monochrome by design (ink border + subtle fill). For a dropdown/bottom-sheet trigger use [`components/ui/CustomDropdown.tsx`](../components/ui/CustomDropdown.tsx), which shares the option shape.
+`<Selector label="..." options={[{ value, label, icon?, leading?, subtitle? }]} value={v} onChange={setV} />` for single-select; add `mode="multi" values={...} onValuesChange={...}` for multi. Four presentations: `"chips"` (default, compact pills), `"rows"` (bordered cards), `"list"` (divided full-bleed rows for sheets/scrollable pickers — supports a custom `leading` element e.g. an avatar), and `"grid"` (2-column illustration cards — each option supplies a big `leading`, label below; the inspection-type `TemplatePickerStep`). Monochrome by design (ink border + subtle fill — the `grid` card uses a low-alpha ink fill so it tints rather than blocks out). For a dropdown/bottom-sheet trigger use [`components/ui/CustomDropdown.tsx`](../components/ui/CustomDropdown.tsx), which shares the option shape.
 
-**Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated. Now built on `Selector`: `IdentificationGrid` (3 inline selectors), `TopicSelector`, `ProjectPickerStep`, `SlingTypeSheet`. `CustomDropdown` still owns the sheet-trigger case and shares `SelectorOption`.
+**Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated. Now built on `Selector`: `IdentificationGrid` (3 inline selectors), `TopicSelector`, `ProjectPickerStep`, `TemplatePickerStep` (grid), `SlingTypeSheet`. `CustomDropdown` still owns the sheet-trigger case and shares `SelectorOption`.
 
 ## Step & sub-item transitions
 

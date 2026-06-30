@@ -21,8 +21,8 @@ export type InspectionCategory =
 
 const CATEGORY_IMAGE: Record<InspectionCategory, ImageSourcePropType> = {
   xaracho:                        require('../assets/images/ilu/scaffolding.png'),
-  mobile_scaffold:                 require('../assets/images/ilu/mobile-staircase.png'),
-  mobile_scaffold_n3:              require('../assets/images/ilu/mobile-staircase.png'),
+  mobile_scaffold:                 require('../assets/images/ilu/scaffolding.png'),
+  mobile_scaffold_n3:              require('../assets/images/ilu/scaffolding.png'),
   harness:                        require('../assets/images/ilu/harness.png'),
   bobcat:                         require('../assets/images/ilu/bulldozer-sm.png'),
   excavator:                      require('../assets/images/ilu/excavator.png'),
@@ -45,6 +45,9 @@ interface Props {
   style?: ViewStyle;
   circle?: boolean;
   muted?: boolean;
+  /** Drop the tinted bubble and render the illustration alone on a near-full
+   *  box (the card/panel supplies the surface). Used by the template grid. */
+  transparent?: boolean;
 }
 
 export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
@@ -54,15 +57,18 @@ export const InspectionTypeAvatar = memo(function InspectionTypeAvatar({
   style,
   circle = false,
   muted = false,
+  transparent = false,
 }: Props) {
   const { theme } = useTheme();
   const source =
     category && category in CATEGORY_IMAGE
       ? CATEGORY_IMAGE[category as InspectionCategory]
       : FALLBACK_IMAGE;
-  const bg = muted ? theme.colors.subtleSurface : theme.colors.accentSoft;
+  const bg = transparent ? 'transparent' : muted ? theme.colors.subtleSurface : theme.colors.accentSoft;
   const radius = circle ? size / 2 : 10;
-  const imgSize = Math.round(size * 0.78);
+  // The normalized art already carries a ~6% transparent margin, so the
+  // bubble-less variant can fill the box; the bubbled variant insets to 78%.
+  const imgSize = transparent ? size : Math.round(size * 0.78);
 
   return (
     <View style={[{ width: size, height: size }, style]}>

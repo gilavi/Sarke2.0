@@ -10,7 +10,7 @@ import { A11yText as Text } from '../primitives/A11yText';
 import { usePressBounce } from '../animations/usePressBounce';
 import { useSelectionPop } from '../animations/useSelectionPop';
 import { useAccessibilitySettings, a11y } from '../../lib/accessibility';
-import type { Theme } from '../../lib/theme';
+import { withOpacity, type Theme } from '../../lib/theme';
 import type { SelectorOption } from './Selector';
 import type { getSelectorStyles } from './Selector.styles';
 
@@ -73,6 +73,56 @@ export function SelectorOptionChip({
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>
         {isMulti && active ? '✓ ' : ''}
+        {opt.label ?? opt.value}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
+/**
+ * Grid Selector option — a big illustration card (label below) for the 2-column
+ * type picker. Same motion contract as the chip/row; selection is carried by an
+ * ink border plus a low-alpha ink fill (monochrome, so the card keeps its
+ * surface and is only gently tinted, never blocked out by a solid grey).
+ */
+export function SelectorOptionCard({
+  opt, active, error, onPress, styles, theme, a11yRole,
+}: CommonOptionProps) {
+  const { scale, bounce } = usePressBounce(0.97);
+  const { reduceMotion } = useAccessibilitySettings();
+  const fill = withOpacity(theme.colors.ink, 0.06);
+  const bg = useSharedValue(active ? fill : 'transparent');
+  const border = useSharedValue(
+    error ? theme.colors.semantic.danger : active ? theme.colors.ink : theme.colors.hairline,
+  );
+
+  useEffect(() => {
+    const bgT = active ? fill : 'transparent';
+    const bdT = error ? theme.colors.semantic.danger : active ? theme.colors.ink : theme.colors.hairline;
+    if (reduceMotion) {
+      bg.value = bgT;
+      border.value = bdT;
+    } else {
+      bg.value = withTiming(bgT, { duration: theme.motion.fast });
+      border.value = withTiming(bdT, { duration: theme.motion.fast });
+    }
+  }, [active, error, reduceMotion, theme, bg, border, fill]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    backgroundColor: bg.value,
+    borderColor: border.value,
+  }));
+
+  return (
+    <AnimatedPressable
+      onPress={() => { bounce(); onPress(); }}
+      disabled={opt.disabled}
+      style={[styles.card, opt.disabled && styles.disabled, animStyle]}
+      {...a11y(opt.label ?? opt.value, opt.subtitle, a11yRole)}
+    >
+      <View style={styles.cardIlu}>{opt.leading}</View>
+      <Text style={[styles.cardLabel, active && styles.cardLabelActive]} numberOfLines={2}>
         {opt.label ?? opt.value}
       </Text>
     </AnimatedPressable>

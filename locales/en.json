@@ -522,6 +522,8 @@
   },
   "inspections": {
     "title": "Inspection",
+    "chooseTemplate": "Choose template",
+    "chooseTemplateSubtitle": "What do you want to inspect?",
     "backTitle": "Home",
     "notFoundTitle": "Inspection not found",
     "notFoundDesc": "It may have been deleted, or you do not have access.",

@@ -525,6 +525,8 @@
   },
   "inspections": {
     "title": "შემოწმების აქტი",
+    "chooseTemplate": "აირჩიეთ შაბლონი",
+    "chooseTemplateSubtitle": "რომელი ობიექტის შემოწმება გსურთ?",
     "backTitle": "მთავარი",
     "notFoundTitle": "შემოწმების აქტი ვერ მოიძებნა",
     "notFoundDesc": "შესაძლოა წაიშალა, ან თქვენ არ გაქვთ წვდომა.",

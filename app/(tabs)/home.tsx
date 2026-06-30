@@ -32,12 +32,8 @@ import { Card } from '../../components/ui';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions } from '../../components/QuickActions';
 import { Skeleton } from '../../components/Skeleton';
-import { inspectionDisplayName } from '../../lib/shared/documentName';
-import { useToast } from '../../lib/toast';
 import { useTranslation } from 'react-i18next';
-import type { Inspection, Project, Template } from '../../types/models';
-import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
-import { CustomDropdown } from '../../components/ui/CustomDropdown';
+import type { Inspection, Project } from '../../types/models';
 import { ProjectCard } from '../../components/home/ProjectCard';
 import { ProjectPickerSheet } from '../../components/home/ProjectPickerSheet';
 import {
@@ -70,7 +66,6 @@ export default function HomeScreen() {
   const { state } = useSession();
   const router = useRouter();
   const qc = useQueryClient();
-  const toast = useToast();
   const certsQ = useQualifications();
   const templatesQ = useTemplates();
   const projectsQ = useProjects();
@@ -94,8 +89,6 @@ export default function HomeScreen() {
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
-  const [tplPickerVisible, setTplPickerVisible] = useState(false);
-  const [tplPickerTemplates, setTplPickerTemplates] = useState<Template[]>([]);
 
   const { width: screenWidth } = useWindowDimensions();
   const HPAD = 20;
@@ -291,23 +284,9 @@ export default function HomeScreen() {
               {
                 label: t('home.quickInspection'),
                 colorKey: 'inspection',
-                onPress: () => {
-                  const sysTpls = templates.filter(tpl => tpl.is_system);
-                  if (sysTpls.length === 0) {
-                    toast.error(t('errors.notFoundTemplate'));
-                    return;
-                  }
-                  if (sysTpls.length === 1) {
-                    const tpl = sysTpls[0];
-                    const qs = tpl.category
-                      ? `category=${tpl.category}&templateId=${tpl.id}`
-                      : `templateId=${tpl.id}`;
-                    router.push(`/inspections/new?${qs}` as any);
-                  } else {
-                    setTplPickerTemplates(sysTpls);
-                    setTplPickerVisible(true);
-                  }
-                },
+                // The flow's first step now picks the template (type) from a grid,
+                // then a project — no pre-flow action sheet.
+                onPress: () => router.push('/inspections/new' as any),
               },
               {
                 label: t('home.quickIncident'),
@@ -350,27 +329,6 @@ export default function HomeScreen() {
           </Card>
         </View>
       </Animated.ScrollView>
-
-      <CustomDropdown
-        label={t('home.chooseTemplate')}
-        options={tplPickerTemplates.map(tpl => ({
-          label: inspectionDisplayName(tpl.name),
-          value: tpl.id,
-          icon: <InspectionTypeAvatar category={tpl.category} size={52} circle muted />,
-        }))}
-        value={null}
-        onChange={(id) => {
-          const tpl = tplPickerTemplates.find(t => t.id === String(id));
-          if (!tpl) return;
-          // Every template picks its project as the first in-flow step.
-          const qs = tpl.category
-            ? `category=${tpl.category}&templateId=${tpl.id}`
-            : `templateId=${tpl.id}`;
-          router.push(`/inspections/new?${qs}` as any);
-        }}
-        open={tplPickerVisible}
-        onOpenChange={setTplPickerVisible}
-      />
 
       <ProjectPickerSheet
         visible={pickerVisible}

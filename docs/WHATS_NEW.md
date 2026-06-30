@@ -94,6 +94,15 @@ The equipment list step (step 2) of the **general-equipment** inspection wizard 
 
 ---
 
+## 2026-06-26 — Picking the inspection type is now the first step (no more action sheet)
+
+Starting a **შემოწმების აქტი** from Home, a project, or anywhere else used to pop a `CustomDropdown` action sheet to choose the template. That sheet is gone — choosing the type (template) is now the **first full-screen step of the flow**.
+
+- **Grid step.** [`TemplatePickerStep`](../components/inspection-steps/AGENTS.md) renders a 2-column grid of illustration cards (one per system template) via the canonical `Selector` (new `presentation="grid"` + `SelectorOptionCard`). **Tapping a card advances the flow** — there's no Next button on this step (`InspectionShell` gained a `hideFooter` prop). Selection is monochrome: an ink border + a low-alpha ink fill, so the card tints rather than turning solid grey.
+- **Unified entry.** Both Home and the project screen now just `router.push('/inspections/new'[?projectId=…])`; [`app/inspections/new.tsx`](../app/inspections/new.tsx) + the pure [`lib/inspection/startFlow.ts`](../lib/inspection/startFlow.ts) resolve which pre-wizard steps are needed (skip the type step when one template exists / is supplied; skip the project step when launched from a project or only one project exists).
+- **No phantom drafts.** The inspection row is created **only when the flow reaches the wizard** (both type + project known), so selecting a type and backing out never leaves a draft behind.
+- **Illustrations.** The `assets/images/ilu/*` art was normalized — backgrounds flood-filled to transparent, trimmed, and square-padded to equal visual weight (fixes "harness felt smaller"); `InspectionTypeAvatar` gained a `transparent` mode and მობილური ხარაჩო now uses the ხარაჩო illustration. New `inspections.chooseTemplate`/`chooseTemplateSubtitle` keys (ka + en). Mobile-only; OTA-deliverable.
+
 ## 2026-06-25 — Equipment inspections open a real Details screen (not the PDF)
 
 Tapping a saved **equipment** inspection (bobcat, excavator, forklift, cargo-platform, fall-protection, general-equipment, lifting-accessories, mobile-ladder, safety-net) now opens the same structured **Details** screen as acts/incidents/reports — not the full-screen WebView PDF preview it used to show.

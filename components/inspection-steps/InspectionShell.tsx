@@ -51,6 +51,9 @@ export interface InspectionShellProps {
   onBlockedNext?: () => void;
   /** Optional banner rendered between the header and the step content (e.g. PdfLockedBanner). */
   banner?: ReactNode;
+  /** Hide the bottom action bar entirely — for tap-to-advance steps (e.g. the
+   *  template picker) where selection itself moves the flow forward. */
+  hideFooter?: boolean;
   onNext: () => void;
   onPrev: () => void;
   onClose: () => void;
@@ -72,6 +75,7 @@ export function InspectionShell({
   blockNext = false,
   onBlockedNext,
   banner,
+  hideFooter = false,
   onNext,
   onPrev,
   onClose,
@@ -122,6 +126,7 @@ export function InspectionShell({
           {children}
         </WizardStepTransition>
 
+        {hideFooter ? null : (
         <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
           <View style={styles.footer}>
             {isLastStep ? (
@@ -145,6 +150,7 @@ export function InspectionShell({
             )}
           </View>
         </KeyboardStickyView>
+        )}
       </View>
     </View>
   );

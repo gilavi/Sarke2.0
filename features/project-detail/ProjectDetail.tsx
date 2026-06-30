@@ -22,15 +22,11 @@ import { ChevronLeft, Pencil, Plus } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 import { SkeletonMap } from '../../components/SkeletonMap';
-import { routeForInspection } from '../../lib/inspectionRouting';
-import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useBottomSheet } from '../../components/BottomSheet';
 import {
   projectsApi,
   projectFilesApi,
-  questionnairesApi,
 } from '../../lib/services';
-import { inspectionRegistry } from '../../lib/inspection/registry';
 import { useQueryClient } from '@tanstack/react-query';
 import { qk, invalidateRecordLists, type UnifiedInspectionPreview } from '../../lib/apiHooks';
 import { deleteUnifiedInspection, type UnifiedInspection } from './unifiedInspections';
@@ -38,7 +34,7 @@ import { useToast } from '../../lib/toast';
 import { useTheme } from '../../lib/theme';
 import { toErrorMessage } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
-import type { ProjectFile, Template } from '../../types/models';
+import type { ProjectFile } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { ordersApi } from '../../lib/ordersApi';
 import { pickProjectLogo } from '../../lib/projectLogo';
@@ -47,8 +43,6 @@ import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { QuickActions, type QuickAction } from '../../components/QuickActions';
-import { InspectionTypeAvatar } from '../../components/InspectionTypeAvatar';
-import { CustomDropdown } from '../../components/ui/CustomDropdown';
 import { EditProjectSheet } from '../../components/projects/EditProjectSheet';
 import { UpcomingSection } from '../../components/projects/UpcomingSection';
 import { getStyles } from './styles';
@@ -113,9 +107,6 @@ export default function ProjectDetail() {
     opacity: interpolate(breathe.value, [1, 1.35], [1, 0.55]),
   }));
 
-  const [templatePickerVisible, setTemplatePickerVisible] = useState(false);
-  const [templatePickerOptions, setTemplatePickerOptions] = useState<Template[]>([]);
-
   // Project screen onboarding tour
   const heroRef = useRef<View>(null);
   const quickActionsRef = useRef<View>(null);
@@ -149,35 +140,15 @@ export default function ProjectDetail() {
   // background-refreshed. No more useFocusEffect hammering Supabase
   // on every tab switch.
 
+  // Enter the unified start flow with the project pre-attached: its first step
+  // picks the template (type), then creates the inspection straight into the
+  // wizard. No pre-flow action sheet, and nothing is saved until the wizard.
   const startNewInspection = () => {
     if (!id || typeof id !== 'string') {
       toast.error(t('errors.sessionLost'));
       return;
     }
-    const system = templates.filter(tpl => tpl.is_system);
-    if (system.length === 0) {
-      toast.error(t('projects.templateMissing'));
-      return;
-    }
-    if (system.length === 1) {
-      void createInspectionForTemplate(id, system[0]);
-      return;
-    }
-    setTemplatePickerOptions(system);
-    setTemplatePickerVisible(true);
-  };
-
-  const createInspectionForTemplate = async (projectId: string, tpl: Template) => {
-    try {
-      const entry = tpl.category ? inspectionRegistry[tpl.category] : undefined;
-      const newId = entry
-        ? (await entry.create({ projectId, templateId: tpl.id })).id
-        : (await questionnairesApi.create({ projectId, templateId: tpl.id })).id;
-      invalidateRecordLists(queryClient);
-      router.push(routeForInspection(tpl.category, newId, false) as any);
-    } catch (e) {
-      toast.error(friendlyError(e, t('errors.createFailed')));
-    }
+    router.push(`/inspections/new?projectId=${id}` as any);
   };
 
   const deletingInspIdsRef = useRef<Set<string>>(new Set());
@@ -553,27 +524,6 @@ export default function ProjectDetail() {
           setEditing(false);
           toast.success(t('projects.saved'));
         }}
-      />
-
-      <CustomDropdown
-        label={t('projects.chooseTemplateTitle')}
-        options={templatePickerOptions.map(tpl => ({
-          label: inspectionDisplayName(tpl.name),
-          value: tpl.id,
-          icon: <InspectionTypeAvatar category={tpl.category} size={52} circle muted />,
-        }))}
-        value={null}
-        onChange={async (templateId) => {
-          const tpl = templatePickerOptions.find(t => t.id === String(templateId));
-          if (!tpl) return;
-          if (!id || typeof id !== 'string') {
-            toast.error(t('errors.sessionLost'));
-            return;
-          }
-          await createInspectionForTemplate(id, tpl);
-        }}
-        open={templatePickerVisible}
-        onOpenChange={setTemplatePickerVisible}
       />
 
       <ProjectMapModal state={mapModalState} />

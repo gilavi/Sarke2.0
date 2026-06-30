@@ -14,7 +14,9 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   +1 for the header counter), `isLastStep`, `finishLabel` (custom
   finish-button text), `blockNext` (disable the non-last button while
   `canGoNext` is false — no skip), `showPdfIcon`/`generatingPdf`/`onPdf`
-  (PDF icon shown beside the close ✕), `banner` (e.g. PdfLockedBanner).
+  (PDF icon shown beside the close ✕), `banner` (e.g. PdfLockedBanner),
+  `hideFooter` (drop the whole bottom action bar — for tap-to-advance steps
+  like `TemplatePickerStep`, where selecting a card moves the flow forward).
 - `InspectionShellSkeleton` — the **canonical loading state** for every
   inspection flow (equipment routes, the generic scaffold wizard, and
   harness). Renders the **real `FlowHeader`** (same `card` bg, same
@@ -65,6 +67,18 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   inline shape helpers — `FieldGroup`, `SectionLabel`, `PhotoStripBlock`, …)
   — not a per-route skeleton — when a step shape isn't covered; reuse the
   closest variant (or its `verdicts`/`photos` params) otherwise.
+- `TemplatePickerStep` — the **first step of the start flow**: a 2-column
+  grid of inspection templates (types), each a big illustration
+  (`InspectionTypeAvatar transparent`) + label, rendered via the canonical
+  `Selector presentation="grid"`. Tapping a card calls `onSelect` and the
+  flow advances immediately (no Next button — the host passes
+  `hideFooter`). Fetches its own system templates with the canonical
+  three-state loading guard. Replaced the old `CustomDropdown` action sheet
+  that used to pop up from Home / a project. Orchestrated by
+  `app/inspections/new.tsx` together with `lib/inspection/startFlow.ts`
+  (pure step-resolution: skip template when one exists / is supplied, skip
+  project when launched from one) — and the inspection row is created ONLY
+  on entry to the wizard, so picking a type and backing out leaves no draft.
 - `ProjectPickerStep` — initial step where the user picks the
   project + project item the inspection is attached to.
 - `ChecklistStep` — generic "list of checks" step. Renders a
@@ -109,7 +123,8 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   by the design-system story / unit tests) but unused by the live flows.
 
 ## Internal files
-- `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`
+- `InspectionShell.tsx`, `InspectionShellSkeleton.tsx`, `ProjectPickerStep.tsx`,
+  `TemplatePickerStep.tsx`
 - `StepSkeletons.tsx` — `StepBodySkeleton` + the per-variant body
   skeletons consumed by `InspectionShellSkeleton`. Pure presentational,
   built only from the shared `Skeleton` atom.
