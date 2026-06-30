@@ -54,6 +54,7 @@ import { BriefingsSection } from './sections/BriefingsSection';
 import { ReportsSection } from './sections/ReportsSection';
 import { FilesAndOrdersSection } from './sections/FilesAndOrdersSection';
 import { BreathalyzerSection } from './sections/BreathalyzerSection';
+import { RiskAssessmentSection } from './sections/RiskAssessmentSection';
 import { LoadingSkeletonScreen } from './LoadingSkeletonScreen';
 import { ProjectMapModal, useProjectMapModal } from './ProjectMapModal';
 
@@ -85,6 +86,7 @@ export default function ProjectDetail() {
     reports,
     orders,
     breathalyzerLogs,
+    riskAssessments,
   } = useProjectDetailData(id);
   const queryClient = useQueryClient();
 
@@ -508,6 +510,11 @@ export default function ProjectDetail() {
           {/* ── ჟურნალები ── */}
           <View style={styles.sectionCard}>
             <BreathalyzerSection id={id} breathalyzerLogs={breathalyzerLogs} loading={pending.breathalyzer} />
+          </View>
+
+          {/* ── რისკების შეფასება ── */}
+          <View style={styles.sectionCard}>
+            <RiskAssessmentSection id={id} riskAssessments={riskAssessments} loading={pending.riskAssessment} />
           </View>
 
         </View>{/* end section cards wrapper */}

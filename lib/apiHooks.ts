@@ -40,6 +40,8 @@ import { liftingAccessoriesApi } from './liftingAccessoriesService';
 import { forkliftApi } from './forkliftService';
 import { breathalyzerLogApi } from './breathalyzerLogService';
 import type { BreathalizerLog } from '../types/breathalyzerLog';
+import { riskAssessmentApi } from './riskAssessmentService';
+import type { RiskAssessment } from '../types/riskAssessment';
 // Leaf import (recordTypes only pulls lucide icons — no cycle back into lib).
 // Keeps the Home warm-up's record-list keys in lock-step with the widgets that
 // read them, so the prefetch and the mount-time query share one cache entry.
@@ -127,6 +129,10 @@ export const qk = {
     byDate: (projectId: string, date: string) =>
       ['breathalyzerLog', 'byDate', projectId, date] as const,
   },
+  riskAssessment: {
+    byProject: (projectId: string) => ['riskAssessment', 'byProject', projectId] as const,
+    byId: (id: string) => ['riskAssessment', 'byId', id] as const,
+  },
   qualifications: {
     list: ['qualifications', 'list'] as const,
   },
@@ -186,6 +192,7 @@ export function invalidateRecordLists(qc: QueryClient): Promise<void> {
     'briefings',
     'incidents',
     'breathalyzerLog',
+    'riskAssessment',
     'certificates',
     'projects',
     'schedules',
@@ -709,5 +716,25 @@ export function useBreathalyzerLogByDate(projectId: string | undefined, date: st
     queryFn: () =>
       projectId ? breathalyzerLogApi.getByProjectAndDate(projectId, date) : Promise.resolve(null),
     enabled: !!projectId,
+  });
+}
+
+// ── Risk Assessments (რისკების შეფასება) ───────────────────────────────────────
+
+export function useRiskAssessmentsByProject(projectId: string | undefined) {
+  return useQuery<RiskAssessment[]>({
+    queryKey: projectId
+      ? qk.riskAssessment.byProject(projectId)
+      : ['riskAssessment', 'byProject', 'none'],
+    queryFn: () => (projectId ? riskAssessmentApi.listByProject(projectId) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
+}
+
+export function useRiskAssessment(id: string | undefined) {
+  return useQuery<RiskAssessment | null>({
+    queryKey: id ? qk.riskAssessment.byId(id) : ['riskAssessment', 'byId', 'none'],
+    queryFn: () => (id ? riskAssessmentApi.getById(id) : Promise.resolve(null)),
+    enabled: !!id,
   });
 }

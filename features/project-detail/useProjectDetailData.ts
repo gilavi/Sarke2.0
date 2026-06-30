@@ -23,6 +23,7 @@
 import { useEffect, useState } from 'react';
 import {
   useBreathalizerLogsByProject,
+  useRiskAssessmentsByProject,
   useBriefingsByProject,
   useIncidentsByProject,
   useOrdersByProject,
@@ -43,6 +44,7 @@ import type {
   Template,
 } from '../../types/models';
 import type { BreathalizerLog } from '../../types/breathalyzerLog';
+import type { RiskAssessment } from '../../types/riskAssessment';
 
 export type ProjectDetailData = ReturnType<typeof useProjectDetailData>;
 
@@ -63,6 +65,7 @@ export function useProjectDetailData(id: string | undefined) {
   const reportsQ = useReportsByProject(id);
   const ordersQ = useOrdersByProject(id);
   const breathalyzerLogsQ = useBreathalizerLogsByProject(id);
+  const riskAssessmentsQ = useRiskAssessmentsByProject(id);
 
   // Read-only data consumed directly from the query cache (no local state needed)
   const inspections: UnifiedInspectionPreview[] = inspectionsQ.data ?? [];
@@ -71,6 +74,7 @@ export function useProjectDetailData(id: string | undefined) {
   const reports: Report[] = reportsQ.data ?? [];
   const orders: Order[] = ordersQ.data ?? [];
   const breathalyzerLogs: BreathalizerLog[] = breathalyzerLogsQ.data ?? [];
+  const riskAssessments: RiskAssessment[] = riskAssessmentsQ.data ?? [];
 
   useEffect(() => {
     if (projectQ.data !== undefined) setProject(projectQ.data);
@@ -98,6 +102,7 @@ export function useProjectDetailData(id: string | undefined) {
     files: filesQ.isPending,
     orders: ordersQ.isPending,
     breathalyzer: breathalyzerLogsQ.isPending,
+    riskAssessment: riskAssessmentsQ.isPending,
   } as const;
 
   return {
@@ -112,5 +117,6 @@ export function useProjectDetailData(id: string | undefined) {
     reports,
     orders,
     breathalyzerLogs,
+    riskAssessments,
   };
 }

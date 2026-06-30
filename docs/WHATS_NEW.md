@@ -1,6 +1,13 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-06-30 | Branch: `new-docs`
+**Updated:** 2026-07-01 | Branch: `new-docs`
+
+---
+
+## 2026-07-01 — Risk-assessment register (new category) + CMS string sync
+
+- **New project category: რისკების შეფასება (risk assessment).** A per-project register (modeled on the breathalyzer journal) backed by one new table `risk_assessments`, with two document types: a full **risk assessment** (multi-row hazard table with a×ш probability×severity scoring + residual risk, finalised against a 5×5 matrix + legend in the PDF) and the **იდს განსაზღვრა** PPE-by-job-position matrix. New `features/risk-assessment/` (editor + row cards + signatures), `types/riskAssessment.ts` (scoring helpers + matrix), `lib/riskAssessmentService.ts`, `lib/riskAssessmentPdf.ts` (A4-landscape table + matrix), apiHooks (`qk.riskAssessment`, `useRiskAssessment(s)`, added to `invalidateRecordLists`), and a `RiskAssessmentSection` in project-detail. Route: `app/projects/[id]/risk-assessment/[raId].tsx`. **Migration `20260701120000_risk_assessments.sql` must be applied to the live DB** for it to function.
+- **CMS string sync.** Re-ran `scripts/seed-ui-strings.mjs` and applied the generated seed to the live `ui_strings` table (INSERT-only, never overwrites existing edits) so all the new flow strings — the org-docs order keys + the new `risk.*` namespace (43 keys) — are now editable/translatable in the CMS (1580 → 1692 keys). The app already shows them via the bundled locales fallback.
 
 ---
 
