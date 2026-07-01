@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-07-01 — Briefing topics expanded to the source journal (15 topics)
+
+The briefing (ინსტრუქტაჟი) topic picker carried only 5 topics; the official „ინსტრუქტაჟის აღრიცხვის ჟურნალი" defines **15**. Rebuilt the topic list to match, each with a semantic Lucide icon (legal ⚖️, electrical ⚡, evacuation 🚪, risk 🛡️, height ⬆️, regulations 📜, first-aid ❤️, signs, load, machinery 🚚, ergonomics, monitor, housekeeping ✨, equipment ⚙️, chemical 🧪) + the free-text `other`.
+
+- **New canonical catalog** [`lib/briefingTopics.ts`](../lib/briefingTopics.ts) — one pure source of truth for topic keys + Georgian labels, consumed by both the picker and the PDF. This **kills a duplication bug**: `lib/briefingPdf.ts` had its own 5-entry label map and would have rendered the new keys as raw strings. Registered in [primitives.md](primitives.md).
+- **Backward compatible.** Reuses the existing `height_work` + `evacuation` keys; the 3 retired keys (`scaffold_safety`/`ppe`/`fire_safety`) are kept as legacy labels so historical briefings still render correctly (in the row, avatar, and PDF). No DB/schema change — the wizard stores raw keys as before, so it's OTA-deliverable.
+- **PDF** section heading aligned to the source wording (ინსტრუქტაჟის თემატიკა); topics now resolve via the shared catalog.
+- Tests: new `tests/unit/briefingTopics.test.ts` (catalog shape + `ka.json`↔catalog drift guard + PDF coverage of new/legacy/custom topics); `i18nParity` covers the 13 new bilingual keys.
+
+---
+
 ## 2026-07-01 — Full text audit (100% bilingual) + code-review fixes
 
 - **Complete UI-string audit.** Swept every screen for hard-coded / missing strings, then brought `locales/en.json` + `locales/ka.json` to **exact parity: 1707 keys, zero gaps in either language** (167 previously ka-only keys got English translations; 15 missing-in-both were defined). The live CMS `ui_strings` table was re-seeded (insert-only) **and** the 167 NULL `en` rows were back-filled (without clobbering any existing edits or `ka` values) — prod is now **1707 keys, 0 NULL en, 0 NULL ka**. A new `tests/unit/i18nParity.test.ts` guards key-set parity, `{{placeholder}}` consistency, and no-blank-values so the two files can't drift again.

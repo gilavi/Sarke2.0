@@ -51,7 +51,7 @@ vi.mock('../../components/inputs/FloatingLabelInput', () => ({
     React.createElement('input', { 'aria-label': label }),
 }));
 
-import { TopicSelector, TOPIC_KEYS } from '../../components/briefings/TopicSelector';
+import { TopicSelector, TOPIC_OPTION_KEYS } from '../../components/briefings/TopicSelector';
 
 afterEach(cleanup);
 
@@ -83,9 +83,9 @@ function renderSel(props: Partial<React.ComponentProps<typeof TopicSelector>> = 
 }
 
 describe('TopicSelector', () => {
-  it('renders a row for every topic key', () => {
+  it('renders a row for every offered topic key', () => {
     const { getByLabelText } = renderSel();
-    for (const key of TOPIC_KEYS) {
+    for (const key of TOPIC_OPTION_KEYS) {
       const row = getByLabelText(`briefings.topics.${key}`);
       // Each option renders as a checkbox-role row (multi-select).
       expect(row.getAttribute('role')).toBe('checkbox');
@@ -94,21 +94,23 @@ describe('TopicSelector', () => {
 
   it('toggles a topic on press', () => {
     const { getByLabelText, onToggle } = renderSel();
-    fireEvent.click(getByLabelText('briefings.topics.ppe'));
-    expect(onToggle).toHaveBeenCalledWith('ppe');
+    fireEvent.click(getByLabelText('briefings.topics.first_aid'));
+    expect(onToggle).toHaveBeenCalledWith('first_aid');
   });
 
   it('fills the indicator box on the selected row and leaves the rest hollow', () => {
-    const { getByLabelText } = renderSel({ selectedTopics: new Set(['ppe']) });
-    const ppe = getByLabelText('briefings.topics.ppe');
-    const evac = getByLabelText('briefings.topics.evacuation');
-    expect(indicatorIsFilled(ppe)).toBe(true);
-    expect(indicatorIsFilled(evac)).toBe(false);
+    const { getByLabelText } = renderSel({ selectedTopics: new Set(['first_aid']) });
+    const selected = getByLabelText('briefings.topics.first_aid');
+    const other = getByLabelText('briefings.topics.evacuation');
+    expect(indicatorIsFilled(selected)).toBe(true);
+    expect(indicatorIsFilled(other)).toBe(false);
   });
 
   it('reveals the custom-topic input only when "other" is selected', () => {
+    // i18n is stubbed to echo the key, so the input's label is the key path.
+    const label = 'briefings.topicNameLabel';
     const { queryByLabelText, rerender } = renderSel();
-    expect(queryByLabelText('თემის დასახელება')).toBeNull();
+    expect(queryByLabelText(label)).toBeNull();
     rerender(
       <TopicSelector
         selectedTopics={new Set(['other'])}
@@ -117,6 +119,6 @@ describe('TopicSelector', () => {
         onChangeCustomTopic={vi.fn()}
       />,
     );
-    expect(queryByLabelText('თემის დასახელება')).toBeTruthy();
+    expect(queryByLabelText(label)).toBeTruthy();
   });
 });

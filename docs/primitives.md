@@ -40,6 +40,14 @@ One component: [`components/ui/Selector.tsx`](../components/ui/Selector.tsx) —
 
 **Don't** hand-roll an option list with `options.map()` + `Pressable` + radio/chip styles — that drift is exactly what this consolidated. Now built on `Selector`: `IdentificationGrid` (3 inline selectors), `TopicSelector`, `ProjectPickerStep`, `TemplatePickerStep` (grid), `SlingTypeSheet`. `CustomDropdown` still owns the sheet-trigger case and shares `SelectorOption`.
 
+## Briefing topic catalog
+
+One module: [`lib/briefingTopics.ts`](../lib/briefingTopics.ts) — the single source of truth for the briefing (ინსტრუქტაჟი) topic **keys** and their **Georgian labels** (source doc: „ინსტრუქტაჟის აღრიცხვის ჟურნალი", 15 topics + free-text `other`). Pure module (no RN/lucide), so it's unit-testable.
+
+`BRIEFING_TOPIC_KEYS` (offered in the picker) · `BRIEFING_TOPIC_LABELS_KA` (mirrored into `locales/ka.json` `briefings.topics`) · `LEGACY_BRIEFING_TOPIC_LABELS_KA` (retired keys kept for historical rows) · `ALL_BRIEFING_TOPIC_LABELS_KA` (merged, for the PDF) · `KNOWN_BRIEFING_TOPIC_KEYS` (label/icon resolution).
+
+Consumers: `components/briefings/TopicSelector` adds the **icons** (`TOPIC_ICONS`) and renders `TOPIC_OPTION_KEYS`; `lib/briefingPdf` renders `ALL_BRIEFING_TOPIC_LABELS_KA`. **Don't** hardcode a topic-label map anywhere else — the PDF used to (5 stale entries) and would render new keys as raw strings. `tests/unit/briefingTopics.test.ts` guards `ka.json` ↔ catalog drift; adding a key to `locales` without the catalog (or vice-versa) fails there + in `i18nParity`.
+
 ## Step & sub-item transitions
 
 Two owners, by altitude — don't reinvent a slide/fade for either case:

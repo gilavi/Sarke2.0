@@ -14,6 +14,7 @@ import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useBriefingsByProject } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { briefingTopicsLabel } from '../../../features/records/topics';
 import type { Briefing } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -24,9 +25,6 @@ function formatGeorgianDate(isoDate: string): string {
 }
 function toDateKey(isoDatetime: string): string {
   return isoDatetime.slice(0, 10);
-}
-function topicLabel(t: string): string {
-  return t.replace(/^custom:/, '');
 }
 
 export default function ProjectBriefingsList() {
@@ -86,7 +84,7 @@ export default function ProjectBriefingsList() {
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.listRowTitle} numberOfLines={1}>
-                        {b.topics.map(topicLabel).join(', ') || '-'}
+                        {briefingTopicsLabel(b.topics, t)}
                       </Text>
                       <Text style={styles.listRowSubtitle}>
                         {b.participants.length}{t('projects.participantCountSuffix')}{formatShortDateTime(b.dateTime)}

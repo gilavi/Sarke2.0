@@ -1,20 +1,12 @@
 import type { Briefing } from '../types/models';
 import type { Project } from '../types/models';
 import { KA_MONTH_FULL } from './homeUtils';
+import { ALL_BRIEFING_TOPIC_LABELS_KA } from './briefingTopics';
 
-/** Predefined topic labels (matches the setup screen chips). */
-const TOPIC_LABELS: Record<string, string> = {
-  'scaffold_safety': 'ხარაჩოს უსაფრთხოება',
-  'height_work': 'სიმაღლეზე მუშაობა',
-  'ppe': 'დამცავი აღჭურვილობა',
-  'evacuation': 'საევაკუაციო გეგმა',
-  'fire_safety': 'ხანძარსაწინააღმდეგო',
-};
-
-/** Resolve a topic key or 'custom:...' value to a display label. */
+/** Resolve a topic key or 'custom:...' value to its Georgian display label. */
 function topicLabel(t: string): string {
   if (t.startsWith('custom:')) return t.slice(7);
-  return TOPIC_LABELS[t] ?? t;
+  return ALL_BRIEFING_TOPIC_LABELS_KA[t] ?? t;
 }
 
 function formatDateTime(iso: string): string {
@@ -208,7 +200,7 @@ export function buildBriefingPdfHtml(briefing: Briefing, project: Project): stri
     </div>
   </div>
 
-  <p class="section-title">ინსტრუქტაჟის თემები</p>
+  <p class="section-title">ინსტრუქტაჟის თემატიკა</p>
   <ul class="topics-list" style="margin-bottom:24px;">
     ${topicsList || '<li>-</li>'}
   </ul>

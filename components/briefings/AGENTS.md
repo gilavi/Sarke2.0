@@ -17,8 +17,15 @@ bottom-sheet via `confirmExit`.
 
 ## Public API
 - `TopicSelector` (`{ selectedTopics, onToggle, customTopic, onChangeCustomTopic }`)
-  — monochrome multi-select topic list (step 1). Owns `TOPIC_KEYS` /
-  `TOPIC_ICONS` (exported). Selecting `other` reveals a free-text input.
+  — monochrome multi-select topic list (step 1). Renders the 15 catalog topics
+  (`BRIEFING_TOPIC_KEYS` from `lib/briefingTopics`, source: „ინსტრუქტაჟის
+  აღრიცხვის ჟურნალი") via `TOPIC_OPTION_KEYS`, + a free-text `other`. Owns
+  `TOPIC_ICONS` and exports `TOPIC_KEYS` = **all known** keys (catalog + 3
+  legacy `scaffold_safety`/`ppe`/`fire_safety`, kept only so historical
+  briefings still resolve a label/icon). Selecting `other` reveals a free-text
+  input. **Topic keys + Georgian labels are NOT owned here** — `lib/briefingTopics`
+  is the single catalog that the PDF (`lib/briefingPdf`) and `locales/ka.json`
+  both mirror (drift-guarded by `tests/unit/briefingTopics.test.ts`).
 - `ParticipantsStep` (`{ participants, onAdd, onRemove }`) — name+add row and a
   monochrome chip list (step 2). Owns its own text-input state.
 - `SignatureStage` (`{ eyebrow, name, caption?, canvasKey, canvasRef, hasStroke,
