@@ -23,7 +23,8 @@ import { useSession } from '../../lib/session';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { queryClient } from '../../lib/queryClient';
-import { invalidateRecordLists } from '../../lib/apiHooks';
+import { invalidateRecordLists, qk } from '../../lib/apiHooks';
+import { cachedRead } from '../../lib/cachedRead';
 import { projectsApi } from '../../lib/services';
 import type { BriefingParticipant, Project } from '../../types/models';
 
@@ -43,7 +44,9 @@ export default function NewBriefingScreen() {
   useEffect(() => {
     if (!projectId || project) return;
     let mounted = true;
-    projectsApi.getById(projectId).then(p => { if (mounted) setProject(p); }).catch(() => null);
+    cachedRead(qk.projects.byId(projectId), () => projectsApi.getById(projectId))
+      .then(p => { if (mounted) setProject(p); })
+      .catch(() => null);
     return () => { mounted = false; };
   }, [projectId, project]);
 
@@ -68,7 +71,7 @@ export default function NewBriefingScreen() {
     let mounted = true;
     (async () => {
       try {
-        const b = await briefingsApi.getById(editId);
+        const b = await cachedRead(qk.briefings.byId(editId), () => briefingsApi.getById(editId));
         if (!b || !mounted) return;
         const topicSet = new Set<string>();
         let custom = '';

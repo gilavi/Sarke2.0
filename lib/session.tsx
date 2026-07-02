@@ -6,14 +6,15 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
-import { supabase } from './supabase';
+import { supabase, STORAGE_BUCKETS } from './supabase';
 import { isOnline } from './network';
 import { cacheUserProfile, readCachedUserProfile, readStoredSession } from './sessionBootstrap';
 import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
 import { TERMS_VERSION } from './terms';
 import { queryClient } from './queryClient';
-import { warmHomeCaches } from './apiHooks';
+import { prefetchFlowStartCaches, warmHomeCaches } from './apiHooks';
+import { signatureAsDataUrl } from './imageUrl';
 import type { AppUser } from '../types/models';
 
 const EMAIL_STORAGE_KEY = '@auth:email';
@@ -164,6 +165,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         //
         // Fire-and-forget so a network blip here can't delay post-auth nav.
         warmHomeCaches(queryClient);
+        // Also warm what creation flows read at their START (template question
+        // sets, per-project details) so flows open offline later.
+        prefetchFlowStartCaches(queryClient);
+        // Disk-cache the reusable expert signature so incident/order PDFs can
+        // embed it offline (lib/imageOfflineCache.ts signature cache).
+        if (user?.saved_signature_url) {
+          void signatureAsDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
+            .catch(() => {});
+        }
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
         logError(e, 'session.loadUser');

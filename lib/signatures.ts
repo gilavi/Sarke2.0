@@ -4,6 +4,7 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { supabase, STORAGE_BUCKETS } from './supabase';
 import { storageApi } from './services';
 import { dataUrlToArrayBuffer } from './blob';
+import { signatureAsDataUrl } from './imageUrl';
 import { logError } from './logError';
 
 const PENDING_KEY = 'pending-signatures';
@@ -123,6 +124,10 @@ export async function saveExpertSignature(base64: string): Promise<string> {
     .update({ saved_signature_url: path })
     .eq('id', userId);
   if (error) throw error;
+  // Refresh the offline signature cache: the storage object was just
+  // overwritten in place (same expert/<userId>.png path, x-upsert), so the
+  // disk-cached copy is stale (see lib/imageOfflineCache.ts).
+  void signatureAsDataUrl(STORAGE_BUCKETS.signatures, path).catch(() => undefined);
   return path;
 }
 

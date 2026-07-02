@@ -20,6 +20,13 @@ queue.
 - `useWizardState.ts` — single hook owning wizard state, load,
   answer/photo mutations and finish flow. Larger than the 150-line
   "hook" target on purpose — see "Gotchas".
+- `wizardBootstrap.ts` — the five flow-start reads (inspection/project/
+  template/questions via `cachedRead` + a connectivity-gated remote
+  answers list). Online each read fetches fresh and lands in the
+  persisted query cache; offline it resolves from that cache, so a
+  previously-synced inspection opens with no network. Answers stay on
+  the offline module's own cache (`@offline:answers:<id>`), not React
+  Query.
 - `hooks/useWizardPersistence.ts` — write-only side-effect hook
   consumed by `useWizardState`. Mirrors `stepIndex`, `harnessRowCount`,
   `conclusion`, `isSafe`, `harnessName` into AsyncStorage as the user

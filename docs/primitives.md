@@ -83,7 +83,7 @@ One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose
 
 | Use case | Function | Returns | On failure |
 |---|---|---|---|
-| RN `<Image>` display | `imageForDisplay(bucket, path)` | signed URL (or data URL fallback, or public URL) | never throws |
+| RN `<Image>` display | `imageForDisplay(bucket, path)` | signed URL (or data URL fallback, or public URL); warms a disk copy, returned as `file://` when offline | never throws |
 | Photo embedded in PDF HTML | `pdfPhotoEmbed(bucket, path, opts?)` | resized JPEG `data:` URL (1200px / q0.7), disk-cached | throws |
 | Signature embedded in PDF or signature canvas | `signatureAsDataUrl(bucket, path)` | byte-exact `data:` URL | throws |
 
@@ -441,6 +441,10 @@ One owner: [`lib/documents/duplicate.ts`](../lib/documents/duplicate.ts) — `du
 One owner: [`components/document-details/`](../components/document-details/AGENTS.md) — `DocumentDetails` (prop `type: act | incident | report | instruction`). The screen reached by **tapping a saved record** in a list (top bar + header + Edit/Duplicate/Delete chips + sticky tabs + read-only info + type-specific content + signature/certificate lists + Share-PDF footer). It is the non-celebratory sibling of [`components/success/FlowSuccessScreen.tsx`](../components/success/FlowSuccessScreen.tsx) (the **post-save** screen) and **replaces** the old one-off detail/PDF-preview pages. It reuses the success module's signature/certificate sections (no new sheets) and renders `info` read-only (Project/Expert aren't reassignable in our schema — use Edit). The act success + details screens share their data/PDF/signature logic via [`features/inspection-result/`](../features/inspection-result/AGENTS.md) (`useActResult` + `shareActPdf`) so they never drift. **Don't** point a list-item tap at a success/`done` screen — route saved records to `DocumentDetails`.
 
 `shortCode(id)` in [`lib/shared/documentName.ts`](../lib/shared/documentName.ts) returns the short display **code** (first UUID segment, uppercased) shown on the details Info row. This is a deliberate display-only code — distinct from a display *name*, so it does not violate the "no `id.slice` fallback for names" rule above.
+
+## Flow-start reads (cachedRead)
+
+One owner: [`lib/cachedRead.ts`](../lib/cachedRead.ts) — `cachedRead(queryKey, queryFn)`. THE way a creation/edit flow loads what it needs before it can render (project header/autofill, template + question set, edit-mode `getById` hydration). Online it fetches fresh (`staleTime: 0`, deduped) and lands the result in the persisted query cache — so every successful read doubles as offline warm-up; offline it resolves from that cache immediately or throws `OfflineDataMissingError` (message contains "offline", so `friendlyError()` localizes it). **Don't** call `*.getById()` directly at flow start — pair the call with its existing `qk.*` key. The inspection wizard's wrappers live in [`features/inspection-wizard/wizardBootstrap.ts`](../features/inspection-wizard/wizardBootstrap.ts); `prefetchFlowStartCaches` (lib/apiHooks.ts) warms template question sets + per-project details post-login and on reconnect. Mutable mid-flow data (wizard answers) stays on the offline queue's own cache, NOT this one.
 
 ## List load state (skeleton / offline / empty / data)
 

@@ -28,7 +28,8 @@ import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import { ordersApi } from '../../lib/ordersApi';
 import { queryClient } from '../../lib/queryClient';
-import { invalidateRecordLists } from '../../lib/apiHooks';
+import { invalidateRecordLists, qk } from '../../lib/apiHooks';
+import { cachedRead } from '../../lib/cachedRead';
 import {
   buildAlcoholControlOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -131,7 +132,7 @@ export default function NewOrderScreen() {
 
   useEffect(() => {
     if (!projectId) return;
-    projectsApi.getById(projectId).then(p => {
+    cachedRead(qk.projects.byId(projectId), () => projectsApi.getById(projectId)).then(p => {
       if (!p) return;
       setProject(p);
       // Edit mode: keep the saved form values; don't autofill from the project.
@@ -157,7 +158,7 @@ export default function NewOrderScreen() {
     let mounted = true;
     (async () => {
       try {
-        const order = await ordersApi.getById(editId);
+        const order = await cachedRead(qk.orders.byId(editId), () => ordersApi.getById(editId));
         if (!order || !mounted) return;
         setDocType(order.documentType);
         setForm(f => ({ ...f, ...(order.formData as Partial<CombinedForm>) }));

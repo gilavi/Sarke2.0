@@ -123,6 +123,10 @@ export const qk = {
   forklift: {
     byProject: (projectId: string) => ['forklift', 'byProject', projectId] as const,
   },
+  equipmentInspection: {
+    /** Detail row for any equipment type; `type` is the InspectionSchema.category tag. */
+    byId: (type: string, id: string) => ['equipmentInspection', 'detail', type, id] as const,
+  },
   breathalyzerLog: {
     byProject: (projectId: string) => ['breathalyzerLog', 'byProject', projectId] as const,
     byId: (id: string) => ['breathalyzerLog', 'byId', id] as const,
@@ -157,6 +161,7 @@ export const qk = {
     recent: (opts?: RecentRecordsOpts) => ['briefings', 'recent', opts?.status ?? 'all', opts?.limit ?? 'all'] as const,
   },
   orders: {
+    byId: (id: string) => ['orders', 'detail', id] as const,
     byProject: (projectId: string) => ['orders', 'byProject', projectId] as const,
     recent: (opts?: RecentRecordsOpts) => ['orders', 'recent', opts?.status ?? 'all', opts?.limit ?? 'all'] as const,
   },
@@ -240,6 +245,50 @@ export function warmHomeCaches(qc: QueryClient): void {
   for (const job of jobs) {
     void qc.prefetchQuery({ ...job, staleTime: 0 }).catch(() => undefined);
   }
+}
+
+/**
+ * Warm the caches document-creation flows read at their START, so every flow
+ * can open fully offline later (see lib/cachedRead.ts):
+ *
+ *   - every template's question set (the inspection wizard can't render
+ *     without one) — effectively static, so 12h staleTime, fetched ≤3 at a
+ *     time (~12 live templates);
+ *   - a per-project detail cache entry seeded from the projects list, for
+ *     flow headers/autofill. Shape-safe: list() and getById() both
+ *     `select('*')` and apply the same crew mapping (lib/services/real/projects.ts).
+ *
+ * Fire-and-forget; called after warmHomeCaches() post-login (lib/session.tsx)
+ * and on reconnect (lib/offline.tsx). Both list fetches dedupe against the
+ * warm-up's in-flight prefetches of the same keys.
+ */
+export function prefetchFlowStartCaches(qc: QueryClient): void {
+  const QUESTIONS_STALE_MS = 12 * 60 * 60 * 1000;
+  void qc
+    .fetchQuery({ queryKey: qk.templates.list, queryFn: () => templatesApi.list() })
+    .then(async (templates) => {
+      const ids = (templates ?? []).map((t) => t.id);
+      for (let i = 0; i < ids.length; i += 3) {
+        await Promise.all(
+          ids.slice(i, i + 3).map((tid) =>
+            qc
+              .prefetchQuery({
+                queryKey: qk.templates.questions(tid),
+                queryFn: () => templatesApi.questions(tid),
+                staleTime: QUESTIONS_STALE_MS,
+              })
+              .catch(() => undefined),
+          ),
+        );
+      }
+    })
+    .catch(() => undefined);
+  void qc
+    .fetchQuery({ queryKey: qk.projects.list, queryFn: () => projectsApi.list() })
+    .then((projects) => {
+      for (const p of projects ?? []) qc.setQueryData(qk.projects.byId(p.id), p);
+    })
+    .catch(() => undefined);
 }
 
 // ── Projects ─────────────────────────────────────────────────────────────────

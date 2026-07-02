@@ -1,15 +1,27 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { onlineManager } from '@tanstack/react-query';
 import { storageApi } from './services';
 import { blobToDataUrl } from './blob';
+import {
+  djb2Hex,
+  displayCacheFile,
+  readDisplayCache,
+  warmDisplayCache,
+  signatureCacheFile,
+  readSignatureCache,
+  writeSignatureCache,
+} from './imageOfflineCache';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API - three functions, named by purpose so the right default falls
 // out of picking the right name:
 //
 //   imageForDisplay(bucket, path)
-//     → URL for a React Native <Image>. Prefers a signed URL. Falls back to
-//       a data: URL via auth download, then to the public URL. Cannot fail.
+//     → URL for a React Native <Image>. Prefers a signed URL (and warms an
+//       offline disk copy of the object). Offline: returns the cached
+//       file:// copy, else the public URL — never the timeout ladder. Falls
+//       back to a data: URL via auth download. Cannot fail.
 //
 //   pdfPhotoEmbed(bucket, path, opts?)
 //     → data: URL for embedding photos in PDF HTML. Resized to 1200px /
@@ -21,7 +33,9 @@ import { blobToDataUrl } from './blob';
 //     → data: URL for a signature, byte-exact (small PNG, anti-aliasing
 //       matters). Used by PDF embeds and the canvas pre-fill in the
 //       signature sheet. Throws if no data-URL strategy yields a non-empty
-//       payload.
+//       payload. The `signatures` bucket (reusable expert signature ONLY —
+//       regulatory allow-list in lib/imageOfflineCache.ts) is disk-cached so
+//       offline PDFs still embed it.
 //
 // Do NOT add new public helpers here. If a fourth need arises, push back -
 // almost certainly it's one of these three with a different opt. Adding a
@@ -49,8 +63,21 @@ export async function imageForDisplay(
   path: string,
   timeoutMs: number = 8000,
 ): Promise<string> {
+  const cacheFile = await displayCacheFile(bucket, path, normalizedExt(path) || 'img');
+
+  if (!onlineManager.isOnline()) {
+    // Offline: cached copy or bust — don't burn the timeout ladder.
+    if (cacheFile) {
+      const cached = await readDisplayCache(cacheFile);
+      if (cached) return cached;
+    }
+    return storageApi.publicUrl(bucket, path);
+  }
+
   try {
-    return await withTimeout(storageApi.signedUrl(bucket, path, 3600), timeoutMs);
+    const signed = await withTimeout(storageApi.signedUrl(bucket, path, 3600), timeoutMs);
+    if (cacheFile) warmDisplayCache(signed, cacheFile);
+    return signed;
   } catch {
     // fall through
   }
@@ -59,6 +86,10 @@ export async function imageForDisplay(
     return await blobToDataUrl(blob);
   } catch {
     // fall through
+  }
+  if (cacheFile) {
+    const cached = await readDisplayCache(cacheFile);
+    if (cached) return cached;
   }
   return storageApi.publicUrl(bucket, path);
 }
@@ -87,7 +118,24 @@ export async function signatureAsDataUrl(
   bucket: string,
   path: string,
 ): Promise<string> {
-  return fetchAsDataUrlStrict(bucket, path);
+  const cacheFile = await signatureCacheFile(bucket, path);
+  if (cacheFile && !onlineManager.isOnline()) {
+    const cached = await readSignatureCache(cacheFile);
+    if (cached) return cached;
+  }
+  try {
+    const result = await fetchAsDataUrlStrict(bucket, path);
+    // Write-through: the expert signature is overwritten in place on re-save
+    // (expert/<userId>.png + x-upsert), so refresh the entry on every fetch.
+    if (cacheFile) writeSignatureCache(cacheFile, result);
+    return result;
+  } catch (e) {
+    if (cacheFile) {
+      const cached = await readSignatureCache(cacheFile);
+      if (cached) return cached;
+    }
+    throw e;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,14 +381,6 @@ function ensurePdfCacheDir(): Promise<string | null> {
     }
   })();
   return pdfCacheDirEnsured;
-}
-
-function djb2Hex(s: string): string {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) + h) ^ s.charCodeAt(i);
-  }
-  return (h >>> 0).toString(16);
 }
 
 async function fetchResizedDataUrl(

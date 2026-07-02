@@ -18,9 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   answersApi,
   inspectionsApi,
-  projectsApi,
   storageApi,
-  templatesApi,
 } from '../../lib/services';
 import { pdfPhotoEmbed } from '../../lib/imageUrl';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
@@ -31,6 +29,13 @@ import { logError, toErrorMessage } from '../../lib/logError';
 import { useToast } from '../../lib/toast';
 import { recordCompletion } from '../../lib/calendarSchedule';
 import { qk, invalidateRecordLists } from '../../lib/apiHooks';
+import {
+  loadWizardAnswers,
+  loadWizardInspection,
+  loadWizardProject,
+  loadWizardQuestions,
+  loadWizardTemplate,
+} from './wizardBootstrap';
 import type {
   Answer,
   AnswerPhoto,
@@ -107,7 +112,7 @@ export function useWizardState(id: string | undefined) {
     loadCtrlRef.current = ctrl;
     setLoading(true);
     try {
-      const q = await inspectionsApi.getById(id);
+      const q = await loadWizardInspection(id);
       if (ctrl.cancelled) return;
       if (!q) throw new Error(t('inspections.loadError'));
       const localPatch = await offline.hydrateQuestionnairePatch(q.id);
@@ -115,21 +120,21 @@ export function useWizardState(id: string | undefined) {
       const safePatch = localPatch ? stripServerFields(localPatch) : null;
       const qMerged: Inspection = { ...q, ...(safePatch ?? {}) };
       setQuestionnaire(qMerged);
-      projectsApi.getById(qMerged.project_id).then((p) => {
+      loadWizardProject(qMerged.project_id).then((p) => {
         if (!ctrl.cancelled) setProject(p);
       }).catch(() => null);
-      const tmpl = await templatesApi.getById(qMerged.template_id);
+      const tmpl = await loadWizardTemplate(qMerged.template_id);
       if (ctrl.cancelled) return;
       setTemplate(tmpl);
       setConclusion(qMerged.conclusion_text ?? '');
       setSafetyVerdict(qMerged.safety_verdict ?? (qMerged.is_safe_for_use === true ? 'safe' : qMerged.is_safe_for_use === false ? 'unsafe' : null));
       setHarnessName(qMerged.harness_name ?? '');
       if (tmpl) {
-        const qs = await templatesApi.questions(tmpl.id);
+        const qs = await loadWizardQuestions(tmpl.id);
         if (ctrl.cancelled) return;
         setQuestions(qs);
         let remoteOk = true;
-        const existing = await answersApi.list(qMerged.id).catch((err) => {
+        const existing = await loadWizardAnswers(qMerged.id).catch((err) => {
           remoteOk = false;
           logError(err, 'wizard.answers.list');
           return [] as Answer[];

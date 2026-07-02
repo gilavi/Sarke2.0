@@ -15,6 +15,8 @@ import { answersApi, storageApi } from './services';
 import { logError } from './logError';
 import { stageCompressedPhotoForOffline } from './photoCompression';
 import { flushPendingPdfUploads } from './pdfUploadQueue';
+import { prefetchFlowStartCaches } from './apiHooks';
+import { queryClient } from './queryClient';
 import { useToast } from './toast';
 import type { Answer, AnswerPhoto, Inspection } from '../types/models';
 
@@ -334,6 +336,9 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       if (online) {
         void flush();
         void flushPendingPdfUploads();
+        // Re-warm the flow-start caches (template questions, project details)
+        // that may have gone stale while offline.
+        prefetchFlowStartCaches(queryClient);
       }
     });
     return () => unsub();

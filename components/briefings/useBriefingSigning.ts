@@ -24,6 +24,7 @@ import { briefingsApi } from '../../lib/briefingsApi';
 import { projectsApi } from '../../lib/services';
 import { recordCompletion } from '../../lib/calendarSchedule';
 import { qk, invalidateRecordLists } from '../../lib/apiHooks';
+import { cachedRead } from '../../lib/cachedRead';
 import { type ChipNavItem, type ChipNavState } from '../inspection-parts/ChipNavStrip';
 import type { Briefing, BriefingParticipant, Project } from '../../types/models';
 
@@ -90,7 +91,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    briefingsApi.getById(id)
+    cachedRead(qk.briefings.byId(id), () => briefingsApi.getById(id))
       .then(b => {
         if (cancelled) return;
         if (!b) {
@@ -116,7 +117,9 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
     const pid = briefing?.projectId;
     if (!pid) return;
     let mounted = true;
-    projectsApi.getById(pid).then(p => { if (mounted) setProject(p); }).catch(() => null);
+    cachedRead(qk.projects.byId(pid), () => projectsApi.getById(pid))
+      .then(p => { if (mounted) setProject(p); })
+      .catch(() => null);
     return () => { mounted = false; };
   }, [briefing?.projectId]);
 

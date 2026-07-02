@@ -22,7 +22,8 @@ import { usePdfUsage, useInvalidatePdfUsage } from '../usePdfUsage';
 import { projectsApi } from '../services';
 import { recordCompletion } from '../calendarSchedule';
 import { queryClient } from '../queryClient';
-import { invalidateRecordLists } from '../apiHooks';
+import { invalidateRecordLists, qk } from '../apiHooks';
+import { cachedRead } from '../cachedRead';
 import { reopenDocument } from '../documents/reopen';
 import { friendlyError } from '../errorMap';
 import { haptic } from '../haptics';
@@ -154,7 +155,10 @@ export function useInspectionFlow<T extends BaseInspection>(
     let cancelled = false;
     (async () => {
       try {
-        const insp = await api.getById(id);
+        const insp = await cachedRead(
+          qk.equipmentInspection.byId(schema.category, id),
+          () => api.getById(id),
+        );
         if (cancelled) return;
         if (!insp) { router.back(); return; }
 
@@ -173,7 +177,9 @@ export function useInspectionFlow<T extends BaseInspection>(
 
         let project: Project | null = null;
         try {
-          project = await projectsApi.getById(insp.projectId);
+          project = await cachedRead(qk.projects.byId(insp.projectId), () =>
+            projectsApi.getById(insp.projectId),
+          );
           if (project) setProjectName(project.company_name || project.name);
         } catch {
           // project fetch is best-effort

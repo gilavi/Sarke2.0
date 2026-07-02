@@ -18,6 +18,17 @@ Phases 2–3 on this branch add cached flow-start reads + an image/signature dis
 
 ---
 
+## 2026-07-02 — Offline mode, phase 2: flows open offline + images/signatures cached
+
+Creation flows could render offline in phase 1 but still died on their flow-start network reads (project autofill, template question sets, edit-mode hydration), and every stored image/signature broke without a network (1-hour signed URLs).
+
+- **New primitive [`lib/cachedRead.ts`](../lib/cachedRead.ts)** — the canonical flow-start read: online it fetches fresh (`staleTime: 0`, deduped) and stores the result in the persisted query cache (each read doubles as offline warm-up); offline it resolves from cache immediately or throws `OfflineDataMissingError` (message tagged "offline" → `friendlyError` localizes it). Wired into: the inspection wizard (new sibling [`features/inspection-wizard/wizardBootstrap.ts`](../features/inspection-wizard/wizardBootstrap.ts) — 5 reads, incl. a connectivity-gated remote answers list that falls back to the `@offline:answers` cache), the equipment flow (`lib/inspection/useInspectionFlow.ts`, new `qk.equipmentInspection.byId`), and edit-mode hydration in orders (new `qk.orders.byId`), incidents, briefings (create + signing), all via their existing `qk.*.byId` keys.
+- **`prefetchFlowStartCaches`** (lib/apiHooks.ts) — post-login + on-reconnect warm-up: every template's question set (≤3 concurrent, 12 h staleTime, ~12 templates) and per-project detail entries seeded from the projects list (shape-verified: both paths `select('*')` + `mapCrew`).
+- **Image offline cache** — `imageForDisplay` now warms a disk copy per storage object (`image-display-cache/`, torn-write-safe `.part` download) and returns the cached `file://` URI offline instead of burning its 8s timeout ladder. **Signature cache** — `signatureAsDataUrl` write-through-caches the `signatures` bucket ONLY (the reusable expert signature — regulatory allow-list in the new [`lib/imageOfflineCache.ts`](../lib/imageOfflineCache.ts), stored under documentDirectory), warmed at login and refreshed on re-save (`lib/signatures.ts`) since the object is overwritten in place. Offline incident/order PDFs now embed the expert signature instead of silently omitting it.
+- Tests: `tests/unit/cachedRead.test.ts` (online-fresh/cache-populate, offline cache-hit, cached-null, OfflineDataMissingError, no-hang). Docs: primitives.md "Flow-start reads" row + storage-images offline column; wizard AGENTS.md.
+
+---
+
 ## 2026-07-01 — Briefing topics expanded to the source journal (15 topics)
 
 The briefing (ინსტრუქტაჟი) topic picker carried only 5 topics; the official „ინსტრუქტაჟის აღრიცხვის ჟურნალი" defines **15**. Rebuilt the topic list to match, each with a semantic Lucide icon (legal ⚖️, electrical ⚡, evacuation 🚪, risk 🛡️, height ⬆️, regulations 📜, first-aid ❤️, signs, load, machinery 🚚, ergonomics, monitor, housekeeping ✨, equipment ⚙️, chemical 🧪) + the free-text `other`.

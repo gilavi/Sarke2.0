@@ -34,7 +34,8 @@ import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { useScrollToError } from '../../hooks/useScrollToError';
 import { incidentsApi, projectsApi, storageApi } from '../../lib/services';
 import { queryClient } from '../../lib/queryClient';
-import { invalidateRecordLists } from '../../lib/apiHooks';
+import { invalidateRecordLists, qk } from '../../lib/apiHooks';
+import { cachedRead } from '../../lib/cachedRead';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { generatePdfName } from '../../lib/pdfName';
@@ -139,7 +140,7 @@ export default function NewIncident() {
   useEffect(() => {
     if (!projectId || project) return;
     let mounted = true;
-    projectsApi.getById(projectId)
+    cachedRead(qk.projects.byId(projectId), () => projectsApi.getById(projectId))
       .then(p => { if (mounted) setProject(p); })
       .catch(() => null);
     return () => { mounted = false; };
@@ -154,7 +155,7 @@ export default function NewIncident() {
     let mounted = true;
     (async () => {
       try {
-        const inc = await incidentsApi.getById(editId);
+        const inc = await cachedRead(qk.incidents.byId(editId), () => incidentsApi.getById(editId));
         if (!inc || !mounted) return;
         const photoEntries = await Promise.all(
           (inc.photos ?? []).map(async path => ({
