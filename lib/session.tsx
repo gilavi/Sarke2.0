@@ -7,6 +7,8 @@ import * as Linking from 'expo-linking';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import { supabase } from './supabase';
+import { isOnline } from './network';
+import { cacheUserProfile, readCachedUserProfile, readStoredSession } from './sessionBootstrap';
 import { purgeUserScopedStorage } from './storage-purge';
 import { logError } from './logError';
 import { TERMS_VERSION } from './terms';
@@ -115,7 +117,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       .select()
       .eq('id', session.user.id)
       .maybeSingle();
-    setState({ status: 'signedIn', session, user: (data as AppUser | null) ?? null });
+    const user = (data as AppUser | null) ?? null;
+    if (user) void cacheUserProfile(user);
+    setState({ status: 'signedIn', session, user });
   };
 
   useEffect(() => {
@@ -138,7 +142,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           .eq('id', session.user.id)
           .maybeSingle();
         if (cancelled || myEpoch !== epoch) return;
-        setState({ status: 'signedIn', session, user: (data as AppUser | null) ?? null });
+        const user = (data as AppUser | null) ?? null;
+        // Cache the profile so the next offline boot can render signed-in
+        // without this network fetch (lib/sessionBootstrap.ts).
+        if (user) void cacheUserProfile(user);
+        setState({ status: 'signedIn', session, user });
         // Warm EVERY Home-screen cache in the background now that the JWT is
         // provably live (the users-row fetch above just succeeded). The user is
         // most likely heading for home or the projects tab next; this saves the
@@ -159,32 +167,83 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
         logError(e, 'session.loadUser');
-        // Auth says signed-in; profile fetch failed. Keep the session so the
-        // user isn't bounced to login over a transient error.
-        setState({ status: 'signedIn', session, user: null });
+        // Auth says signed-in; profile fetch failed (likely offline). Fall
+        // back to the profile cached by the last successful fetch so terms/
+        // saved-signature logic keeps working; else keep the session with a
+        // null user so the user isn't bounced to login over a transient error.
+        const cached = await readCachedUserProfile(session.user.id);
+        if (cancelled || myEpoch !== epoch) return;
+        setState({ status: 'signedIn', session, user: cached });
       }
     };
 
+    // Offline-first boot. With a stored session whose token needs a refresh
+    // and no network, getSession() hangs for the platform HTTP timeout
+    // (30-60s) and its catch would then bounce the user to login — the app
+    // rendered NOTHING offline. So: if NetInfo says offline, or getSession()
+    // hasn't settled within 2.5s, commit signed-in straight from the stored
+    // auth blob + cached profile. The real getSession()/onAuthStateChange
+    // keep running and reconcile (refresh, warm caches, or server-confirmed
+    // sign-out) once the network is back.
+    let committedOffline = false;
+    let getSessionSettled = false;
+
+    const bootFromStoredSession = async () => {
+      if (getSessionSettled || cancelled || committedOffline) return;
+      const stored = await readStoredSession();
+      if (getSessionSettled || cancelled || committedOffline) return;
+      if (!stored) {
+        // No blob to restore. getSession() resolves fast when storage is
+        // empty (nothing to refresh), so if we got here it's genuinely stuck —
+        // show login rather than an endless skeleton.
+        setState({ status: 'signedOut' });
+        return;
+      }
+      const cachedUser = await readCachedUserProfile(stored.user.id);
+      if (getSessionSettled || cancelled) return;
+      committedOffline = true;
+      lastUserId = stored.user.id;
+      // Deliberately NOT warming caches here — offline prefetches are doomed;
+      // the reconciled safeLoadUser() run warms them when network returns.
+      setState({ status: 'signedIn', session: stored, user: cachedUser });
+    };
+
+    const offlineBootTimer = setTimeout(() => {
+      void bootFromStoredSession();
+    }, 2500);
+    void isOnline().then((online) => {
+      if (!online) void bootFromStoredSession();
+    }).catch(() => {});
+
     supabase.auth.getSession().then(({ data }) => {
+      getSessionSettled = true;
+      clearTimeout(offlineBootTimer);
       if (cancelled) return;
       if (data.session) {
         lastUserId = data.session.user.id;
         void safeLoadUser(data.session);
-      } else {
+      } else if (!committedOffline) {
         setState({ status: 'signedOut' });
       }
     }).catch((e) => {
+      getSessionSettled = true;
+      clearTimeout(offlineBootTimer);
       if (cancelled) return;
       // Stale/invalid refresh token from a previous install or expired
       // session - clear it so the next boot starts clean, and treat as
       // a normal signed-out boot. Don't log: this isn't an error worth
-      // surfacing to the dev LogBox or the on-device error ring.
+      // surfacing to the dev LogBox or the on-device error ring. This is
+      // server-confirmed, so it overrides an offline-committed session.
       if (isStaleRefreshToken(e)) {
         void supabase.auth.signOut().catch(() => {});
-      } else {
-        logError(e, 'session.getSession');
+        setState({ status: 'signedOut' });
+        return;
       }
-      setState({ status: 'signedOut' });
+      logError(e, 'session.getSession');
+      // Network-classified failure: never downgrade a session the offline
+      // boot already committed — that would kick a working offline user to
+      // the login screen they can't pass without a network.
+      if (!committedOffline) setState({ status: 'signedOut' });
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
@@ -221,6 +280,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      clearTimeout(offlineBootTimer);
       sub.subscription.unsubscribe();
     };
   }, []);

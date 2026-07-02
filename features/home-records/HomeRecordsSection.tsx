@@ -18,6 +18,7 @@ import {
   useRecentBriefings,
   useTemplates,
 } from '../../lib/apiHooks';
+import { listLoadState } from '../../hooks/useListLoadState';
 import {
   RecordWidget,
   OrderRow,
@@ -64,7 +65,10 @@ export function HomeRecordsSection() {
   const incidents = incidentsQ.data ?? [];
   const briefings = briefingsQ.data ?? [];
 
-  const inspLoading = (inspQ.isFetching || !inspQ.isFetched) && insp.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState); offline swaps the
+  // widget's empty copy so an unfetched list doesn't claim "no inspections".
+  const inspLoadState = listLoadState(inspQ, insp.length);
+  const inspLoading = inspLoadState === 'skeleton';
   const catOf = (q: (typeof insp)[number]) =>
     templates.find((x) => x.id === q.template_id)?.category ?? null;
 
@@ -75,7 +79,7 @@ export function HomeRecordsSection() {
         title={t('records.inspections')}
         items={insp}
         loading={inspLoading}
-        emptyText={t('records.emptyInspections')}
+        emptyText={inspLoadState === 'offline' ? t('components.offlineEmptyTitle') : t('records.emptyInspections')}
         viewAllHref={historyHref('inspections')}
         keyOf={(q) => q.id}
         renderAvatar={(q) => <InspectionListAvatar category={catOf(q)} size={STACK} />}

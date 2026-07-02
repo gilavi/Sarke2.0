@@ -12,7 +12,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
-const SCAN_DIRS = ['app', 'components', 'features', 'lib', 'shims'];
+const SCAN_DIRS = ['app', 'components', 'features', 'hooks', 'lib', 'shims'];
 const SKIP_DIRS = new Set(['node_modules', '.git', 'ios', 'android', '.expo', 'dist', 'build']);
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 
@@ -66,6 +66,19 @@ const RULES = [
       'Call usePhotoPicker().pickPhotoWithAnnotation() instead of invoking ImagePicker directly. ' +
       'Only hooks/usePhotoPicker.ts and app/photo-picker.tsx may call ImagePicker directly. ' +
       'See docs/primitives.md → "Mobile photo picker + annotation".',
+  },
+  {
+    name: 'inline-list-load-guard',
+    // The pre-offline-mode skeleton recipe `(q.isFetching || !q.isFetched)`.
+    // With onlineManager wired (lib/queryClient.ts), an offline query with no
+    // cache is fetchStatus 'paused' → the inline guard shows a skeleton
+    // forever. The canonical owner adds the missing 'offline' state.
+    pattern: /\w+\.isFetching\s*\|\|\s*!\w+\.isFetched/,
+    allow: ['hooks/useListLoadState.ts'],
+    message:
+      'Use useListLoadState / listsLoadState (hooks/useListLoadState.ts) instead of the inline ' +
+      '"(q.isFetching || !q.isFetched)" guard — the inline recipe hangs on an offline paused query. ' +
+      'See docs/primitives.md → "List load state".',
   },
   {
     name: 'mobile-only-photo-embed',

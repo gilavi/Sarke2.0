@@ -22,6 +22,8 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { useProject, useProjectFiles } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { OfflineEmptyState } from '../../../components/OfflineEmptyState';
+import { useListLoadState } from '../../../hooks/useListLoadState';
 import type { ProjectFile } from '../../../types/models';
 
 function formatGeorgianDate(isoDate: string): string {
@@ -61,9 +63,8 @@ export default function ProjectFilesList() {
   const { data: project } = useProject(id);
   const filesQ = useProjectFiles(id);
   const items = filesQ.data ?? [];
-  // Canonical three-state guard (see CLAUDE.md): skeleton until the query
-  // has produced a real answer; never flash empty state over a stale [].
-  const loading = (filesQ.isFetching || !filesQ.isFetched) && items.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState).
+  const loadState = useListLoadState(filesQ, items.length);
 
   const grouped = useMemo(() => groupByDateDesc(items, f => f.created_at), [items]);
 
@@ -93,12 +94,14 @@ export default function ProjectFilesList() {
           ) : null}
         </View>
 
-        {loading ? (
+        {loadState === 'skeleton' ? (
           <View style={{ gap: 10 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
+        ) : loadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />

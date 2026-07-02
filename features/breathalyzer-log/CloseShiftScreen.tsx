@@ -90,7 +90,9 @@ export function CloseShiftScreen({ projectId, logId }: { projectId: string; logI
 
       {!log ? (
         <View style={styles.center}>
-          {logQ.isFetched ? (
+          {logQ.fetchStatus === 'paused' && !logQ.isFetched ? (
+            <Text style={styles.emptyTitle}>{t('components.offlineEmptyTitle')}</Text>
+          ) : logQ.isFetched ? (
             <Text style={styles.emptyTitle}>{t('breathalyzer.entryNotFound')}</Text>
           ) : (
             <ActivityIndicator color={theme.colors.inkSoft} />

@@ -3,6 +3,8 @@ import { FlatList, View } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { Skeleton } from '../../components/Skeleton';
+import { OfflineEmptyState } from '../../components/OfflineEmptyState';
+import { useListLoadState, type LoadStateQuery } from '../../hooks/useListLoadState';
 import { useTheme } from '../../lib/theme';
 
 /**
@@ -19,7 +21,7 @@ export function RecordHistoryList<T>({
   emptyText,
   refreshQueries,
 }: {
-  query: { isFetching: boolean; isFetched: boolean };
+  query: LoadStateQuery;
   items: T[];
   keyOf: (item: T) => string;
   renderRow: (item: T, isLast: boolean) => ReactElement;
@@ -27,8 +29,8 @@ export function RecordHistoryList<T>({
   refreshQueries: unknown[];
 }) {
   const { theme } = useTheme();
-  // Canonical three-state guard (see CLAUDE.md): never flash empty over a stale [].
-  const loading = (query.isFetching || !query.isFetched) && items.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState).
+  const loadState = useListLoadState(query, items.length);
 
   return (
     <FlatList
@@ -42,7 +44,7 @@ export function RecordHistoryList<T>({
       windowSize={7}
       removeClippedSubviews
       ListEmptyComponent={
-        loading ? (
+        loadState === 'skeleton' ? (
           <View style={{ gap: 14, paddingTop: 8 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -54,6 +56,8 @@ export function RecordHistoryList<T>({
               </View>
             ))}
           </View>
+        ) : loadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : (
           <View style={{ paddingTop: 56, alignItems: 'center' }}>
             <Text style={{ textAlign: 'center', color: theme.colors.inkFaint, fontSize: 14, fontWeight: '500' }}>

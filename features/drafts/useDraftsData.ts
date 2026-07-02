@@ -5,6 +5,7 @@ import {
   useRecentIncidents,
   useRecentBriefings,
 } from '../../lib/apiHooks';
+import { listsLoadState } from '../../hooks/useListLoadState';
 
 const DRAFT_LIMIT = 200;
 
@@ -30,8 +31,10 @@ export function useDraftsData() {
   const total =
     inspections.length + reports.length + orders.length + incidents.length + briefings.length;
   const queries = [inspectionsQ, reportsQ, ordersQ, incidentsQ, briefingsQ];
-  // Canonical three-state guard, unioned across the five queries.
-  const loading = queries.some((q) => q.isFetching || !q.isFetched) && total === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState), unioned across the
+  // five queries. `loading` stays the skeleton boolean the screen renders on.
+  const loadState = listsLoadState(queries, total);
+  const loading = loadState === 'skeleton';
 
-  return { inspections, reports, orders, incidents, briefings, total, loading, queries };
+  return { inspections, reports, orders, incidents, briefings, total, loading, loadState, queries };
 }

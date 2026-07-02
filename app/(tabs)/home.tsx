@@ -32,6 +32,8 @@ import { Card } from '../../components/ui';
 import { NumberPop, useScrollHeader } from '../../components/animations';
 import { QuickActions } from '../../components/QuickActions';
 import { Skeleton } from '../../components/Skeleton';
+import { OfflineEmptyState } from '../../components/OfflineEmptyState';
+import { useListLoadState } from '../../hooks/useListLoadState';
 import { useTranslation } from 'react-i18next';
 import type { Inspection, Project } from '../../types/models';
 import { ProjectCard } from '../../components/home/ProjectCard';
@@ -77,15 +79,10 @@ export default function HomeScreen() {
   const loaded = !certsQ.isLoading && !templatesQ.isLoading && !projectsQ.isLoading;
   const loadError = certsQ.isError && templatesQ.isError && projectsQ.isError;
 
-  // Per-section "show skeleton" flags. We can't rely on `isLoading` alone:
-  // it only flips true on the very first fetch and stays false during background
-  // refetches - including the post-login refetch triggered after a stale empty
-  // result. Use `isFetching && data.length === 0` so we keep showing the
-  // skeleton until the in-flight fetch actually returns rows (or settles empty),
-  // instead of flashing the empty state in between. The `!isFetched` arm covers
-  // the very first render where `isFetching` may not have flipped on yet.
-  const projectsLoading =
-    (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState): skeleton until the
+  // in-flight fetch produces a real answer (covers the post-login refetch over
+  // a stale empty result), 'offline' when the query is paused with no cache.
+  const projectsLoadState = useListLoadState(projectsQ, projects.length);
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerInitialView, setPickerInitialView] = useState<'list' | 'new'>('list');
@@ -210,7 +207,7 @@ export default function HomeScreen() {
 
         {/* ───────── PROJECTS ───────── */}
 
-        {projectsLoading ? (
+        {projectsLoadState === 'skeleton' ? (
           <View style={staticStyles.projectRowWrap}>
             {PROJECT_SKELETONS.map((i) => (
               <View key={`skeleton-${i}`} style={[styles.projectCard, { width: (screenWidth - HPAD * 2 - GAP) / 2, gap: 10 }]}>
@@ -220,6 +217,8 @@ export default function HomeScreen() {
               </View>
             ))}
           </View>
+        ) : projectsLoadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : projects.length === 0 ? (
           <Pressable
             onPress={() => setPickerVisible(true)}

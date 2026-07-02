@@ -79,20 +79,20 @@ Enforced limits. If a change would push a file over its target, split it into si
 
 A few files currently exceed these targets (`features/project-detail/ProjectDetail.tsx`, `features/inspection-wizard/useWizardState.ts`, `lib/pdf/inspection/template.css.ts`) — they're documented in [REFACTOR_SUMMARY_V2.md](docs/reports/REFACTOR_SUMMARY_V2.md) along with the reasons each remaining residue was deferred. Don't grow them further.
 
-## Loading states (skeleton vs empty vs data)
+## Loading states (skeleton vs offline vs empty vs data)
 
-Three-state UI rule for any screen that reads from React Query: **skeleton while the query has not yet produced a real answer, empty state only once the query settles with `[]`, data otherwise.** Bare `isLoading` / `isPending` flags are not enough — they only flip true on the very first fetch and skip background refetches that are replacing a stale cached `[]`. The canonical guard is:
+Four-state UI rule for any screen that reads from React Query, owned by `hooks/useListLoadState.ts`: **skeleton while the query has not yet produced a real answer, offline when the query is paused (no network) with nothing cached, empty state only once the query settles with `[]`, data otherwise.** Bare `isLoading` / `isPending` flags are not enough — they only flip true on the very first fetch and skip background refetches that are replacing a stale cached `[]`. The old inline recipe `(q.isFetching || !q.isFetched) && data.length === 0` is **banned** (check-primitives): with `onlineManager` wired to NetInfo (lib/queryClient.ts), an offline query with no cache sits at `fetchStatus: 'paused'` and the inline guard shows a skeleton forever. The canonical guard is:
 
 ```ts
-const loading = (q.isFetching || !q.isFetched) && data.length === 0;
+const loadState = useListLoadState(q, data.length); // 'data' | 'skeleton' | 'offline' | 'empty'
 ```
 
-This way a racy empty result from a previous session (e.g. a prefetch that fired before the JWT propagated, then got cached as "fresh" for `staleTime`) is masked by the skeleton until the in-flight refetch lands, instead of flashing the empty-state card. See `app/(tabs)/home.tsx`, `app/(tabs)/projects.tsx`, and the post-login `prefetchQuery({ staleTime: 0 })` in `lib/session.tsx` for the canonical wiring.
+(`listsLoadState(queries, total)` is the multi-query variant.) A racy empty result from a previous session (e.g. a prefetch that fired before the JWT propagated, then got cached as "fresh" for `staleTime`) is masked by the skeleton until the in-flight refetch lands, instead of flashing the empty-state card. See `app/(tabs)/home.tsx`, `app/(tabs)/projects.tsx`, and the post-login `prefetchQuery({ staleTime: 0 })` in `lib/session.tsx` for the canonical wiring.
 
 When adding a new "list screen", do all three of:
-1. Use the `(isFetching || !isFetched) && data.length === 0` skeleton guard, not `isLoading`.
+1. Use `useListLoadState` / `listsLoadState`, not `isLoading` and not the inline `isFetching`/`isFetched` recipe; render `components/OfflineEmptyState.tsx` for the `'offline'` branch.
 2. If the data is user-scoped, prefer adding the key to the post-login warm-up in `lib/session.tsx` (with `staleTime: 0`) over relying on cache rehydration alone.
-3. Empty state copy + CTA is for the **confirmed empty** branch only — never the loading branch.
+3. Empty state copy + CTA is for the **confirmed empty** branch only — never the loading or offline branches.
 
 ## Web codebases
 

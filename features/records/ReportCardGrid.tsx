@@ -3,6 +3,8 @@ import { FlatList, View, useWindowDimensions } from 'react-native';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { Skeleton } from '../../components/Skeleton';
+import { OfflineEmptyState } from '../../components/OfflineEmptyState';
+import { useListLoadState, type LoadStateQuery } from '../../hooks/useListLoadState';
 import { useTheme } from '../../lib/theme';
 import type { Report } from '../../types/models';
 import { ReportCard } from './ReportCard';
@@ -30,7 +32,7 @@ export function ReportCardGrid({
   onPressReport: (report: Report) => void;
   /** When provided, each card becomes deletable (long-press + trash button). */
   onDeleteReport?: (report: Report) => void;
-  query: { isFetching: boolean; isFetched: boolean };
+  query: LoadStateQuery;
   emptyText: string;
   refreshQueries?: unknown[];
   ListHeaderComponent?: ReactElement | null;
@@ -38,8 +40,8 @@ export function ReportCardGrid({
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const cardWidth = Math.floor((width - H_PADDING * 2 - GAP) / 2);
-  // Canonical three-state guard (see CLAUDE.md): never flash empty over a stale [].
-  const loading = (query.isFetching || !query.isFetched) && reports.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState).
+  const loadState = useListLoadState(query, reports.length);
 
   return (
     <FlatList
@@ -69,7 +71,7 @@ export function ReportCardGrid({
       windowSize={7}
       removeClippedSubviews
       ListEmptyComponent={
-        loading ? (
+        loadState === 'skeleton' ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingTop: 8 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <View key={i} style={{ width: cardWidth, gap: 8 }}>
@@ -79,6 +81,8 @@ export function ReportCardGrid({
               </View>
             ))}
           </View>
+        ) : loadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : (
           <View style={{ paddingTop: 56, alignItems: 'center' }}>
             <Text style={{ textAlign: 'center', color: theme.colors.inkFaint, fontSize: 14, fontWeight: '500' }}>

@@ -15,6 +15,12 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Supabase credentials missing from app.json "extra".');
 }
 
+// The storage key supabase-js v2 derives for session persistence when no
+// custom `storageKey` is passed (keep it that way — a custom key would orphan
+// every existing session). Exported so the offline boot path
+// (lib/sessionBootstrap.ts) reads the exact same blob the client writes.
+export const SUPABASE_AUTH_STORAGE_KEY = `sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`;
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     // Keychain (iOS) / EncryptedSharedPreferences-backed SQLite (Android) via

@@ -1272,6 +1272,8 @@
     "statusBadgeFail": "არ არის უსაფრთხო",
     "statusBadgePending": "მოლოდინში",
     "offlineBanner": "ხაზგარეშე — ცვლილებები ინახება ლოკალურად",
+    "offlineEmptyTitle": "ინტერნეტ კავშირი არ არის",
+    "offlineEmptyBody": "ეს მონაცემები ჯერ არ ჩამოტვირთულა. სცადეთ კავშირის აღდგენის შემდეგ.",
     "errorStateTitle": "ვერ ჩაიტვირთა",
     "errorStateRetry": "ხელახლა ცდა",
     "errorBoundaryTitle": "მოხდა შეცდომა",

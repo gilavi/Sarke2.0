@@ -14,6 +14,8 @@ import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useIncidentsByProject } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { OfflineEmptyState } from '../../../components/OfflineEmptyState';
+import { useListLoadState } from '../../../hooks/useListLoadState';
 import { INCIDENT_TYPE_LABEL } from '../../../types/models';
 import { incidentColors } from '../../../lib/statusColors';
 
@@ -42,7 +44,7 @@ export default function ProjectIncidentsList() {
   // has produced a real answer; never flash empty state over a stale [].
   // Completed-only — drafts live in the global Drafts screen (More tab).
   const completed = useMemo(() => items.filter((i) => i.status === 'completed'), [items]);
-  const loading = (incidentsQ.isFetching || !incidentsQ.isFetched) && completed.length === 0;
+  const loadState = useListLoadState(incidentsQ, completed.length);
   const grouped = useMemo(() => groupByDateDesc(completed, (inc) => inc.date_time), [completed]);
 
   return (
@@ -62,12 +64,14 @@ export default function ProjectIncidentsList() {
           ) : null}
         </View>
 
-        {loading ? (
+        {loadState === 'skeleton' ? (
           <View style={{ gap: 10 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
+        ) : loadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />

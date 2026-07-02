@@ -442,6 +442,18 @@ One owner: [`components/document-details/`](../components/document-details/AGENT
 
 `shortCode(id)` in [`lib/shared/documentName.ts`](../lib/shared/documentName.ts) returns the short display **code** (first UUID segment, uppercased) shown on the details Info row. This is a deliberate display-only code — distinct from a display *name*, so it does not violate the "no `id.slice` fallback for names" rule above.
 
+## List load state (skeleton / offline / empty / data)
+
+One owner: [`hooks/useListLoadState.ts`](../hooks/useListLoadState.ts) — `useListLoadState(q, count)` (single query) and `listsLoadState(queries, total)` (multi-query union), returning `'data' | 'skeleton' | 'offline' | 'empty'`. This is the canonical guard for every list screen (see CLAUDE.md → "Loading states"). The old inline recipe `(q.isFetching || !q.isFetched) && count === 0` is **banned** by check-primitives: with `onlineManager` wired, an offline query with no cache is `fetchStatus: 'paused'` and the inline guard skeletons forever. Render [`components/OfflineEmptyState.tsx`](../components/OfflineEmptyState.tsx) for the `'offline'` branch (never the regular empty state — the data may exist server-side). Flow-gating on `isFetched` alone has the same hang: treat `fetchStatus === 'paused'` as settled (see `components/FlowProjectPicker.tsx`).
+
+## Network state (NetInfo)
+
+One owner: [`lib/network.ts`](../lib/network.ts) — `isOnline()` / `watchNetwork(cb)`, predicate `isConnected === true && isInternetReachable !== false`. React Query's `onlineManager` is bound to it once in [`lib/queryClient.ts`](../lib/queryClient.ts); the offline write queue's `OfflineProvider` ([`lib/offline.tsx`](../lib/offline.tsx)) keeps its own NetInfo listener with the same predicate for `isOnline`/`netReady` context + flush triggers. **Don't** import `@react-native-community/netinfo` anywhere else — screens read `useOffline().isOnline`, non-react code calls `lib/network.ts`.
+
+## Offline session boot + cached profile
+
+One owner: [`lib/sessionBootstrap.ts`](../lib/sessionBootstrap.ts) — `readStoredSession()` (reads the supabase auth blob straight from `secureSessionStorage` under `SUPABASE_AUTH_STORAGE_KEY` from [`lib/supabase.ts`](../lib/supabase.ts), no network) and `cacheUserProfile` / `readCachedUserProfile` (`@profile:<userId>` in AsyncStorage, purged by `lib/storage-purge.ts`). Consumed only by `lib/session.tsx`'s boot path so the app renders signed-in offline. **Don't** read the `sb-…-auth-token` key or cache the users row anywhere else.
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

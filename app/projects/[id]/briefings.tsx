@@ -14,6 +14,8 @@ import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { useProject, useBriefingsByProject } from '../../../lib/apiHooks';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { OfflineEmptyState } from '../../../components/OfflineEmptyState';
+import { useListLoadState } from '../../../hooks/useListLoadState';
 import { briefingTopicsLabel } from '../../../features/records/topics';
 import type { Briefing } from '../../../types/models';
 
@@ -41,7 +43,7 @@ export default function ProjectBriefingsList() {
   // produced a real answer; never flash the empty state over a stale [].
   // Completed-only — drafts live in the global Drafts screen (More tab).
   const completed = useMemo(() => items.filter((b) => b.status === 'completed'), [items]);
-  const loading = (briefingsQ.isFetching || !briefingsQ.isFetched) && completed.length === 0;
+  const loadState = useListLoadState(briefingsQ, completed.length);
   const grouped = useMemo(() => groupByDateDesc(completed, (b) => b.dateTime), [completed]);
 
   return (
@@ -60,12 +62,14 @@ export default function ProjectBriefingsList() {
           ) : null}
         </View>
 
-        {loading ? (
+        {loadState === 'skeleton' ? (
           <View style={{ gap: 10 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
+        ) : loadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : completed.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />

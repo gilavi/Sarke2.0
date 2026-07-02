@@ -1,17 +1,18 @@
 import { AppState, type AppStateStatus } from 'react-native';
-import { QueryClient, focusManager } from '@tanstack/react-query';
+import { QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
+import { watchNetwork } from './network';
 
 // gcTime must be >= the persister's maxAge so persisted queries survive their
-// rehydration. 30 minutes lets the projects tab feel instant even after the
-// app has been backgrounded for a long lunch break.
+// rehydration. 7 days keeps last-fetched lists renderable through a week of
+// offline field work (offline mode) while still letting dead data age out.
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
-      gcTime: 30 * 60 * 1000,
+      gcTime: 7 * 24 * 60 * 60 * 1000,
       retry: 2,
       // Refetch STALE queries when the app returns to the foreground (see the
       // focusManager binding below). Gated by staleTime, so anything fetched in
@@ -33,6 +34,14 @@ focusManager.setEventListener(handleFocus => {
   return () => sub.remove();
 });
 
+// Bridge NetInfo to React Query's onlineManager (network state has one owner:
+// lib/network.ts — don't wire NetInfo to react-query anywhere else). Offline,
+// queries PAUSE (fetchStatus 'paused') instead of burning their 2 retries and
+// erroring: cached data keeps rendering and paused fetches resume on
+// reconnect. Screens must use hooks/useListLoadState to tell "paused with no
+// cache" (offline state) apart from a genuine first fetch (skeleton).
+onlineManager.setEventListener((setOnline) => watchNetwork(setOnline));
+
 const persister = createAsyncStoragePersister({
   storage: AsyncStorage,
   // Throttle disk writes - react-query fires updates on every fetch, and
@@ -52,6 +61,14 @@ const CACHE_BUSTER = 'sdk54-v2';
 persistQueryClient({
   queryClient,
   persister,
-  maxAge: 24 * 60 * 60 * 1000,
+  // Matches gcTime (7 days). No CACHE_BUSTER bump needed for maxAge/gcTime
+  // changes: both are read from live options at restore time — the dehydrated
+  // blob shape is unchanged.
+  maxAge: 7 * 24 * 60 * 60 * 1000,
   buster: CACHE_BUSTER,
+  dehydrateOptions: {
+    // Persist only settled successful data. Error/pending states would waste
+    // the ~6MB Android AsyncStorage budget and rehydrate as junk.
+    shouldDehydrateQuery: (query) => query.state.status === 'success',
+  },
 });

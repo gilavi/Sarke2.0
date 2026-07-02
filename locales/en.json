@@ -1272,6 +1272,8 @@
     "statusBadgeFail": "Not safe",
     "statusBadgePending": "Pending",
     "offlineBanner": "Offline — changes saved locally",
+    "offlineEmptyTitle": "You're offline",
+    "offlineEmptyBody": "This data hasn't been downloaded yet. Try again once you're back online.",
     "errorStateTitle": "Could not load",
     "errorStateRetry": "Retry",
     "errorBoundaryTitle": "Something went wrong",

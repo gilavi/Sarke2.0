@@ -26,11 +26,13 @@ import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { GeocodingAddressInput } from '../../components/inputs/GeocodingAddressInput';
 import { HeaderCloseButton } from '../../components/HeaderCloseButton';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
+import { useListLoadState } from '../../hooks/useListLoadState';
 import { FabButton } from '../../components/primitives';
 import { A11yText, A11yText as Text } from '../../components/primitives/A11yText';
 import { SheetLayout } from '../../components/SheetLayout';
 import { a11y } from '../../lib/accessibility';
 import EmptyState from '../../components/EmptyState';
+import { OfflineEmptyState } from '../../components/OfflineEmptyState';
 import { Skeleton } from '../../components/Skeleton';
 import { MapPicker, type LatLng } from '../../components/MapPicker';
 import { projectsApi } from '../../lib/services';
@@ -71,10 +73,9 @@ export default function ProjectsScreen() {
   });
 
   const projects = projectsQ.data ?? [];
-  // Skeleton both on first fetch AND while a background refetch replaces a stale
-  // empty result (canonical three-state guard).
-  const loading =
-    (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState): skeleton on first
+  // fetch and while a refetch replaces a stale [], offline when paused uncached.
+  const loadState = useListLoadState(projectsQ, projects.length);
 
   const onDelete = useCallback((project: Project) => {
     showActionSheet(
@@ -171,12 +172,14 @@ export default function ProjectsScreen() {
           removeClippedSubviews
           refreshControl={<RefreshControl queries={[projectsQ]} />}
           ListEmptyComponent={
-            loading ? (
+            loadState === 'skeleton' ? (
               <View style={{ gap: 14 }}>
                 {Array.from({ length: 4 }).map((_, i) => (
                   <ProjectCardSkeleton key={`skeleton-${i}`} width={cardWidth} />
                 ))}
               </View>
+            ) : loadState === 'offline' ? (
+              <OfflineEmptyState />
             ) : (
               <EmptyState
                 type="projects"

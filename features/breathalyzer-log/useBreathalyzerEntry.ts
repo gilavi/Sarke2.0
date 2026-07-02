@@ -114,7 +114,9 @@ export function useBreathalyzerEntry({ projectId, logId, repeatForId }: Args) {
 
   return {
     log,
-    ready: logQ.isFetched,
+    // Paused-uncached (offline, nothing cached) counts as settled so the
+    // wizard shows its not-found/offline state instead of hanging.
+    ready: logQ.isFetched || logQ.fetchStatus === 'paused',
     project: projectQ.data ?? null,
     step,
     setStep,

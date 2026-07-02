@@ -15,6 +15,8 @@ import { Selector, type SelectorOption } from '../ui/Selector';
 import { useTemplates } from '../../lib/apiHooks';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useTheme } from '../../lib/theme';
+import { useListLoadState } from '../../hooks/useListLoadState';
+import { OfflineEmptyState } from '../OfflineEmptyState';
 import type { Template } from '../../types/models';
 
 interface TemplatePickerStepProps {
@@ -41,9 +43,8 @@ export function TemplatePickerStep({ selectedId, onSelect }: TemplatePickerStepP
     [templatesQ.data],
   );
 
-  // Canonical three-state guard (CLAUDE.md): skeleton until the query produces a
-  // real answer, so a stale cached [] never flashes the empty state.
-  const loading = (templatesQ.isFetching || !templatesQ.isFetched) && system.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState).
+  const loadState = useListLoadState(templatesQ, system.length);
 
   const Caption = (
     <View style={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2 }}>
@@ -56,7 +57,7 @@ export function TemplatePickerStep({ selectedId, onSelect }: TemplatePickerStepP
     </View>
   );
 
-  if (loading) {
+  if (loadState === 'skeleton') {
     return (
       <View style={{ flex: 1 }}>
         {Caption}
@@ -68,6 +69,15 @@ export function TemplatePickerStep({ selectedId, onSelect }: TemplatePickerStepP
             />
           ))}
         </View>
+      </View>
+    );
+  }
+
+  if (loadState === 'offline') {
+    return (
+      <View style={{ flex: 1 }}>
+        {Caption}
+        <OfflineEmptyState compact />
       </View>
     );
   }

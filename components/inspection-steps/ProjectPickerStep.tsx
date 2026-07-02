@@ -6,6 +6,8 @@ import { Selector, type SelectorOption } from '../ui/Selector';
 import { useProjects } from '../../lib/apiHooks';
 import { useTheme } from '../../lib/theme';
 import { SkeletonRow } from '../Skeleton';
+import { OfflineEmptyState } from '../OfflineEmptyState';
+import { useListLoadState } from '../../hooks/useListLoadState';
 import type { Project } from '../../types/models';
 
 interface ProjectPickerStepProps {
@@ -18,11 +20,10 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
   const { theme } = useTheme();
   const projectsQ = useProjects();
   const projects = projectsQ.data ?? [];
-  // Canonical three-state guard (see CLAUDE.md) - skeleton rows, never a
-  // flashed empty state over a stale [].
-  const loading = (projectsQ.isFetching || !projectsQ.isFetched) && projects.length === 0;
+  // Canonical offline-aware guard (hooks/useListLoadState).
+  const loadState = useListLoadState(projectsQ, projects.length);
 
-  if (loading) {
+  if (loadState === 'skeleton') {
     return (
       <View style={{ flex: 1, gap: 10, paddingTop: 4 }}>
         {Array.from({ length: 5 }).map((_, i) => (
@@ -30,6 +31,10 @@ export function ProjectPickerStep({ selectedId, onSelect }: ProjectPickerStepPro
         ))}
       </View>
     );
+  }
+
+  if (loadState === 'offline') {
+    return <OfflineEmptyState compact />;
   }
 
   return (

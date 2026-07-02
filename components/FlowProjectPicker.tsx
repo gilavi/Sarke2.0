@@ -48,7 +48,7 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: projects = [], isFetched } = useProjects();
+  const { data: projects = [], isFetched, fetchStatus } = useProjects();
   const { data: templates = [] } = useTemplates();
 
   const [selected, setSelected] = useState<Project | null>(null);
@@ -72,7 +72,11 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
   // While the query is in-flight, or when there's exactly one project (the
   // auto-pick effect above is about to fire `onPicked` and navigate away),
   // render a blank background so the list never flashes on screen.
-  const willAutoPick = !isFetched || projects.length === 1 || autoPicked.current;
+  // Offline-aware: a paused never-fetched query will never settle, so treat it
+  // as settled-with-no-data — the picker renders (ProjectPickerStep shows its
+  // own offline empty state) instead of a permanently blank screen.
+  const settled = isFetched || fetchStatus === 'paused';
+  const willAutoPick = !settled || projects.length === 1 || autoPicked.current;
   if (willAutoPick) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

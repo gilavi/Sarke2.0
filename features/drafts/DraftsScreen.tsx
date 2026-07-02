@@ -14,6 +14,7 @@ import { useTheme } from '../../lib/theme';
 import { formatShortDateTime } from '../../lib/formatDate';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { routeForInspection } from '../../lib/inspectionRouting';
+import { OfflineEmptyState } from '../../components/OfflineEmptyState';
 import { useDraftsData } from './useDraftsData';
 
 /**
@@ -51,6 +52,8 @@ export default function DraftsScreen() {
               ))}
             </View>
           </View>
+        ) : d.loadState === 'offline' ? (
+          <OfflineEmptyState />
         ) : d.total === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
             <Text style={{ color: theme.colors.inkFaint, fontSize: 14, fontWeight: '500', textAlign: 'center' }}>

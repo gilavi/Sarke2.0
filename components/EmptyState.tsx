@@ -31,6 +31,8 @@ export type EmptyStateType =
 
 export interface EmptyStateProps {
   type?: EmptyStateType;
+  /** Custom illustration component; overrides `type`'s built-in SVG. */
+  illustration?: React.FC;
   title: string;
   subtitle?: string;
   action?: {
@@ -281,6 +283,7 @@ function ScaffoldingPattern() {
 
 export default function EmptyState({
   type = 'projects',
+  illustration,
   title,
   subtitle,
   action,
@@ -332,7 +335,7 @@ export default function EmptyState({
     action?.onPress();
   }, [action]);
 
-  const Illustration = ILLUSTRATIONS[type] ?? IllustrationProjects;
+  const Illustration = illustration ?? ILLUSTRATIONS[type] ?? IllustrationProjects;
 
   return (
     <Animated.View

@@ -11,6 +11,8 @@ import { Button } from '../../components/ui';
 import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { SkeletonListCard } from '../../components/Skeleton';
+import { OfflineEmptyState } from '../../components/OfflineEmptyState';
+import { useListLoadState } from '../../hooks/useListLoadState';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { haptic } from '../../lib/haptics';
@@ -58,8 +60,9 @@ export function BreathalyzerLogScreen({
   const logQ = isHistorical ? byIdQ : byDateQ;
   const log = logQ.data ?? null;
 
-  // Three-state guard: skeleton until the query produces a real answer.
-  const loading = (logQ.isFetching || !logQ.isFetched) && !log;
+  // Canonical offline-aware guard (hooks/useListLoadState); the "list" here is
+  // the single log row, so the count is 0 or 1.
+  const loadState = useListLoadState(logQ, log ? 1 : 0);
 
   const [serial, setSerial] = useState('');
   useEffect(() => {
@@ -138,10 +141,12 @@ export function BreathalyzerLogScreen({
         }
       />
 
-      {loading ? (
+      {loadState === 'skeleton' ? (
         <View style={{ padding: 16 }}>
           <SkeletonListCard rows={5} />
         </View>
+      ) : loadState === 'offline' ? (
+        <OfflineEmptyState compact />
       ) : !log ? (
         <View style={styles.center}>
           <BookOpen size={52} color={theme.colors.borderStrong} strokeWidth={1.5} />

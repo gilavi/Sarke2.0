@@ -1,6 +1,20 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-07-01 | Branch: `new-docs`
+**Updated:** 2026-07-02 | Branch: `offline-mode`
+
+---
+
+## 2026-07-02 — Offline mode, phase 1: the app boots + renders offline
+
+Previously the app rendered **nothing** offline: with a stored session and no network, `supabase.auth.getSession()` hung 30–60 s on a token refresh, then its catch bounced the user to login; the profile fetch had no cache either.
+
+- **Offline-first session boot.** New [`lib/sessionBootstrap.ts`](../lib/sessionBootstrap.ts): if NetInfo says offline or `getSession()` hasn't settled in 2.5 s, `SessionProvider` commits `signedIn` straight from the stored auth blob (`secureSessionStorage`, chunk-aware) + the cached users-row profile (`@profile:<id>`, written on every successful profile fetch, purged on sign-out/account switch). The real `getSession()`/`onAuthStateChange` reconcile when network returns; a network-classified failure can no longer downgrade an offline-committed session (server-confirmed stale-token sign-out still can).
+- **onlineManager wired to NetInfo** ([`lib/queryClient.ts`](../lib/queryClient.ts), via the now-canonical [`lib/network.ts`](../lib/network.ts)): offline queries **pause** instead of burning retries into error/empty states. Query persistence window bumped 24 h → **7 days** (`gcTime` + persister `maxAge`; no cache-buster bump needed), and only successful queries are dehydrated.
+- **Offline-aware load-state guard.** New canonical [`hooks/useListLoadState.ts`](../hooks/useListLoadState.ts) (`'data' | 'skeleton' | 'offline' | 'empty'`) + [`components/OfflineEmptyState.tsx`](../components/OfflineEmptyState.tsx) (WifiOff illustration via the new `EmptyState` `illustration` prop). All 13 inline `(isFetching || !isFetched)` guard sites migrated (home, projects, per-project lists, pickers, history, drafts, breathalyzer, home records); the inline recipe is now **banned** by `check-primitives` (it skeletons forever on a paused query). Flow-gating sites (`FlowProjectPicker`, breathalyzer `ready`/close-shift) treat `paused` as settled so nothing hangs.
+- i18n: `components.offlineEmptyTitle` / `offlineEmptyBody` (ka + en). Docs: CLAUDE.md loading-states rule updated to the four-state hook; primitives.md gained "List load state", "Network state", "Offline session boot" rows.
+- Tests: `tests/unit/useListLoadState.test.ts` (truth table incl. paused states), `tests/unit/sessionBootstrap.test.ts` (blob parsing, corruption, profile round-trip).
+
+Phases 2–3 on this branch add cached flow-start reads + an image/signature disk cache, then a generic write outbox so every document-creation flow completes offline.
 
 ---
 

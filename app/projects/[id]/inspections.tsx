@@ -12,6 +12,8 @@ import { RefreshControl } from '../../../components/primitives';
 import { useTheme } from '../../../lib/theme';
 import { formatShortDateTime } from '../../../lib/formatDate';
 import { SkeletonRow } from '../../../components/Skeleton';
+import { OfflineEmptyState } from '../../../components/OfflineEmptyState';
+import { listsLoadState } from '../../../hooks/useListLoadState';
 import { inspectionDisplayName } from '../../../lib/shared/documentName';
 import {
   useProject,
@@ -52,10 +54,9 @@ export default function ProjectInspectionsList() {
   const excavatorItems = excavatorQ.data ?? [];
   const geItems = geQ.data ?? [];
   const templates = templatesQ.data ?? [];
-  // Canonical three-state guard (see CLAUDE.md), unioned across the source
-  // queries: skeleton while any source hasn't produced a real answer and the
-  // merged list is still empty - never flash empty state over a stale [].
-  const anyUnsettled = [genericQ, bobcatQ, excavatorQ, geQ, templatesQ].some(q => q.isFetching || !q.isFetched);
+  // Canonical offline-aware guard (hooks/useListLoadState), unioned across the
+  // source queries via listsLoadState below.
+  const sourceQueries = [genericQ, bobcatQ, excavatorQ, geQ, templatesQ];
 
   type UnifiedItem = {
     id: string;
@@ -79,7 +80,7 @@ export default function ProjectInspectionsList() {
   }, [genericItems, bobcatItems, excavatorItems, geItems]);
 
   const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
-  const loading = anyUnsettled && items.length === 0;
+  const loadState = listsLoadState(sourceQueries, items.length);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -97,12 +98,14 @@ export default function ProjectInspectionsList() {
           ) : null}
         </View>
 
-        {loading ? (
+        {loadState === 'skeleton' ? (
           <View style={{ gap: 10, paddingHorizontal: 20 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <SkeletonRow key={i} style={styles.skeletonRow} />
             ))}
           </View>
+        ) : loadState === 'offline' ? (
+          <OfflineEmptyState compact />
         ) : items.length === 0 ? (
           <View style={styles.emptyState}>
             <FileText size={40} color={theme.colors.borderStrong} strokeWidth={1.5} />
