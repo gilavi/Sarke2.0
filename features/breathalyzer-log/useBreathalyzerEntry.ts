@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { qk, useBreathalyzerLog, useProject } from '../../lib/apiHooks';
-import {
-  breathalyzerLogApi,
-  makeBLEntry,
-  peoplePoolApi,
-} from '../../lib/breathalyzerLogService';
+import { makeBLEntry, peoplePoolApi } from '../../lib/breathalyzerLogService';
+import { saveRecordThroughOutbox } from '../../lib/outbox';
 import { haptic } from '../../lib/haptics';
 import type { PoolPerson } from '../../types/breathalyzerLog';
 import {
@@ -23,9 +20,11 @@ interface Args {
 
 /**
  * State + persistence for the add-entry wizard. Owns the form, step, people-pool
- * suggestions, and the save mutation (append entry → upsert pool → invalidate the
- * three log query keys). The form/signature state is component-local and dies with
- * the screen — entry signatures only persist once they reach the entries JSONB.
+ * suggestions, and the save mutation (append entry through the write outbox →
+ * upsert pool → refresh the log query keys; offline the save queues silently and
+ * the caches are seeded optimistically). The form/signature state is
+ * component-local and dies with the screen — entry signatures only persist once
+ * they reach the entries JSONB.
  */
 export function useBreathalyzerEntry({ projectId, logId, repeatForId }: Args) {
   const qc = useQueryClient();
@@ -94,14 +93,33 @@ export function useBreathalyzerEntry({ projectId, logId, repeatForId }: Args) {
         time: new Date().toISOString(),
         relatedEntryId: repeatForId ?? null,
       });
-      await breathalyzerLogApi.patchEntries(log.id, [...log.entries, entry]);
+      const entries = [...log.entries, entry];
+      const optimistic = { ...log, entries, updatedAt: new Date().toISOString() };
+      // Always the FULL entries array — the outbox update dialect maps
+      // `{ entries }` to patchEntries verbatim.
+      const res = await saveRecordThroughOutbox({
+        entity: 'breathalyzer_log',
+        mode: 'update',
+        recordId: log.id,
+        payload: { entries },
+        displayTitle: 'ალკოტესტის ჟურნალი',
+        projectId,
+        detailKey: qk.breathalyzerLog.byId(log.id),
+        optimistic,
+      });
       await peoplePoolApi.upsert(projectId, {
         name: form.name.trim(),
         position: form.position.trim(),
       });
       qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byProject(projectId) });
-      qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byId(log.id) });
-      qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byDate(projectId, log.date) });
+      if (res.queued) {
+        // Silent per-entry save. The log screen reads today's log via byDate —
+        // mirror the seeded byId model there so the new entry shows offline.
+        qc.setQueryData(qk.breathalyzerLog.byDate(projectId, log.date), optimistic);
+      } else {
+        qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byId(log.id) });
+        qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byDate(projectId, log.date) });
+      }
       haptic.success();
       return true;
     } catch {

@@ -13,7 +13,9 @@
  * change to the configs, not to any screen.
  */
 import { supabase, STORAGE_BUCKETS } from '../supabase';
+import { onlineManager } from '@tanstack/react-query';
 import { storageApi } from '../services';
+import { enqueueOutboxOp, isNetworkError } from '../outbox/storage';
 import { logError } from '../logError';
 import * as Crypto from 'expo-crypto';
 
@@ -101,31 +103,22 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
     create: async (args) => {
       const projectId = assertUuid(args.projectId, 'projectId', table);
       const templateId = assertUuid(args.templateId, 'templateId', table);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // getSession reads the locally cached session — getUser is a network
+      // round-trip and would hang the offline create path.
+      const user = (await supabase.auth.getSession()).data.session?.user ?? null;
       if (!user) throw new Error('Not signed in');
 
       // Generate the id app-side so the parent row and the equipment row
       // share the same UUID. The equipment table's PK column has a
       // gen_random_uuid() default but we override it on insert.
       const id = Crypto.randomUUID();
-
-      // Step 1: parent row in public.inspections via the RPC.
-      // Idempotent on the DB side (ON CONFLICT (id) DO NOTHING) so a retry
-      // after a transient network error is safe.
-      const { error: rpcError } = await supabase.rpc('create_equipment_inspection', {
+      const rpcArgs = {
         p_type: cfg.inspectionType,
         p_id: id,
         p_project_id: projectId,
         p_user_id: user.id,
         p_template_id: templateId,
-      });
-      if (rpcError) throw new Error(rpcError.message);
-
-      // Step 2: equipment-table row with the same id. The FK added in
-      // 20260527001240_unify_inspection_identity.sql enforces that the
-      // parent row exists.
+      };
       const insert: Record<string, unknown> = {
         id,
         project_id: projectId,
@@ -137,9 +130,49 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
         insert.inspection_date = new Date().toISOString().slice(0, 10);
       }
 
-      const { data, error } = await supabase.from(table).insert(insert).select().single();
-      if (error) throw new Error(error.message);
-      return cfg.toModel(data);
+      // Offline (or a network-failed step): queue the two-step creation for
+      // replay — the outbox runs the parent RPC first, then UPSERTS the
+      // equipment row (parent-row-first rule preserved; both steps are
+      // retry-safe) — and return an optimistic model so the flow proceeds
+      // against the client id. Its answers/photos queue behind the creation.
+      const enqueue = async () => {
+        await enqueueOutboxOp({
+          kind: 'inspection_create',
+          groupId: id,
+          variant: 'equipment',
+          inspectionId: id,
+          projectId,
+          rpcArgs,
+          table,
+          insertRow: insert,
+          displayTitle: 'აღჭურვილობის შემოწმების აქტი',
+        });
+        return cfg.toModel({
+          ...insert,
+          status: 'draft',
+          created_at: new Date().toISOString(),
+          completed_at: null,
+        });
+      };
+
+      if (!onlineManager.isOnline()) return enqueue();
+      try {
+        // Step 1: parent row in public.inspections via the RPC.
+        // Idempotent on the DB side (ON CONFLICT (id) DO NOTHING) so a retry
+        // after a transient network error is safe.
+        const { error: rpcError } = await supabase.rpc('create_equipment_inspection', rpcArgs);
+        if (rpcError) throw new Error(rpcError.message);
+
+        // Step 2: equipment-table row with the same id. The FK added in
+        // 20260527001240_unify_inspection_identity.sql enforces that the
+        // parent row exists.
+        const { data, error } = await supabase.from(table).insert(insert).select().single();
+        if (error) throw new Error(error.message);
+        return cfg.toModel(data);
+      } catch (e) {
+        if (isNetworkError(e)) return enqueue();
+        throw e;
+      }
     },
 
     getById: async (id) => {

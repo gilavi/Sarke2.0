@@ -28,6 +28,14 @@ Backs the `app/orders/new.tsx` route.
   required fields for a step × docType — single source of truth),
   `canAdvanceStep` (next-button validation predicate, now just
   `missingFieldsForStep(...).length === 0`).
+- `saveOrderOffline.ts` — order writes routed through the offline write
+  outbox (`lib/outbox`): `saveOrderRecord` (create/update via
+  `saveRecordThroughOutbox`, optimistic `Order` seeds `qk.orders.byId`
+  when queued) and `queueOrderPdfUpload` (stage + `pdf_upload` op that
+  patches `pdfUrl`/`pdfHash` on flush). Screens never call
+  `ordersApi.create`/`update` directly for saves anymore; the only
+  remaining direct `ordersApi.update` calls are the online background
+  PDF-upload paths in `NewOrderScreen` / `OrderActSuccessView`.
 - `styles.ts` — `makeStyles(theme)` factory, `OrderStyles` type.
 - `Step1DocType.tsx` — doc-type picker. Uses the canonical
   `components/ui/Selector` (`presentation="rows"`, `indicator="check"`)

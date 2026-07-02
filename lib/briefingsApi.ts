@@ -83,21 +83,28 @@ export const briefingsApi = {
     topics: string[];
     participants: BriefingParticipant[];
     inspectorName: string;
+    /** Optional fields let an offline UPDATE coalesce into a still-queued
+     *  CREATE (lib/outbox) without losing signatures/completion. */
+    id?: string;
+    status?: 'draft' | 'completed';
+    inspectorSignature?: string | null;
   }): Promise<Briefing> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession reads the locally cached session (getUser hits the network).
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
 
     const { data, error } = await supabase
       .from('briefings')
       .insert({
+        ...(args.id ? { id: args.id } : {}),
         project_id: args.projectId,
         user_id: user.id,
         date_time: args.dateTime,
         topics: args.topics,
         participants: args.participants,
-        inspector_signature: null,
+        inspector_signature: args.inspectorSignature ?? null,
         inspector_name: args.inspectorName,
-        status: 'draft',
+        status: args.status ?? 'draft',
       })
       .select()
       .single();

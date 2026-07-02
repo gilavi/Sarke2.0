@@ -10,9 +10,10 @@
  * worker phase so any signer can be re-done.
  *
  * Side effects: loads the briefing + its project from Supabase, persists each
- * signature via `briefingsApi.update` (briefing signatures ARE persisted - the
- * no-persist rule is inspection-only), records a schedule entry + invalidates
- * calendar queries on completion, and routes to `/briefings/[id]/done`.
+ * signature through the offline write outbox (`saveRecordThroughOutbox`;
+ * briefing signatures ARE persisted - the no-persist rule is inspection-only,
+ * and offline saves queue + seed the detail cache), records a schedule entry +
+ * invalidates calendar queries on completion, and routes to `/briefings/[id]/done`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Alert } from 'react-native';
@@ -25,6 +26,7 @@ import { projectsApi } from '../../lib/services';
 import { recordCompletion } from '../../lib/calendarSchedule';
 import { qk, invalidateRecordLists } from '../../lib/apiHooks';
 import { cachedRead } from '../../lib/cachedRead';
+import { saveRecordThroughOutbox } from '../../lib/outbox';
 import { type ChipNavItem, type ChipNavState } from '../inspection-parts/ChipNavStrip';
 import type { Briefing, BriefingParticipant, Project } from '../../types/models';
 
@@ -144,14 +146,36 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
     !!briefing && pointingAtInspector && skippedCount > 0 && !skipReviewed && !briefing.inspectorSignature;
   const isInspectorPhase = !!briefing && pointingAtInspector && !showInterstitial;
 
+  // All signing writes go through the outbox: online it's exactly the old
+  // briefingsApi.update; offline it queues (coalescing into a still-queued
+  // create if the briefing itself was created offline) and the optimistic
+  // model keeps the cache + local state showing signing progress.
+  const persistPatch = useCallback(
+    async (patch: Partial<Briefing>): Promise<Briefing | undefined> => {
+      if (!id || !briefing) return;
+      const optimistic: Briefing = { ...briefing, ...patch };
+      const res = await saveRecordThroughOutbox({
+        entity: 'briefing',
+        mode: 'update',
+        recordId: id,
+        payload: patch,
+        displayTitle: 'ინსტრუქტაჟი',
+        projectId: briefing.projectId,
+        detailKey: qk.briefings.byId(id),
+        optimistic,
+      });
+      return res.queued ? optimistic : (res.record as Briefing);
+    },
+    [id, briefing],
+  );
+
   const persistParticipants = useCallback(
     async (next: BriefingParticipant[]) => {
-      if (!id) return;
-      const updated = await briefingsApi.update(id, { participants: next });
-      setBriefing(updated);
+      const updated = await persistPatch({ participants: next });
+      if (updated) setBriefing(updated);
       return updated;
     },
-    [id],
+    [persistPatch],
   );
 
   const handleConfirm = useCallback(() => {
@@ -171,8 +195,9 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
       try {
         const b64 = sig.replace(/^data:image\/png;base64,/, '');
         if (isInspectorPhase) {
-          await briefingsApi.update(id, { inspectorSignature: b64, status: 'completed' });
-          // Record schedule entry (non-fatal).
+          await persistPatch({ inspectorSignature: b64, status: 'completed' });
+          // Record schedule entry (non-fatal). Still runs for queued (offline)
+          // saves - it's local calendar bookkeeping, not a server write.
           await recordCompletion('briefings', id, briefing.dateTime, briefing.projectId).catch(() => {});
           invalidateRecordLists(queryClient);
           router.replace(`/briefings/${id}/done` as any);
@@ -194,7 +219,7 @@ export function useBriefingSigning(id: string | undefined): BriefingSigning {
         setSaving(false);
       }
     },
-    [briefing, id, currentIdx, isInspectorPhase, persistParticipants, router, queryClient],
+    [briefing, id, currentIdx, isInspectorPhase, persistPatch, persistParticipants, router, queryClient],
   );
 
   const handleBack = useCallback(() => {

@@ -22,6 +22,8 @@ import { useToast } from '../../lib/toast';
 import { ordersApi } from '../../lib/ordersApi';
 import { projectsApi } from '../../lib/services';
 import { queryClient } from '../../lib/queryClient';
+import { cachedRead } from '../../lib/cachedRead';
+import { qk } from '../../lib/apiHooks';
 import { reopenDocument } from '../../lib/documents/reopen';
 import { haptic } from '../../lib/haptics';
 import { friendlyError } from '../../lib/errorMap';
@@ -50,7 +52,9 @@ export default function OrderDetailScreen() {
   const load = useCallback(async () => {
     if (!id) return;
     try {
-      const o = await ordersApi.getById(id);
+      // cachedRead: identical online; offline serves the cached (or queued-
+      // optimistic) order instead of failing into the not-found state.
+      const o = await cachedRead(qk.orders.byId(id), () => ordersApi.getById(id));
       if (!o) { setNotFound(true); return; }
       setOrder(o);
       projectsApi.getById(o.projectId).then(setProject).catch(() => {});

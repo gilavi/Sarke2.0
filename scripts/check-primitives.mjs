@@ -68,6 +68,18 @@ const RULES = [
       'See docs/primitives.md → "Mobile photo picker + annotation".',
   },
   {
+    name: 'direct-record-create-in-screen',
+    // Document flows must write through saveRecordThroughOutbox (lib/outbox)
+    // so offline saves queue instead of failing. Direct create/update calls on
+    // the record apis are allowed only inside lib/ (registry, documents
+    // duplicate/reopen, services) — never in screens/components/features.
+    pattern: /\b(ordersApi|briefingsApi|riskAssessmentApi|breathalyzerLogApi)\.(create|update|patch|patchEntries|patchDeviceSerial|close)\s*\(/,
+    allowPrefixes: ['lib/'],
+    message:
+      'Write records through saveRecordThroughOutbox (lib/outbox) instead of calling the record api ' +
+      'directly from a screen — direct writes fail offline instead of queueing. See docs/primitives.md → "Offline write outbox".',
+  },
+  {
     name: 'inline-list-load-guard',
     // The pre-offline-mode skeleton recipe `(q.isFetching || !q.isFetched)`.
     // With onlineManager wired (lib/queryClient.ts), an offline query with no
@@ -148,6 +160,7 @@ for (const dir of SCAN_DIRS) {
       if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
       for (const rule of RULES) {
         if (rule.allow && rule.allow.includes(rel)) continue;
+        if (rule.allowPrefixes && rule.allowPrefixes.some((p) => rel.startsWith(p))) continue;
         if (rule.pattern.test(line)) {
           console.error(`${rel}:${i + 1}  [${rule.name}] ${rule.message}`);
           console.error(`    ${line.trim()}`);

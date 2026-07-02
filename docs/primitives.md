@@ -458,6 +458,10 @@ One owner: [`lib/network.ts`](../lib/network.ts) — `isOnline()` / `watchNetwor
 
 One owner: [`lib/sessionBootstrap.ts`](../lib/sessionBootstrap.ts) — `readStoredSession()` (reads the supabase auth blob straight from `secureSessionStorage` under `SUPABASE_AUTH_STORAGE_KEY` from [`lib/supabase.ts`](../lib/supabase.ts), no network) and `cacheUserProfile` / `readCachedUserProfile` (`@profile:<userId>` in AsyncStorage, purged by `lib/storage-purge.ts`). Consumed only by `lib/session.tsx`'s boot path so the app renders signed-in offline. **Don't** read the `sb-…-auth-token` key or cache the users row anywhere else.
 
+## Offline write outbox
+
+One owner: [`lib/outbox/`](../lib/outbox/AGENTS.md) — `saveRecordThroughOutbox({ entity, mode, recordId, payload, displayTitle, projectId, detailKey, optimistic })` is THE way document flows write records (orders, briefings, incidents, reports, risk assessments, breathalyzer logs). Online it is exactly the direct service call; offline (or on a network-classified failure) it queues the op, seeds the detail cache, and replays on reconnect — an offline UPDATE coalesces into a still-queued CREATE, which is why every service `create` accepts the entity's updatable fields as optional args. Direct `<entity>Api.create/update` calls in screens are **banned** by check-primitives (`direct-record-create-in-screen`). Staged files ride `file_upload` ops; PDFs of queued records ride `pdf_upload` ops with a `dbPatch` (never `queuePdfUpload`, which drops items after 3 attempts). Inspection creation queues as a self-contained `inspection_create` op (parent RPC first, equipment row upserted second). `OfflineProvider` flushes the three queues sequentially: outbox → answers/photos → legacy pdf queue. Pending/failed groups surface on Home via [`components/PendingSyncSection.tsx`](../components/PendingSyncSection.tsx) (`useOutbox()`).
+
 ## Adding a new primitive
 
 If you're about to add a util in `lib/` or a wrapper in `components/`:

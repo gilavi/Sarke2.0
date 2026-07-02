@@ -14,10 +14,10 @@ import { useTheme } from '../../../lib/theme';
 import { SkeletonListCard } from '../../../components/Skeleton';
 import { useToast } from '../../../lib/toast';
 import { friendlyError } from '../../../lib/errorMap';
-import { reportsApi } from '../../../lib/services';
+import { saveRecordThroughOutbox } from '../../../lib/outbox';
 import { useReport, useProject, qk, invalidateRecordLists } from '../../../lib/apiHooks';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ReportSlide } from '../../../types/models';
+import type { Report, ReportSlide } from '../../../types/models';
 
 export default function ReportSlidesEditor() {
   const { theme } = useTheme();
@@ -41,6 +41,30 @@ export default function ReportSlidesEditor() {
 
   const autoCreatedRef = useRef(false);
 
+  // Every write on this screen funnels through the offline outbox: offline it
+  // queues (an update coalesces into a still-queued create) and seeds the
+  // detail cache so the flow keeps rendering; online it is the direct call.
+  const saveReport = useCallback(
+    async (patch: Partial<Pick<Report, 'slides' | 'status'>>) => {
+      if (!report) return { queued: false };
+      const res = await saveRecordThroughOutbox({
+        entity: 'report',
+        mode: 'update',
+        recordId: report.id,
+        payload: patch,
+        displayTitle: 'ანგარიში',
+        projectId: report.project_id,
+        detailKey: qk.reports.byId(report.id),
+        optimistic: { ...report, ...patch },
+      });
+      if (!res.queued && res.record) {
+        queryClient.setQueryData(qk.reports.byId(report.id), res.record);
+      }
+      return res;
+    },
+    [report, queryClient],
+  );
+
   // On first open of a brand-new report (no slides yet), create one slide
   // automatically and navigate straight into its editor so the user lands
   // directly in the slide form rather than seeing an empty list.
@@ -55,11 +79,9 @@ export default function ReportSlidesEditor() {
       image_path: null,
       annotated_image_path: null,
     };
-    reportsApi
-      .update(report.id, { slides: [newSlide] })
-      .then(saved => {
-        queryClient.setQueryData(qk.reports.byId(saved.id), saved);
-        router.push(`/reports/${saved.id}/slide/${newSlide.id}` as any);
+    saveReport({ slides: [newSlide] })
+      .then(() => {
+        router.push(`/reports/${report.id}/slide/${newSlide.id}` as any);
       })
       .catch(() => {
         autoCreatedRef.current = false;
@@ -73,14 +95,14 @@ export default function ReportSlidesEditor() {
       const renumbered = next.map((s, i) => ({ ...s, order: i }));
       queryClient.setQueryData(qk.reports.byId(report.id), { ...report, slides: renumbered });
       try {
-        const saved = await reportsApi.update(report.id, { slides: renumbered });
-        queryClient.setQueryData(qk.reports.byId(saved.id), saved);
+        // Silent autosave: a queued offline save shows no toast.
+        await saveReport({ slides: renumbered });
       } catch (e) {
         toast.error(friendlyError(e, t('errors.saveFailed')));
         queryClient.invalidateQueries({ queryKey: qk.reports.byId(report.id) });
       }
     },
-    [report, toast, queryClient, t],
+    [report, toast, queryClient, t, saveReport],
   );
 
   const addSlide = async () => {
@@ -132,10 +154,10 @@ export default function ReportSlidesEditor() {
     }
     setGenerating(true);
     try {
-      const saved = await reportsApi.update(report.id, { status: 'completed' });
-      queryClient.setQueryData(qk.reports.byId(saved.id), saved);
+      const res = await saveReport({ status: 'completed' });
+      if (res.queued) toast.success(t('components.savedOffline'));
       invalidateRecordLists(queryClient);
-      router.replace(`/reports/${saved.id}/success` as any);
+      router.replace(`/reports/${report.id}/success` as any);
     } catch (e) {
       toast.error(friendlyError(e, t('errors.saveFailed')));
     } finally {

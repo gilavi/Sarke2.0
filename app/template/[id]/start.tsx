@@ -61,9 +61,17 @@ export default function StartTemplateScreen() {
     setBusy(true);
     try {
       const entry = template.category ? inspectionRegistry[template.category] : undefined;
-      const newId = entry
-        ? (await entry.create({ projectId: selected, templateId: template.id })).id
-        : (await questionnairesApi.create({ projectId: selected, templateId: template.id })).id;
+      const created = entry
+        ? await entry.create({ projectId: selected, templateId: template.id })
+        : await questionnairesApi.create({ projectId: selected, templateId: template.id });
+      // Seed the detail cache so the wizard/flow opens the fresh (possibly
+      // offline-queued) inspection via cachedRead without a network read.
+      if (entry && template.category) {
+        queryClient.setQueryData(qk.equipmentInspection.byId(template.category, created.id), created);
+      } else {
+        queryClient.setQueryData(qk.inspections.byId(created.id), created);
+      }
+      const newId = created.id;
       invalidateRecordLists(queryClient);
       router.replace(routeForInspection(template.category, newId, false) as any);
     } catch (e) {

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import * as Crypto from 'expo-crypto';
 import { useTranslation } from 'react-i18next';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Button } from '../../components/ui';
@@ -11,18 +12,22 @@ import { FlowHeader } from '../../components/FlowHeader';
 import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
+import { useSession } from '../../lib/session';
 import { friendlyError } from '../../lib/errorMap';
-import { projectsApi, reportsApi } from '../../lib/services';
+import { projectsApi } from '../../lib/services';
 import { queryClient } from '../../lib/queryClient';
-import { invalidateRecordLists } from '../../lib/apiHooks';
+import { invalidateRecordLists, qk } from '../../lib/apiHooks';
+import { cachedRead } from '../../lib/cachedRead';
+import { saveRecordThroughOutbox } from '../../lib/outbox';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
-import type { Project } from '../../types/models';
+import type { Project, Report } from '../../types/models';
 
 export default function NewReportTitleScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const router = useRouter();
   const toast = useToast();
+  const session = useSession();
   const { t } = useTranslation();
   const { projectId: paramProjectId } = useLocalSearchParams<{ projectId?: string }>();
   const [pickedProject, setPickedProject] = useState<Project | null>(null);
@@ -37,7 +42,9 @@ export default function NewReportTitleScreen() {
   useEffect(() => {
     if (!projectId || project) return;
     let mounted = true;
-    projectsApi.getById(projectId).then(p => { if (mounted) setProject(p); }).catch(() => null);
+    cachedRead(qk.projects.byId(projectId), () => projectsApi.getById(projectId))
+      .then(p => { if (mounted) setProject(p); })
+      .catch(() => null);
     return () => { mounted = false; };
   }, [projectId, project]);
 
@@ -49,10 +56,33 @@ export default function NewReportTitleScreen() {
   const onNext = async () => {
     if (busy || !inputValid || !projectId) return;
     setBusy(true);
+    // Client-generated id: offline the create queues in the outbox and later
+    // slide edits coalesce into it; the editor reads the seeded detail cache.
+    const reportId = Crypto.randomUUID();
+    const optimistic: Report = {
+      id: reportId,
+      project_id: projectId,
+      user_id: session.state.status === 'signedIn' ? session.state.session.user.id : '',
+      title: trimmed,
+      status: 'draft',
+      slides: [],
+      pdf_url: null,
+      created_at: new Date().toISOString(),
+    };
     try {
-      const created = await reportsApi.create({ projectId, title: trimmed });
+      const res = await saveRecordThroughOutbox({
+        entity: 'report',
+        mode: 'create',
+        recordId: reportId,
+        payload: { id: reportId, projectId, title: trimmed },
+        displayTitle: 'ანგარიში',
+        projectId,
+        detailKey: qk.reports.byId(reportId),
+        optimistic,
+      });
+      if (res.queued) toast.success(t('components.savedOffline'));
       invalidateRecordLists(queryClient);
-      router.replace(`/reports/${created.id}/edit` as any);
+      router.replace(`/reports/${reportId}/edit` as any);
     } catch (e) {
       toast.error(friendlyError(e, t('reports.createFailed')));
       setBusy(false);

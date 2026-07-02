@@ -16,6 +16,8 @@ import { SkeletonPreview } from '../../../../components/Skeleton';
 import { useToast } from '../../../../lib/toast';
 import { friendlyError } from '../../../../lib/errorMap';
 import { reportsApi } from '../../../../lib/services';
+import { cachedRead } from '../../../../lib/cachedRead';
+import { saveRecordThroughOutbox } from '../../../../lib/outbox';
 import { STORAGE_BUCKETS } from '../../../../lib/supabase';
 import {
   defaultSlideLayout,
@@ -52,12 +54,13 @@ export default function ReportSlideEditor() {
   const { attempted, guard } = useSubmitGuard();
 
   // Photo add / change / annotate / delete behaviour lives in its own hook.
-  const { addingPhoto, uploadingPaths, uploading, addPhoto, onTapPhoto } = useSlidePhotoEditing({
-    report,
-    slideId,
-    images,
-    setImages,
-  });
+  const { addingPhoto, uploadingPaths, uploading, addPhoto, onTapPhoto, localPreviews } =
+    useSlidePhotoEditing({
+      report,
+      slideId,
+      images,
+      setImages,
+    });
 
   // Prevents useFocusEffect from resetting user-edited fields when the screen
   // regains focus after returning from the photo picker / annotator.
@@ -70,7 +73,9 @@ export default function ReportSlideEditor() {
 
   const load = useCallback(async () => {
     if (!id || !slideId) return;
-    const r = await reportsApi.getById(id).catch(() => null);
+    // Through the query cache: offline this returns the seeded/persisted copy
+    // (a queued create/update seeds it) instead of hanging on the network.
+    const r = await cachedRead(qk.reports.byId(id), () => reportsApi.getById(id)).catch(() => null);
     if (!r) return;
     setReport(r);
     const s = r.slides.find(x => x.id === slideId) ?? null;
@@ -95,7 +100,13 @@ export default function ReportSlideEditor() {
     layout && validLayouts.includes(layout) ? layout : defaultSlideLayout(images.length);
 
   // Resolve photo paths → display URIs once (cached); feeds preview + tiles.
-  const uris = useResolvedImageUris(STORAGE_BUCKETS.reportPhotos, images.map(slideImagePath));
+  // Photos queued while offline prefer their staged local copy — the resolved
+  // value would be an unreachable URL until the outbox uploads them.
+  const resolvedUris = useResolvedImageUris(STORAGE_BUCKETS.reportPhotos, images.map(slideImagePath));
+  const uris = images.map((im, i) => {
+    const p = slideImagePath(im);
+    return (p && localPreviews[p]) || resolvedUris[i];
+  });
 
   // Title gate for the (always-enabled) save button. In-flight uploads stay a
   // separate disable so a half-uploaded photo can't be saved.
@@ -114,8 +125,21 @@ export default function ReportSlideEditor() {
         : s,
     );
     try {
-      const saved = await reportsApi.update(report.id, { slides: next });
-      queryClient.setQueryData(qk.reports.byId(saved.id), saved);
+      // Silent outbox save: offline it queues (coalescing into a still-queued
+      // create) and seeds the detail cache — no toast, exactly like autosave.
+      const res = await saveRecordThroughOutbox({
+        entity: 'report',
+        mode: 'update',
+        recordId: report.id,
+        payload: { slides: next },
+        displayTitle: 'ანგარიში',
+        projectId: report.project_id,
+        detailKey: qk.reports.byId(report.id),
+        optimistic: { ...report, slides: next },
+      });
+      if (!res.queued && res.record) {
+        queryClient.setQueryData(qk.reports.byId(report.id), res.record);
+      }
       router.back();
     } catch (e) {
       toast.error(friendlyError(e, t('errors.saveFailed')));

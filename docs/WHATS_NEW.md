@@ -1,6 +1,18 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-07-02 | Branch: `offline-mode`
+**Updated:** 2026-07-03 | Branch: `offline-mode`
+
+---
+
+## 2026-07-03 — Offline mode, phase 3: every document flow completes offline (write outbox)
+
+Five of six creation flows wrote straight to Supabase and simply failed offline; inspection creation itself needed the network before the wizard could even start. Phase 3 adds a generic write outbox so **all** flows finish offline and sync on reconnect.
+
+- **New module [`lib/outbox/`](../lib/outbox/AGENTS.md)** — `saveRecordThroughOutbox` (THE screen-facing write: online = the direct service call; offline/network-failure = queue + seed the detail cache), plus `file_upload` / `pdf_upload` / `inspection_create` ops. Flush is FIFO with per-group ordering: a failing op skips the rest of its group, 3 attempts move the whole group to a failed queue, an auth error aborts without burning attempts, and replayed creates treat duplicate-key as success. An offline UPDATE **coalesces** into a still-queued CREATE — every service `create` gained the entity's updatable fields as optional args (`id`, `status`, `slides`, `inspectorSignature`, `entries`, …) so nothing signed/edited offline is dropped on replay. Direct `<entity>Api.create/update` in screens is now **banned** by check-primitives.
+- **Inspection creation offline** — `create_equipment_inspection` + the equipment row (and the generic inspections insert) queue as a self-contained op that replays parent-RPC-first with an idempotent upsert; `auth.getUser()` (a network call) swapped for the locally-cached `getSession()` across all creates. The creation screens seed `qk.equipmentInspection.byId` / `qk.inspections.byId` so the wizard opens the fresh act instantly; the answers/photos queue **defers** ops whose inspection creation is still queued, and `OfflineProvider` now flushes the three queues sequentially (outbox → answers/photos → legacy pdf).
+- **All six flows integrated** — orders (incl. crane cert photos + act-style success-screen PDFs; new [`features/order-new/saveOrderOffline.ts`](../features/order-new/saveOrderOffline.ts)), briefings (create + every signing write; signatures coalesce into the queued create), incidents (extracted [`features/incident-new/saveIncident.ts`](../features/incident-new/saveIncident.ts) — the 1195-line route SHRANK by ~60 lines; offline photos stage to disk, PDFs embed new photos from local URIs), reports (create + slide autosaves + completion + staged slide photos; new `hooks/slidePhotoUpload.ts`), risk assessments (create + autosave + queued completion-PDF), breathalyzer logs (start/entries/serial/close-out). PDFs still generate + share locally offline; their uploads ride `pdf_upload` ops that patch `pdf_url` after the row lands. The server-side PDF quota RPC is skipped offline (cached lock state still enforced).
+- **Pending-sync UI** — new [`components/PendingSyncSection.tsx`](../components/PendingSyncSection.tsx) on Home (above the record widgets): queued documents with Georgian titles, failed groups with retry/dismiss; items disappear as the flush lands rows via `invalidateRecordLists`. i18n: `components.savedOffline` + 5 `pendingSync*` keys (ka+en, parity-tested).
+- Housekeeping: `@outbox:` added to the sign-out purge; docs (primitives.md "Offline write outbox" row, `lib/outbox/AGENTS.md`, per-flow AGENTS.md updates). Tests: `tests/unit/outboxStorage.test.ts` + `outboxFlush.test.ts` (coalescing, group ordering, attempts, auth-abort, duplicate-key, RPC-before-upsert — 42 offline-suite tests green). Adversarial multi-agent review passed before merge.
 
 ---
 

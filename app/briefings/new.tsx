@@ -12,6 +12,7 @@ import { DateTimeField } from '../../components/DateTimeField';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { KeyboardSafeArea } from '../../components/layout/KeyboardSafeArea';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import * as Crypto from 'expo-crypto';
 import { ChevronRight } from 'lucide-react-native';
 import { Button } from '../../components/ui';
 import { FlowHeader } from '../../components/FlowHeader';
@@ -19,14 +20,16 @@ import { FlowProjectPicker } from '../../components/FlowProjectPicker';
 import { TopicSelector } from '../../components/briefings/TopicSelector';
 import { ParticipantsStep } from '../../components/briefings/ParticipantsStep';
 import { useTheme } from '../../lib/theme';
+import { useToast } from '../../lib/toast';
 import { useSession } from '../../lib/session';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { queryClient } from '../../lib/queryClient';
 import { invalidateRecordLists, qk } from '../../lib/apiHooks';
 import { cachedRead } from '../../lib/cachedRead';
+import { saveRecordThroughOutbox } from '../../lib/outbox';
 import { projectsApi } from '../../lib/services';
-import type { BriefingParticipant, Project } from '../../types/models';
+import type { Briefing, BriefingParticipant, Project } from '../../types/models';
 
 export default function NewBriefingScreen() {
   const { t } = useTranslation();
@@ -36,6 +39,11 @@ export default function NewBriefingScreen() {
   const { projectId: paramProjectId, editId } = useLocalSearchParams<{ projectId?: string; editId?: string }>();
   const router = useRouter();
   const session = useSession();
+  const toast = useToast();
+
+  // Stable record id for the whole flow: the reopened draft's id in edit mode,
+  // a client-generated uuid otherwise (lets an offline create queue + coalesce).
+  const briefingId = useRef(editId ?? Crypto.randomUUID()).current;
 
   // ── Project (for header context) ──
   const [pickedProject, setPickedProject] = useState<Project | null>(null);
@@ -137,21 +145,46 @@ export default function NewBriefingScreen() {
     if (!projectId || !canStart) return;
     setBusy(true);
     try {
+      const nowIso = new Date().toISOString();
+      const optimistic: Briefing = {
+        id: briefingId,
+        projectId,
+        dateTime: dateTime.toISOString(),
+        topics: builtTopics,
+        participants,
+        inspectorSignature: null,
+        inspectorName,
+        status: 'draft',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
       // Edit mode updates the reopened draft in place; signing re-completes it.
-      const briefingId = editId
-        ? (await briefingsApi.update(editId, {
-            dateTime: dateTime.toISOString(),
-            topics: builtTopics,
-            participants,
-            inspectorName,
-          })).id
-        : (await briefingsApi.create({
-            projectId,
-            dateTime: dateTime.toISOString(),
-            topics: builtTopics,
-            participants,
-            inspectorName,
-          })).id;
+      // Offline the save queues and the signing screen reads the seeded cache.
+      const res = await saveRecordThroughOutbox({
+        entity: 'briefing',
+        mode: editId ? 'update' : 'create',
+        recordId: briefingId,
+        payload: editId
+          ? {
+              dateTime: dateTime.toISOString(),
+              topics: builtTopics,
+              participants,
+              inspectorName,
+            }
+          : {
+              id: briefingId,
+              projectId,
+              dateTime: dateTime.toISOString(),
+              topics: builtTopics,
+              participants,
+              inspectorName,
+            },
+        displayTitle: 'ინსტრუქტაჟი',
+        projectId,
+        detailKey: qk.briefings.byId(briefingId),
+        optimistic,
+      });
+      if (res.queued) toast.success(t('components.savedOffline'));
       invalidateRecordLists(queryClient);
       router.replace(`/briefings/${briefingId}/sign` as any);
     } catch (err) {
@@ -160,7 +193,7 @@ export default function NewBriefingScreen() {
     } finally {
       setBusy(false);
     }
-  }, [projectId, dateTime, participants, builtTopics, inspectorName, canStart, router, editId, t]);
+  }, [projectId, dateTime, participants, builtTopics, inspectorName, canStart, router, editId, briefingId, toast, t]);
 
   const onBack = useCallback(() => {
     if (step === 2) setStep(1);

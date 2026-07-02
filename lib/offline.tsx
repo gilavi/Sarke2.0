@@ -15,6 +15,8 @@ import { answersApi, storageApi } from './services';
 import { logError } from './logError';
 import { stageCompressedPhotoForOffline } from './photoCompression';
 import { flushPendingPdfUploads } from './pdfUploadQueue';
+import { flushOutbox } from './outbox/flush';
+import { pendingInspectionIds } from './outbox/storage';
 import { prefetchFlowStartCaches } from './apiHooks';
 import { queryClient } from './queryClient';
 import { useToast } from './toast';
@@ -246,8 +248,25 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       // can't stall the queue - failing ops rotate to the back.
       let processed = 0;
       const startCount = ops.length;
+      // Answers/patches for an inspection whose CREATION is still queued in
+      // the outbox must wait for it (answers FK inspections.id) — covers
+      // enqueue-triggered flushes that bypass the sequential cross-queue
+      // chain in the reconnect handler.
+      const queuedInspectionIds = await pendingInspectionIds().catch(() => new Set<string>());
       while (ops.length > 0 && onlineRef.current && processed < startCount) {
         const op = ops[0];
+        const opInspectionId =
+          op.kind === 'answer_upsert'
+            ? ((op.payload as { inspection_id?: string }).inspection_id ?? null)
+            : op.kind === 'questionnaire_update'
+              ? ((op.payload as { id?: string }).id ?? null)
+              : null;
+        if (opInspectionId && queuedInspectionIds.has(opInspectionId)) {
+          ops = [...ops.slice(1), op];
+          await setQueue(ops);
+          processed++;
+          continue;
+        }
         try {
           if (op.kind === 'answer_upsert') {
             const { error } = await supabase
@@ -313,6 +332,16 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     }
   }, [setQueue, runExclusive]);
 
+  // Sequential cross-queue flush: outbox rows FIRST (parents before children —
+  // answers FK inspections, pdf patches FK their rows), then the inspection
+  // answer/photo queue, then the legacy pdf-upload queue. Each step swallows
+  // its own failure so one wedged queue can't starve the others.
+  const flushAllQueues = useCallback(async () => {
+    await flushOutbox().catch(() => undefined);
+    await flush().catch(() => undefined);
+    await flushPendingPdfUploads().catch(() => undefined);
+  }, [flush]);
+
   useEffect(() => {
     void readQueue().then((q) => setPendingCount(q.length));
     void readFailedQueue().then((q) => setFailedCount(q.length));
@@ -324,8 +353,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       setIsOnline(online);
       setNetReady(true);
       if (online) {
-        void flush();
-        void flushPendingPdfUploads();
+        void flushAllQueues();
       }
     });
     const unsub = NetInfo.addEventListener((s) => {
@@ -334,15 +362,14 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       setIsOnline(online);
       setNetReady(true);
       if (online) {
-        void flush();
-        void flushPendingPdfUploads();
+        void flushAllQueues();
         // Re-warm the flow-start caches (template questions, project details)
         // that may have gone stale while offline.
         prefetchFlowStartCaches(queryClient);
       }
     });
     return () => unsub();
-  }, [flush]);
+  }, [flushAllQueues]);
 
   const enqueueAnswerUpsert = useCallback<OfflineContextValue['enqueueAnswerUpsert']>(
     async (payload) => {

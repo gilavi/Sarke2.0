@@ -5,6 +5,7 @@ import { Stack, useRouter } from 'expo-router';
 import { BookOpen, Plus, Share2 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import * as Crypto from 'expo-crypto';
 
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Button } from '../../components/ui';
@@ -22,10 +23,10 @@ import {
   useBreathalyzerLogByDate,
   useProject,
 } from '../../lib/apiHooks';
-import { breathalyzerLogApi } from '../../lib/breathalyzerLogService';
+import { saveRecordThroughOutbox } from '../../lib/outbox';
 import { buildBreathalizerLogPdfHtml } from '../../lib/breathalyzerLogPdf';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
-import { formatBlDate } from '../../types/breathalyzerLog';
+import { formatBlDate, type BreathalizerLog } from '../../types/breathalyzerLog';
 
 import { getStyles } from './styles';
 import { EntryRow } from './EntryRow';
@@ -84,8 +85,39 @@ export function BreathalyzerLogScreen({
 
   const startLog = async () => {
     try {
-      await breathalyzerLogApi.create({ projectId, date: today });
-      qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byDate(projectId, today) });
+      const id = Crypto.randomUUID();
+      const now = new Date().toISOString();
+      const optimistic: BreathalizerLog = {
+        id,
+        projectId,
+        date: today,
+        deviceSerialNumber: null,
+        entries: [],
+        responsiblePerson: { name: '', signature: null },
+        status: 'open',
+        pdfUri: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const res = await saveRecordThroughOutbox({
+        entity: 'breathalyzer_log',
+        mode: 'create',
+        recordId: id,
+        payload: { projectId, date: today, id },
+        displayTitle: 'ალკოტესტის ჟურნალი',
+        projectId,
+        detailKey: qk.breathalyzerLog.byId(id),
+        optimistic,
+      });
+      if (res.queued) {
+        // This screen finds today's log via byDate — seed it so the queued
+        // log renders without a network fetch. The post-flush
+        // invalidateRecordLists swaps in the real row once it lands.
+        qc.setQueryData(qk.breathalyzerLog.byDate(projectId, today), optimistic);
+        toast.success(t('components.savedOffline'));
+      } else {
+        qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byDate(projectId, today) });
+      }
       qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byProject(projectId) });
       haptic.success();
     } catch {
@@ -98,8 +130,29 @@ export function BreathalyzerLogScreen({
     const trimmed = serial.trim() || null;
     if (trimmed === (log.deviceSerialNumber ?? null)) return;
     try {
-      await breathalyzerLogApi.patchDeviceSerial(log.id, trimmed);
-      invalidateActive();
+      const optimistic: BreathalizerLog = {
+        ...log,
+        deviceSerialNumber: trimmed,
+        updatedAt: new Date().toISOString(),
+      };
+      const res = await saveRecordThroughOutbox({
+        entity: 'breathalyzer_log',
+        mode: 'update',
+        recordId: log.id,
+        payload: { deviceSerialNumber: trimmed },
+        displayTitle: 'ალკოტესტის ჟურნალი',
+        projectId,
+        detailKey: qk.breathalyzerLog.byId(log.id),
+        optimistic,
+      });
+      if (res.queued) {
+        // Keep the active byDate cache coherent with the queued patch
+        // (detailKey already seeded byId); silent — a blur-save, not an
+        // explicit user action.
+        qc.setQueryData(qk.breathalyzerLog.byDate(projectId, log.date), optimistic);
+      } else {
+        invalidateActive();
+      }
     } catch {
       /* non-fatal */
     }

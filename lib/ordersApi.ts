@@ -80,13 +80,18 @@ export const ordersApi = {
     documentType: OrderDocumentType;
     formData: OrderFormData;
     status: 'draft' | 'completed';
+    /** Client-generated id — required for offline (outbox) creates. */
+    id?: string;
   }): Promise<Order> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession reads the locally cached session (getUser is a network
+    // round-trip and would hang the offline create path).
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
 
     const { data, error } = await supabase
       .from('orders')
       .insert({
+        ...(args.id ? { id: args.id } : {}),
         project_id:    args.projectId,
         user_id:       user.id,
         document_type: args.documentType,

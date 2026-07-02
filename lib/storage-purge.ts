@@ -13,6 +13,7 @@ const USER_SCOPED_PREFIXES = [
   'excavator-wizard:',
   'ge-wizard:',
   '@offline:',
+  '@outbox:',
   '@profile:',
   'pending-signatures',
   'pending-pdf-uploads',

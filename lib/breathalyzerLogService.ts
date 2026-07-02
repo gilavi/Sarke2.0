@@ -47,19 +47,29 @@ export const breathalyzerLogApi = {
     projectId: string;
     date: string;
     deviceSerialNumber?: string | null;
+    /** Optional fields let an offline UPDATE coalesce into a still-queued
+     *  CREATE (lib/outbox) without losing entries/close-out. */
+    id?: string;
+    entries?: BLEntry[];
+    responsiblePerson?: BLResponsiblePerson;
+    status?: BreathalizerLog['status'];
+    pdfUri?: string | null;
   }): Promise<BreathalizerLog> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession reads the locally cached session (getUser hits the network).
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     const { data, error } = await supabase
       .from('breathalyzer_logs')
       .insert({
+        ...(args.id ? { id: args.id } : {}),
         project_id: args.projectId,
         user_id: user.id,
         date: args.date,
         device_serial_number: args.deviceSerialNumber ?? null,
-        entries: [],
-        responsible_person: { name: '', signature: null },
-        status: 'open',
+        entries: args.entries ?? [],
+        responsible_person: args.responsiblePerson ?? { name: '', signature: null },
+        status: args.status ?? 'open',
+        ...(args.pdfUri !== undefined ? { pdf_uri: args.pdfUri } : {}),
       })
       .select()
       .single();

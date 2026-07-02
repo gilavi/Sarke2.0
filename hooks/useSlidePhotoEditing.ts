@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import * as Crypto from 'expo-crypto';
 import { useBottomSheet } from '../components/BottomSheet';
 import { useToast } from '../lib/toast';
 import { friendlyError } from '../lib/errorMap';
-import { storageApi } from '../lib/services';
 import { STORAGE_BUCKETS } from '../lib/supabase';
 import { imageForDisplay } from '../lib/imageUrl';
 import { MAX_SLIDE_PHOTOS, slideImagePath } from '../lib/reportSlides';
+import { uploadSlidePhoto } from './slidePhotoUpload';
 import { usePhotoPicker } from './usePhotoPicker';
 import type { Report, SlideImage } from '../types/models';
 
@@ -46,13 +45,13 @@ export function useSlidePhotoEditing(params: {
       else next.delete(path);
       return next;
     });
-
+  // Offline-queued photos: storage path → staged file:// URI (previews only).
+  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
   const uploadLocalUri = async (localUri: string): Promise<string | null> => {
     if (!report) return null;
-    const ext = (localUri.split('.').pop() || 'jpg').split('?')[0];
-    const path = `${report.id}/${slideId}/annotated-${Crypto.randomUUID()}.${ext}`;
     try {
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.reportPhotos, path, localUri, 'image/jpeg', 'report');
+      const { path, localPreviewUri } = await uploadSlidePhoto({ reportId: report.id, slideId, localUri });
+      if (localPreviewUri) setLocalPreviews(prev => ({ ...prev, [path]: localPreviewUri }));
       return path;
     } catch (e) {
       toast.error(friendlyError(e, 'სურათის ატვირთვა ვერ მოხერხდა'));
@@ -145,5 +144,6 @@ export function useSlidePhotoEditing(params: {
     uploading: addingPhoto || uploadingPaths.size > 0,
     addPhoto,
     onTapPhoto,
+    localPreviews,
   };
 }

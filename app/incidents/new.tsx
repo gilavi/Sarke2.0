@@ -39,12 +39,16 @@ import { cachedRead } from '../../lib/cachedRead';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { generatePdfName } from '../../lib/pdfName';
-import { queuePdfUpload, stagePdfForQueue } from '../../lib/pdfUploadQueue';
-import * as FileSystem from 'expo-file-system/legacy';
-import { logError } from '../../lib/logError';
+import { onlineManager } from '@tanstack/react-query';
+import {
+  buildIncidentFields,
+  embedIncidentPhotosForPdf,
+  persistIncidentPdf,
+  saveIncidentRow,
+  uploadIncidentPhotos,
+} from '../../features/incident-new/saveIncident';
 import {
   signatureAsDataUrl,
-  pdfPhotoEmbed,
   imageForDisplay,
 } from '../../lib/imageUrl';
 import { friendlyError } from '../../lib/errorMap';
@@ -135,6 +139,7 @@ export default function NewIncident() {
       : session.state.session.user.email ?? '';
     return { name, sigPath: u?.saved_signature_url ?? null };
   }, [session.state]);
+  const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
 
   // load project once
   useEffect(() => {
@@ -264,35 +269,6 @@ export default function NewIncident() {
     setForm(f => ({ ...f, witnesses: f.witnesses.filter((_, i) => i !== idx) }));
   };
 
-  // ── upload helpers ──────────────────────────────────────────────────────────
-
-  const uploadPhotos = async (): Promise<{ path: string; isNew: boolean }[]> => {
-    const results: { path: string; isNew: boolean }[] = [];
-    for (const photo of form.photos) {
-      // Edit mode: an already-stored photo keeps its path (no re-upload).
-      if (photo.existingPath) {
-        results.push({ path: photo.existingPath, isNew: false });
-        continue;
-      }
-      const photoId = Crypto.randomUUID();
-      const ext = photo.uri.split('.').pop()?.toLowerCase() ?? 'jpg';
-      const path = `${incidentId}/${photoId}.${ext}`;
-      try {
-        await storageApi.uploadFromUri(
-          STORAGE_BUCKETS.incidentPhotos,
-          path,
-          photo.uri,
-          'image/jpeg',
-          'incident',
-        );
-        results.push({ path, isNew: true });
-      } catch (e) {
-        console.warn('[incident] photo upload failed', e);
-      }
-    }
-    return results;
-  };
-
   // ── save (draft) ────────────────────────────────────────────────────────────
 
   const saveDraft = async () => {
@@ -303,29 +279,23 @@ export default function NewIncident() {
     }
     setSaving(true);
     try {
-      const uploaded = await uploadPhotos();
-      const fields = {
-        type: form.type,
-        injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
-        injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
-        date_time: form.dateTime.toISOString(),
-        location: form.location,
-        description: form.description,
-        cause: form.cause,
-        actions_taken: form.actionsTaken,
-        witnesses: form.witnesses,
-        photos: uploaded.map(u => u.path),
-        inspector_signature: inspector.sigPath,
-        status: 'draft' as const,
-        pdf_url: null,
-      };
-      if (editId) {
-        await incidentsApi.update(editId, fields);
-      } else {
-        await incidentsApi.create({ id: incidentId, project_id: projectId, ...fields });
-      }
+      // Offline: photos are staged + queued and the row write queues through
+      // the outbox — the flow proceeds exactly as if saved.
+      const uploaded = await uploadIncidentPhotos(incidentId, form.photos);
+      const { queued } = await saveIncidentRow({
+        incidentId,
+        projectId,
+        mode: editId ? 'update' : 'create',
+        userId,
+        fields: buildIncidentFields(
+          { ...form, type: form.type },
+          uploaded.map(u => u.path),
+          inspector.sigPath,
+          'draft',
+        ),
+      });
       invalidateRecordLists(queryClient);
-      toast.success(t('incidents.savedDraft'));
+      toast.success(queued ? t('components.savedOffline') : t('incidents.savedDraft'));
       router.back();
     } catch (e) {
       toast.error(friendlyError(e, t('errors.saveFailed')));
@@ -349,40 +319,36 @@ export default function NewIncident() {
     setSaving(true);
     let savedId = incidentId;
     let incidentCommitted = false;
-    // Only NEW uploads are cleaned up on a failed commit; existing photos
-    // (edit mode) must never be deleted.
+    // Only new uploads that actually reached storage are cleaned up on a
+    // failed commit; existing photos (edit mode) must never be deleted, and
+    // queued (offline) photos were never uploaded in the first place.
     let newlyUploadedPaths: string[] = [];
     try {
-      // 1. upload photos
-      const uploaded = await uploadPhotos();
-      newlyUploadedPaths = uploaded.filter(u => u.isNew).map(u => u.path);
-      const photoPaths = uploaded.map(u => u.path);
+      // 1. upload photos (offline: staged + queued through the outbox)
+      const uploaded = await uploadIncidentPhotos(incidentId, form.photos);
+      newlyUploadedPaths = uploaded.filter(u => u.isNew && !u.queued).map(u => u.path);
 
-      // 2. create or (edit mode) update the incident record
-      const fields = {
-        type: form.type,
-        injured_name: form.type !== 'nearmiss' ? form.injuredName || null : null,
-        injured_role: form.type !== 'nearmiss' ? form.injuredRole || null : null,
-        date_time: form.dateTime.toISOString(),
-        location: form.location,
-        description: form.description,
-        cause: form.cause,
-        actions_taken: form.actionsTaken,
-        witnesses: form.witnesses,
-        photos: photoPaths,
-        inspector_signature: inspector.sigPath,
-        status: 'completed' as const,
-        pdf_url: null,
-      };
-      const saved = editId
-        ? await incidentsApi.update(editId, fields)
-        : await incidentsApi.create({ id: incidentId, project_id: projectId, ...fields });
+      // 2. create or (edit mode) update the incident record. Offline the row
+      // queues through the outbox and we proceed exactly as if saved.
+      const { queued, incident: saved } = await saveIncidentRow({
+        incidentId,
+        projectId,
+        mode: editId ? 'update' : 'create',
+        userId,
+        fields: buildIncidentFields(
+          { ...form, type: form.type },
+          uploaded.map(u => u.path),
+          inspector.sigPath,
+          'completed',
+        ),
+      });
       savedId = saved.id;
       invalidateRecordLists(queryClient);
       incidentCommitted = true;
+      if (queued) toast.success(t('components.savedOffline'));
 
       // 3. load signature data URL - strict so we never embed a signed URL
-      // the print WebView can't fetch.
+      // the print WebView can't fetch (disk-cached, so it resolves offline).
       let sigDataUrl: string | undefined;
       if (inspector.sigPath) {
         sigDataUrl = await signatureAsDataUrl(
@@ -391,15 +357,9 @@ export default function NewIncident() {
         ).catch(() => undefined);
       }
 
-      // 4. load photo data URLs (strict - drop ones that fail rather than
-      // embedding an unreachable signed URL fallback).
-      const photoDataUrls = await Promise.all(
-        photoPaths.map(p =>
-          pdfPhotoEmbed(STORAGE_BUCKETS.incidentPhotos, p).catch(
-            () => '',
-          ),
-        ),
-      ).then(urls => urls.filter(Boolean));
+      // 4. photo data URLs - new photos embed from their local file (works
+      // offline, no re-download); existing ones go through pdfPhotoEmbed.
+      const photoDataUrls = await embedIncidentPhotosForPdf(uploaded);
 
       // 5. build HTML
       const html = buildIncidentPdfHtml({
@@ -415,8 +375,9 @@ export default function NewIncident() {
       const docType = `ინციდენტი_${incidentTypeLabel}`;
       const pdfName = generatePdfName(project.company_name || project.name, docType, form.dateTime, savedId);
       const pdfPath = `incidents/${pdfName}`;
-      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
-      const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
+      // The PDF-gate RPC can't run offline — skip it so generation still works.
+      const gateUserId = onlineManager.isOnline() ? userId : undefined;
+      const localUri = await generateAndSharePdf(html, pdfName, true, gateUserId, {
         title: INCIDENT_TYPE_FULL_LABEL[form.type],
         author: inspector.name || undefined,
         documentId: savedId,
@@ -428,33 +389,13 @@ export default function NewIncident() {
 
         router.replace(`/incidents/${savedId}/success` as any);
 
-        // Background: upload PDF + update incident row.
-        // If this fails, queue for retry so the user isn't blocked.
-        (async () => {
-          try {
-            await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-            await incidentsApi.update(savedId, {
-              pdf_url: pdfPath,
-              ...(pdfHash ? { pdf_hash: pdfHash } : {}),
-            });
-            // Clean up the temp copy after successful upload
-            FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
-          } catch (e) {
-            logError(e, 'incidentNew.backgroundUpload');
-            const stagedUri = await stagePdfForQueue(localUri, pdfName);
-            await queuePdfUpload({
-              localUri: stagedUri,
-              bucket: STORAGE_BUCKETS.pdfs,
-              path: pdfPath,
-              contentType: 'application/pdf',
-              dbOp: {
-                kind: 'incident_update',
-                payload: { incidentId: savedId, pdf_url: pdfPath, pdf_hash: pdfHash },
-              },
-            });
-            toast.info(t('incidents.pdfSavedLocally'));
-          }
-        })();
+        // Background: persist the PDF — upload + row patch online, or stage it
+        // behind the (possibly queued) row through the outbox. Never blocks.
+        persistIncidentPdf({ incidentId: savedId, localUri, pdfPath, pdfName, pdfHash, rowQueued: queued })
+          .then((r) => {
+            if (r === 'queued' && !queued) toast.info(t('incidents.pdfSavedLocally'));
+          })
+          .catch(() => {});
       } else {
         router.replace(`/incidents/${savedId}/success` as any);
       }

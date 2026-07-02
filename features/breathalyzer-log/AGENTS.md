@@ -68,6 +68,11 @@ Exported from `index.ts`, consumed only by the thin route shells under
 - Behaviour: `useSubmitGuard` (enabled button + on-press error reveal), `haptic.*`,
   `useToast`, `useTheme`.
 - Data: `useBreathalyzerLog` / `useBreathalyzerLogByDate` / `useBreathalizerLogsByProject`
-  + `qk.breathalyzerLog` (`lib/apiHooks`), `breathalyzerLogApi` + `peoplePoolApi`
-  + `makeBLEntry` (`lib/breathalyzerLogService`), `buildBreathalizerLogPdfHtml`
-  (`lib/breathalyzerLogPdf`), `generateAndSharePdf` (`lib/pdfOpen`).
+  + `qk.breathalyzerLog` (`lib/apiHooks`); writes go through
+  `saveRecordThroughOutbox` (`lib/outbox`, entity `breathalyzer_log` — payload
+  keys `{entries}` / `{deviceSerialNumber}` / `{close}` dispatch to the api's
+  method-per-field surface, and offline saves queue + seed byId/byDate);
+  screens only import `peoplePoolApi` + `makeBLEntry` from
+  `lib/breathalyzerLogService`, never `breathalyzerLogApi` directly.
+  `buildBreathalizerLogPdfHtml` (`lib/breathalyzerLogPdf`),
+  `generateAndSharePdf` (`lib/pdfOpen`).

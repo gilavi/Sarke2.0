@@ -30,6 +30,10 @@ import { ordersApi } from '../../lib/ordersApi';
 import { queryClient } from '../../lib/queryClient';
 import { invalidateRecordLists, qk } from '../../lib/apiHooks';
 import { cachedRead } from '../../lib/cachedRead';
+import { onlineManager } from '@tanstack/react-query';
+import { enqueueOutboxOp } from '../../lib/outbox';
+import { isNetworkError } from '../../lib/outbox/storage';
+import { stageCompressedPhotoForOffline } from '../../lib/photoCompression';
 import {
   buildAlcoholControlOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -62,6 +66,7 @@ import {
   type Step,
 } from './orderFormSchema';
 import { makeStyles } from './styles';
+import { saveOrderRecord, queueOrderPdfUpload, patchOrderPdfUrl } from './saveOrderOffline';
 import { Step1DocType } from './Step1DocType';
 import { Step2Company } from './Step2Company';
 import { Step2CraneCompany } from './Step2CraneCompany';
@@ -108,6 +113,9 @@ export default function NewOrderScreen() {
   const session = useSession();
   const { t } = useTranslation();
   const { projectId, editId } = useLocalSearchParams<{ projectId: string; editId?: string }>();
+  // Stable client-side order id: lets an offline create be queued, cache-seeded
+  // and routed before the server ever sees the row (ordersApi.create takes id).
+  const orderId = useRef(editId ?? Crypto.randomUUID()).current;
 
   const [step, setStep] = useState<Step>(1);
   // Enabled forward/submit button + on-press field errors (see useSubmitGuard).
@@ -182,13 +190,34 @@ export default function NewOrderScreen() {
   const handlePickPhoto = useCallback(async (field: 'craneOperatorCertPhoto' | 'craneInspCertPhoto') => {
     const result = await pickPhotoWithAnnotation({ skipAnnotate: true });
     if (!result) return;
+    const uuid = Crypto.randomUUID();
+    const subfolder = field === 'craneOperatorCertPhoto' ? 'operator-cert' : 'crane-insp';
+    const path = `orders/${photoSessionId}/${subfolder}/${uuid}.jpg`;
+    // Offline (or a network failure): stage the compressed photo and queue the
+    // upload — the pre-computed path stays valid in form state either way.
+    const queueUpload = async () => {
+      const stagedUri = await stageCompressedPhotoForOffline(result.uri, 'certificate');
+      await enqueueOutboxOp({
+        kind: 'file_upload',
+        groupId: photoSessionId,
+        bucket: STORAGE_BUCKETS.answerPhotos,
+        path,
+        localUri: stagedUri,
+        contentType: 'image/jpeg',
+        displayTitle: 'ბრძანება',
+      });
+      setForm(f => ({ ...f, [field]: path }));
+      toast.success(t('components.savedOffline'));
+    };
     try {
-      const uuid = Crypto.randomUUID();
-      const subfolder = field === 'craneOperatorCertPhoto' ? 'operator-cert' : 'crane-insp';
-      const path = `orders/${photoSessionId}/${subfolder}/${uuid}.jpg`;
+      if (!onlineManager.isOnline()) { await queueUpload(); return; }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, result.uri, 'image/jpeg', 'certificate');
       setForm(f => ({ ...f, [field]: path }));
-    } catch {
+    } catch (e) {
+      if (isNetworkError(e)) {
+        await queueUpload().catch(() => toast.error(t('orders.photoUploadFailed')));
+        return;
+      }
       toast.error(t('orders.photoUploadFailed'));
     }
   }, [pickPhotoWithAnnotation, photoSessionId, toast, t]);
@@ -229,22 +258,12 @@ export default function NewOrderScreen() {
     if (!projectId || !docType) return;
     setSaving(true);
     try {
-      if (editId) {
-        await ordersApi.update(editId, {
-          documentType: docType,
-          formData: buildFormData(form, docType),
-          status: 'draft',
-        });
-      } else {
-        await ordersApi.create({
-          projectId,
-          documentType: docType,
-          formData: buildFormData(form, docType),
-          status: 'draft',
-        });
-      }
+      const { queued } = await saveOrderRecord({
+        orderId, editId, projectId, userId,
+        docType, formData: buildFormData(form, docType), status: 'draft',
+      });
       invalidateRecordLists(queryClient);
-      toast.success(t('orders.orderSaved'));
+      toast.success(queued ? t('components.savedOffline') : t('orders.orderSaved'));
       router.back();
     } catch (e) {
       toast.error(friendlyError(e, t('orders.saveFailed')));
@@ -263,19 +282,12 @@ export default function NewOrderScreen() {
     }
     setSaving(true);
     try {
-      const saved = editId
-        ? await ordersApi.update(editId, {
-            documentType: docType,
-            formData: buildFormData(form, docType),
-            status: 'completed',
-          })
-        : await ordersApi.create({
-            projectId,
-            documentType: docType,
-            formData: buildFormData(form, docType),
-            status: 'completed',
-          });
+      const { queued, order: saved } = await saveOrderRecord({
+        orderId, editId, projectId, userId,
+        docType, formData: buildFormData(form, docType), status: 'completed',
+      });
       invalidateRecordLists(queryClient);
+      if (queued) toast.success(t('components.savedOffline'));
       router.replace(`/orders/${saved.id}/success` as any);
     } catch (e) {
       toast.error(friendlyError(e, t('orders.saveFailed')));
@@ -302,20 +314,13 @@ export default function NewOrderScreen() {
     setSaving(true);
     let savedId = '';
     try {
-      const saved = editId
-        ? await ordersApi.update(editId, {
-            documentType: docType,
-            formData: buildFormData(form, docType),
-            status: 'completed',
-          })
-        : await ordersApi.create({
-            projectId,
-            documentType: docType,
-            formData: buildFormData(form, docType),
-            status: 'completed',
-          });
+      const { queued, order: saved } = await saveOrderRecord({
+        orderId, editId, projectId, userId,
+        docType, formData: buildFormData(form, docType), status: 'completed',
+      });
       savedId = saved.id;
       invalidateRecordLists(queryClient);
+      if (queued) toast.success(t('components.savedOffline'));
 
       const projectName = project.company_name || project.name;
       const html = buildHtml(docType, form, projectName);
@@ -327,7 +332,11 @@ export default function NewOrderScreen() {
       const orderAuthor =
         docType === 'alcohol_control' ? form.responsiblePersonName : form.appointedName;
       const orderTitle = docType ? ORDER_DOCUMENT_TYPE_LABEL[docType] : t('orders.orderTitle');
-      const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
+      // Offline the server-side PDF gate is unreachable (its RPC would throw
+      // and abort a purely local render) — skip it; the cached isLocked flag
+      // above still blocks capped users.
+      const gateUserId = onlineManager.isOnline() ? userId : undefined;
+      const localUri = await generateAndSharePdf(html, pdfName, true, gateUserId, {
         title: orderTitle,
         author: orderAuthor || undefined,
         documentId: savedId,
@@ -339,24 +348,32 @@ export default function NewOrderScreen() {
       router.replace(`/orders/${savedId}/success` as any);
 
       if (localUri) {
-        (async () => {
-          try {
-            await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-            await ordersApi.update(savedId, { pdfUrl: pdfPath, ...(pdfHash ? { pdfHash } : {}) });
-            FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
-          } catch (e) {
-            logError(e, 'orderNew.backgroundUpload');
-            const stagedUri = await stagePdfForQueue(localUri, pdfName);
-            await queuePdfUpload({
-              localUri: stagedUri,
-              bucket: STORAGE_BUCKETS.pdfs,
-              path: pdfPath,
-              contentType: 'application/pdf',
-              dbOp: { kind: 'none' },
-            });
-            toast.info(t('orders.pdfSavedLocally'));
-          }
-        })();
+        if (queued || !onlineManager.isOnline()) {
+          // The record itself is queued (or we've since gone offline): don't
+          // attempt a direct upload — stage the PDF and chain the upload +
+          // pdfUrl patch behind the order's outbox group.
+          queueOrderPdfUpload({ orderId: savedId, pdfName, pdfPath, localUri, pdfHash })
+            .catch((e) => logError(e, 'orderNew.queuePdfOffline'));
+        } else {
+          (async () => {
+            try {
+              await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
+              await patchOrderPdfUrl({ orderId: savedId, projectId, pdfPath, pdfHash });
+              FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+            } catch (e) {
+              logError(e, 'orderNew.backgroundUpload');
+              const stagedUri = await stagePdfForQueue(localUri, pdfName);
+              await queuePdfUpload({
+                localUri: stagedUri,
+                bucket: STORAGE_BUCKETS.pdfs,
+                path: pdfPath,
+                contentType: 'application/pdf',
+                dbOp: { kind: 'none' },
+              });
+              toast.info(t('orders.pdfSavedLocally'));
+            }
+          })();
+        }
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }

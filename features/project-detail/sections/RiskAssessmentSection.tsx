@@ -1,22 +1,25 @@
 // Risk-assessment (რისკების შეფასება) section of the project detail screen.
 // Two document types share one register: a full risk assessment and a
-// PPE-by-position matrix. Tapping a "+ create" link inserts a draft and routes
-// to the editor.
+// PPE-by-position matrix. Tapping a "+ create" link inserts a draft (through
+// the offline outbox — queued when there is no network) and routes to the
+// editor, which opens off the seeded detail cache.
 
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { ShieldAlert, ChevronRight, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import * as Crypto from 'expo-crypto';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { SectionEmptyState } from '../../../components/EmptyState';
 import { SkeletonRow } from '../../../components/Skeleton';
 import { useTheme } from '../../../lib/theme';
+import { useSession } from '../../../lib/session';
 import { useToast } from '../../../lib/toast';
 import { a11y } from '../../../lib/accessibility';
-import { riskAssessmentApi } from '../../../lib/riskAssessmentService';
+import { saveRecordThroughOutbox } from '../../../lib/outbox';
 import { queryClient } from '../../../lib/queryClient';
-import { invalidateRecordLists } from '../../../lib/apiHooks';
+import { invalidateRecordLists, qk } from '../../../lib/apiHooks';
 import { friendlyError } from '../../../lib/errorMap';
 import { fmtDate } from '../../../lib/pdf/order/_shared';
 import { type RiskAssessment, type RADocType } from '../../../types/riskAssessment';
@@ -36,15 +39,44 @@ export function RiskAssessmentSection({
   const toast = useToast();
   const styles = useMemo(() => getStyles(theme), [theme]);
   const router = useRouter();
+  const session = useSession();
   const [creating, setCreating] = useState(false);
 
   const create = async (docType: RADocType) => {
     if (!id || creating) return;
     setCreating(true);
     try {
-      const ra = await riskAssessmentApi.create({ projectId: id, docType });
+      // Client-generated id so an offline create can be queued and the editor
+      // can open immediately off the seeded detail cache.
+      const raId = Crypto.randomUUID();
+      const now = new Date().toISOString();
+      const userId = session.state.status === 'signedIn' ? session.state.session.user.id : '';
+      const optimistic: RiskAssessment = {
+        id: raId,
+        projectId: id,
+        userId,
+        docType,
+        header: {},
+        entries: [],
+        signatories: {},
+        status: 'draft',
+        pdfUrl: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const res = await saveRecordThroughOutbox({
+        entity: 'risk_assessment',
+        mode: 'create',
+        recordId: raId,
+        payload: { projectId: id, docType, id: raId },
+        displayTitle: 'რისკების შეფასება',
+        projectId: id,
+        detailKey: qk.riskAssessment.byId(raId),
+        optimistic,
+      });
+      if (res.queued) toast.success(t('components.savedOffline'));
       invalidateRecordLists(queryClient);
-      router.push(`/projects/${id}/risk-assessment/${ra.id}` as any);
+      router.push(`/projects/${id}/risk-assessment/${raId}` as any);
     } catch (e) {
       toast.error(friendlyError(e, t('risk.createFailed')));
     } finally {

@@ -1,5 +1,7 @@
 import * as Crypto from 'expo-crypto';
+import { onlineManager } from '@tanstack/react-query';
 import { supabase, STORAGE_BUCKETS } from '../../supabase';
+import { enqueueOutboxOp, isNetworkError } from '../../outbox/storage';
 import { logError } from '../../logError';
 import { isInspection } from '../../guards';
 import type { Inspection, InspectionAttachment, RecentRecordsOpts } from '../../../types/models';
@@ -66,20 +68,45 @@ export const inspectionsApi = {
     const templateId = assertUuid(args.templateId, 'templateId');
     const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
-    return throwIfError<Inspection>(
-      await supabase
-        .from('inspections')
-        .insert({
-          project_id: projectId,
-          template_id: templateId,
-          user_id: user.id,
-          status: 'draft',
-          harness_name: args.harnessName ?? null,
-          project_item_id: args.projectItemId ?? null,
-        })
-        .select()
-        .single(),
-    );
+
+    const insertRow = {
+      id: Crypto.randomUUID(),
+      project_id: projectId,
+      template_id: templateId,
+      user_id: user.id,
+      status: 'draft' as const,
+      harness_name: args.harnessName ?? null,
+      project_item_id: args.projectItemId ?? null,
+    };
+
+    // Offline (or a network-failed insert): queue the creation for replay and
+    // return an optimistic model — the wizard proceeds against the client id
+    // and its answers/photos queue behind the creation (lib/outbox flushes
+    // rows before lib/offline flushes answers).
+    const enqueue = async (): Promise<Inspection> => {
+      await enqueueOutboxOp({
+        kind: 'inspection_create',
+        groupId: insertRow.id,
+        variant: 'generic',
+        inspectionId: insertRow.id,
+        projectId,
+        rpcArgs: null,
+        table: 'inspections',
+        insertRow,
+        displayTitle: 'შემოწმების აქტი',
+      });
+      return { ...insertRow, created_at: new Date().toISOString() } as unknown as Inspection;
+    };
+
+    if (!onlineManager.isOnline()) return enqueue();
+    try {
+      return throwIfError<Inspection>(
+        await supabase.from('inspections').insert(insertRow).select().single(),
+      );
+    } catch (e) {
+      if (isNetworkError(e)) return enqueue();
+      throw e;
+    }
   },
   update: async (q: Partial<Inspection> & { id: string }): Promise<Inspection> => {
     return throwIfError<Inspection>(

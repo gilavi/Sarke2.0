@@ -53,19 +53,27 @@ export const riskAssessmentApi = {
     projectId: string;
     docType: RADocType;
     header?: Record<string, string>;
+    /** Optional fields let an offline UPDATE coalesce into a still-queued
+     *  CREATE (lib/outbox) without losing edits. */
+    id?: string;
+    entries?: RAEntry[];
+    signatories?: Record<string, RASignatory>;
+    status?: 'draft' | 'completed';
   }): Promise<RiskAssessment> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession reads the locally cached session (getUser hits the network).
+    const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     const { data, error } = await supabase
       .from('risk_assessments')
       .insert({
+        ...(args.id ? { id: args.id } : {}),
         project_id: args.projectId,
         user_id: user.id,
         doc_type: args.docType,
         header: args.header ?? {},
-        entries: [],
-        signatories: {},
-        status: 'draft',
+        entries: args.entries ?? [],
+        signatories: args.signatories ?? {},
+        status: args.status ?? 'draft',
       })
       .select()
       .single();

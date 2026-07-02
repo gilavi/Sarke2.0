@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hubble Web App — Critical UX Bug Report</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a2f3a;
+    --ink:#e8eaed; --muted:#9aa2b1; --faint:#6b7280;
+    --crit:#ff4d4f; --high:#ff8a3d; --med:#f2c14e; --low:#5aa9e6; --ok:#3ecf8e;
+    --brand:#47af87; --code:#0b0d11;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans Georgian",sans-serif;}
+  a{color:#7fd3ff;text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 80px}
+  header.hero{border:1px solid var(--line);border-radius:16px;padding:28px 30px;
+    background:linear-gradient(135deg,#171a21,#12151b);margin-bottom:24px}
+  .kicker{color:var(--brand);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+  h1{margin:.35em 0 .2em;font-size:30px;line-height:1.2}
+  .sub{color:var(--muted);max-width:70ch}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:16px;color:var(--faint);font-size:13px}
+  .meta b{color:var(--muted);font-weight:600}
+
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:22px 0 6px}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:14px 12px;background:var(--panel);text-align:center}
+  .stat .n{font-size:26px;font-weight:800;line-height:1}
+  .stat .l{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:6px}
+  .stat.c-crit .n{color:var(--crit)} .stat.c-high .n{color:var(--high)}
+  .stat.c-med .n{color:var(--med)} .stat.c-low .n{color:var(--low)} .stat.c-tot .n{color:var(--ink)}
+
+  .callout{border:1px solid var(--line);border-left:3px solid var(--brand);background:var(--panel);
+    border-radius:10px;padding:16px 18px;margin:22px 0;color:var(--muted);font-size:14px}
+  .callout h3{margin:0 0 8px;color:var(--ink);font-size:15px}
+  .callout code{background:var(--code);padding:1px 6px;border-radius:5px;color:#e6d09a;font-size:12.5px}
+
+  h2.section{margin:38px 0 6px;font-size:20px;display:flex;align-items:center;gap:10px}
+  h2.section .dot{width:11px;height:11px;border-radius:50%}
+  h2.section small{color:var(--faint);font-weight:400;font-size:13px}
+
+  .finding{border:1px solid var(--line);border-radius:12px;background:var(--panel);margin:14px 0;overflow:hidden}
+  .finding .top{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 8px}
+  .finding .id{font-variant-numeric:tabular-nums;color:var(--faint);font-weight:700;font-size:13px;padding-top:2px;min-width:34px}
+  .finding h3{margin:0;font-size:16px;flex:1;line-height:1.35}
+  .pill{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+    padding:3px 8px;border-radius:20px;white-space:nowrap}
+  .p-crit{background:rgba(255,77,79,.16);color:#ff8082;border:1px solid rgba(255,77,79,.4)}
+  .p-high{background:rgba(255,138,61,.15);color:#ffab6b;border:1px solid rgba(255,138,61,.4)}
+  .p-med{background:rgba(242,193,78,.14);color:#f5d27f;border:1px solid rgba(242,193,78,.4)}
+  .p-low{background:rgba(90,169,230,.14);color:#8fc7f2;border:1px solid rgba(90,169,230,.4)}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 6px 64px}
+  .tag{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);
+    padding:2px 8px;border-radius:6px}
+  .tag.loc{color:#e6d09a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+  .tag.verif{color:var(--ok);border-color:rgba(62,207,142,.35)}
+  .body{padding:4px 18px 18px 64px}
+  .body p{margin:8px 0}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:700}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:11px 13px;
+    overflow:auto;margin:6px 0 10px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cbd5e1}
+  .fix{color:#bfe8d5}
+  .impact{color:#e8eaed}
+
+  .excluded .finding{border-style:dashed;opacity:.9}
+  .excluded .p-x{background:rgba(107,114,128,.18);color:#b6bdc9;border:1px solid var(--faint)}
+  footer{margin-top:50px;color:var(--faint);font-size:12.5px;border-top:1px solid var(--line);padding-top:18px}
+  @media(max-width:720px){.stats{grid-template-columns:repeat(2,1fr)} .tags,.body{padding-left:18px} .finding .id{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">UX Audit · Internal</div>
+  <h1>Hubble Web App — Critical UX Bug Report</h1>
+  <p class="sub">A deliberately harsh usability &amp; interaction audit of the <code>web-app/</code> dashboard
+  (the Vite/React SPA served at <b>hubble.ge/app/</b>). Every finding below was read back against the actual
+  source before it made this list — the goal was to be brutal <i>and</i> accurate, not to pad a number.</p>
+  <div class="meta">
+    <span><b>Scope:</b> web-app/ (dashboard) — not the mobile app, sign page, or CMS</span>
+    <span><b>Method:</b> 14-dimension multi-agent sweep, adversarially verified against code</span>
+    <span><b>Date:</b> 2026-07-01</span>
+    <span><b>Branch:</b> main</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat c-crit"><div class="n">2</div><div class="l">Critical</div></div>
+  <div class="stat c-high"><div class="n">14</div><div class="l">High</div></div>
+  <div class="stat c-med"><div class="n">18</div><div class="l">Medium</div></div>
+  <div class="stat c-low"><div class="n">8</div><div class="l">Low</div></div>
+  <div class="stat c-tot"><div class="n">42</div><div class="l">Verified total</div></div>
+</div>
+
+<div class="callout">
+  <h3>How to read this report</h3>
+  <p>The audit generated ~100 candidate issues across loading, forms, auth, navigation, accessibility, responsiveness,
+  dark mode, feedback, wizards, destructive actions, i18n, project-detail, billing, and cross-cutting concerns.
+  Each candidate was then <b>re-opened in the source and confirmed</b>. Claims that didn't survive that check were
+  dropped — two notable hallucinations are listed at the very bottom so you can trust that the rest were checked.
+  Locations are real <code>file:line</code> references. Severity reflects user impact, not code ugliness.</p>
+</div>
+
+<!-- ============================ CRITICAL ============================ -->
+<h2 class="section"><span class="dot" style="background:var(--crit)"></span>Critical <small>breaks a core flow, loses data, or charges the wrong amount</small></h2>
+
+<div class="finding">
+  <div class="top"><div class="id">C1</div>
+    <h3>A strong password crashes the entire Registration page</h3>
+    <span class="pill p-crit">Critical</span></div>
+  <div class="tags"><span class="tag">Auth · Sign-up</span>
+    <span class="tag loc">web-app/src/pages/auth/Register.tsx:11–29, 112–127</span>
+    <span class="tag verif">✓ verified in source</span></div>
+  <div class="body">
+    <p class="lbl">Evidence</p>
+<pre>const getPasswordStrength = (password) =&gt; {
+  let score = 0;
+  if (password.length &gt;= 8) score++;   // up to
+  if (password.length &gt;= 12) score++;  // SIX
+  if (/[A-Z]/.test(password)) score++; // conditions
+  if (/[a-z]/.test(password)) score++; // → score can reach 6
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  const levels = [ /* only 6 entries: indexes 0..5 */ ];
+  return { score, ...levels[score] };   // levels[6] === undefined
+};
+// render:
+{i &lt; strength.score ? strength.color.replace('text-','bg-') : 'bg-neutral-200'}
+//                     ^^^ strength.color is undefined → TypeError</pre>
+    <p class="lbl">Impact</p>
+    <p class="impact">Any password with ≥12 chars containing an uppercase, lowercase, digit <b>and</b> a symbol scores 6.
+    <code style="background:#0b0d11;padding:1px 5px;border-radius:4px">levels</code> only has indexes 0–5, so
+    <code style="background:#0b0d11;padding:1px 5px;border-radius:4px">levels[6]</code> is <code style="background:#0b0d11;padding:1px 5px;border-radius:4px">undefined</code>,
+    <code style="background:#0b0d11;padding:1px 5px;border-radius:4px">strength.color</code> becomes undefined, and <code style="background:#0b0d11;padding:1px 5px;border-radius:4px">.replace()</code>
+    throws — React unmounts and the app falls into the (English) crash screen. There are also only 5 strength bars for 6 possible
+    points. The users this hurts are exactly the security-conscious ones you least want to lose at sign-up.</p>
+    <p class="lbl fix">Recommendation</p>
+    <p class="fix">Clamp the index (<code style="background:#0b0d11;padding:1px 5px;border-radius:4px">levels[Math.min(score, levels.length-1)]</code>),
+    add the 7th level (or collapse to 5 buckets), and render the correct number of bars.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">C2</div>
+    <h3>The app advertises ₾19/mo everywhere but the real checkout charges ₾1</h3>
+    <span class="pill p-crit">Critical</span></div>
+  <div class="tags"><span class="tag">Billing · Trust</span>
+    <span class="tag loc">Subscribe.tsx:141,156 vs PaywallModal.tsx:71, landing/pricing.tsx:50, landing/home-cta.tsx:35</span>
+    <span class="tag verif">✓ verified in source</span></div>
+  <div class="body">
+    <p class="lbl">Evidence</p>
+<pre>// Subscribe.tsx (the actual BOG checkout page)
+&lt;div class="...text-4xl font-bold"&gt;₾1&lt;/div&gt; &lt;div&gt;თვეში&lt;/div&gt;
+&lt;Button&gt;გადახდა ₾1&lt;/Button&gt;
+
+// PaywallModal.tsx:71        → ₾19 / თვეში
+// landing/pricing.tsx:50     → ₾19
+// landing/home-cta.tsx:35    → ₾19 / თვეში</pre>
+    <p class="lbl">Impact</p>
+    <p class="impact">Every marketing surface and the in-app paywall promise <b>₾19/month</b>; the page that actually creates
+    the payment order charges <b>₾1</b>. Best case it's a confusing bait-and-switch in the user's favour; worst case a user who
+    was shown ₾19 in the paywall clicks "upgrade" and lands on a ₾1 screen and assumes the site is broken or fraudulent.
+    (The ₾1 is a known soft-launch test rate — the bug is that it was never reconciled with the ₾19 copy, and there is no
+    single source of truth for price.)</p>
+    <p class="lbl fix">Recommendation</p>
+    <p class="fix">Put the price in one constant/config and render it everywhere. Ship the real price on the checkout the
+    moment payments go live, and never let marketing copy and the charge diverge.</p>
+  </div>
+</div>
+
+<!-- ============================ HIGH ============================ -->
+<h2 class="section"><span class="dot" style="background:var(--high)"></span>High <small>significant friction, silent failure, data loss, or exclusion of users</small></h2>
+
+<div class="finding">
+  <div class="top"><div class="id">H1</div>
+    <h3>The order wizard silently throws away a ~30-field legal document on close</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Data loss</span><span class="tag">Wizards</span>
+    <span class="tag loc">web-app/src/features/orders/components/NewOrder/index.tsx (onClose)</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;WizardShell open onClose={() =&gt; navigate(projectId ? `/projects/${projectId}` : '/')} ... /&gt;</pre>
+    <p class="impact">Closing (X, or the shell's overlay) immediately navigates away. The order wizard captures a long,
+    legally-meaningful document (order number, company, director, appointed person, IDs, signatures across 5 steps). One
+    stray click discards all of it with <b>no "discard changes?" confirmation</b>.</p>
+    <p class="fix">Guard <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">onClose</code> with a confirm dialog when the form is dirty.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H2</div>
+    <h3>Signer / crew / file deletion has no confirmation — while a confirm component already exists and is used elsewhere</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Destructive</span><span class="tag">Consistency</span>
+    <span class="tag loc">ProjectDetail/SignersSection.tsx:139–147 · CrewSection.tsx:57–63,131 · FilesSection.tsx:137–146</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>// SignersSection — raw button, deletes on one click:
+&lt;button onClick={() =&gt; void remove(s)} title="წაშლა"&gt;&lt;Trash2/&gt;&lt;/button&gt;
+
+// meanwhile DeleteButton.tsx is a full AlertDialog ("ეს მოქმედება შეუქცევადია…")
+// and IS used by History and Projects.</pre>
+    <p class="impact">Removing a signer, a crew member, or a project file is a single unguarded click with immediate optimistic
+    removal — no "are you sure?", no undo. The app <b>already ships</b> a canonical confirm dialog (<code style="background:#0b0d11;padding:1px 4px;border-radius:4px">DeleteButton</code>);
+    these three flows just bypass it. <b>Crew delete also has no busy guard</b> (<code style="background:#0b0d11;padding:1px 4px;border-radius:4px">CrewSection.remove</code> can double-fire).</p>
+    <p class="fix">Route all three through <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">DeleteButton</code>; add a per-row pending guard to crew.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H3</div>
+    <h3>Deletes fail silently — no error toast on Projects and all five History delete paths</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Feedback</span><span class="tag">Error handling</span>
+    <span class="tag loc">Projects.tsx:150–153 · History.tsx:131–165</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>const deleteMutation = useMutation({
+  mutationFn: deleteProject,
+  onSuccess: () =&gt; qc.invalidateQueries(...),   // no onError
+});
+// History: delInspection / delBobcat / delExcavator / delGeneral / delCargo — all onSuccess only.</pre>
+    <p class="impact">If a delete fails (RLS, offline, FK constraint), the confirm dialog closes, the row stays, and the user
+    gets <b>nothing</b> — no toast, no message. They'll retry, assume the app is frozen, or think it worked when it didn't.</p>
+    <p class="fix">Add <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">onError: (e) =&gt; toast.error(humanizeError(e))</code> to every delete mutation.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H4</div>
+    <h3>ProjectDetail actions give no success/error feedback — and one section's error blanks the whole page</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Feedback</span><span class="tag">Project detail</span>
+    <span class="tag loc">ProjectDetail/index.tsx:42–48 + all sections' onError</span>
+    <span class="tag verif">✓ verified (re-scoped)</span></div>
+  <div class="body">
+<pre>const error = actionError ?? (queryError ? humanizeError(queryError) : null);
+if (error) return &lt;ErrorMessage&gt;{error}&lt;/ErrorMessage&gt;;   // replaces the ENTIRE page
+// every section reports via onError={setActionError}</pre>
+    <p class="impact">Adding/removing/uploading in any section produces no success toast. And because each section funnels
+    failures into a single page-level <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">actionError</code>, a failed file-delete or signer-add
+    <b>replaces the whole project page</b> with one bare error line — the user loses all context for a section-level problem.
+    (Note: render-time errors <i>are</i> contained per-section by <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">AsyncBoundary</code>; this is specifically the action-error path.)</p>
+    <p class="fix">Surface action errors as toasts (or inline within the section), not by unmounting the page.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H5</div>
+    <h3>The 404 page is 100% English, lives outside the app shell, and its only button points to a protected route</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">i18n</span><span class="tag">Navigation</span>
+    <span class="tag loc">pages/NotFound.tsx:68–90 · app/router.tsx:214</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;p&gt;Wrong site.&lt;/p&gt;
+&lt;p&gt;This page is under construction - or just doesn't exist.&lt;/p&gt;
+&lt;Link to={routes.home}&gt;Back to Home&lt;/Link&gt;   // /home is behind ProtectedRoute</pre>
+    <p class="impact">In a Georgian-first product the catch-all page speaks only English. It renders outside
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">AppShell</code>, so a logged-in user who hits a bad link loses the whole sidebar/nav.
+    A logged-out visitor's only escape — "Back to Home" — targets a protected route and just bounces them to login.</p>
+    <p class="fix">Georgian copy, render inside the shell when authenticated, and point the CTA at a public landing route.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H6</div>
+    <h3>The crash screen is English-only, leaks the raw error message, never logs, and never recovers</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">i18n</span><span class="tag">Error handling</span>
+    <span class="tag loc">web-app/src/components/ErrorBoundary.tsx:16–36</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;h1&gt;Something went wrong&lt;/h1&gt;
+&lt;p&gt;{this.state.error?.message || 'An unexpected error occurred'}&lt;/p&gt;   // raw stack message to the user
+&lt;button onClick={() =&gt; window.location.reload()}&gt;Reload Page&lt;/button&gt;
+// only getDerivedStateFromError — no componentDidCatch, no logging, no reset on navigation</pre>
+    <p class="impact">At the worst possible moment the Georgian user sees English boilerplate plus a raw technical
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">error.message</code>. Nothing is reported anywhere (no <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">componentDidCatch</code>/Sentry),
+    so you never learn it happened, and there's no navigation reset — a single crash blanks the app until a full manual reload.</p>
+    <p class="fix">Localize the copy, hide the raw message behind a "details" toggle, log to Sentry in
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">componentDidCatch</code>, and reset the boundary on route change.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H7</div>
+    <h3>The language toggle can't persist and only ~⅓ of the UI is actually translated</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">i18n</span>
+    <span class="tag loc">lib/i18n.ts:167–172 · components/layout/SidebarFooter.tsx:118–129</span>
+    <span class="tag verif">✓ verified (persistence) · finder-flagged (coverage)</span></div>
+  <div class="body">
+<pre>i18n.init({ lng: 'ka', fallbackLng: 'ka', ... });   // hardcoded, no LanguageDetector/localStorage
+// footer: onClick={() =&gt; i18n.changeLanguage(i18n.language === 'ka' ? 'en' : 'ka')}</pre>
+    <p class="impact">Switching to English changes the runtime language but <b>nothing is saved</b> — every reload snaps back to
+    Georgian. Worse, the bulk of the dashboard renders hardcoded Georgian strings that never go through i18next, so "ENG"
+    produces a broken half-English/half-Georgian screen rather than an English UI. The toggle is effectively decorative.</p>
+    <p class="fix">Add persistence (detector + localStorage), and either finish the English catalog or hide the toggle until it's real.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H8</div>
+    <h3>Auth errors on Register/Reset leak raw English Supabase messages (Login localizes; the others don't)</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Auth</span><span class="tag">i18n</span>
+    <span class="tag loc">pages/auth/Register.tsx:60–64 · Reset.tsx</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+    <p class="impact">Login runs errors through the Georgian localizer (<code style="background:#0b0d11;padding:1px 4px;border-radius:4px">authErrors.ts</code>), but Register and Reset
+    dump the raw Supabase string ("User already registered", "Password should be…") straight to the user. Inconsistent, English,
+    and sometimes cryptic on the two screens where a confused new user most needs a clear message.</p>
+    <p class="fix">Pipe all auth screens through the same localizer.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H9</div>
+    <h3>The calendar renders a full 7-column month grid on phones — ~50px cells, unreadable/untappable events</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Responsive</span>
+    <span class="tag loc">web-app/src/pages/Calendar.tsx:360–433</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+    <p class="impact">The month view is a fixed 7-wide grid with no mobile breakpoint. On a phone each day is ~40–50px, event
+    pills overflow/clip, and tapping the right day is a lottery. The calendar is essentially unusable on the device most
+    site inspectors actually carry.</p>
+    <p class="fix">Switch to an agenda/list layout below a breakpoint, or make day cells scrollable with larger touch targets.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H10</div>
+    <h3>Row actions are hover-only — the History delete button is invisible and unreachable on touch</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Responsive</span><span class="tag">Touch</span>
+    <span class="tag loc">web-app/src/pages/History.tsx:208–210</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;div className="opacity-0 transition-opacity group-hover:opacity-100"&gt;
+  &lt;DeleteButton iconOnly .../&gt;
+&lt;/div&gt;</pre>
+    <p class="impact">The delete control only appears on <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">:hover</code>. Touch devices have no hover state,
+    so on mobile the action is permanently at opacity 0 — a whole feature is invisible and undiscoverable for touch users.</p>
+    <p class="fix">Show actions always (or on row focus/press) below the pointer breakpoint; never gate an action solely on hover.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H11</div>
+    <h3>The order-wizard step bar overflows on mobile (6 no-wrap Georgian labels crammed into a fixed grid)</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Responsive</span><span class="tag">Wizards</span>
+    <span class="tag loc">components/ui/wizard-shell.tsx:54–64 · step-bar.tsx</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+    <p class="impact">The fire-safety order variant has 6 steps; the labels use <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">whitespace-nowrap</code> inside a fixed
+    center column, so on a phone the step bar overflows/clips and the user can't see where they are in the flow.</p>
+    <p class="fix">Collapse to "Step n/m" or a compact dot bar on small screens; allow labels to wrap/hide.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H12</div>
+    <h3>Muted body text fails WCAG AA contrast in both themes</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Accessibility</span>
+    <span class="tag loc">web-app/src/index.css:138,172 + widespread text-neutral-400</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>--text-muted: #9c9c97;  /* light: ≈2.6:1 on #fff — fails AA (needs 4.5:1) */
+--text-muted: #74726c;  /* dark:  ≈3.5:1 — fails AA for normal text */
+/* plus dozens of hardcoded text-neutral-400 (#a3a3a3 ≈ 2.3:1) for dates, sizes, hints */</pre>
+    <p class="impact">Secondary text — timestamps, file sizes, helper hints, empty-state copy — sits well below the 4.5:1 AA
+    threshold. Low-vision users and anyone outdoors in sunlight (construction sites) can't read it.</p>
+    <p class="fix">Darken the muted tokens to ≥4.5:1 and replace stray <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">text-neutral-400</code> with the token.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H13</div>
+    <h3>Full-screen overlays (map picker, mobile drawer) are not real dialogs — no focus trap, role, aria-modal, or Esc</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Accessibility</span>
+    <span class="tag loc">components/AddressInput.tsx:76–102 · components/layout/Sidebar.tsx:50–71</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>{open &amp;&amp; (
+  &lt;div className="fixed inset-0 z-[9999] ..."&gt;   // plain div: no role="dialog", no aria-modal,
+    ...                                          // no focus trap, no Escape handler
+&lt;/div&gt;)}</pre>
+    <p class="impact">The map-picker takes over the whole screen but keyboard focus stays behind it, screen readers don't
+    announce a dialog, and Esc does nothing. The mobile nav drawer has the same problem. Keyboard and AT users get stuck.</p>
+    <p class="fix">Use a real dialog primitive (focus trap, <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">role="dialog"</code>, <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">aria-modal</code>, Esc-to-close, focus restore).</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">H14</div>
+    <h3>The order wizard's ~25 fields have no real &lt;label&gt; — the Input primitive's built-in labeling is bypassed</h3>
+    <span class="pill p-high">High</span></div>
+  <div class="tags"><span class="tag">Accessibility</span><span class="tag">Forms</span>
+    <span class="tag loc">NewOrder/Step2Company.tsx:4–11 · Step3Specifics.tsx</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>function FieldRow({ label, children }) {
+  return &lt;div&gt;&lt;p className="text-xs ..."&gt;{label}&lt;/p&gt;{children}&lt;/div&gt;;  // label is a bare &lt;p&gt;
+}
+// &lt;Input&gt; (input.tsx) already supports a real &lt;label htmlFor&gt; — never used here.</pre>
+    <p class="impact">Every field in the longest, most legally-important form renders its label as a disconnected
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">&lt;p&gt;</code>. Screen readers announce ~25 fields as "unlabeled", and clicking the label text doesn't focus the input.</p>
+    <p class="fix">Pass <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">label</code> into <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">&lt;Input&gt;</code>, or give <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">FieldRow</code> an id it wires to both <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">htmlFor</code> and the child.</p>
+  </div>
+</div>
+
+<!-- ============================ MEDIUM ============================ -->
+<h2 class="section"><span class="dot" style="background:var(--med)"></span>Medium <small>noticeable rough edges that erode polish and trust</small></h2>
+
+<div class="finding">
+  <div class="top"><div class="id">M1</div>
+    <h3>Six list screens flash their empty-state during background refetch (canonical loading rule violated)</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Loading states</span>
+    <span class="tag loc">Projects.tsx:178 · History.tsx:57,174 · Calendar.tsx:235,351 · Certificates · Qualifications · Home · AsyncBoundary.tsx:95–105</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>{isLoading &amp;&amp; &lt;SkeletonList/&gt;}
+{items &amp;&amp; items.length === 0 &amp;&amp; &lt;EmptyState/&gt;}   // flashes while a stale [] refetches</pre>
+    <p class="impact">The repo's own <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">CLAUDE.md</code> mandates
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">(isFetching || !isFetched) &amp;&amp; data.length===0</code> for skeletons.
+    These screens gate on bare <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">isLoading</code>, so a background refetch of a cached empty array briefly renders
+    the "nothing here / create one" card before real data lands — a jarring flash of a wrong empty state. The shared
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">AsyncBoundary</code> inherits the same bug, spreading it to every screen built on it.</p>
+    <p class="fix">Fix <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">AsyncBoundary</code> to the canonical guard; the dependent screens inherit the fix.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M2</div>
+    <h3>The "payment complete" page always claims the subscription is active — it never checks</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Billing</span><span class="tag">Feedback</span>
+    <span class="tag loc">pages/SubscribeSuccess.tsx:38–41</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;p&gt;გამოწერა გააქტიურდა!&lt;/p&gt;   // hardcoded — no verification of real payment/subscription state</pre>
+    <p class="impact">The page shows "subscription activated!" unconditionally. Anyone landing on
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">/subscribe/success</code> (a returned-but-failed BOG flow, a bookmark, a shared URL) is told they're subscribed even if
+    they aren't. It only invalidates caches; it never confirms the tier.</p>
+    <p class="fix">Verify subscription state before claiming success; show a pending/failed variant otherwise.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M3</div>
+    <h3>Password-reset page: dead "resend link" (points to a route that doesn't exist) and no recovery-session check</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Auth</span>
+    <span class="tag loc">pages/auth/Reset.tsx:17–33,68–73</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">The reset page links to <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">/forgot-password</code> (the real route is <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">/forgot</code>), so the
+    "request a new link" escape hatch 404s. It also never checks that a recovery session actually exists, so an expired or
+    missing token fails silently at submit instead of telling the user to request a fresh email.</p>
+    <p class="fix">Fix the link target; detect a missing/expired recovery session on mount and message it.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M4</div>
+    <h3>Structured-inspection wizard advances without waiting for the in-flight save (Back waits, Next doesn't)</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Wizards</span><span class="tag">Data integrity</span>
+    <span class="tag loc">features/inspections/structured/StructuredInspectionWizard.tsx:132–135</span>
+    <span class="tag verif">✓ verified (asymmetry)</span></div>
+  <div class="body">
+<pre>backDisabled={wiz.step === 0 || wiz.updating || wiz.creating || submitting}
+nextDisabled={!canGoNext || submitting}   // note: wiz.updating is missing here</pre>
+    <p class="impact"><code style="background:#0b0d11;padding:1px 4px;border-radius:4px">Back</code> is blocked while a save is persisting, but <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">Next</code> is not.
+    A fast tester who answers the last checklist item and immediately hits Next → Finish can complete the act while the
+    last answer's save is still in flight — a race that can drop or reorder a written result.</p>
+    <p class="fix">Add <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">wiz.updating</code> to <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">nextDisabled</code> for symmetry, or await pending saves before advancing.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M5</div>
+    <h3>Order auto-fill clobbers fields the user already edited</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Forms</span><span class="tag">Wizards</span>
+    <span class="tag loc">NewOrder/index.tsx:58–72</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>useEffect(() =&gt; { getProject(projectId).then(p =&gt;
+  setForm(f =&gt; ({ ...f, companyName:..., legalAddress:..., objectName:... }))); }, [projectId]);</pre>
+    <p class="impact">The async project fetch overwrites company/address/object fields whenever it resolves. If the user starts
+    typing before the fetch returns (or changes project), their edits are silently replaced with project defaults.</p>
+    <p class="fix">Only auto-fill empty fields, or auto-fill once synchronously and never overwrite user-touched fields.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M6</div>
+    <h3>Dark mode is broken on the paywall, subscribe pages, and both step bars (hardcoded light colors)</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Dark mode</span>
+    <span class="tag loc">PaywallModal.tsx:54–72 · components/ui/step-bar.tsx:22–46 · NewOrder step components · Subscribe*/AuthLayout</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;div className="... text-neutral-900"&gt;₾19 / თვეში&lt;/div&gt;        // no dark: variant
+&lt;div className="... bg-neutral-100 text-neutral-400"&gt;         // step-bar inactive circle
+&lt;span className="... text-neutral-700"&gt;{label}&lt;/span&gt;         // dark-on-dark in dark mode</pre>
+    <p class="impact">These surfaces use light-only <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">neutral-*</code> classes with no <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">dark:</code> variants, so in dark mode
+    you get near-black text on dark backgrounds and pale, low-contrast step indicators — the upgrade funnel and every wizard's
+    progress bar look broken exactly where you want them to look trustworthy.</p>
+    <p class="fix">Add <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">dark:</code> variants or drive these from the theme CSS vars used elsewhere.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M7</div>
+    <h3>The command palette can't match Georgian labels by Latin typing and only knows 5 destinations</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Navigation</span>
+    <span class="tag loc">components/cmdk/CommandPalette.tsx:15–49</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">Cmd-K search matches only the Georgian label strings, so a user typing "projects" or "cal" (Latin) finds
+    nothing, and the palette only routes to 5 hardcoded pages — missing most of the app. A power-user feature that quietly
+    doesn't work for the way people actually type.</p>
+    <p class="fix">Add Latin aliases/transliteration per destination and generate entries from the nav registry.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M8</div>
+    <h3>Advertised keyboard shortcuts (G H, G P, …) are never wired up</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Navigation</span>
+    <span class="tag loc">components/layout/navItems.ts:31–40</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">Nav items declare shortcuts (<code style="background:#0b0d11;padding:1px 4px;border-radius:4px">shortcut: 'G H'</code>, etc.) that are shown to users but bound to no
+    handler anywhere. The app promises shortcuts it doesn't implement.</p>
+    <p class="fix">Implement the chord handler, or remove the shortcut hints.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M9</div>
+    <h3>Scroll position is never reset on navigation</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Navigation</span>
+    <span class="tag loc">components/layout/AppShell.tsx:19–23</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">There's no scroll-restoration. Scroll deep into a long list, open a detail page, and it opens
+    mid-page at the previous offset — the user has to scroll up to find the top of the new screen.</p>
+    <p class="fix">Add a scroll-to-top on route change (a <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">ScrollRestoration</code>/effect keyed on pathname).</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M10</div>
+    <h3>Every screen's tab title is just "Hubble"</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Navigation</span><span class="tag">Info architecture</span>
+    <span class="tag loc">web-app/index.html:9 (no per-route &lt;title&gt;)</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+    <p class="impact">No route sets <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">document.title</code>, so every tab, every browser-history entry, and every bookmark
+    reads "Hubble". Users with multiple tabs open can't tell them apart, and history is useless.</p>
+    <p class="fix">Set a per-route title (project name on detail pages, section name elsewhere).</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M11</div>
+    <h3>Required-field gating is silent — Next just stays disabled with no hint about what's missing</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Forms</span>
+    <span class="tag loc">NewOrder/index.tsx:77–112 · ui/wizard-nav.tsx</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+    <p class="impact">The wizard's Next is driven by a single boolean; when a required field is empty the button is simply
+    disabled with no inline error and no field highlight. The <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">Input</code> primitive supports an
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">error</code> state that's never used here. (Mitigated slightly by <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">*</code> markers on labels.)</p>
+    <p class="fix">On a disabled Next press, flag the specific empty required fields.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M12</div>
+    <h3>ID / phone fields accept any characters and offer no mobile numeric keyboard</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Forms</span>
+    <span class="tag loc">NewOrder/Step3Specifics.tsx:15–16,55–56,79–83</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+    <p class="impact">The Georgian personal ID (11 digits) only caps length — it accepts letters/symbols and gives no
+    <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">inputMode="numeric"</code>, so mobile users get an alpha keyboard and can type an invalid ID straight into a legal
+    document. Phone fields have no format hint or validation before PDF generation.</p>
+    <p class="fix">Add <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">inputMode="numeric"</code> + digit filtering and validate on blur.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M13</div>
+    <h3>File upload has no type/size restriction and no progress indicator</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Feedback</span><span class="tag">Project detail</span>
+    <span class="tag loc">ProjectDetail/FilesSection.tsx:64–89</span>
+    <span class="tag verif">✓ verified</span></div>
+  <div class="body">
+<pre>&lt;input type="file" className="hidden" onChange={upload}/&gt;   // no accept=, no size check
+// upload(): just a "იტვირთება…" label — no % progress on a slow site connection</pre>
+    <p class="impact">Any file type/size can be selected; a big file on a construction-site connection shows only a static
+    "uploading…" label with no progress, so users can't tell if it's working or hung, and only discover a too-large file after
+    a failed round-trip.</p>
+    <p class="fix">Add <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">accept</code>, a client-side size check with a clear message, and a progress indicator.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M14</div>
+    <h3>No success confirmation after long uploads (certificates / inline edits)</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Feedback</span>
+    <span class="tag loc">Certificates.tsx:38–46 · InspectionResult.tsx:81–88</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">After uploading a certificate or editing a field on the inspection-result screen, nothing confirms the
+    save. On a slow connection the user can't tell success from a no-op and may re-submit.</p>
+    <p class="fix">Toast on success for every mutation that isn't instantly visible in the UI.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M15</div>
+    <h3>Opening a stored PDF/file can fail with an empty catch — the user sees nothing</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Feedback</span><span class="tag">Error handling</span>
+    <span class="tag loc">pages/ProjectFiles.tsx:31–39</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">If generating a signed URL fails, the error is swallowed and the file simply doesn't open — no toast,
+    no explanation. The user clicks again and again, assuming the link is broken.</p>
+    <p class="fix">Surface the error via <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">humanizeError</code> in a toast.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M16</div>
+    <h3>The Regulations refresh button has no timeout or error handling — it can stay disabled forever</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Error handling</span>
+    <span class="tag loc">pages/Regulations.tsx:39–51</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">The manual "refresh" spinner-button disables itself while fetching but has no timeout/error branch. On a
+    hung request the button spins indefinitely and the user has no way to recover except a full reload.</p>
+    <p class="fix">Add a timeout + error state that re-enables the button and messages the failure.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M17</div>
+    <h3>Modals discard a half-filled form on backdrop click / Esc with no warning</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Data loss</span><span class="tag">Wizards</span>
+    <span class="tag loc">components/ProjectModal.tsx:138–146 · components/wizard/WizardFrame.tsx:95–103</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">The create/edit-project modal and the inspection wizard close (losing input) on an accidental outside
+    click or Escape — no "discard changes?" guard when the form is dirty.</p>
+    <p class="fix">Confirm before closing a dirty modal/wizard; or disable dismiss-on-outside-click while dirty.</p>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">M18</div>
+    <h3>A signed order signature can't be edited — only fully cleared and redrawn</h3>
+    <span class="pill p-med">Medium</span></div>
+  <div class="tags"><span class="tag">Wizards</span>
+    <span class="tag loc">NewOrder/StepSignature.tsx:19–43</span>
+    <span class="tag verif">✓ finder-verified</span></div>
+  <div class="body">
+    <p class="impact">Once a signature is captured there's no "adjust" — the only option is to wipe it and start over, which is
+    annoying on a touchpad/mouse and easy to do accidentally.</p>
+    <p class="fix">Offer an explicit "redo" vs a destructive "clear", and confirm the clear.</p>
+  </div>
+</div>
+
+<!-- ============================ LOW ============================ -->
+<h2 class="section"><span class="dot" style="background:var(--low)"></span>Low <small>polish &amp; consistency</small></h2>
+
+<div class="finding">
+  <div class="top"><div class="id">L1</div>
+    <h3>Auth screens show all errors as one generic red line (no field-level validation)</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Forms</span><span class="tag loc">pages/auth/*.tsx</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">Login/Register/Forgot/Reset funnel every problem into a single message; the offending
+  field is never highlighted, so users guess which input to fix.</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L2</div>
+    <h3>Icon-only trash button has no accessible name</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Accessibility</span><span class="tag loc">components/DeleteButton.tsx:30–37</span><span class="tag verif">✓ verified</span></div>
+  <div class="body"><p class="impact">The <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">iconOnly</code> variant renders just <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">&lt;Trash2/&gt;</code> with no
+  <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">aria-label</code>/<code style="background:#0b0d11;padding:1px 4px;border-radius:4px">title</code>, so screen readers announce an unnamed button for the delete action (e.g. in History).</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L3</div>
+    <h3>Delete dialog's "deleting…" state is never actually visible</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Feedback</span><span class="tag loc">components/DeleteButton.tsx:59–68</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">Radix closes the dialog the instant the action fires, so the <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">isPending → "იშლება…"</code>
+  label never shows — there's no in-flight feedback for a delete.</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L4</div>
+    <h3>Authenticated users aren't redirected away from /login, /register, /forgot, /reset</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Auth</span><span class="tag loc">app/router.tsx:147–152</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">A logged-in user hitting an auth URL sees the login/register form again instead of being sent to the app — mildly confusing and lets them "re-register" from a valid session.</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L5</div>
+    <h3>Verify-email screen offers no way to correct a mistyped address</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Auth</span><span class="tag loc">pages/auth/VerifyEmail.tsx:114–130</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">If a user typos their email at sign-up, the verify screen has no "change email"/resend-to-different-address path — they're stranded waiting for a mail that'll never arrive.</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L6</div>
+    <h3>Every protected navigation runs two nested crossfade animations</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Performance-perceived</span><span class="tag loc">app/router.tsx:83–90</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">A route-level motion wrapper sits inside another animated layer, so page transitions double-animate — subtly sluggish/janky on slower devices.</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L7</div>
+    <h3>Mobile drawer never plays its close animation</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Polish</span><span class="tag loc">components/layout/Sidebar.tsx:50–71</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">The drawer defines an exit variant but isn't wrapped in <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">AnimatePresence</code>, so it animates in but snaps out instantly.</p></div>
+</div>
+
+<div class="finding">
+  <div class="top"><div class="id">L8</div>
+    <h3>Two divergent project-edit UIs are reachable for the same project</h3>
+    <span class="pill p-low">Low</span></div>
+  <div class="tags"><span class="tag">Consistency</span><span class="tag loc">ProjectDetail/ProjectHeader.tsx:82–87 vs pages/EditProject.tsx</span><span class="tag verif">✓ finder-verified</span></div>
+  <div class="body"><p class="impact">You can edit a project via an inline card <i>and</i> via a separate full-page editor — two different layouts/behaviors for one task invites inconsistency and confusion.</p></div>
+</div>
+
+<!-- ============================ EXCLUDED ============================ -->
+<h2 class="section"><span class="dot" style="background:var(--faint)"></span>Excluded after verification <small>candidates that did not survive a source check — listed for honesty</small></h2>
+
+<div class="excluded">
+  <div class="finding">
+    <div class="top"><div class="id">✕</div>
+      <h3>"Any section error blows away the entire ProjectDetail page"</h3>
+      <span class="pill p-x">Not a bug</span></div>
+    <div class="tags"><span class="tag loc">ProjectDetail/index.tsx:63–87</span></div>
+    <div class="body"><p class="impact">False. Every section is individually wrapped in <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">&lt;AsyncBoundary&gt;</code>, which
+    contains render-time errors per-section. (The real, narrower issue — a section's <b>action</b> error being funneled to a
+    page-level <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">ErrorMessage</code> — is kept as finding H4.)</p></div>
+  </div>
+  <div class="finding">
+    <div class="top"><div class="id">✕</div>
+      <h3>"There is no error boundary / no offline detection at all"</h3>
+      <span class="pill p-x">Not a bug</span></div>
+    <div class="tags"><span class="tag loc">main.tsx:59 · lib/errors.ts:98–107</span></div>
+    <div class="body"><p class="impact">False. A root <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">ErrorBoundary</code> exists and mutation retry logic
+    <i>does</i> detect offline/network errors. The genuine problems are narrower and kept above: the boundary is English-only /
+    logs nothing / doesn't reset (H6), and there is no offline <i>UI</i> (banner/state) even though the error is detected.</p></div>
+  </div>
+</div>
+
+<footer>
+  <p><b>Methodology.</b> Fourteen parallel finder agents swept <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">web-app/src</code> across loading, forms, auth,
+  navigation, accessibility, responsiveness, dark mode, feedback, wizards, destructive actions, i18n, project-detail, billing,
+  and cross-cutting concerns (~100 candidate findings). Each finding was then re-opened in the source and confirmed; the
+  high-severity items were re-verified by hand. Unconfirmed and contradicted claims were dropped (two shown above).</p>
+  <p><b>Scope caveat.</b> This is static source analysis of the current <code style="background:#0b0d11;padding:1px 4px;border-radius:4px">main</code> branch, not a live click-through — a few
+  findings (e.g. mobile calendar cell sizing, dark-mode contrast) describe the coded behavior and would render exactly as
+  described, but haven't been screenshotted in a running browser. No code was changed to produce this report.</p>
+  <p>Generated 2026-07-01 · Hubble web-app UX audit.</p>
+</footer>
+
+</div>
+</body>
+</html>

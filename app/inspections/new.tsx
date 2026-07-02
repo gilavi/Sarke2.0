@@ -25,7 +25,7 @@ import { inspectionRegistry } from '../../lib/inspection/registry';
 import { planInspectionStart, type StartStep } from '../../lib/inspection/startFlow';
 import { questionnairesApi } from '../../lib/services';
 import { useQueryClient } from '@tanstack/react-query';
-import { useProjects, useTemplates, invalidateRecordLists } from '../../lib/apiHooks';
+import { useProjects, useTemplates, invalidateRecordLists, qk } from '../../lib/apiHooks';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
@@ -65,6 +65,13 @@ export default function NewInspectionFlow() {
       const created = entry
         ? await entry.create({ projectId: project.id, templateId: template.id })
         : await questionnairesApi.create({ projectId: project.id, templateId: template.id });
+      // Seed the detail cache so the wizard/flow opens the fresh (possibly
+      // offline-queued) inspection via cachedRead without a network read.
+      if (entry && template.category) {
+        qc.setQueryData(qk.equipmentInspection.byId(template.category, created.id), created);
+      } else {
+        qc.setQueryData(qk.inspections.byId(created.id), created);
+      }
       invalidateRecordLists(qc);
       router.replace(routeForInspection(template.category, created.id, false) as any);
     } catch (e) {

@@ -46,6 +46,7 @@ import {
 } from '../../lib/homeUtils';
 import { ResumeDraftCard } from '../../features/home-records/ResumeDraftCard';
 import { HomeRecordsSection } from '../../features/home-records/HomeRecordsSection';
+import { PendingSyncSection } from '../../components/PendingSyncSection';
 
 const staticStyles = StyleSheet.create({
   scrollContent: { paddingBottom: 100 },
@@ -313,6 +314,7 @@ export default function HomeScreen() {
             linking to the type-filtered History screen. Every other draft lives
             on the Drafts screen (More tab). */}
         <ResumeDraftCard />
+        <PendingSyncSection />
         <HomeRecordsSection />
 
         {/* ───────── TIP OF THE DAY ───────── */}

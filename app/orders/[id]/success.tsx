@@ -10,6 +10,8 @@ import { isActStyleOrder } from '../../../features/order-new/orderFormSchema';
 import { useTheme } from '../../../lib/theme';
 import { ordersApi } from '../../../lib/ordersApi';
 import { projectsApi } from '../../../lib/services';
+import { cachedRead } from '../../../lib/cachedRead';
+import { qk } from '../../../lib/apiHooks';
 import { reopenDocument } from '../../../lib/documents/reopen';
 import { queryClient } from '../../../lib/queryClient';
 import { haptic } from '../../../lib/haptics';
@@ -29,9 +31,15 @@ export default function OrderSuccessScreen() {
 
   useEffect(() => {
     if (!id) return;
-    ordersApi.getById(id).then(o => {
+    // cachedRead: an order queued offline is served from its seeded detail
+    // cache; the project read goes through the cache too so the act-style PDF
+    // keeps its project name offline.
+    cachedRead(qk.orders.byId(id), () => ordersApi.getById(id)).then(o => {
       setOrder(o);
-      if (o) projectsApi.getById(o.projectId).then(setProject).catch(() => {});
+      if (o) {
+        cachedRead(qk.projects.byId(o.projectId), () => projectsApi.getById(o.projectId))
+          .then(setProject).catch(() => {});
+      }
     }).catch(() => {}).finally(() => setLoaded(true));
   }, [id]);
 

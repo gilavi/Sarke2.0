@@ -21,10 +21,11 @@ import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
 import { qk, useBreathalyzerLog, useProject } from '../../lib/apiHooks';
-import { breathalyzerLogApi } from '../../lib/breathalyzerLogService';
+import { saveRecordThroughOutbox } from '../../lib/outbox';
 import { buildBreathalizerLogPdfHtml } from '../../lib/breathalyzerLogPdf';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { useSubmitGuard } from '../../hooks/useSubmitGuard';
+import type { BreathalizerLog } from '../../types/breathalyzerLog';
 
 import { getStyles } from './styles';
 import { SummaryStats } from './SummaryStats';
@@ -61,12 +62,38 @@ export function CloseShiftScreen({ projectId, logId }: { projectId: string; logI
           projectName: project?.name ?? project?.company_name ?? t('common.project'),
           companyName: project?.company_name ?? '',
         });
-        await breathalyzerLogApi.close(log.id, responsiblePerson);
-        qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byId(log.id) });
-        qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byDate(projectId, log.date) });
+        // The PDF is local-only (expo-print → share sheet); pdf_uri is always
+        // written as null in this flow, so no storage upload to stage.
+        const optimistic: BreathalizerLog = {
+          ...log,
+          responsiblePerson,
+          status: 'closed',
+          pdfUri: null,
+          updatedAt: new Date().toISOString(),
+        };
+        const res = await saveRecordThroughOutbox({
+          entity: 'breathalyzer_log',
+          mode: 'update',
+          recordId: log.id,
+          payload: { close: { responsiblePerson, pdfUri: null } },
+          displayTitle: 'ალკოტესტის ჟურნალი',
+          projectId,
+          detailKey: qk.breathalyzerLog.byId(log.id),
+          optimistic,
+        });
+        if (res.queued) {
+          // The log screen reads today's log via byDate — mirror the seeded
+          // byId model there so the log shows as closed offline.
+          qc.setQueryData(qk.breathalyzerLog.byDate(projectId, log.date), optimistic);
+        } else {
+          qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byId(log.id) });
+          qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byDate(projectId, log.date) });
+        }
         qc.invalidateQueries({ queryKey: qk.breathalyzerLog.byProject(projectId) });
         haptic.pdfGenerated();
-        toast.success(t('breathalyzer.shiftComplete'));
+        toast.success(
+          res.queued ? t('components.savedOffline') : t('breathalyzer.shiftComplete'),
+        );
         await generateAndSharePdf(html, `alkotest-${log.date}.pdf`, undefined);
         router.back();
       } catch {

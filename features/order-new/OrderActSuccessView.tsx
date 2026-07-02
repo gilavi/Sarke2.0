@@ -11,6 +11,7 @@ import { useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { onlineManager } from '@tanstack/react-query';
 
 import { FlowSuccessScreen } from '../../components/success';
 import { SubscriptionNotice } from '../../components/SubscriptionNotice';
@@ -31,7 +32,6 @@ import {
   buildLaborSafetyOrderHtml,
   buildTrainingScheduleOrderHtml,
 } from '../../lib/orderPdf';
-import { ordersApi } from '../../lib/ordersApi';
 import { storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { queryClient } from '../../lib/queryClient';
@@ -54,6 +54,7 @@ import {
   type TrainingScheduleOrderFormData,
 } from '../../types/models';
 import { docSlug } from './orderFormSchema';
+import { queueOrderPdfUpload, patchOrderPdfUrl } from './saveOrderOffline';
 
 // Broad view over the act-style order payloads — fields not present on a given
 // type read as undefined at runtime (e.g. scaffold has no crane photos).
@@ -147,7 +148,11 @@ export function OrderActSuccessView({ order, project }: { order: Order; project:
 
       const pdfName = generatePdfName(projectName, docSlug(order.documentType), new Date(f.orderDate), order.id);
       const pdfPath = `orders/${pdfName}`;
-      const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
+      // Offline the server-side PDF gate is unreachable (its RPC would throw
+      // and abort a purely local render) — skip it; the cached isLocked flag
+      // above still blocks capped users.
+      const gateUserId = onlineManager.isOnline() ? userId : undefined;
+      const localUri = await generateAndSharePdf(html, pdfName, true, gateUserId, {
         title: ORDER_DOCUMENT_TYPE_LABEL[order.documentType],
         author: f.appointedName || f.craneOperatorName || f.specialistName || f.directorName || undefined,
         documentId: order.id,
@@ -157,24 +162,32 @@ export function OrderActSuccessView({ order, project }: { order: Order; project:
       invalidatePdfUsage();
 
       if (localUri) {
-        (async () => {
-          try {
-            await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-            await ordersApi.update(order.id, { pdfUrl: pdfPath, ...(pdfHash ? { pdfHash } : {}) });
-            invalidateRecordLists(queryClient);
-            FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
-          } catch (e) {
-            logError(e, 'orderActSuccess.upload');
-            const stagedUri = await stagePdfForQueue(localUri, pdfName);
-            await queuePdfUpload({
-              localUri: stagedUri,
-              bucket: STORAGE_BUCKETS.pdfs,
-              path: pdfPath,
-              contentType: 'application/pdf',
-              dbOp: { kind: 'none' },
-            });
-          }
-        })();
+        if (!onlineManager.isOnline()) {
+          // Offline: stage the PDF and chain the upload + pdfUrl patch through
+          // the outbox — grouped behind the order's queued create when the
+          // record itself was saved offline.
+          queueOrderPdfUpload({ orderId: order.id, pdfName, pdfPath, localUri, pdfHash })
+            .catch((e) => logError(e, 'orderActSuccess.queuePdfOffline'));
+        } else {
+          (async () => {
+            try {
+              await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
+              await patchOrderPdfUrl({ orderId: order.id, projectId: order.projectId, pdfPath, pdfHash });
+              invalidateRecordLists(queryClient);
+              FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+            } catch (e) {
+              logError(e, 'orderActSuccess.upload');
+              const stagedUri = await stagePdfForQueue(localUri, pdfName);
+              await queuePdfUpload({
+                localUri: stagedUri,
+                bucket: STORAGE_BUCKETS.pdfs,
+                path: pdfPath,
+                contentType: 'application/pdf',
+                dbOp: { kind: 'none' },
+              });
+            }
+          })();
+        }
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }

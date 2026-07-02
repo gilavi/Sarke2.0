@@ -33,18 +33,27 @@ export const reportsApi = {
     return (data as Report | null) ?? null;
   },
 
-  create: async (args: { projectId: string; title: string }): Promise<Report> => {
+  create: async (args: {
+    projectId: string;
+    title: string;
+    /** Optional fields let an offline UPDATE coalesce into a still-queued
+     *  CREATE (lib/outbox) without losing slide edits. */
+    id?: string;
+    slides?: Report['slides'];
+    status?: Report['status'];
+  }): Promise<Report> => {
     const user = (await supabase.auth.getSession()).data.session?.user ?? null;
     if (!user) throw new Error('Not signed in');
     return throwIfError<Report>(
       await supabase
         .from('reports')
         .insert({
+          ...(args.id ? { id: args.id } : {}),
           project_id: args.projectId,
           user_id: user.id,
           title: args.title,
-          status: 'draft',
-          slides: [],
+          status: args.status ?? 'draft',
+          slides: args.slides ?? [],
         })
         .select()
         .single(),

@@ -20,11 +20,14 @@ import { FloatingLabelInput } from '../../components/inputs/FloatingLabelInput';
 import { DateTimeField } from '../../components/DateTimeField';
 import { SkeletonListCard } from '../../components/Skeleton';
 
+import { onlineManager } from '@tanstack/react-query';
+
 import { useTheme } from '../../lib/theme';
 import { useSession } from '../../lib/session';
 import { useToast } from '../../lib/toast';
 import { useRiskAssessment, useProject } from '../../lib/apiHooks';
-import { riskAssessmentApi } from '../../lib/riskAssessmentService';
+import { saveRecordThroughOutbox, enqueueOutboxOp } from '../../lib/outbox';
+import { stagePdfForQueue } from '../../lib/pdfUploadQueue';
 import { generateAndSharePdf, PdfLimitReachedError } from '../../lib/pdfOpen';
 import { generatePdfName } from '../../lib/pdfName';
 import { usePdfUsage, useInvalidatePdfUsage } from '../../lib/usePdfUsage';
@@ -32,7 +35,7 @@ import { SubscriptionNotice } from '../../components/SubscriptionNotice';
 import { storageApi } from '../../lib/services';
 import { STORAGE_BUCKETS } from '../../lib/supabase';
 import { queryClient } from '../../lib/queryClient';
-import { invalidateRecordLists } from '../../lib/apiHooks';
+import { invalidateRecordLists, qk } from '../../lib/apiHooks';
 import { logError } from '../../lib/logError';
 import { friendlyError } from '../../lib/errorMap';
 import {
@@ -73,6 +76,11 @@ export function RiskAssessmentScreen() {
   const invalidatePdfUsage = useInvalidatePdfUsage();
   const hydrated = useRef(false);
 
+  // Latest loaded model, for building the optimistic cache seed inside the
+  // debounced autosave without adding `ra` to the effect deps.
+  const raRef = useRef(ra);
+  raRef.current = ra;
+
   // Hydrate local state once from the loaded record.
   useEffect(() => {
     if (ra && !hydrated.current) {
@@ -83,14 +91,25 @@ export function RiskAssessmentScreen() {
     }
   }, [ra]);
 
-  // Debounced autosave.
+  // Debounced autosave — through the outbox so offline edits queue (silent:
+  // no toast for background saves).
   useEffect(() => {
     if (!hydrated.current || !raId) return;
     const tmr = setTimeout(() => {
-      riskAssessmentApi.patch(raId, { header, entries, signatories }).catch((e) => logError(e, 'riskAssessment.autosave'));
+      const base = raRef.current;
+      saveRecordThroughOutbox({
+        entity: 'risk_assessment',
+        mode: 'update',
+        recordId: raId,
+        payload: { header, entries, signatories },
+        displayTitle: 'რისკების შეფასება',
+        projectId,
+        detailKey: qk.riskAssessment.byId(raId),
+        optimistic: base ? { ...base, header, entries, signatories } : undefined,
+      }).catch((e) => logError(e, 'riskAssessment.autosave'));
     }, 800);
     return () => clearTimeout(tmr);
-  }, [header, entries, signatories, raId]);
+  }, [header, entries, signatories, raId, projectId]);
 
   const userId = session.state.status === 'signedIn' ? session.state.session.user.id : undefined;
   const isPpe = ra?.docType === 'ppe_determination';
@@ -106,7 +125,16 @@ export function RiskAssessmentScreen() {
     if (pdfUsage?.isLocked) { setLimitNoticeVisible(true); return; }
     setSharing(true);
     try {
-      await riskAssessmentApi.patch(raId, { header, entries, signatories });
+      const saveRes = await saveRecordThroughOutbox({
+        entity: 'risk_assessment',
+        mode: 'update',
+        recordId: raId,
+        payload: { header, entries, signatories },
+        displayTitle: 'რისკების შეფასება',
+        projectId,
+        detailKey: qk.riskAssessment.byId(raId),
+        optimistic: { ...ra, header, entries, signatories },
+      });
       const projectName = project?.company_name || project?.name || '';
       const full = { ...ra, header, entries, signatories };
       const html = isPpe
@@ -115,23 +143,62 @@ export function RiskAssessmentScreen() {
       const slug = isPpe ? 'ids_gansazgvra' : 'riskebis_shefaseba';
       const pdfName = generatePdfName(projectName, slug, new Date(ra.createdAt), raId);
       const pdfPath = `risk-assessments/${pdfName}`;
-      const localUri = await generateAndSharePdf(html, pdfName, true, userId, {
+      // Offline the pdf-count RPC inside generateAndSharePdf can't run — skip
+      // the gate (cached pdfUsage?.isLocked above still blocks locked users)
+      // so generation + share stay fully local.
+      const localUri = await generateAndSharePdf(html, pdfName, true, onlineManager.isOnline() ? userId : undefined, {
         title: isPpe ? 'ინდ. დაცვის საშუალებების განსაზღვრა' : 'რისკების შეფასება',
         documentId: raId,
         subject: 'შრომის უსაფრთხოება',
       });
       invalidatePdfUsage();
       if (localUri) {
-        (async () => {
-          try {
-            await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
-            await riskAssessmentApi.patch(raId, { pdfUrl: pdfPath, status: 'completed' });
-            invalidateRecordLists(queryClient);
-            FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
-          } catch (e) {
-            logError(e, 'riskAssessment.upload');
-          }
-        })();
+        if (saveRes.queued || !onlineManager.isOnline()) {
+          // Record is still queued (or we're offline): stage the PDF on disk
+          // and queue the upload + completion patch behind the record save.
+          (async () => {
+            try {
+              const stagedUri = await stagePdfForQueue(localUri, pdfName);
+              await enqueueOutboxOp({
+                kind: 'pdf_upload',
+                groupId: raId,
+                bucket: STORAGE_BUCKETS.pdfs,
+                path: pdfPath,
+                localUri: stagedUri,
+                dbPatch: {
+                  entity: 'risk_assessment',
+                  recordId: raId,
+                  patch: { pdfUrl: pdfPath, status: 'completed' },
+                },
+                displayTitle: 'რისკების შეფასება',
+              });
+              toast.success(t('components.savedOffline'));
+              if (stagedUri !== localUri) {
+                FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+              }
+            } catch (e) {
+              logError(e, 'riskAssessment.queuePdf');
+            }
+          })();
+        } else {
+          (async () => {
+            try {
+              await storageApi.uploadFromUri(STORAGE_BUCKETS.pdfs, pdfPath, localUri, 'application/pdf');
+              await saveRecordThroughOutbox({
+                entity: 'risk_assessment',
+                mode: 'update',
+                recordId: raId,
+                payload: { pdfUrl: pdfPath, status: 'completed' },
+                displayTitle: 'რისკების შეფასება',
+                projectId,
+              });
+              invalidateRecordLists(queryClient);
+              FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+            } catch (e) {
+              logError(e, 'riskAssessment.upload');
+            }
+          })();
+        }
       }
     } catch (e) {
       if (e instanceof PdfLimitReachedError) { setLimitNoticeVisible(true); return; }
