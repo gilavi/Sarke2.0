@@ -45,6 +45,8 @@ export function buildTrainingScheduleOrderHtml({
     font-size: 11pt;
     color: #000;
     line-height: 1.55;
+    /* Bottom clearance for the injected security stamp (position:fixed, bottom:8px). */
+    padding-bottom: 12mm;
   }
   .company-header {
     text-align: center;
@@ -96,10 +98,10 @@ export function buildTrainingScheduleOrderHtml({
   .sig-label { font-size: 9pt; color: #555; display: block; margin-top: 2pt; }
   .sig-role { font-weight: bold; margin-bottom: 6pt; }
   .footer {
-    position: fixed;
-    bottom: 10mm;
-    left: 25mm;
-    right: 25mm;
+    /* Normal flow: iOS WKWebView does not reliably reserve the @page bottom
+       margin for position:fixed, so a page-filling signature block collided
+       with the footer. Flowed like the other doc PDFs. */
+    margin-top: 28pt;
     border-top: 0.5px solid #ccc;
     padding-top: 4pt;
     font-size: 8.5pt;
