@@ -254,6 +254,10 @@ export function warmHomeCaches(qc: QueryClient): void {
  *   - every template's question set (the inspection wizard can't render
  *     without one) — effectively static, so 12h staleTime, fetched ≤3 at a
  *     time (~12 live templates);
+ *   - a per-template detail cache entry seeded from the templates list — the
+ *     generic wizard reads `qk.templates.byId` at flow start, a DIFFERENT key
+ *     from the list, and would otherwise throw offline. Shape-safe:
+ *     templatesApi.list()/getById() both `select('*')`.
  *   - a per-project detail cache entry seeded from the projects list, for
  *     flow headers/autofill. Shape-safe: list() and getById() both
  *     `select('*')` and apply the same crew mapping (lib/services/real/projects.ts).
@@ -267,6 +271,8 @@ export function prefetchFlowStartCaches(qc: QueryClient): void {
   void qc
     .fetchQuery({ queryKey: qk.templates.list, queryFn: () => templatesApi.list() })
     .then(async (templates) => {
+      // Seed the per-template detail cache the generic wizard reads offline.
+      for (const t of templates ?? []) qc.setQueryData(qk.templates.byId(t.id), t);
       const ids = (templates ?? []).map((t) => t.id);
       for (let i = 0; i < ids.length; i += 3) {
         await Promise.all(

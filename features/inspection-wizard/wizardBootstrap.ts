@@ -9,8 +9,10 @@
  */
 import { onlineManager } from '@tanstack/react-query';
 import { qk } from '../../lib/apiHooks';
+import { queryClient } from '../../lib/queryClient';
 import { cachedRead, OfflineDataMissingError } from '../../lib/cachedRead';
 import { answersApi, inspectionsApi, projectsApi, templatesApi } from '../../lib/services';
+import type { Template } from '../../types/models';
 
 /** Inspection row for the wizard (qk.inspections.byId). */
 export function loadWizardInspection(id: string) {
@@ -22,9 +24,23 @@ export function loadWizardProject(projectId: string) {
   return cachedRead(qk.projects.byId(projectId), () => projectsApi.getById(projectId));
 }
 
-/** Template row (qk.templates.byId). */
-export function loadWizardTemplate(templateId: string) {
-  return cachedRead(qk.templates.byId(templateId), () => templatesApi.getById(templateId));
+/**
+ * Template row. Offline, `qk.templates.byId` is seeded at the create site and
+ * by prefetchFlowStartCaches — but as a last resort fall back to the templates
+ * LIST cache (reliably warmed by warmHomeCaches + the picker + disk
+ * persistence), so a cold byId key can never crash the wizard offline.
+ */
+export async function loadWizardTemplate(templateId: string) {
+  try {
+    return await cachedRead(qk.templates.byId(templateId), () => templatesApi.getById(templateId));
+  } catch (e) {
+    if (e instanceof OfflineDataMissingError) {
+      const list = queryClient.getQueryData<Template[]>(qk.templates.list);
+      const found = list?.find((t) => t.id === templateId);
+      if (found) return found;
+    }
+    throw e;
+  }
 }
 
 /** Template question set (qk.templates.questions — prefetched for every template post-login). */

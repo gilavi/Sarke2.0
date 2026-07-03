@@ -64,13 +64,17 @@ export default function StartTemplateScreen() {
       const created = entry
         ? await entry.create({ projectId: selected, templateId: template.id })
         : await questionnairesApi.create({ projectId: selected, templateId: template.id });
-      // Seed the detail cache so the wizard/flow opens the fresh (possibly
-      // offline-queued) inspection via cachedRead without a network read.
+      // Seed the detail caches the wizard reads at flow start (inspection row
+      // + the template/project byId keys the generic wizard needs) so it opens
+      // the fresh act offline via cachedRead without a network read.
       if (entry && template.category) {
         queryClient.setQueryData(qk.equipmentInspection.byId(template.category, created.id), created);
       } else {
         queryClient.setQueryData(qk.inspections.byId(created.id), created);
       }
+      queryClient.setQueryData(qk.templates.byId(template.id), template);
+      const selectedProject = projects.find((p) => p.id === selected);
+      if (selectedProject) queryClient.setQueryData(qk.projects.byId(selected), selectedProject);
       const newId = created.id;
       invalidateRecordLists(queryClient);
       router.replace(routeForInspection(template.category, newId, false) as any);

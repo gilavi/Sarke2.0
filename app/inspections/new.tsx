@@ -65,13 +65,18 @@ export default function NewInspectionFlow() {
       const created = entry
         ? await entry.create({ projectId: project.id, templateId: template.id })
         : await questionnairesApi.create({ projectId: project.id, templateId: template.id });
-      // Seed the detail cache so the wizard/flow opens the fresh (possibly
-      // offline-queued) inspection via cachedRead without a network read.
+      // Seed the detail caches the wizard reads at flow start so it opens the
+      // fresh (possibly offline-queued) act via cachedRead with no network —
+      // inspection row + the template/project byId keys the generic wizard
+      // needs (byId is a different key from the picker's list, and the async
+      // warm-up may not have seeded it yet).
       if (entry && template.category) {
         qc.setQueryData(qk.equipmentInspection.byId(template.category, created.id), created);
       } else {
         qc.setQueryData(qk.inspections.byId(created.id), created);
       }
+      qc.setQueryData(qk.templates.byId(template.id), template);
+      qc.setQueryData(qk.projects.byId(project.id), project);
       invalidateRecordLists(qc);
       router.replace(routeForInspection(template.category, created.id, false) as any);
     } catch (e) {
