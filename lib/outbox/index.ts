@@ -1,6 +1,11 @@
 export { saveRecordThroughOutbox } from './saveRecord';
 export type { SaveRecordArgs, SaveRecordResult } from './saveRecord';
-export { enqueueOutboxOp, pendingInspectionIds } from './storage';
+export {
+  enqueueOutboxOp,
+  hasQueuedRecordSave,
+  pendingInspectionIds,
+  queuedRecordCreates,
+} from './storage';
 export { flushOutbox, retryOutboxFailed, dismissOutboxFailed } from './flush';
 export { useOutbox } from './useOutbox';
 export type { OutboxGroup } from './useOutbox';

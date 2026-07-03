@@ -16,6 +16,22 @@ vi.mock('../../lib/queryClient', async () => {
   };
 });
 
+// cachedRead consults the outbox queue (pending-create guard) — mock the RN
+// modules its storage layer pulls in.
+vi.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map<string, string>();
+  return {
+    default: {
+      getItem: vi.fn(async (k: string) => store.get(k) ?? null),
+      setItem: vi.fn(async (k: string, v: string) => {
+        store.set(k, v);
+      }),
+    },
+  };
+});
+vi.mock('expo-crypto', () => ({ randomUUID: () => 'uuid-test' }));
+vi.mock('../../lib/logError', () => ({ logError: vi.fn() }));
+
 import { queryClient } from '../../lib/queryClient';
 import { cachedRead, OfflineDataMissingError } from '../../lib/cachedRead';
 

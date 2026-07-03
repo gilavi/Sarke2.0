@@ -1,5 +1,6 @@
 import { onlineManager } from '@tanstack/react-query';
 import { queryClient } from './queryClient';
+import { hasQueuedRecordSave } from './outbox/storage';
 
 /**
  * Thrown by `cachedRead` when the device is offline and the persisted query
@@ -35,7 +36,20 @@ export async function cachedRead<T>(
   queryFn: () => Promise<T>,
 ): Promise<T> {
   if (onlineManager.isOnline()) {
-    return queryClient.fetchQuery({ queryKey, queryFn, staleTime: 0 });
+    const seeded = queryClient.getQueryData<T>(queryKey);
+    const result = await queryClient.fetchQuery({ queryKey, queryFn, staleTime: 0 });
+    if (result == null && seeded != null) {
+      // A record created moments ago may still be waiting in the outbox — the
+      // server answers null until the flush lands it. For exactly that window
+      // (a record_save queued under the key's id), restore and prefer the
+      // seeded optimistic model over the just-cached null.
+      const id = String(queryKey[queryKey.length - 1] ?? '');
+      if (id && (await hasQueuedRecordSave(id))) {
+        queryClient.setQueryData(queryKey, seeded);
+        return seeded;
+      }
+    }
+    return result;
   }
   const cached = queryClient.getQueryData<T>(queryKey);
   if (cached !== undefined) return cached;

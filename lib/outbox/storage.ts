@@ -6,8 +6,9 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import { onlineManager } from '@tanstack/react-query';
 import { logError } from '../logError';
-import type { NewOutboxOp, OutboxOp } from './types';
+import type { NewOutboxOp, OutboxEntity, OutboxOp, RecordSaveOp } from './types';
 
 const QUEUE_KEY = '@outbox:queue';
 const QUEUE_BACKUP_KEY = '@outbox:queue:backup';
@@ -142,6 +143,52 @@ export function enqueueOutboxOp(op: NewOutboxOp): Promise<void> {
       enqueuedAt: new Date().toISOString(),
     } as OutboxOp);
     await writeOutboxQueue(ops);
+  }).then(() => {
+    // An op enqueued while the device still believes it's online got here via
+    // a network-classified FAILURE (timeout on flaky wifi, etc.). Without this
+    // kick nothing would replay it until the next NetInfo transition or app
+    // restart — schedule a flush shortly. Dynamic import: a static import of
+    // flush from this leaf module would arm the service→registry→services
+    // import cycle at module-init.
+    if (onlineManager.isOnline()) {
+      setTimeout(() => {
+        void import('./flush')
+          .then((m) => m.flushOutbox())
+          .catch(() => undefined);
+      }, 3000);
+    }
+  });
+}
+
+/** True when a record_save for this record is still waiting in the queue. */
+export async function hasQueuedRecordSave(recordId: string): Promise<boolean> {
+  const ops = await readOutboxQueue();
+  return ops.some((o) => o.kind === 'record_save' && o.recordId === recordId);
+}
+
+/** Queued record_save CREATE ops for an entity — duplicate-create guards. */
+export async function queuedRecordCreates(entity: OutboxEntity): Promise<RecordSaveOp[]> {
+  const ops = await readOutboxQueue();
+  return ops.filter(
+    (o): o is RecordSaveOp =>
+      o.kind === 'record_save' && o.entity === entity && o.mode === 'create',
+  );
+}
+
+/**
+ * Move a FAILED group back into the live queue (attempts reset). Used when a
+ * new write arrives for a record whose earlier ops failed out — the new op
+ * only makes sense after they land, so they get another chance first.
+ */
+export function reviveFailedGroup(groupId: string): Promise<boolean> {
+  return runOutboxExclusive(async () => {
+    const failed = await readOutboxFailed();
+    const revive = failed.filter((f) => f.groupId === groupId);
+    if (revive.length === 0) return false;
+    const queue = await readOutboxQueue();
+    await writeOutboxQueue([...queue, ...revive.map((f) => ({ ...f, attempts: 0 }))]);
+    await writeOutboxFailed(failed.filter((f) => f.groupId !== groupId));
+    return true;
   });
 }
 

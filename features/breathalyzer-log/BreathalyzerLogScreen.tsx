@@ -23,7 +23,7 @@ import {
   useBreathalyzerLogByDate,
   useProject,
 } from '../../lib/apiHooks';
-import { saveRecordThroughOutbox } from '../../lib/outbox';
+import { saveRecordThroughOutbox, queuedRecordCreates } from '../../lib/outbox';
 import { buildBreathalizerLogPdfHtml } from '../../lib/breathalyzerLogPdf';
 import { generateAndSharePdf } from '../../lib/pdfOpen';
 import { formatBlDate, type BreathalizerLog } from '../../types/breathalyzerLog';
@@ -85,6 +85,39 @@ export function BreathalyzerLogScreen({
 
   const startLog = async () => {
     try {
+      // A queued-but-unsynced create for today may exist (a reconnect refetch
+      // can null the seeded byDate cache and resurface this button) — re-seed
+      // the caches from the queued payload instead of creating a duplicate
+      // log for the same project+date.
+      const pending = (await queuedRecordCreates('breathalyzer_log')).find((o) => {
+        const p = o.payload as { projectId?: string; date?: string };
+        return p.projectId === projectId && p.date === today;
+      });
+      if (pending) {
+        const p = pending.payload as {
+          id?: string;
+          deviceSerialNumber?: string | null;
+          entries?: BreathalizerLog['entries'];
+        };
+        const ts = new Date().toISOString();
+        const revived: BreathalizerLog = {
+          id: p.id ?? pending.recordId,
+          projectId,
+          date: today,
+          deviceSerialNumber: p.deviceSerialNumber ?? null,
+          entries: p.entries ?? [],
+          responsiblePerson: { name: '', signature: null },
+          status: 'open',
+          pdfUri: null,
+          createdAt: ts,
+          updatedAt: ts,
+        };
+        qc.setQueryData(qk.breathalyzerLog.byDate(projectId, today), revived);
+        qc.setQueryData(qk.breathalyzerLog.byId(revived.id), revived);
+        toast.success(t('components.savedOffline'));
+        haptic.success();
+        return;
+      }
       const id = Crypto.randomUUID();
       const now = new Date().toISOString();
       const optimistic: BreathalizerLog = {

@@ -7,7 +7,12 @@
 import { onlineManager } from '@tanstack/react-query';
 import { queryClient } from '../queryClient';
 import { outboxRegistry } from './registry';
-import { enqueueOutboxOp, isNetworkError } from './storage';
+import {
+  enqueueOutboxOp,
+  hasQueuedRecordSave,
+  isNetworkError,
+  reviveFailedGroup,
+} from './storage';
 import type { OutboxEntity } from './types';
 
 export interface SaveRecordArgs {
@@ -51,6 +56,16 @@ export async function saveRecordThroughOutbox(args: SaveRecordArgs): Promise<Sav
   };
 
   if (!onlineManager.isOnline()) return enqueue();
+  if (args.mode === 'update') {
+    // If this record's CREATE (or an earlier save) is still queued — or died
+    // into the failed queue — the server row may not exist yet: a direct
+    // update would 404, or for the services without a .single() row check it
+    // would silently no-op and the edit would be LOST when the queued create
+    // later replays. Coalesce into the pending op instead; the enqueue kick
+    // flushes it right after.
+    const revived = await reviveFailedGroup(args.recordId);
+    if (revived || (await hasQueuedRecordSave(args.recordId))) return enqueue();
+  }
   try {
     const record =
       args.mode === 'create'

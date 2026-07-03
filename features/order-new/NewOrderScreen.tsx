@@ -34,6 +34,7 @@ import { onlineManager } from '@tanstack/react-query';
 import { enqueueOutboxOp } from '../../lib/outbox';
 import { isNetworkError } from '../../lib/outbox/storage';
 import { stageCompressedPhotoForOffline } from '../../lib/photoCompression';
+import { seedPdfPhotoEmbed } from '../../lib/imageUrl';
 import {
   buildAlcoholControlOrderHtml,
   buildFireSafetyOrderEnterpriseHtml,
@@ -206,6 +207,9 @@ export default function NewOrderScreen() {
         contentType: 'image/jpeg',
         displayTitle: 'ბრძანება',
       });
+      // Seed the PDF photo cache from the local file so an offline-generated
+      // act PDF still embeds this photo before its upload ever runs.
+      void seedPdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, path, result.uri);
       setForm(f => ({ ...f, [field]: path }));
       toast.success(t('components.savedOffline'));
     };

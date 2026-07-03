@@ -53,8 +53,14 @@ async function executeOp(op: OutboxOp): Promise<void> {
         if (op.mode === 'create') await writer.create(op.payload);
         else await writer.update(op.recordId, op.payload);
       } catch (e) {
-        // A retried create after a half-applied pass: the row exists — done.
-        if (op.mode === 'create' && isDuplicateKey(e)) return;
+        // A retried create after a half-applied pass: the row exists — but
+        // offline edits may have COALESCED into this create since the row
+        // landed, so apply the payload as an update rather than dropping it.
+        // (Registry update mappers ignore/strip create-only keys.)
+        if (op.mode === 'create' && isDuplicateKey(e)) {
+          await writer.update(op.recordId, op.payload);
+          return;
+        }
         throw e;
       }
       return;

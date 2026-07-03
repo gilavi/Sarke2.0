@@ -35,7 +35,17 @@ export const outboxRegistry: Record<OutboxEntity, EntityWriter> = {
   },
   report: {
     create: (p) => reportsApi.create(p as never),
-    update: (id, p) => reportsApi.update(id, p as never),
+    // reportsApi.update passes its patch straight to Postgres, so filter to
+    // real columns — a duplicate-key create falls back to update with the
+    // CREATE payload, which carries non-column keys like projectId.
+    update: (id, p) => {
+      const src = p as Record<string, unknown>;
+      const patch: Record<string, unknown> = {};
+      for (const k of ['title', 'status', 'slides', 'pdf_url', 'pdf_hash'] as const) {
+        if (src[k] !== undefined) patch[k] = src[k];
+      }
+      return reportsApi.update(id, patch as never);
+    },
   },
   risk_assessment: {
     create: (p) => riskAssessmentApi.create(p as never),

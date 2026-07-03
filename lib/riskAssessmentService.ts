@@ -59,6 +59,7 @@ export const riskAssessmentApi = {
     entries?: RAEntry[];
     signatories?: Record<string, RASignatory>;
     status?: 'draft' | 'completed';
+    pdfUrl?: string | null;
   }): Promise<RiskAssessment> => {
     // getSession reads the locally cached session (getUser hits the network).
     const user = (await supabase.auth.getSession()).data.session?.user ?? null;
@@ -74,6 +75,7 @@ export const riskAssessmentApi = {
         entries: args.entries ?? [],
         signatories: args.signatories ?? {},
         status: args.status ?? 'draft',
+        ...(args.pdfUrl !== undefined ? { pdf_url: args.pdfUrl } : {}),
       })
       .select()
       .single();

@@ -80,8 +80,10 @@ vi.mock('../../lib/apiHooks', () => ({
   invalidateRecordLists: (...a: unknown[]) => invalidateMock(...a),
 }));
 
+import { onlineManager } from '@tanstack/react-query';
 import { readOutboxQueue, readOutboxFailed, writeOutboxQueue, writeOutboxFailed } from '../../lib/outbox/storage';
 import { flushOutbox, retryOutboxFailed } from '../../lib/outbox/flush';
+import { saveRecordThroughOutbox } from '../../lib/outbox/saveRecord';
 import type { OutboxOp } from '../../lib/outbox/types';
 
 let opN = 0;
@@ -164,12 +166,15 @@ describe('flushOutbox', () => {
     expect(orderCreate).toHaveBeenCalledTimes(1);
   });
 
-  it('treats duplicate-key on a replayed create as success', async () => {
+  it('applies a replayed duplicate-key create as an UPDATE so coalesced edits survive', async () => {
     orderCreate.mockRejectedValueOnce(
       new Error('duplicate key value violates unique constraint "orders_pkey" (23505)'),
     );
     await writeOutboxQueue([op({})]);
     await flushOutbox();
+    // The row already landed on a half-applied pass — the payload (which may
+    // carry edits coalesced in since) is re-applied as an update.
+    expect(orderUpdate).toHaveBeenCalledWith('g1', { id: 'g1' });
     expect(await readOutboxQueue()).toHaveLength(0);
     expect(await readOutboxFailed()).toHaveLength(0);
   });
@@ -209,6 +214,58 @@ describe('flushOutbox', () => {
     expect(uploadFromUri).toHaveBeenCalledWith('pdfs', 'orders/x.pdf', 'file:///staged/x.pdf', 'application/pdf');
     expect(orderUpdate).toHaveBeenCalledWith('g1', { pdfUrl: 'orders/x.pdf' });
     expect(await readOutboxQueue()).toHaveLength(0);
+  });
+});
+
+describe('saveRecordThroughOutbox — online pending-create guards', () => {
+  it('coalesces an online UPDATE into a still-queued CREATE instead of writing a nonexistent row', async () => {
+    onlineManager.setOnline(true);
+    await writeOutboxQueue([op({})]); // queued create for g1, payload { id: 'g1' }
+    const res = await saveRecordThroughOutbox({
+      entity: 'order',
+      mode: 'update',
+      recordId: 'g1',
+      payload: { status: 'completed' },
+      displayTitle: '',
+      projectId: null,
+    });
+    expect(res.queued).toBe(true);
+    expect(orderUpdate).not.toHaveBeenCalled();
+    const ops = await readOutboxQueue();
+    expect(ops).toHaveLength(1);
+    expect((ops[0] as { payload: unknown }).payload).toEqual({ id: 'g1', status: 'completed' });
+  });
+
+  it('revives a FAILED group and coalesces the new update behind it', async () => {
+    onlineManager.setOnline(true);
+    await writeOutboxFailed([op({})]);
+    const res = await saveRecordThroughOutbox({
+      entity: 'order',
+      mode: 'update',
+      recordId: 'g1',
+      payload: { status: 'completed' },
+      displayTitle: '',
+      projectId: null,
+    });
+    expect(res.queued).toBe(true);
+    expect(await readOutboxFailed()).toHaveLength(0);
+    const ops = await readOutboxQueue();
+    expect(ops).toHaveLength(1);
+    expect((ops[0] as { payload: Record<string, unknown> }).payload.status).toBe('completed');
+  });
+
+  it('writes directly when nothing is pending for the record', async () => {
+    onlineManager.setOnline(true);
+    const res = await saveRecordThroughOutbox({
+      entity: 'order',
+      mode: 'update',
+      recordId: 'g9',
+      payload: { status: 'completed' },
+      displayTitle: '',
+      projectId: null,
+    });
+    expect(res.queued).toBe(false);
+    expect(orderUpdate).toHaveBeenCalledWith('g9', { status: 'completed' });
   });
 });
 

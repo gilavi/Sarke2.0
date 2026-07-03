@@ -82,6 +82,9 @@ export const ordersApi = {
     status: 'draft' | 'completed';
     /** Client-generated id — required for offline (outbox) creates. */
     id?: string;
+    /** From a pdf patch coalesced into a queued create (lib/outbox). */
+    pdfUrl?: string | null;
+    pdfHash?: string;
   }): Promise<Order> => {
     // getSession reads the locally cached session (getUser is a network
     // round-trip and would hang the offline create path).
@@ -92,6 +95,8 @@ export const ordersApi = {
       .from('orders')
       .insert({
         ...(args.id ? { id: args.id } : {}),
+        ...(args.pdfUrl !== undefined ? { pdf_url: args.pdfUrl } : {}),
+        ...(args.pdfHash !== undefined ? { pdf_hash: args.pdfHash } : {}),
         project_id:    args.projectId,
         user_id:       user.id,
         document_type: args.documentType,

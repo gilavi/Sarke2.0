@@ -242,6 +242,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
 
   const flush = useCallback(async (): Promise<void> => {
     if (!onlineRef.current) return;
+    // Progress guard: a pass that only DEFERRED ops (inspection creation still
+    // queued in the outbox) must not self-reschedule below — that would
+    // busy-loop until the outbox unblocks. Failures still count as progress
+    // (attempts increment → the op converges to the failed queue).
+    let advanced = false;
     await runExclusive(async () => {
       let ops = await readQueue();
       // Cap iterations to the starting count so a single bad payload
@@ -304,9 +309,11 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
             if (error) throw error;
             FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => undefined);
           }
+          advanced = true;
           ops = ops.slice(1);
           await setQueue(ops);
         } catch (err) {
+          advanced = true;
           const attempts = (op.attempts ?? 0) + 1;
           if (attempts >= MAX_OP_RETRIES) {
             logError(err, `offline.flush.fail.${op.kind}`);
@@ -325,9 +332,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
       }
     });
     // After flush completes, if new ops were enqueued during the flush,
-    // trigger another flush so they don't sit until the next reconnect.
+    // trigger another flush so they don't sit until the next reconnect —
+    // but only when this pass made progress (see the guard above).
     const remaining = await readQueue();
-    if (remaining.length > 0 && onlineRef.current) {
+    if (remaining.length > 0 && onlineRef.current && advanced) {
       setTimeout(() => flush(), 0);
     }
   }, [setQueue, runExclusive]);

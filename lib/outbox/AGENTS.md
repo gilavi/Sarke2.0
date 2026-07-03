@@ -15,7 +15,12 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
   (`entity`, `mode`, `recordId`, `payload`, `displayTitle`, `projectId`,
   `detailKey`, `optimistic`). Online = the direct service call it replaces;
   offline/network-failure = enqueue + seed the detail cache. Never call
-  `<entity>Api.create/update` directly from a screen.
+  `<entity>Api.create/update` directly from a screen. **Pending-create
+  guard:** an online UPDATE for a record whose earlier save is still queued
+  (or sits in the failed queue — it gets revived first) coalesces into that
+  op instead of writing a row that doesn't exist yet — several services'
+  patches (risk, breathalyzer) have no row-count check and would silently
+  no-op, losing the edit when the create later replays.
 - `enqueueOutboxOp(op)` — raw enqueue for `file_upload` / `pdf_upload` /
   `inspection_create` ops (record ops should use saveRecordThroughOutbox).
 - `flushOutbox()` / `retryOutboxFailed()` / `dismissOutboxFailed(groupId?)`.
@@ -32,7 +37,12 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
   mutation lock, enqueue + **coalescing**: an UPDATE for a record whose
   earlier record_save is still queued merges into that op's payload
   (edit-after-queued-create). Leaf module — no imports into apiHooks or
-  services, so `lib/inspection/service.ts` can enqueue cycle-free.
+  services, so `lib/inspection/service.ts` can enqueue cycle-free. Every
+  enqueue while `onlineManager` still reports online (i.e. the op got here
+  via a network-classified failure) schedules a `flushOutbox` kick — without
+  it nothing would replay until the next NetInfo transition. The kick uses a
+  dynamic `import('./flush')` on purpose (a static import would arm the
+  service→registry→services cycle at module-init).
 - `registry.ts` — entity → create/update dispatch. Because of coalescing,
   every service `create` accepts the entity's updatable fields as optional
   args (`id`, `status`, `slides`, `inspectorSignature`, …); breathalyzer's
@@ -41,9 +51,12 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
 - `flush.ts` — FIFO; a failing op skips the rest of its group this pass;
   3 exhausted attempts move the WHOLE group to the failed queue; an
   auth-classified error aborts the flush without burning attempts (token
-  hasn't refreshed yet). Replayed creates treat 23505/duplicate-key as
-  success. `inspection_create` runs the parent RPC first, then UPSERTS the
-  row (`ignoreDuplicates`) — the CLAUDE.md parent-row-first rule.
+  hasn't refreshed yet). A replayed create hitting 23505/duplicate-key
+  re-applies its payload as an UPDATE (edits coalesced in after a
+  half-applied pass must not drop; the report registry mapper strips
+  create-only keys for exactly this path). `inspection_create` runs the
+  parent RPC first, then UPSERTS the row (`ignoreDuplicates`) — the
+  CLAUDE.md parent-row-first rule.
 - `saveRecord.ts` / `useOutbox.ts` / `index.ts` — the public surface.
 
 ## Gotchas

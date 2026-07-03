@@ -110,6 +110,47 @@ export async function pdfPhotoEmbed(
 }
 
 /**
+ * Pre-seed `pdfPhotoEmbed`'s disk cache from a LOCAL file (same cache slot,
+ * same resize). For photos captured offline: their storage upload is still
+ * queued, so an offline-generated PDF would otherwise silently drop them —
+ * seeding lets the embed resolve from disk. Best-effort; a failure just means
+ * the PDF falls back to skipping the photo. Not a fourth helper — this is the
+ * offline write-side companion of pdfPhotoEmbed.
+ */
+export async function seedPdfPhotoEmbed(
+  bucket: string,
+  path: string,
+  localUri: string,
+): Promise<void> {
+  try {
+    const cacheDir = await ensurePdfCacheDir();
+    if (!cacheDir) return;
+    const cacheKey = djb2Hex(`${bucket}/${path}@w${PDF_PHOTO_MAX_WIDTH}q${PDF_PHOTO_QUALITY}`);
+    const resized = await manipulateAsync(localUri, [{ resize: { width: PDF_PHOTO_MAX_WIDTH } }], {
+      compress: PDF_PHOTO_QUALITY,
+      format: SaveFormat.JPEG,
+      base64: true,
+    });
+    let b64 = resized.base64;
+    if (!b64 && resized.uri) {
+      b64 = await FileSystem.readAsStringAsync(resized.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+    if (b64) {
+      await FileSystem.writeAsStringAsync(`${cacheDir}${cacheKey}.jpg`, b64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+    if (resized.uri) {
+      FileSystem.deleteAsync(resized.uri, { idempotent: true }).catch(() => undefined);
+    }
+  } catch {
+    // best-effort seed
+  }
+}
+
+/**
  * `data:` URL for a signature image, byte-exact (no resize, no re-encode).
  * Used by PDF embeds (where the WebView can't fetch Supabase URLs at render
  * time) and by the signature-sheet canvas pre-fill.
