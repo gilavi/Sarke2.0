@@ -155,7 +155,7 @@ export function FlowSection() {
           {STEPS.map((s, i) => (
             <div
               key={s.num}
-              ref={el => (stepRefs.current[i] = el)}
+              ref={el => { stepRefs.current[i] = el; }}
               data-i={i}
               className="flex min-h-[46vh] flex-col justify-center transition-opacity duration-500 md:min-h-[78vh]"
               style={{ opacity: active === i ? 1 : 0.34 }}
