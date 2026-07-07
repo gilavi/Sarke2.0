@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Camera, MoreHorizontal, Plus } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -113,7 +114,7 @@ function PhotoTile({
   return (
     <PressBounce scaleTo={0.97} hapticOnPress="light" style={styles.photoTile} onPress={onPress}>
       {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} />
       ) : (
         <ActivityIndicator color={theme.colors.inkFaint} />
       )}

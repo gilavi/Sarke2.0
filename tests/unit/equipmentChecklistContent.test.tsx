@@ -24,6 +24,10 @@ vi.mock('../../components/primitives/Badge', () => ({
   Badge: ({ children, variant }: { children: string; variant?: string }) =>
     React.createElement('span', { 'data-badge': variant ?? 'default' }, children),
 }));
+// expo-image renders the photo thumbnails (stubbed to a plain img).
+vi.mock('expo-image', () => ({
+  Image: (props: Record<string, unknown>) => React.createElement('img', props as never),
+}));
 vi.mock('../../lib/imageUrl', () => ({ imageForDisplay: async () => '' }));
 vi.mock('../../lib/supabase', () => ({ STORAGE_BUCKETS: { answerPhotos: 'answer-photos' } }));
 

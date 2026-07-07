@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isMissingDbObjectError } from './services/real/_shared';
 import type { Order, OrderFormData, OrderDocumentType, RecentRecordsOpts } from '../types/models';
 
 // ── DB ↔ model mapping ────────────────────────────────────────────────────────
@@ -41,27 +42,53 @@ function patchToDb(patch: Partial<Order>): Partial<DbRow> {
   return db;
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
+// ── Lean list reads ───────────────────────────────────────────────────────────
+// List surfaces (Home widget, History, Drafts, project detail) render only
+// document_type + created_at — never form_data, which embeds base64
+// director/appointed/operator signatures for several order types (~30-80 KB per
+// signed order vs ~0.3 KB rendered). The orders_list_lean view (migration
+// 20260708120000_lean_list_feeds.sql) returns the same DbRow shape with just
+// those signature keys removed from form_data; all other form fields survive.
+// Edit/detail/PDF paths keep the full row via getById. When the view isn't
+// deployed yet the first failed read flips `leanViewAvailable` and every list
+// read falls back to the base table for the rest of the session.
 
-export const ordersApi = {
-  recent: async (opts: RecentRecordsOpts = {}): Promise<Order[]> => {
-    let q = supabase.from('orders').select('*');
+let leanViewAvailable = true;
+
+async function fetchList(opts: {
+  projectId?: string;
+  status?: string;
+  limit?: number;
+}): Promise<Order[]> {
+  const run = (table: string) => {
+    let q = supabase.from(table).select('*');
+    if (opts.projectId) q = q.eq('project_id', opts.projectId);
     if (opts.status) q = q.eq('status', opts.status);
     let t = q.order('created_at', { ascending: false });
     if (opts.limit != null) t = t.limit(opts.limit);
-    const { data, error } = await t;
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
+    return t;
+  };
+  let res = leanViewAvailable ? await run('orders_list_lean') : null;
+  if (res?.error && isMissingDbObjectError(res.error)) {
+    leanViewAvailable = false;
+    res = null;
+  }
+  if (!res) res = await run('orders');
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as DbRow[]).map(toModel);
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+
+export const ordersApi = {
+  /** List feed — form_data signature blobs stripped (see fetchList). */
+  recent: async (opts: RecentRecordsOpts = {}): Promise<Order[]> => {
+    return fetchList({ status: opts.status, limit: opts.limit });
   },
 
+  /** List feed — form_data signature blobs stripped (see fetchList). */
   listByProject: async (projectId: string): Promise<Order[]> => {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
+    return fetchList({ projectId });
   },
 
   getById: async (id: string): Promise<Order | null> => {

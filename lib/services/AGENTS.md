@@ -31,8 +31,9 @@ sites keep working unchanged after the split.
   time based on `useMockData` in app.json.
 - `real/index.ts` — re-exports every domain's real implementation.
 - `real/_shared.ts` — supabase-boundary helpers (`throwIfError`,
-  `throwIfErrorMaybe`, `listOrThrow`, `failShape`, `unwrap`),
-  `mapCrew` / `withMappedCrew`, `assertLogoSize`.
+  `throwIfErrorMaybe`, `listOrThrow`, `failShape`, `unwrap`,
+  `isMissingDbObjectError`), `mapCrew` / `withMappedCrew`,
+  `assertLogoSize`.
 - `real/<domain>.ts` — one file per API surface
   (projects, templates, inspections, answers, signatures,
   qualifications, projectItems, schedules, remoteSigning,
@@ -53,6 +54,14 @@ sites keep working unchanged after the split.
   Drafts screen (draft) each fetch exactly their slice. RLS scopes every read to
   the signed-in user, so dropping the `project_id` filter is safe. Hooks:
   `useRecent{Inspections,Reports,Incidents,Briefings,Orders}` in `lib/apiHooks`.
+- **Lean list feeds:** briefings/orders list reads (`recent`, `listByProject`,
+  briefings `listAll`) go through the `briefings_list_lean` / `orders_list_lean`
+  views and `certificatesApi.countsByInspection` through the
+  `get_certificate_counts` RPC (migration `20260708120000_lean_list_feeds.sql`)
+  so list feeds never carry base64 signature payloads. Each falls back to the
+  legacy query via `isMissingDbObjectError` (real/_shared.ts) when the
+  migration isn't applied. `getById` stays on the base tables — detail/PDF
+  paths need the full row. See docs/primitives.md → "Lean list feeds".
 - The toggle is **module-load-time only**. Flipping `useMockData` in
   app.json requires a full app restart — the live binding to `src` is
   resolved when this module first imports.

@@ -7,10 +7,14 @@ mobile app's Georgian (`ka`) and English (`en`) UI texts — nothing else. Hoste
 **https://hubble.ge/cms/** (standalone, separate from the `web-app/` dashboard).
 
 Edits are **live without an App Store build**: the CMS writes to the Supabase
-`public.ui_strings` table, and the mobile app fetches those rows on launch and
-overlays them on top of the bundled `locales/*.json` (see `lib/i18nOverlay.ts` +
-`components/UiStringsLoader.tsx`). The bundled JSON stays the offline/first-launch
-fallback, so an edit appears on the **next app open**, not instantly on a running app.
+`public.ui_strings` table, and the mobile app overlays those rows on top of the
+bundled `locales/*.json` at launch (see `lib/i18nOverlay.ts` +
+`components/UiStringsLoader.tsx`). The launch fetch is **version-gated**: the app
+first probes `max(updated_at)` (one tiny row) and only re-downloads the full table
+when a save actually happened since its cached copy — which is why `cms-texts`
+MUST keep stamping `updated_at` on every save. The bundled JSON stays the
+offline/first-launch fallback, so an edit appears on the **next app open**, not
+instantly on a running app.
 
 It is **edit-only**: you can change `en`/`ka` for keys that already exist, but never
 add or delete keys (that would diverge from the bundled JSON and could break `t()`).
@@ -23,8 +27,9 @@ co-worker (password)
     → POST supabase/functions/cms-texts   (verify_jwt=false; checks CMS_PASSWORD)
       → service role writes public.ui_strings
 mobile app launch
-  → anon SELECT public.ui_strings (public-read RLS)
-    → unflatten → i18n.addResourceBundle over bundled defaults
+  → anon SELECT max(updated_at) probe (public-read RLS; 1 row)
+    → unchanged since cached copy? reuse it : full SELECT public.ui_strings
+      → unflatten → i18n.addResourceBundle over bundled defaults
 ```
 
 The password is the **only** protection and the real check is server-side in the

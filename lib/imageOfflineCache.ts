@@ -1,9 +1,52 @@
-// Internal disk-cache store for lib/imageUrl.ts — NOT a public primitive.
+// Internal cache stores for lib/imageUrl.ts — NOT a public primitive.
 // Consume the public API (imageForDisplay / signatureAsDataUrl) instead of
 // these helpers; this file exists as a sibling only to keep lib/imageUrl.ts
-// under its file-size target.
+// under its file-size target. Sole exception: `purgeSignedUrlMemo` is the
+// sign-out hook consumed by lib/session.tsx.
 
 import * as FileSystem from 'expo-file-system/legacy';
+
+// ── Signed-URL memo (in-memory, sits in FRONT of the disk cache) ─────────────
+//
+// imageForDisplay used to mint a fresh signed URL (one POST /object/sign
+// round-trip) on every call. Each mint carries a different ?token=…, so React
+// Native's URL-keyed image cache missed on every mount and re-downloaded the
+// full bytes. Memoizing the URL per bucket/path for 45 of its 60 minutes
+// returns the SAME string across mounts — image-cache hits come back and the
+// repeat sign round-trips disappear. Purged on sign-out / account switch
+// (lib/session.tsx): signed URLs are bearer tokens, so a second account on the
+// same device must not reuse the previous user's still-valid URLs.
+
+/** Signing TTL (seconds) imageForDisplay requests; the memo TTL keys off it. */
+export const SIGNED_URL_TTL_SECONDS = 3600;
+const SIGNED_URL_MEMO_TTL_MS = 45 * 60 * 1000; // safely below the 60-min URL expiry
+
+const signedUrlMemo = new Map<string, { url: string; expiresAt: number }>();
+
+/** Memoized signed URL for a storage object, or null when absent/expired. */
+export function readSignedUrlMemo(bucket: string, path: string): string | null {
+  const key = `${bucket}/${path}`;
+  const entry = signedUrlMemo.get(key);
+  if (!entry) return null;
+  if (Date.now() >= entry.expiresAt) {
+    signedUrlMemo.delete(key);
+    return null;
+  }
+  return entry.url;
+}
+
+/** Memoize a freshly minted signed URL (signed for SIGNED_URL_TTL_SECONDS). */
+export function writeSignedUrlMemo(bucket: string, path: string, url: string): void {
+  signedUrlMemo.set(`${bucket}/${path}`, {
+    url,
+    expiresAt: Date.now() + SIGNED_URL_MEMO_TTL_MS,
+  });
+}
+
+/** Drop every memoized signed URL. Called on sign-out / account switch. */
+export function purgeSignedUrlMemo(): void {
+  signedUrlMemo.clear();
+}
 
 /** djb2 hash → hex; the shared cache-key scheme for all imageUrl disk caches. */
 export function djb2Hex(s: string): string {

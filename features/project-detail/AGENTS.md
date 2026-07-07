@@ -126,8 +126,10 @@ leftover signer-collection flow no longer in use. The `crew` column on
 
 ## Canonical helpers used (from lib/)
 - `lib/services` — `projectsApi`, `projectFilesApi`, `questionnairesApi`.
-- `lib/apiHooks` — every per-source `use*InspectionsByProject` hook
-  (consumed inside `useProjectDetailData`).
+- `lib/apiHooks` — `useUnifiedInspectionsByProject` (consumed inside
+  `useProjectDetailData`; the per-source `use*InspectionsByProject`
+  hooks were deleted once the per-project "all inspections" screen —
+  their last consumer — moved to the same unified RPC).
 - `lib/inspection/registry` — `inspectionRegistry` for category →
   create() routing.
 - `lib/inspectionRouting` — `routeForInspection`.

@@ -10,6 +10,7 @@ import { supabase, STORAGE_BUCKETS } from './supabase';
 import { isOnline } from './network';
 import { cacheUserProfile, readCachedUserProfile, readStoredSession } from './sessionBootstrap';
 import { purgeUserScopedStorage } from './storage-purge';
+import { purgeSignedUrlMemo } from './imageOfflineCache';
 import { logError } from './logError';
 import { TERMS_VERSION } from './terms';
 import { queryClient } from './queryClient';
@@ -303,6 +304,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       if (event === 'SIGNED_OUT' || (lastUserId && nextUserId && nextUserId !== lastUserId)) {
         void purgeUserScopedStorage().catch((e) => logError(e, 'session.purgeUserScopedStorage'));
+        // Signed storage URLs are bearer tokens — drop the in-memory memo so
+        // a second account can't reuse the previous user's still-valid URLs.
+        purgeSignedUrlMemo();
         // Drop every cached query - without this, a second account signing in
         // on the same device briefly sees the previous user's projects/
         // inspections from React Query's in-memory cache before the warming

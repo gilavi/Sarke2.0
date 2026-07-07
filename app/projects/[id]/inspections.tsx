@@ -15,13 +15,11 @@ import { SkeletonRow } from '../../../components/Skeleton';
 import { OfflineEmptyState } from '../../../components/OfflineEmptyState';
 import { listsLoadState } from '../../../hooks/useListLoadState';
 import { inspectionDisplayName } from '../../../lib/shared/documentName';
+import { routeForInspection } from '../../../lib/inspectionRouting';
 import {
   useProject,
-  useInspectionsByProject,
   useTemplates,
-  useBobcatInspectionsByProject,
-  useExcavatorInspectionsByProject,
-  useGeneralEquipmentInspectionsByProject,
+  useUnifiedInspectionsByProject,
 } from '../../../lib/apiHooks';
 import { InspectionListAvatar } from '../../../components/InspectionListAvatar';
 import { RecentListRow } from '../../../components/RecentListRow';
@@ -44,40 +42,23 @@ export default function ProjectInspectionsList() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: project } = useProject(id);
-  const genericQ = useInspectionsByProject(id);
-  const bobcatQ = useBobcatInspectionsByProject(id);
-  const excavatorQ = useExcavatorInspectionsByProject(id);
-  const geQ = useGeneralEquipmentInspectionsByProject(id);
+  // One row per inspection across generic + all equipment types, via the
+  // get_project_inspections_unified() RPC — the same source the project-detail
+  // InspectionsSection preview reads, so this "view more" list can never drift
+  // from it (the old 4-query merge missed 6 equipment types and duplicated the
+  // 3 it did fetch via their parent `inspections` rows).
+  const unifiedQ = useUnifiedInspectionsByProject(id);
   const templatesQ = useTemplates();
-  const genericItems = genericQ.data ?? [];
-  const bobcatItems = bobcatQ.data ?? [];
-  const excavatorItems = excavatorQ.data ?? [];
-  const geItems = geQ.data ?? [];
   const templates = templatesQ.data ?? [];
   // Canonical offline-aware guard (hooks/useListLoadState), unioned across the
   // source queries via listsLoadState below.
-  const sourceQueries = [genericQ, bobcatQ, excavatorQ, geQ, templatesQ];
+  const sourceQueries = [unifiedQ, templatesQ];
 
-  type UnifiedItem = {
-    id: string;
-    template_id: string;
-    status: 'draft' | 'completed';
-    created_at: string;
-    source: 'generic' | 'bobcat' | 'excavator' | 'general_equipment';
-  };
-
-  const items = useMemo<UnifiedItem[]>(() => {
-    const all: UnifiedItem[] = [
-      ...genericItems.map(q => ({ id: q.id, template_id: q.template_id, status: q.status, created_at: q.created_at, source: 'generic' as const })),
-      ...bobcatItems.map(b => ({ id: b.id, template_id: b.templateId ?? '', status: b.status, created_at: b.createdAt, source: 'bobcat' as const })),
-      ...excavatorItems.map(e => ({ id: e.id, template_id: e.templateId ?? '', status: e.status, created_at: e.createdAt, source: 'excavator' as const })),
-      ...geItems.map(g => ({ id: g.id, template_id: g.templateId ?? '', status: g.status, created_at: g.createdAt, source: 'general_equipment' as const })),
-    ];
-    // Completed-only — drafts live in the global Drafts screen (More tab).
-    return all
-      .filter((x) => x.status === 'completed')
-      .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
-  }, [genericItems, bobcatItems, excavatorItems, geItems]);
+  // Completed-only — drafts live in the global Drafts screen (More tab).
+  const items = useMemo(
+    () => (unifiedQ.data ?? []).filter((x) => x.status === 'completed'),
+    [unifiedQ.data],
+  );
 
   const grouped = useMemo(() => groupByDateDesc(items, q => q.created_at), [items]);
   const loadState = listsLoadState(sourceQueries, items.length);
@@ -89,7 +70,7 @@ export default function ProjectInspectionsList() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={<RefreshControl queries={[genericQ, bobcatQ, excavatorQ, geQ, templatesQ]} />}
+        refreshControl={<RefreshControl queries={[unifiedQ, templatesQ]} />}
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>{t('records.inspections')}</Text>
@@ -118,17 +99,13 @@ export default function ProjectInspectionsList() {
               {group.items.map((item, i) => {
                 const tpl = templates.find(t => t.id === item.template_id);
                 const isLast = i === group.items.length - 1;
-                const route = (() => {
-                  if (item.source === 'bobcat') return `/inspections/bobcat/${item.id}`;
-                  if (item.source === 'excavator') return `/inspections/excavator/${item.id}`;
-                  if (item.source === 'general_equipment') return `/inspections/general-equipment/${item.id}`;
-                  return `/inspections/${item.id}`;
-                })();
-                const sourceKey = item.source === 'generic' ? (tpl?.category ?? null) : item.source;
+                // Canonical route dispatch — covers all equipment types plus
+                // the generic/harness fallbacks (lib/inspectionRouting.ts).
+                const route = routeForInspection(item.source, item.id, true);
                 return (
                   <RecentListRow
-                    key={`${item.source}-${item.id}`}
-                    leading={<InspectionListAvatar category={sourceKey} size={40} />}
+                    key={item.id}
+                    leading={<InspectionListAvatar category={item.source ?? tpl?.category ?? null} size={40} />}
                     title={inspectionDisplayName(tpl?.name)}
                     subtitle={formatShortDateTime(item.created_at)}
                     isLast={isLast}

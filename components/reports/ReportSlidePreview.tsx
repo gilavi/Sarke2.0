@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
@@ -60,7 +61,9 @@ function SlideThumb({ path, styles }: { path: string; styles: any }) {
   return (
     <View style={styles.imageWrap}>
       {uri ? (
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        // expo-image: downsamples the decode to the layout box (RN Image decoded
+        // the full 1600px upload) and adds memory+disk caching.
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" recyclingKey={path} />
       ) : null}
     </View>
   );

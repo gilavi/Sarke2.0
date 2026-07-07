@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Trash2, Image as ImageIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -105,7 +106,9 @@ function Thumb({ uri, style, theme }: { uri: string | null; style: any; theme: a
   return (
     <View style={[styleThumbBase(theme), style]}>
       {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        // expo-image: downsamples the decode to the layout box (RN Image decoded
+        // the full 1600px upload) and adds memory+disk caching.
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" recyclingKey={uri} />
       ) : (
         <ImageIcon size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
       )}

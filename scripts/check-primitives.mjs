@@ -113,6 +113,22 @@ const RULES = [
       'See docs/primitives.md → "User avatar".',
   },
   {
+    name: 'hand-rolled-inspection-route',
+    // Equipment-type detail routes must come from routeForInspection
+    // (lib/inspectionRouting.ts). Hand-rolled `/inspections/<type>/${id}`
+    // dispatch has drifted twice (app/history.tsx, then the per-project
+    // "all inspections" list): a 3-type inline switch silently mis-routes the
+    // other equipment types to the generic detail screen. Flow-internal
+    // navigation inside app/inspections/** (e.g. …/done) is allowed.
+    pattern: /\/inspections\/(bobcat|excavator|general-equipment|cargo-platform|safety-net|mobile-ladder|fall-protection|lifting-accessories|forklift)\/\$\{/,
+    allow: ['lib/inspectionRouting.ts'],
+    allowPrefixes: ['app/inspections/'],
+    message:
+      'Build inspection detail hrefs with routeForInspection (lib/inspectionRouting.ts), not an inline ' +
+      '`/inspections/<type>/${id}` literal — hand-rolled dispatch has repeatedly missed newer equipment types. ' +
+      'See docs/primitives.md → "Inspection detail routing".',
+  },
+  {
     name: 'mobile-only-photo-embed',
     pattern: /\bembedInspectionPhotos\b/,
     allow: ['lib/pdfShared.ts', 'lib/breathalyzerLogPdf.ts'],

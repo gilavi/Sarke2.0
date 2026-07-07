@@ -49,6 +49,25 @@ export function listOrThrow<T>(res: SupabaseRes, opts?: GuardOpts<T>): T[] {
 }
 
 /**
+ * True when a PostgREST/Supabase error means the queried relation or function
+ * simply does not exist in this environment — e.g. a lean list view or RPC
+ * from a newer migration (20260708120000_lean_list_feeds.sql) that hasn't been
+ * applied yet. Callers use it to fall back to the legacy query path instead of
+ * failing; any other error (RLS, network, bad input) must still throw.
+ *
+ *   - PGRST205 / 42P01 — missing table or view
+ *   - PGRST202 / 42883 — missing function (RPC)
+ */
+export function isMissingDbObjectError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false;
+  const { code, message } = e as { code?: string; message?: string };
+  if (code === 'PGRST205' || code === 'PGRST202' || code === '42P01' || code === '42883') {
+    return true;
+  }
+  return typeof message === 'string' && /schema cache|does not exist/i.test(message);
+}
+
+/**
  * Coerce stored crew rows into the current shape. Legacy rows (pre role-slot
  * UX) lack a `roleKey`; we route them into the `other` slot rather than
  * dropping them, and reuse their stored `role` string as the display label.

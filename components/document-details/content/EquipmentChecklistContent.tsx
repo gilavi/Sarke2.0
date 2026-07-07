@@ -13,7 +13,8 @@
 // Rows + the grouped-list look are reused from components/success so it matches
 // the act / incident / report detail pages.
 import { useEffect, useMemo, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { ClipboardList } from 'lucide-react-native';
 import { A11yText as Text } from '../../primitives/A11yText';
@@ -63,7 +64,15 @@ function PhotoStrip({ paths }: { paths: string[] }) {
   return (
     <View style={styles.photoStrip}>
       {urls.map((u, i) => (
-        <Image key={`${u}-${i}`} source={{ uri: u }} style={styles.thumb} />
+        // expo-image: downsamples the decode to the 76px layout box (RN Image
+        // decoded the full 1600px upload) and adds memory+disk caching.
+        <Image
+          key={`${u}-${i}`}
+          source={{ uri: u }}
+          style={styles.thumb}
+          contentFit="cover"
+          recyclingKey={u}
+        />
       ))}
     </View>
   );

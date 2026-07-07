@@ -372,8 +372,10 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
         // Re-warm the flow-start caches (template questions, project details)
         // that may have gone stale while offline. Only on a genuine
         // offline→online transition — boot-time warming is owned by the
-        // post-auth path in lib/session.tsx.
-        if (wasOnline === false) prefetchFlowStartCaches(queryClient);
+        // post-auth path in lib/session.tsx — and debounced inside
+        // prefetchFlowStartCaches (10 min since ANY warm), so field
+        // connectivity flaps don't re-fire the list fetches.
+        if (wasOnline === false) prefetchFlowStartCaches(queryClient, { debounce: true });
       }
     });
     return () => unsub();

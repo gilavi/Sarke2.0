@@ -447,7 +447,12 @@ export interface RemoteSigningRequest {
 
 export interface BriefingParticipant {
   name: string;
-  /** Base64 PNG without data: prefix. Null until signed. */
+  /**
+   * Base64 PNG without data: prefix. Null until signed.
+   * List feeds (`briefingsApi.recent/listByProject/listAll`) always return
+   * this as null — the `briefings_list_lean` view strips signature payloads.
+   * Only `getById` (detail/PDF paths) carries the real payload.
+   */
   signature: string | null;
   /** Marked absent during signing; can be revisited from the roster. */
   skipped?: boolean;
@@ -463,7 +468,7 @@ export interface Briefing {
   /** Array of topic strings; custom topics prefixed with 'custom:'. */
   topics: string[];
   participants: BriefingParticipant[];
-  /** Base64 PNG without data: prefix. */
+  /** Base64 PNG without data: prefix. Null on list feeds (lean view) — only `getById` carries it. */
   inspectorSignature: string | null;
   inspectorName: string;
   status: BriefingStatus;
@@ -714,6 +719,12 @@ export interface Order {
   projectId: string;
   userId: string;
   documentType: OrderDocumentType;
+  /**
+   * List feeds (`ordersApi.recent/listByProject`) strip the base64 signature
+   * keys (`directorSignature` / `appointedSignature` / `operatorSignature`)
+   * via the `orders_list_lean` view; every other form field survives. Read
+   * signatures through `getById` (edit/detail/PDF paths) only.
+   */
   formData: OrderFormData;
   status: 'draft' | 'completed';
   pdfUrl: string | null;

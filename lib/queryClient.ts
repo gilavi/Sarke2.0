@@ -46,7 +46,7 @@ const persister = createAsyncStoragePersister({
   storage: AsyncStorage,
   // Throttle disk writes - react-query fires updates on every fetch, and
   // serializing the cache to AsyncStorage on every keystroke would be
-  // wasteful. 1s coalesces bursts.
+  // wasteful. 5s coalesces bursts.
   throttleTime: 5_000,
   key: 'hubble.rq.cache.v1',
 });
@@ -69,6 +69,15 @@ persistQueryClient({
   dehydrateOptions: {
     // Persist only settled successful data. Error/pending states would waste
     // the ~6MB Android AsyncStorage budget and rehydrate as junk.
-    shouldDehydrateQuery: (query) => query.state.status === 'success',
+    //
+    // 'ui-strings' is excluded: the CMS overlay (a few hundred kB — the single
+    // biggest entry the blob ever held) has its own version-gated AsyncStorage
+    // cache in components/UiStringsLoader.tsx and no longer flows through
+    // React Query; this guard drops the legacy entry left by blobs persisted
+    // from older builds. Do NOT exclude the record/list keys here: their
+    // persisted copies ARE the offline data source for Home/History and what
+    // makes the non-forced boot warm-up in lib/apiHooks.ts a network no-op.
+    shouldDehydrateQuery: (query) =>
+      query.state.status === 'success' && query.queryKey[0] !== 'ui-strings',
   },
 });

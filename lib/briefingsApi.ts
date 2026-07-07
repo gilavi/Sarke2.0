@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isMissingDbObjectError } from './services/real/_shared';
 import type { Briefing, BriefingParticipant, RecentRecordsOpts } from '../types/models';
 
 // ── DB ↔ model mapping ────────────────────────────────────────────────────────
@@ -43,27 +44,55 @@ function patchToDb(patch: Partial<Briefing>): Partial<DbRow> {
   return db;
 }
 
+// ── Lean list reads ───────────────────────────────────────────────────────────
+// List surfaces (Home widget, History, Drafts, project detail, calendar) render
+// only topics / participant count / date — never the signature payloads that
+// live INSIDE the row (participants[].signature + inspector_signature are base64
+// PNGs, hundreds of KB per multi-participant briefing). The briefings_list_lean
+// view (migration 20260708120000_lean_list_feeds.sql) returns the same DbRow
+// shape with those payloads nulled, shrinking the 50-row feed by orders of
+// magnitude on every warm-up fetch and AsyncStorage cache persist. Detail/PDF
+// paths keep the full row via getById. When the view isn't deployed yet the
+// first failed read flips `leanViewAvailable` and every list read falls back to
+// the base table for the rest of the session.
+
+let leanViewAvailable = true;
+
+async function fetchList(opts: {
+  projectId?: string;
+  status?: string;
+  limit?: number;
+  orderBy: 'created_at' | 'date_time';
+}): Promise<Briefing[]> {
+  const run = (table: string) => {
+    let q = supabase.from(table).select('*');
+    if (opts.projectId) q = q.eq('project_id', opts.projectId);
+    if (opts.status) q = q.eq('status', opts.status);
+    let t = q.order(opts.orderBy, { ascending: false });
+    if (opts.limit != null) t = t.limit(opts.limit);
+    return t;
+  };
+  let res = leanViewAvailable ? await run('briefings_list_lean') : null;
+  if (res?.error && isMissingDbObjectError(res.error)) {
+    leanViewAvailable = false;
+    res = null;
+  }
+  if (!res) res = await run('briefings');
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as DbRow[]).map(toModel);
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 export const briefingsApi = {
+  /** List feed — signature payloads stripped (see fetchList). */
   recent: async (opts: RecentRecordsOpts = {}): Promise<Briefing[]> => {
-    let q = supabase.from('briefings').select('*');
-    if (opts.status) q = q.eq('status', opts.status);
-    let t = q.order('created_at', { ascending: false });
-    if (opts.limit != null) t = t.limit(opts.limit);
-    const { data, error } = await t;
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
+    return fetchList({ status: opts.status, limit: opts.limit, orderBy: 'created_at' });
   },
 
+  /** List feed — signature payloads stripped (see fetchList). */
   listByProject: async (projectId: string): Promise<Briefing[]> => {
-    const { data, error } = await supabase
-      .from('briefings')
-      .select('*')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
+    return fetchList({ projectId, orderBy: 'created_at' });
   },
 
   getById: async (id: string): Promise<Briefing | null> => {
@@ -129,13 +158,8 @@ export const briefingsApi = {
     if (error) throw new Error(error.message);
   },
 
+  /** Every completed briefing (calendar feed) — signature payloads stripped. */
   listAll: async (): Promise<Briefing[]> => {
-    const { data, error } = await supabase
-      .from('briefings')
-      .select('*')
-      .eq('status', 'completed')
-      .order('date_time', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as DbRow[]).map(toModel);
+    return fetchList({ status: 'completed', orderBy: 'date_time' });
   },
 };

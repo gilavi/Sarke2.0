@@ -11,6 +11,9 @@ import {
   signatureCacheFile,
   readSignatureCache,
   writeSignatureCache,
+  readSignedUrlMemo,
+  writeSignedUrlMemo,
+  SIGNED_URL_TTL_SECONDS,
 } from './imageOfflineCache';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,9 +22,11 @@ import {
 //
 //   imageForDisplay(bucket, path)
 //     → URL for a React Native <Image>. Prefers a signed URL (and warms an
-//       offline disk copy of the object). Offline: returns the cached
-//       file:// copy, else the public URL — never the timeout ladder. Falls
-//       back to a data: URL via auth download. Cannot fail.
+//       offline disk copy of the object). Signed URLs are memoized in-memory
+//       for 45 min of their 60-min TTL, so repeat mounts get the SAME string
+//       (native image-cache hits, no re-sign round-trip). Offline: returns
+//       the cached file:// copy, else the public URL — never the timeout
+//       ladder. Falls back to a data: URL via auth download. Cannot fail.
 //
 //   pdfPhotoEmbed(bucket, path, opts?)
 //     → data: URL for embedding photos in PDF HTML. Resized to 1200px /
@@ -74,8 +79,22 @@ export async function imageForDisplay(
     return storageApi.publicUrl(bucket, path);
   }
 
+  // Memo hit: return the SAME url string as the previous mount so RN's
+  // URL-keyed image cache hits and no sign round-trip is paid. The disk-cache
+  // warm still runs (cheap existence check) so the offline copy stays covered
+  // even if the first warm failed mid-download.
+  const memoized = readSignedUrlMemo(bucket, path);
+  if (memoized) {
+    if (cacheFile) warmDisplayCache(memoized, cacheFile);
+    return memoized;
+  }
+
   try {
-    const signed = await withTimeout(storageApi.signedUrl(bucket, path, 3600), timeoutMs);
+    const signed = await withTimeout(
+      storageApi.signedUrl(bucket, path, SIGNED_URL_TTL_SECONDS),
+      timeoutMs,
+    );
+    writeSignedUrlMemo(bucket, path, signed);
     if (cacheFile) warmDisplayCache(signed, cacheFile);
     return signed;
   } catch {

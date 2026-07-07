@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { Image, StyleSheet, View, type ImageResizeMode } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Image, type ImageContentFit } from 'expo-image';
 import { Image as ImageIcon } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../primitives/A11yText';
@@ -22,9 +23,9 @@ interface Props {
  * swaps the layout. Not interactive; the photo tiles + inputs below it do the
  * editing.
  *
- * Resize modes mirror the PDF: `cover` for the side-by-side (text-photo, duo)
- * crops, `contain` for the full / stacked images (PDF uses `object-fit: contain`
- * there so nothing is cropped).
+ * Content-fit modes mirror the PDF: `cover` for the side-by-side (text-photo,
+ * duo) crops, `contain` for the full / stacked images (PDF uses `object-fit:
+ * contain` there so nothing is cropped).
  */
 export function SlideCanvas({ num, title, description, layout, uris }: Props) {
   const { theme } = useTheme();
@@ -65,13 +66,13 @@ export function SlideCanvas({ num, title, description, layout, uris }: Props) {
         {Desc}
         {layout === 'two-stacked' ? (
           <View style={{ gap: 8 }}>
-            <Photo uri={uris[0]} style={[styles.photo, styles.stacked]} resizeMode="contain" theme={theme} />
-            <Photo uri={uris[1]} style={[styles.photo, styles.stacked]} resizeMode="contain" theme={theme} />
+            <Photo uri={uris[0]} style={[styles.photo, styles.stacked]} contentFit="contain" theme={theme} />
+            <Photo uri={uris[1]} style={[styles.photo, styles.stacked]} contentFit="contain" theme={theme} />
           </View>
         ) : (
           <View style={styles.row}>
-            <Photo uri={uris[0]} style={[styles.photo, styles.duo]} resizeMode="cover" theme={theme} />
-            <Photo uri={uris[1]} style={[styles.photo, styles.duo]} resizeMode="cover" theme={theme} />
+            <Photo uri={uris[0]} style={[styles.photo, styles.duo]} contentFit="cover" theme={theme} />
+            <Photo uri={uris[1]} style={[styles.photo, styles.duo]} contentFit="cover" theme={theme} />
           </View>
         )}
       </>
@@ -80,7 +81,7 @@ export function SlideCanvas({ num, title, description, layout, uris }: Props) {
     body = (
       <>
         <View style={styles.numRow}>{NumBadge}</View>
-        <Photo uri={uris[0]} style={[styles.photo, styles.full]} resizeMode="contain" theme={theme} />
+        <Photo uri={uris[0]} style={[styles.photo, styles.full]} contentFit="contain" theme={theme} />
         <Text style={styles.titleCentered}>{displayTitle}</Text>
         {Desc}
       </>
@@ -94,7 +95,7 @@ export function SlideCanvas({ num, title, description, layout, uris }: Props) {
         </View>
         <View style={styles.splitRow}>
           <View style={styles.splitText}>{Desc}</View>
-          <Photo uri={uris[0]} style={[styles.photo, styles.splitPhoto]} resizeMode="cover" theme={theme} />
+          <Photo uri={uris[0]} style={[styles.photo, styles.splitPhoto]} contentFit="cover" theme={theme} />
         </View>
       </>
     );
@@ -108,18 +109,20 @@ export function SlideCanvas({ num, title, description, layout, uris }: Props) {
 function Photo({
   uri,
   style,
-  resizeMode,
+  contentFit,
   theme,
 }: {
   uri: string | null;
   style: any;
-  resizeMode: ImageResizeMode;
+  contentFit: ImageContentFit;
   theme: any;
 }) {
   return (
     <View style={style}>
       {uri ? (
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode={resizeMode} />
+        // expo-image: downsamples the decode to the layout box (RN Image decoded
+        // the full 1600px upload) and adds memory+disk caching.
+        <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit={contentFit} recyclingKey={uri} />
       ) : (
         <ImageIcon size={22} color={theme.colors.inkFaint} strokeWidth={1.5} />
       )}

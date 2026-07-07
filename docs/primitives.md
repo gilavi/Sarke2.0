@@ -83,7 +83,7 @@ One file: [lib/imageUrl.ts](../lib/imageUrl.ts). Three exports, named by purpose
 
 | Use case | Function | Returns | On failure |
 |---|---|---|---|
-| RN `<Image>` display | `imageForDisplay(bucket, path)` | signed URL (or data URL fallback, or public URL); warms a disk copy, returned as `file://` when offline | never throws |
+| RN `<Image>` display | `imageForDisplay(bucket, path)` | signed URL (or data URL fallback, or public URL); memoized in-memory for 45 min of the 60-min signing TTL so repeat mounts get the **same** URL string (image-cache hits, no re-sign round-trip; memo purged on sign-out); warms a disk copy, returned as `file://` when offline | never throws |
 | Photo embedded in PDF HTML | `pdfPhotoEmbed(bucket, path, opts?)` | resized JPEG `data:` URL (1200px / q0.7), disk-cached | throws |
 | Signature embedded in PDF or signature canvas | `signatureAsDataUrl(bucket, path)` | byte-exact `data:` URL | throws |
 
@@ -347,6 +347,12 @@ One file: [`components/InspectionRow.tsx`](../components/InspectionRow.tsx). The
 
 **Don't** re-inline an avatar + title + time row in a screen file — that's the duplication this consolidated. Story: `design-system/stories/InspectionRow.stories.tsx`.
 
+## Inspection detail routing
+
+One file: [`lib/inspectionRouting.ts`](../lib/inspectionRouting.ts). `routeForInspection(source, id, isCompleted)` is the **only** place that maps an inspection's `source`/`template.category` to its expo-router href (per-equipment detail screens, the harness draft/completed split, and the generic wizard/result fallbacks). `labelForSource(source)` owns the Georgian category labels.
+
+**Don't** hand-roll an inline `/inspections/<type>/${id}` switch in a screen — that dispatch has drifted twice (`app/history.tsx`, then `app/projects/[id]/inspections.tsx` covered 3 of 10 types and silently sent the rest to the empty generic detail). `check-primitives` bans the equipment-route literals outside this file (flow-internal navigation under `app/inspections/**`, e.g. `…/done`, is allowed). Per-project lists should read the unified RPC (`useUnifiedInspectionsByProject`) and pass `item.source` straight in — see `features/project-detail/sections/InspectionsSection.tsx`.
+
 ## Order (ბრძანება) PDF builder
 
 One file: [`lib/orderPdf.ts`](../lib/orderPdf.ts). Exports `buildLaborSafetyOrderHtml(args: OrderPdfArgs): string`.
@@ -456,6 +462,10 @@ One owner: [`lib/cachedRead.ts`](../lib/cachedRead.ts) — `cachedRead(queryKey,
 ## List load state (skeleton / offline / empty / data)
 
 One owner: [`hooks/useListLoadState.ts`](../hooks/useListLoadState.ts) — `useListLoadState(q, count)` (single query) and `listsLoadState(queries, total)` (multi-query union), returning `'data' | 'skeleton' | 'offline' | 'empty'`. This is the canonical guard for every list screen (see CLAUDE.md → "Loading states"). The old inline recipe `(q.isFetching || !q.isFetched) && count === 0` is **banned** by check-primitives: with `onlineManager` wired, an offline query with no cache is `fetchStatus: 'paused'` and the inline guard skeletons forever. Render [`components/OfflineEmptyState.tsx`](../components/OfflineEmptyState.tsx) for the `'offline'` branch (never the regular empty state — the data may exist server-side). Flow-gating on `isFetched` alone has the same hang: treat `fetchStatus === 'paused'` as settled (see `components/FlowProjectPicker.tsx`).
+
+## Lean list feeds (signature payloads stay off list queries)
+
+List/recent feeds must not carry per-row base64 payloads that only detail/PDF paths render. Owners: [`lib/briefingsApi.ts`](../lib/briefingsApi.ts) and [`lib/ordersApi.ts`](../lib/ordersApi.ts) route `recent` / `listByProject` / `listAll` through the `briefings_list_lean` / `orders_list_lean` views (migration `20260708120000_lean_list_feeds.sql`), which null out `participants[].signature` + `inspector_signature` and strip the `directorSignature` / `appointedSignature` / `operatorSignature` keys from order `form_data`. `getById` keeps reading the base table, so edit/detail/PDF flows (which go through `cachedRead(qk.*.byId, getById)`) always see the full row. Certificate count badges use the `get_certificate_counts(uuid[])` RPC (grouped server-side) via `certificatesApi.countsByInspection`. All three read paths fall back to the legacy query when the migration isn't applied, gated by `isMissingDbObjectError` in [`lib/services/real/_shared.ts`](../lib/services/real/_shared.ts) — reuse that helper for any future "new view/RPC with graceful fallback" read; don't hand-roll error-code sniffing. **Don't** point a list feed back at the base table "for one extra field": if a list genuinely needs more, extend the view in a new migration.
 
 ## Network state (NetInfo)
 
