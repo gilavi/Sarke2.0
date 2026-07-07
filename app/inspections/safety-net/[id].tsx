@@ -418,15 +418,15 @@ export default function SafetyNetInspectionScreen() {
               <IdentificationGrid
                 fields={[
                   { label: 'დასახელება', value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
-                  { label: 'ბადის ზომა მ×მ', value: inspection.netSize, onChange: v => update('netSize', v) },
-                  { label: 'უჯრედის მხარე', value: inspection.cellSide, onChange: v => update('cellSide', v) },
+                  { label: 'ბადის ზომა (მ×მ)', value: inspection.netSize, onChange: v => update('netSize', v) },
+                  { label: 'ბადის უჯრედის გვერდების სიგრძე', value: inspection.cellSide, onChange: v => update('cellSide', v) },
                   { label: 'ბადის დგარებს შორის მანძილი', value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
                   {
-                    label: 'ბადის სერტიფიკატი',
+                    label: 'ბადის სერთიფიკატი',
                     value: inspection.certificate ?? '',
                     type: 'chips',
                     options: ['none', 'active', 'expired'],
-                    optionLabels: ['არ გააჩნია', 'მოქმედია', 'ვადაგასულია'],
+                    optionLabels: ['არ აქვს', 'მოქმედია', 'ვადა ამოწურულია'],
                     onChange: v => update('certificate', v as SafetyNetInspection['certificate']),
                     isProblematic: inspection.certificate === 'expired' || inspection.certificate === 'none',
                   },
@@ -448,11 +448,11 @@ export default function SafetyNetInspectionScreen() {
             >
               <IdentificationGrid
                 fields={[
-                  { label: 'დგარის ზომა', value: inspection.postSize, onChange: v => update('postSize', v) },
-                  { label: 'დგარების რ-ბა', value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
-                  { label: 'დგარის სამაგრების რ-ბა', value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
-                  { label: 'სამაგრი წერტილების რ-ბა', value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
-                  { label: 'კიდის ბაგირების რ-ბა', value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
+                  { label: 'დგარების ზომა', value: inspection.postSize, onChange: v => update('postSize', v) },
+                  { label: 'დგარების რაოდენობა', value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
+                  { label: 'დგარის სამაგრი ფეხის რაოდენობა', value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
+                  { label: 'ბადის დგარების ანკერის / ჭანჭიკის წერტილების რაოდენობა', value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
+                  { label: 'ბადის კიდეზე არსებული ბაგირის რაოდენობა', value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
                 ]}
                 columns={1}
               />

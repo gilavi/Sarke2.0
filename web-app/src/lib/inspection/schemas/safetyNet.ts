@@ -121,24 +121,24 @@ function renderSectionI(insp: SafetyNetInspection): string {
 function renderSectionII(insp: SafetyNetInspection): string {
   const certPill = (() => {
     if (!insp.certificate) return '<span class="pill pill-null">-</span>';
-    if (insp.certificate === 'active') return '<span class="pill pill-cert-active">მოქმედი სერტ.</span>';
-    if (insp.certificate === 'expired') return '<span class="pill pill-cert-expired">ვადაგასული</span>';
-    return '<span class="pill pill-cert-none">სერტ. არ გააჩნია</span>';
+    if (insp.certificate === 'active') return '<span class="pill pill-cert-active">მოქმედია</span>';
+    if (insp.certificate === 'expired') return '<span class="pill pill-cert-expired">ვადა ამოწურულია</span>';
+    return '<span class="pill pill-cert-none">არ აქვს</span>';
   })();
 
   return `
     <div class="section-title">II - ბადის იდენტიფიკაცია</div>
     <table class="param-table">
       <tr><td>დასახელება</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
-      <tr><td>ბადის ზომა მ×მ</td><td>${escapeHtml(insp.netSize) || '-'}</td></tr>
-      <tr><td>დგარის ზომა</td><td>${escapeHtml(insp.postSize) || '-'}</td></tr>
+      <tr><td>ბადის ზომა (მ×მ)</td><td>${escapeHtml(insp.netSize) || '-'}</td></tr>
+      <tr><td>დგარების ზომა</td><td>${escapeHtml(insp.postSize) || '-'}</td></tr>
       <tr><td>დგარების რაოდენობა</td><td>${insp.postCount ?? '-'}</td></tr>
-      <tr><td>დგარის სამაგრების რ-ბა</td><td>${insp.postAnchorCount ?? '-'}</td></tr>
-      <tr><td>სამაგრი წერტილების რ-ბა</td><td>${insp.anchorPointCount ?? '-'}</td></tr>
-      <tr><td>კიდის ბაგირების რ-ბა</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
-      <tr><td>უჯრედის მხარე</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
+      <tr><td>დგარის სამაგრი ფეხის რაოდენობა</td><td>${insp.postAnchorCount ?? '-'}</td></tr>
+      <tr><td>ბადის დგარების ანკერის / ჭანჭიკის წერტილების რაოდენობა</td><td>${insp.anchorPointCount ?? '-'}</td></tr>
+      <tr><td>ბადის კიდეზე არსებული ბაგირის რაოდენობა</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
+      <tr><td>ბადის უჯრედის გვერდების სიგრძე</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
       <tr><td>ბადის დგარებს შორის მანძილი</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
-      <tr><td>სერტიფიკატი</td><td>${certPill}</td></tr>
+      <tr><td>ბადის სერთიფიკატი</td><td>${certPill}</td></tr>
     </table>
   `;
 }
