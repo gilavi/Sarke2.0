@@ -16,6 +16,7 @@ import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { EquipmentResultDetails } from '../../../features/inspection-result';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
+import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -387,6 +388,7 @@ export default function BobcatInspectionScreen() {
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
       completing={completing}
+      banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
       onBlockedNext={markAttempted}
       onNext={handleNext}
       onPrev={handlePrev}

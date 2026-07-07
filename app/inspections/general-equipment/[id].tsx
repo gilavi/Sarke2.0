@@ -27,6 +27,7 @@ import { imageForDisplay } from '../../../lib/imageUrl';
 import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
+import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
@@ -413,6 +414,7 @@ export default function GeneralEquipmentScreen() {
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
         completing={completing}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onBlockedNext={markAttempted}
