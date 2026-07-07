@@ -52,6 +52,7 @@ function baseRow(over: Partial<any> = {}): any {
     maintenance_items: [],
     verdict: null,
     notes: null,
+    summary_photos: ['s1.jpg'],
     inspector_position: null,
     inspector_signature: null,
     completed_at: null,
@@ -81,6 +82,11 @@ describe('excavatorService config', () => {
   it('createColumns nulls inspector_name when omitted', () => {
     const cols = captured!.createColumns({});
     expect(cols.inspector_name).toBeNull();
+  });
+
+  it('createColumns seeds empty summary_photos', () => {
+    const cols = captured!.createColumns({ inspectorName: 'Gio' });
+    expect(cols.summary_photos).toEqual([]);
   });
 });
 
@@ -128,6 +134,11 @@ describe('excavatorService toModel', () => {
     const m = captured!.toModel(baseRow({ moto_hours: 42, serial_number: null }));
     expect(m.motoHours).toBe(42);
     expect(m.serialNumber).toBeNull();
+  });
+
+  it('maps summary_photos → summaryPhotos, defaulting to [] when not an array', () => {
+    expect(captured!.toModel(baseRow({ summary_photos: ['a.jpg'] })).summaryPhotos).toEqual(['a.jpg']);
+    expect(captured!.toModel(baseRow({ summary_photos: null as any })).summaryPhotos).toEqual([]);
   });
 });
 
@@ -181,5 +192,9 @@ describe('excavatorService toDb', () => {
       inspectorSignature: 'data:',
     } as any);
     expect(out).toEqual({});
+  });
+
+  it('maps summaryPhotos → summary_photos', () => {
+    expect(captured!.toDb({ summaryPhotos: ['a.jpg'] })).toEqual({ summary_photos: ['a.jpg'] });
   });
 });

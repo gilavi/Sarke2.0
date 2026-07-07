@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-07-07 — Bobcat/excavator summary photos no longer vanish
+
+Conclusion-step "summary photos" on **bobcat** and **excavator** inspections
+were written to on-device AsyncStorage instead of the `summary_photos` DB
+column. Bobcat never read them back, so the photos disappeared from the detail
+view, the conclusion step, and the PDF after a reload; excavator kept them on
+one device only (invisible to other devices + the web dashboard). Both services
+(`lib/bobcatService.ts`, `lib/excavatorService.ts`) now map the column that the
+six other equipment types already used, and both routes autosave summary photos
+to the DB. A one-time recovery hook
+([`lib/inspection/useLegacySummaryPhotoRecovery.ts`](../lib/inspection/useLegacySummaryPhotoRecovery.ts))
+migrates any orphaned AsyncStorage lists into the column on next open, so no
+already-captured photos are lost on upgrade. The DB column already existed
+(migration `0037`), so no schema change was required. Dead, never-wired per-item
+photo handlers (leftovers from when per-row checklist photos were removed) were
+also deleted from **both** the bobcat and excavator routes, along with the now-
+orphaned `uploadPhoto` method on each service's API. See
+[docs/reports/BUG_REPORT.md](reports/BUG_REPORT.md).
+
+---
+
 ## 2026-07-07 — More-tab polish + PDF share from the signatures modal (v1.2.1)
 
 Shipped two ways: OTA update group `8db79d95` on the `production` channel

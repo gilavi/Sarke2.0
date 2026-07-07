@@ -35,7 +35,7 @@ import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLegacySummaryPhotoRecovery } from '../../../lib/inspection/useLegacySummaryPhotoRecovery';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
@@ -133,8 +133,9 @@ export default function ExcavatorInspectionScreen() {
   const plateRef = useRef<PlateInputHandle>(null);
   const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
 
-  // summaryPhotos are stored locally in AsyncStorage (excavator-specific)
-  const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
+  // Legacy AsyncStorage key older builds wrote summary photos to (instead of
+  // the summary_photos DB column) — only read for one-time recovery below.
+  const legacySummaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
 
   // ── Shared orchestration ──────────────────────────────────────────────────
 
@@ -171,6 +172,7 @@ export default function ExcavatorInspectionScreen() {
       maintenanceItems: insp.maintenanceItems,
       verdict: insp.verdict,
       notes: insp.notes,
+      summaryPhotos: insp.summaryPhotos,
     }),
     validateMissing: (insp) => {
       const missing: string[] = [];
@@ -202,21 +204,20 @@ export default function ExcavatorInspectionScreen() {
     loadingTitle: 'ექსკავატორის შემოწმება',
   });
 
-  // ── Load summaryPhotos from AsyncStorage after inspection loads ───────────
-
-  useEffect(() => {
-    if (!inspection || inspection.summaryPhotos?.length) return;
-    AsyncStorage.getItem(summaryPhotosKey).then(saved => {
-      if (!saved) return;
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setInspection(prev => prev ? { ...prev, summaryPhotos: parsed } : prev);
-        }
-      } catch {}
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryPhotosKey, !!inspection]);
+  // Older builds persisted the summary-photo list only to AsyncStorage, so the
+  // photos existed on one device only (and were invisible to the web dashboard
+  // + other devices). Recover that list into the summary_photos column once.
+  useLegacySummaryPhotoRecovery({
+    inspectionId: inspection?.id ?? null,
+    dbPhotos: inspection?.summaryPhotos,
+    legacyKey: legacySummaryPhotosKey,
+    persist: async (photos) => {
+      const insp = inspectionRef.current;
+      if (insp) await excavatorApi.patch(insp.id, { summaryPhotos: photos });
+    },
+    apply: (photos) => setInspection(prev =>
+      prev && !prev.summaryPhotos?.length ? { ...prev, summaryPhotos: photos } : prev),
+  });
 
   // ── Checklist item update (flat → section mapping) ─────────────────────────
 
@@ -249,51 +250,6 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling ─────────────────────────────────────────────────────────
-
-  const handleAddPhoto = useCallback(async (section: Section, itemId: number) => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const key = sectionKey(section);
-          const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
-          const idx = arr.findIndex(i => i.id === itemId);
-          if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: [...(arr[idx].photo_paths ?? []), path] };
-          const next = { ...prev, [key]: arr };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeletePhoto = useCallback(async (section: Section, itemId: number, path: string) => {
-    try {
-      await excavatorApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const key = sectionKey(section);
-      const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
-      const idx = arr.findIndex(i => i.id === itemId);
-      if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: (arr[idx].photo_paths ?? []).filter(p => p !== path) };
-      const next = { ...prev, [key]: arr };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection]);
-
   // ── Summary Photos ─────────────────────────────────────────────────────────
 
   const handleAddSummaryPhoto = useCallback(async () => {
@@ -307,14 +263,14 @@ export default function ExcavatorInspectionScreen() {
         setInspection(prev => {
           if (!prev) return prev;
           const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
-          AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+          scheduleSave(next);
           return next;
         });
       } catch (e) {
         toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
       }
     }
-  }, [pickPhotosWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey]);
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -326,10 +282,10 @@ export default function ExcavatorInspectionScreen() {
     setInspection(prev => {
       if (!prev) return prev;
       const next = { ...prev, summaryPhotos: (prev.summaryPhotos ?? []).filter(p => p !== path) };
-      AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+      scheduleSave(next);
       return next;
     });
-  }, [summaryPhotosKey, toast, setInspection]);
+  }, [scheduleSave, toast, setInspection]);
 
   // ── Help sheet ─────────────────────────────────────────────────────────────
 

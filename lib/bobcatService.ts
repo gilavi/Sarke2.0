@@ -24,6 +24,7 @@ type DbRow = {
   items: BobcatItemState[];
   verdict: string | null;
   notes: string | null;
+  summary_photos: string[];
   inspector_signature: string | null;
   completed_at: string | null;
   created_at: string;
@@ -55,6 +56,7 @@ function toModel(row: DbRow): BobcatInspection {
       : buildDefaultItems(catalog),
     verdict: (row.verdict ?? null) as BobcatInspection['verdict'],
     notes: row.notes,
+    summaryPhotos: Array.isArray(row.summary_photos) ? row.summary_photos : [],
     inspectorSignature: row.inspector_signature,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -74,6 +76,7 @@ type BobcatPatch = Partial<{
   items: BobcatItemState[];
   verdict: BobcatInspection['verdict'];
   notes: string | null;
+  summaryPhotos: string[];
   inspectorSignature: string | null;
 }>;
 
@@ -89,6 +92,7 @@ function toDb(patch: BobcatPatch): Record<string, unknown> {
   if ('items'              in patch) db.items               = patch.items;
   if ('verdict'            in patch) db.verdict             = patch.verdict;
   if ('notes'              in patch) db.notes               = patch.notes;
+  if ('summaryPhotos'      in patch) db.summary_photos      = patch.summaryPhotos;
   return db;
 }
 
@@ -103,6 +107,7 @@ const base = makeInspectionService<BobcatInspection, BobcatPatch>({
   createColumns: (args) => ({
     inspector_name: args.inspectorName ?? null,
     items: buildDefaultItems(catalogFor(args.templateId)),
+    summary_photos: [],
   }),
 });
 
@@ -114,8 +119,6 @@ export const bobcatApi = {
   complete: base.complete,
   reopen: base.reopen,
   deletePhoto: base.deletePhoto,
-  uploadPhoto: (inspectionId: string, itemId: number, photoUri: string) =>
-    base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),
   uploadSummaryPhoto: (inspectionId: string, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/summary`, photoUri),
 };

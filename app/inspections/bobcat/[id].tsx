@@ -32,7 +32,7 @@ import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSession } from '../../../lib/session';
 import { friendlyError } from '../../../lib/errorMap';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLegacySummaryPhotoRecovery } from '../../../lib/inspection/useLegacySummaryPhotoRecovery';
 import {
   BOBCAT_ITEMS,
   BOBCAT_CATEGORY_LABELS,
@@ -94,7 +94,9 @@ export default function BobcatInspectionScreen() {
   const plateRef = useRef<PlateInputHandle>(null);
   const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
 
-  const summaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
+  // Legacy AsyncStorage key older builds wrote summary photos to (instead of
+  // the summary_photos DB column) — only read for one-time recovery below.
+  const legacySummaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
 
   // ── Shared orchestration via useInspectionFlow ────────────────────────────
 
@@ -126,6 +128,7 @@ export default function BobcatInspectionScreen() {
       items: insp.items,
       verdict: insp.verdict,
       notes: insp.notes,
+      summaryPhotos: insp.summaryPhotos,
     }),
     validateMissing: (insp) => {
       const missing: string[] = [];
@@ -189,50 +192,22 @@ export default function BobcatInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling ─────────────────────────────────────────────────────────
-
-  const handleAddPhoto = useCallback(async (itemId: number) => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await bobcatApi.uploadPhoto(insp.id, itemId, result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const items = prev.items.map(i =>
-            i.id === itemId ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] } : i,
-          );
-          const next = { ...prev, items };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, t('errors.uploadFailed')));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection, t]);
-
-  const handleDeletePhoto = useCallback(async (itemId: number, path: string) => {
-    try {
-      await bobcatApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, t('errors.deleteFailed')));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const items = prev.items.map(i =>
-        i.id === itemId ? { ...i, photo_paths: (i.photo_paths ?? []).filter(p => p !== path) } : i,
-      );
-      const next = { ...prev, items };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection, t]);
-
   // ── Summary Photos ─────────────────────────────────────────────────────────
+
+  // Older builds persisted the summary-photo list only to AsyncStorage (never
+  // to the summary_photos column), so the files sat orphaned in storage while
+  // the detail view and PDF showed nothing. Recover that list into the DB once.
+  useLegacySummaryPhotoRecovery({
+    inspectionId: inspection?.id ?? null,
+    dbPhotos: inspection?.summaryPhotos,
+    legacyKey: legacySummaryPhotosKey,
+    persist: async (photos) => {
+      const insp = inspectionRef.current;
+      if (insp) await bobcatApi.patch(insp.id, { summaryPhotos: photos });
+    },
+    apply: (photos) => setInspection(prev =>
+      prev && !prev.summaryPhotos?.length ? { ...prev, summaryPhotos: photos } : prev),
+  });
 
   const handleAddSummaryPhoto = useCallback(async () => {
     const results = await pickPhotosWithAnnotation();
@@ -245,14 +220,14 @@ export default function BobcatInspectionScreen() {
         setInspection(prev => {
           if (!prev) return prev;
           const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
-          AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+          scheduleSave(next);
           return next;
         });
       } catch (e) {
         toast.error(friendlyError(e, t('errors.uploadFailed')));
       }
     }
-  }, [pickPhotosWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey, t]);
+  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection, t]);
 
   const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
     try {
@@ -264,10 +239,10 @@ export default function BobcatInspectionScreen() {
     setInspection(prev => {
       if (!prev) return prev;
       const next = { ...prev, summaryPhotos: (prev.summaryPhotos ?? []).filter(p => p !== path) };
-      AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
+      scheduleSave(next);
       return next;
     });
-  }, [summaryPhotosKey, toast, setInspection, t]);
+  }, [scheduleSave, toast, setInspection, t]);
 
   // ── Step navigation ────────────────────────────────────────────────────────
 
