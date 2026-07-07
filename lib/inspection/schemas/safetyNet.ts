@@ -19,14 +19,17 @@
  *   - The page footer now uses the engine's unified format ("<label>" / "<date>
  *     · ID <id>") instead of the old three-span "Hubble - … / ID: <id> / <date>".
  */
+import i18n from '../../i18n';
 import { escapeHtml, fmtDate } from '../escape';
 import type { InspectionSchema, PhotoMap } from '../schema';
 import {
   SN_VISUAL_ITEMS,
   SN_POST_TEST_ITEMS,
-  SN_VERDICT_LABEL,
   SAFETY_NET_TEMPLATE_ID,
   snTotalWeight,
+  snItemLabel,
+  snItemDescription,
+  snVerdictLabel,
   type SafetyNetInspection,
 } from '../../../types/safetyNet';
 
@@ -152,24 +155,24 @@ function renderSectionI(insp: SafetyNetInspection): string {
 function renderSectionII(insp: SafetyNetInspection): string {
   const certPill = (() => {
     if (!insp.certificate) return '<span class="pill pill-null">-</span>';
-    if (insp.certificate === 'active')  return '<span class="pill pill-cert-active">მოქმედია</span>';
-    if (insp.certificate === 'expired') return '<span class="pill pill-cert-expired">ვადა ამოწურულია</span>';
-    return '<span class="pill pill-cert-none">არ აქვს</span>';
+    if (insp.certificate === 'active')  return `<span class="pill pill-cert-active">${escapeHtml(i18n.t('inspections.snCertActive'))}</span>`;
+    if (insp.certificate === 'expired') return `<span class="pill pill-cert-expired">${escapeHtml(i18n.t('inspections.snCertExpired'))}</span>`;
+    return `<span class="pill pill-cert-none">${escapeHtml(i18n.t('inspections.snCertNone'))}</span>`;
   })();
 
   return `
     <div class="section-title">II - ბადის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>დასახელება</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
-      <tr><td>ბადის ზომა (მ×მ)</td><td>${escapeHtml(insp.netSize) || '-'}</td></tr>
-      <tr><td>დგარების ზომა</td><td>${escapeHtml(insp.postSize) || '-'}</td></tr>
-      <tr><td>დგარების რაოდენობა</td><td>${insp.postCount ?? '-'}</td></tr>
-      <tr><td>დგარის სამაგრი ფეხის რაოდენობა</td><td>${insp.postAnchorCount ?? '-'}</td></tr>
-      <tr><td>ბადის დგარების ანკერის / ჭანჭიკის წერტილების რაოდენობა</td><td>${insp.anchorPointCount ?? '-'}</td></tr>
-      <tr><td>ბადის კიდეზე არსებული ბაგირის რაოდენობა</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
-      <tr><td>ბადის უჯრედის გვერდების სიგრძე</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
-      <tr><td>ბადის დგარებს შორის მანძილი</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
-      <tr><td>ბადის სერთიფიკატი</td><td>${certPill}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snManufacturerLabel'))}</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snNetSizeLabel'))}</td><td>${escapeHtml(insp.netSize) || '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snPostSizeLabel'))}</td><td>${escapeHtml(insp.postSize) || '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snPostCountLabel'))}</td><td>${insp.postCount ?? '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snPostAnchorCountLabel'))}</td><td>${insp.postAnchorCount ?? '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snAnchorPointCountLabel'))}</td><td>${insp.anchorPointCount ?? '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snEdgeRopeCountLabel'))}</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snCellSideLabel'))}</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snWorkingDistanceLabel'))}</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
+      <tr><td>${escapeHtml(i18n.t('inspections.snCertLabel'))}</td><td>${certPill}</td></tr>
     </table>
   `;
 }
@@ -183,9 +186,9 @@ function renderSectionIII(insp: SafetyNetInspection, photos: PhotoMap): string {
     const isFix = result === 'fix';
 
     const pillHtml = (() => {
-      if (result === 'good') return '<span class="pill pill-good">კარგი</span>';
-      if (result === 'fix')  return '<span class="pill pill-fix">გამოსასწ.</span>';
-      if (result === 'na')   return '<span class="pill pill-na">N/A</span>';
+      if (result === 'good') return `<span class="pill pill-good">${escapeHtml(i18n.t('inspections.snResultGood'))}</span>`;
+      if (result === 'fix')  return `<span class="pill pill-fix">${escapeHtml(i18n.t('inspections.snResultFix'))}</span>`;
+      if (result === 'na')   return `<span class="pill pill-na">${escapeHtml(i18n.t('inspections.snResultNa'))}</span>`;
       return '<span class="pill pill-null">-</span>';
     })();
 
@@ -199,13 +202,14 @@ function renderSectionIII(insp: SafetyNetInspection, photos: PhotoMap): string {
       ? `<div class="item-comment">${escapeHtml(state.comment)}</div>`
       : '';
     const photosHtml = photoHtml ? `<div style="margin-top:4px">${photoHtml}</div>` : '';
+    const itemDescription = snItemDescription(entry);
 
     return `
       <tr class="${isFix ? 'item-fix' : ''}">
         <td class="col-num">${entry.id}</td>
         <td>
-          ${escapeHtml(entry.label)}
-          ${entry.description ? `<div class="item-comment">${escapeHtml(entry.description)}</div>` : ''}
+          ${escapeHtml(snItemLabel(entry))}
+          ${itemDescription ? `<div class="item-comment">${escapeHtml(itemDescription)}</div>` : ''}
           ${commentHtml}${photosHtml}
         </td>
         <td class="col-result">${pillHtml}</td>
@@ -252,17 +256,17 @@ function renderSectionIV(insp: SafetyNetInspection): string {
       <thead>
         <tr>
           <th class="col-num">№</th>
-          <th>ტვირთის აღწერა</th>
-          <th style="text-align:right;width:80px">ერთ.წ.(კგ)</th>
-          <th style="text-align:right;width:60px">რ-ბა</th>
-          <th style="text-align:right;width:80px">სულ(კგ)</th>
-          <th>კომ.</th>
+          <th>${escapeHtml(i18n.t('inspections.snCargoNameCol'))}</th>
+          <th style="text-align:right;width:80px">${escapeHtml(i18n.t('inspections.snUnitWeightCol'))}</th>
+          <th style="text-align:right;width:60px">${escapeHtml(i18n.t('inspections.snQuantityCol'))}</th>
+          <th style="text-align:right;width:80px">${escapeHtml(i18n.t('inspections.snTotalWeightCol'))}</th>
+          <th>${escapeHtml(i18n.t('inspections.snCommentCol'))}</th>
         </tr>
       </thead>
       <tbody>${loadRows}</tbody>
       <tfoot>
         <tr class="load-total">
-          <td colspan="4" style="text-align:right">სულ:</td>
+          <td colspan="4" style="text-align:right">${escapeHtml(i18n.t('inspections.snTotalLabel'))}</td>
           <td style="text-align:right">${totalKg} კგ</td>
           <td></td>
         </tr>
@@ -280,15 +284,15 @@ function renderSectionV(insp: SafetyNetInspection): string {
     const isFail = result === 'fail';
 
     const pillHtml = (() => {
-      if (result === 'pass') return '<span class="pill pill-pass">გამოც. ✓</span>';
-      if (result === 'fail') return '<span class="pill pill-fail">პრობლ. ✗</span>';
+      if (result === 'pass') return `<span class="pill pill-pass">${escapeHtml(i18n.t('inspections.snResultPass'))} ✓</span>`;
+      if (result === 'fail') return `<span class="pill pill-fail">${escapeHtml(i18n.t('inspections.snResultFail'))} ✗</span>`;
       return '<span class="pill pill-null">-</span>';
     })();
 
     return `
       <tr class="${isFail ? 'item-fail' : ''}">
         <td class="col-num">${entry.id}</td>
-        <td>${escapeHtml(entry.label)}</td>
+        <td>${escapeHtml(snItemLabel(entry))}</td>
         <td class="col-result">${pillHtml}</td>
       </tr>`;
   }).join('');
@@ -319,7 +323,7 @@ function renderSectionVI(insp: SafetyNetInspection): string {
     return `
       <div class="verdict-option ${selClass}">
         <div class="verdict-box ${boxClass}"></div>
-        <span class="verdict-label">${escapeHtml(SN_VERDICT_LABEL[v])}</span>
+        <span class="verdict-label">${escapeHtml(snVerdictLabel(v))}</span>
       </div>`;
   }).join('');
 
@@ -414,7 +418,7 @@ export const safetyNetSchema: InspectionSchema<SafetyNetInspection> = {
   pathPrefix: 'safety-net',
   templateId: SAFETY_NET_TEMPLATE_ID,
 
-  docTitle: 'უსაფრთხოების ბადის შემოწმების აქტი',
+  docTitle: () => escapeHtml(i18n.t('inspections.snDocTitle')),
   docSubtitle: 'Safety Net Inspection & Acceptance Act',
   pdfFooterLabel: 'Hubble - შრომის უსაფრთხოება',
   pdfNameLabel: 'SafetyNetInspection',

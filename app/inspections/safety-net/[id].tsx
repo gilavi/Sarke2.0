@@ -33,7 +33,6 @@ import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import {
   SN_VISUAL_ITEMS,
   SN_POST_TEST_ITEMS,
-  SN_VERDICT_LABEL,
   SAFETY_NET_TEMPLATE_ID,
   buildDefaultSNLoadTestRow,
   snTotalWeight,
@@ -55,38 +54,41 @@ const LOAD_TEST_STEP  = 4; // load-test table + post-test checklist
 const CONCLUSION_STEP = 5; // verdict + comment + qual-doc + photos
 const TOTAL_STEPS     = 5;
 
-const SN_VERDICT_OPTIONS: VerdictOption<SNVerdict>[] = [
-  { value: 'pass', label: SN_VERDICT_LABEL.pass, tone: 'success' },
-  { value: 'fail', label: SN_VERDICT_LABEL.fail, tone: 'danger'  },
-];
-
-// Result vocabulary for the completed detail page (mirrors the PDF result pills).
-// Combines the visual-checklist results (good/fix/na) and the post-test
-// pass/fail results — `EquipmentChecklistContent` resolves each item's result
-// against this single map.
-const SAFETY_NET_RESULT_OPTIONS: ResultOption[] = [
-  { value: 'good', label: 'კარგი',      short: 'კარგი',     tone: 'good'    },
-  { value: 'fix',  label: 'გამოსასწ.',  short: 'გამოსასწ.', tone: 'warn'    },
-  { value: 'na',   label: 'N/A',         short: 'N/A',        tone: 'neutral' },
-  { value: 'pass', label: 'გამოც.',     short: 'გამოც.',    tone: 'good'    },
-  { value: 'fail', label: 'პრობლ.',     short: 'პრობლ.',    tone: 'bad'     },
-];
-
-// Legend explaining the visual-checklist chip glyphs (✓ კარგი / ⚠ გამოსასწ. /
-// N/A), mirroring the printed act's markings key. Reuses ChecklistLegend like the
-// other equipment flows (cf. ChecklistStep's CHECKLIST_LEGEND).
-const SN_VISUAL_LEGEND: ChecklistLegendItem[] = [
-  { icon: Check,         label: 'კარგი' },
-  { icon: TriangleAlert, label: 'გამოსასწორებელი' },
-  { shortLabel: 'N/A',   label: 'არ გააჩნია ან არ ეკუთვნის' },
-];
-
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function SafetyNetInspectionScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const styles = useMemo(() => getstyles(theme), [theme]);
+
+  // Verdict/result/legend vocabularies read from i18n — built inside the
+  // component (not module-level consts) so they re-resolve if the CMS overlay
+  // lands after the module already loaded, or the language changes.
+  const verdictOptions = useMemo<VerdictOption<SNVerdict>[]>(() => [
+    { value: 'pass', label: t('inspections.snVerdictPass'), tone: 'success' },
+    { value: 'fail', label: t('inspections.snVerdictFail'), tone: 'danger'  },
+  ], [t]);
+
+  // Result vocabulary for the completed detail page (mirrors the PDF result pills).
+  // Combines the visual-checklist results (good/fix/na) and the post-test
+  // pass/fail results — `EquipmentChecklistContent` resolves each item's result
+  // against this single map.
+  const resultOptions = useMemo<ResultOption[]>(() => [
+    { value: 'good', label: t('inspections.snResultGood'), short: t('inspections.snResultGood'), tone: 'good'    },
+    { value: 'fix',  label: t('inspections.snResultFix'),  short: t('inspections.snResultFix'),  tone: 'warn'    },
+    { value: 'na',   label: t('inspections.snResultNa'),   short: t('inspections.snResultNa'),   tone: 'neutral' },
+    { value: 'pass', label: t('inspections.snResultPass'), short: t('inspections.snResultPass'), tone: 'good'    },
+    { value: 'fail', label: t('inspections.snResultFail'), short: t('inspections.snResultFail'), tone: 'bad'     },
+  ], [t]);
+
+  // Legend explaining the visual-checklist chip glyphs (✓ კარგი / ⚠ გამოსასწ. /
+  // N/A), mirroring the printed act's markings key. Reuses ChecklistLegend like the
+  // other equipment flows (cf. ChecklistStep's CHECKLIST_LEGEND).
+  const visualLegend = useMemo<ChecklistLegendItem[]>(() => [
+    { icon: Check,         label: t('inspections.snLegendGood') },
+    { icon: TriangleAlert, label: t('inspections.snLegendFix') },
+    { shortLabel: 'N/A',   label: t('inspections.snLegendNa') },
+  ], [t]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
@@ -133,7 +135,7 @@ export default function SafetyNetInspectionScreen() {
       qualDocPath: insp.qualDocPath,
       summaryPhotos: insp.summaryPhotos,
     }),
-    validateMissing: (insp) => (insp.verdict ? [] : ['დასკვნა']),
+    validateMissing: (insp) => (insp.verdict ? [] : [t('inspections.missingConclusion')]),
     autofill: (insp, { inspectorName, project }) => {
       let next = insp;
       const patch: Record<string, unknown> = {};
@@ -159,10 +161,10 @@ export default function SafetyNetInspectionScreen() {
     },
     pdf: {
       nameLabel: 'SafetyNetInspection',
-      title: 'უსაფრთხოების ბადის შემოწმების აქტი',
+      title: t('inspections.snDocTitle'),
       subject: 'შრომის უსაფრთხოება',
     },
-    loadingTitle: 'ბადის შემოწმება',
+    loadingTitle: t('inspections.snLoadingTitle'),
   });
 
   // Enabled finish button + on-press field errors (see useSubmitGuard).
@@ -319,7 +321,7 @@ export default function SafetyNetInspectionScreen() {
   if (loading || !inspection) {
     return (
       <InspectionShellSkeleton
-        title="ბადის შემოწმება"
+        title={t('inspections.snLoadingTitle')}
         projectName={projectName ?? ''}
         step={step - 1}
         totalSteps={TOTAL_STEPS}
@@ -341,13 +343,13 @@ export default function SafetyNetInspectionScreen() {
     const verdictTone = inspection.verdict === 'fail' ? 'severe' : 'safe';
     const sections: ResultChecklistSection[] = [
       {
-        title: 'ვიზუალური შემოწმება',
+        title: t('inspections.snVisualSectionTitle'),
         items: SN_VISUAL_ITEMS.map((entry) => {
           const st = inspection.items.find((i) => i.id === entry.id);
           return {
             id: entry.id,
-            label: entry.label,
-            description: entry.description || undefined,
+            label: t(entry.labelKey),
+            description: entry.descriptionKey ? t(entry.descriptionKey) : undefined,
             result: st?.result ?? null,
             comment: st?.comment ?? null,
             photoPaths: st?.photo_paths ?? [],
@@ -355,12 +357,12 @@ export default function SafetyNetInspectionScreen() {
         }),
       },
       {
-        title: 'ტვირთის ჩაგდების შემდეგ შემოწმება',
+        title: t('inspections.snPostTestTitle'),
         items: SN_POST_TEST_ITEMS.map((entry) => {
           const st = inspection.postTestItems.find((i) => i.id === entry.id);
           return {
             id: entry.id,
-            label: entry.label,
+            label: t(entry.labelKey),
             result: st?.result ?? null,
           };
         }),
@@ -370,18 +372,18 @@ export default function SafetyNetInspectionScreen() {
     return (
       <>
         <EquipmentResultDetails
-          title="ბადის შემოწმება"
-          status={inspection.verdict ? { tone: verdictTone, label: SN_VERDICT_LABEL[inspection.verdict] } : null}
+          title={t('inspections.snLoadingTitle')}
+          status={inspection.verdict ? { tone: verdictTone, label: t(inspection.verdict === 'pass' ? 'inspections.snVerdictPass' : 'inspections.snVerdictFail') } : null}
           info={[
             { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: 'დასახელება', value: inspection.manufacturer || '—' },
-            { label: 'ბადის ზომა', value: inspection.netSize || '—' },
+            { label: t('inspections.snManufacturerLabel'), value: inspection.manufacturer || '—' },
+            { label: t('inspections.snNetSizeLabel'), value: inspection.netSize || '—' },
             { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
             { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
             { label: t('details.info.code'), value: shortCode(inspection.id) },
           ]}
           sections={sections}
-          resultOptions={SAFETY_NET_RESULT_OPTIONS}
+          resultOptions={resultOptions}
           notes={inspection.verdictComment}
           summaryPhotos={inspection.summaryPhotos}
           creatorName={creatorName}
@@ -401,7 +403,7 @@ export default function SafetyNetInspectionScreen() {
   return (
     <View style={styles.root}>
       <InspectionShell
-        title="ბადის შემოწმება"
+        title={t('inspections.snLoadingTitle')}
         projectName={projectName ?? ''}
         step={step - 1}
         totalSteps={TOTAL_STEPS}
@@ -429,16 +431,16 @@ export default function SafetyNetInspectionScreen() {
             >
               <IdentificationGrid
                 fields={[
-                  { label: 'დასახელება', value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
-                  { label: 'ბადის ზომა (მ×მ)', value: inspection.netSize, onChange: v => update('netSize', v) },
-                  { label: 'ბადის უჯრედის გვერდების სიგრძე', value: inspection.cellSide, onChange: v => update('cellSide', v) },
-                  { label: 'ბადის დგარებს შორის მანძილი', value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
+                  { label: t('inspections.snManufacturerLabel'), value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
+                  { label: t('inspections.snNetSizeLabel'), value: inspection.netSize, onChange: v => update('netSize', v) },
+                  { label: t('inspections.snCellSideLabel'), value: inspection.cellSide, onChange: v => update('cellSide', v) },
+                  { label: t('inspections.snWorkingDistanceLabel'), value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
                   {
-                    label: 'ბადის სერთიფიკატი',
+                    label: t('inspections.snCertLabel'),
                     value: inspection.certificate ?? '',
                     type: 'chips',
                     options: ['none', 'active', 'expired'],
-                    optionLabels: ['არ აქვს', 'მოქმედია', 'ვადა ამოწურულია'],
+                    optionLabels: [t('inspections.snCertNone'), t('inspections.snCertActive'), t('inspections.snCertExpired')],
                     onChange: v => update('certificate', v as SafetyNetInspection['certificate']),
                     isProblematic: inspection.certificate === 'expired' || inspection.certificate === 'none',
                   },
@@ -460,11 +462,11 @@ export default function SafetyNetInspectionScreen() {
             >
               <IdentificationGrid
                 fields={[
-                  { label: 'დგარების ზომა', value: inspection.postSize, onChange: v => update('postSize', v) },
-                  { label: 'დგარების რაოდენობა', value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
-                  { label: 'დგარის სამაგრი ფეხის რაოდენობა', value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
-                  { label: 'ბადის დგარების ანკერის / ჭანჭიკის წერტილების რაოდენობა', value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
-                  { label: 'ბადის კიდეზე არსებული ბაგირის რაოდენობა', value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
+                  { label: t('inspections.snPostSizeLabel'), value: inspection.postSize, onChange: v => update('postSize', v) },
+                  { label: t('inspections.snPostCountLabel'), value: inspection.postCount != null ? String(inspection.postCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postCount', isNaN(n) ? null : n); } },
+                  { label: t('inspections.snPostAnchorCountLabel'), value: inspection.postAnchorCount != null ? String(inspection.postAnchorCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('postAnchorCount', isNaN(n) ? null : n); } },
+                  { label: t('inspections.snAnchorPointCountLabel'), value: inspection.anchorPointCount != null ? String(inspection.anchorPointCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('anchorPointCount', isNaN(n) ? null : n); } },
+                  { label: t('inspections.snEdgeRopeCountLabel'), value: inspection.edgeRopeCount != null ? String(inspection.edgeRopeCount) : '', type: 'number', onChange: v => { const n = parseInt(v, 10); update('edgeRopeCount', isNaN(n) ? null : n); } },
                 ]}
                 columns={1}
               />
@@ -481,16 +483,16 @@ export default function SafetyNetInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
-              <ChecklistLegend items={SN_VISUAL_LEGEND} />
+              <ChecklistLegend items={visualLegend} />
               <ChecklistSection
-                title="ვიზუალური შემოწმება"
+                title={t('inspections.snVisualSectionTitle')}
                 items={SN_VISUAL_ITEMS.map(e => {
                   const state = inspection.items.find(i => i.id === e.id)
                     ?? { id: e.id, result: null, comment: null, photo_paths: [] };
                   return {
                     id: e.id,
-                    label: e.label,
-                    description: e.description || undefined,
+                    label: t(e.labelKey),
+                    description: e.descriptionKey ? t(e.descriptionKey) : undefined,
                     type: 'three_state' as const,
                     options: { a: 'good', b: 'fix', c: 'N/A', cIsNeutral: true },
                     value: state.result === 'na' ? 'N/A' : state.result,
@@ -523,16 +525,16 @@ export default function SafetyNetInspectionScreen() {
               bottomOffset={120}
             >
               <Text style={styles.loadInstruction}>
-                180კგ-ის სიმძიმე 1მ სიმაღლიდან - №477 დადგენილება
+                {t('inspections.snLoadInstruction')}
               </Text>
 
               <DynamicTable
                 columns={[
-                  { key: 'name', label: 'ტვირთის აღწერა', type: 'text' },
-                  { key: 'unitWeightKg', label: 'ერთ.წ.(კგ)', type: 'number', keyboardType: 'decimal-pad' },
-                  { key: 'quantity', label: 'რ-ბა', type: 'number', keyboardType: 'numeric' },
-                  { key: 'totalWeightKg', label: 'სულ(კგ)', type: 'readonly' },
-                  { key: 'comment', label: 'კომ.', type: 'text' },
+                  { key: 'name', label: t('inspections.snCargoNameCol'), type: 'text' },
+                  { key: 'unitWeightKg', label: t('inspections.snUnitWeightCol'), type: 'number', keyboardType: 'decimal-pad' },
+                  { key: 'quantity', label: t('inspections.snQuantityCol'), type: 'number', keyboardType: 'numeric' },
+                  { key: 'totalWeightKg', label: t('inspections.snTotalWeightCol'), type: 'readonly' },
+                  { key: 'comment', label: t('inspections.snCommentCol'), type: 'text' },
                 ]}
                 rows={inspection.loadTestRows}
                 onChange={handleLoadTestChange}
@@ -540,20 +542,20 @@ export default function SafetyNetInspectionScreen() {
                 minRows={0}
                 footer={
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={styles.totalLabel}>სულ:</Text>
+                    <Text style={styles.totalLabel}>{t('inspections.snTotalLabel')}</Text>
                     <Text style={styles.totalValue}>{snTotalWeight(inspection.loadTestRows)} კგ</Text>
                   </View>
                 }
               />
 
               <ChecklistSection
-                title="ტვირთის ჩაგდების შემდეგ შემოწმება"
+                title={t('inspections.snPostTestTitle')}
                 items={SN_POST_TEST_ITEMS.map(e => {
                   const state = inspection.postTestItems.find(i => i.id === e.id)
                     ?? { id: e.id, result: null };
                   return {
                     id: e.id,
-                    label: e.label,
+                    label: t(e.labelKey),
                     type: 'binary' as const,
                     options: { a: 'pass', b: 'fail' },
                     value: state.result,
@@ -574,7 +576,7 @@ export default function SafetyNetInspectionScreen() {
           {step === CONCLUSION_STEP && (
             <ConclusionStep
               verdict={inspection.verdict}
-              verdictOptions={SN_VERDICT_OPTIONS}
+              verdictOptions={verdictOptions}
               verdictError={attempted && !inspection.verdict}
               onVerdictChange={v => update('verdict', v as SNVerdict)}
               notes={inspection.verdictComment ?? ''}
@@ -582,7 +584,7 @@ export default function SafetyNetInspectionScreen() {
               completing={completing}
               photoSection={
                 <View style={styles.docBlock}>
-                  <Text style={styles.fieldLabel}>ფოტო / ვიდეო მასალა (სურვ.)</Text>
+                  <Text style={styles.fieldLabel}>{t('inspections.snPhotosLabel')}</Text>
                   <PhotoSection
                     photoPaths={inspection.summaryPhotos}
                     onAdd={handleAddSummaryPhoto}

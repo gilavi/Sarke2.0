@@ -5,7 +5,7 @@ import {
   buildDefaultSNInspection,
   buildDefaultSNLoadTestRow,
   SAFETY_NET_TEMPLATE_ID,
-  SN_VERDICT_LABEL,
+  snVerdictLabel,
 } from '../../types/safetyNet';
 
 function mockInsp() {
@@ -61,7 +61,7 @@ describe('buildInspectionPdf - safetyNet', () => {
   });
 
   it('renders pass verdict label and comment', () => {
-    expect(html).toContain(SN_VERDICT_LABEL.pass);
+    expect(html).toContain(snVerdictLabel('pass'));
     expect(html).toContain('წესრიგშია');
   });
 
@@ -87,7 +87,7 @@ describe('buildInspectionPdf - safetyNet fail verdict', () => {
   const html = buildInspectionPdf(safetyNetSchema, { inspection: insp, projectName: 'P' }, {});
 
   it('renders fail verdict label', () => {
-    expect(html).toContain(SN_VERDICT_LABEL.fail);
+    expect(html).toContain(snVerdictLabel('fail'));
   });
 });
 

@@ -154,5 +154,3 @@ export interface InspectionSchema<T = any> {
   collectPhotoPaths: (d: T) => string[];
 }
 
-/** Standard top-right badge shared by every equipment inspection. */
-export const INTERNAL_DOC_BADGE = 'შიდა სამსახურებრივი დოკუმენტი';
