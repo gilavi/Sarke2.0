@@ -4,7 +4,10 @@
 
 ---
 
-## 2026-07-07 — More-tab polish + PDF share from the signatures modal
+## 2026-07-07 — More-tab polish + PDF share from the signatures modal (v1.2.1)
+
+Shipped two ways: OTA update group `8db79d95` on the `production` channel
+(reaches the live 1.2.0 fleet), and baked into the **v1.2.1** store build.
 
 - **More tab: duplicate overdue badge removed.** The calendar hub tile showed
   the overdue count twice — as a yellow `Badge` next to the icon **and** as the
