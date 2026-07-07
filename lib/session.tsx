@@ -129,13 +129,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // on a shared device and purge the previous user's draft/offline data
     // before the new user starts writing.
     let lastUserId: string | null = null;
+    // Which user id a signed-in state has already been committed for this app
+    // session. Gates the cached-profile fast path in safeLoadUser to the
+    // FIRST commit (the splash-visible one); later runs go straight to the
+    // network reconcile.
+    let committedUserId: string | null = null;
+    // Which user id the caches were last warmed for. The warm-up fan-out
+    // (warmHomeCaches + prefetchFlowStartCaches, ~23 requests) fires once per
+    // user per app session — a real login (SIGNED_IN) or an account switch —
+    // never again on the hourly TOKEN_REFRESHED / USER_UPDATED events.
+    let lastWarmedUserId: string | null = null;
+    // getSession() and the INITIAL_SESSION auth event both fire on every
+    // launch with the same session; whichever lands first runs safeLoadUser,
+    // the other is skipped (dedupes the boot users-row fetch + warm-up).
+    let bootLoadedUserId: string | null = null;
     // Epoch guard: a stale getSession() result must not overwrite a later
     // sign-out. Each safe-load gets a token; only the latest may commit state.
     let epoch = 0;
     let cancelled = false;
 
-    const safeLoadUser = async (session: Session) => {
+    const safeLoadUser = async (session: Session, opts?: { forceWarm?: boolean }) => {
       const myEpoch = ++epoch;
+      // Fast path: on the first commit for this user (cold boot) render
+      // signed-in from the cached profile immediately — one AsyncStorage read
+      // instead of a users-row round-trip of splash-visible time. The network
+      // fetch below reconciles names/terms when it lands (same epoch guard,
+      // and AuthGate re-evaluates terms gating on every state commit). True
+      // first logins have no cached profile and keep the blocking fetch.
+      if (committedUserId !== session.user.id) {
+        const cached = await readCachedUserProfile(session.user.id);
+        if (cancelled || myEpoch !== epoch) return;
+        if (cached) {
+          committedUserId = session.user.id;
+          setState({ status: 'signedIn', session, user: cached });
+        }
+      }
       try {
         const { data } = await supabase
           .from('users')
@@ -147,32 +175,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // Cache the profile so the next offline boot can render signed-in
         // without this network fetch (lib/sessionBootstrap.ts).
         if (user) void cacheUserProfile(user);
+        committedUserId = session.user.id;
         setState({ status: 'signedIn', session, user });
-        // Warm EVERY Home-screen cache in the background now that the JWT is
-        // provably live (the users-row fetch above just succeeded). The user is
-        // most likely heading for home or the projects tab next; this saves the
-        // cold-fetch wait on first arrival.
-        //
-        // `warmHomeCaches` prefetches projects, qualifications, templates AND the
-        // five record-widget lists with `staleTime: 0`, forcing a network round-
-        // trip even when a cached value exists. Without it, a mount-time query
-        // that raced JWT propagation and returned an RLS-empty `[]` would stick
-        // for the 5-minute default staleTime, leaving Home showing projects but
-        // no record widgets until pull-to-refresh. Projects were warmed here since
-        // 2026-05-27; the record widgets are added 2026-06-25 to close the same
-        // race. See `docs/reports/BUG_REPORT.md` ("Home shows empty projects
-        // after first login").
+        // Warm the Home-screen + flow-start caches in the background now that
+        // the JWT is provably live (the users-row fetch above just succeeded).
+        // ONCE per user per app session: a real login (SIGNED_IN → forceWarm)
+        // force-refetches past staleTime to close the JWT-propagation race
+        // that could cache an RLS-empty `[]` (see docs/reports/BUG_REPORT.md,
+        // "Home shows empty projects after first login"); a boot restore warms
+        // with the default staleTime so a fresh persisted cache is a no-op;
+        // hourly TOKEN_REFRESHED / USER_UPDATED events never re-fire the
+        // fan-out (the focusManager + staleTime binding in lib/queryClient.ts
+        // already refreshes stale queries on foreground).
         //
         // Fire-and-forget so a network blip here can't delay post-auth nav.
-        warmHomeCaches(queryClient);
-        // Also warm what creation flows read at their START (template question
-        // sets, per-project details) so flows open offline later.
-        prefetchFlowStartCaches(queryClient);
-        // Disk-cache the reusable expert signature so incident/order PDFs can
-        // embed it offline (lib/imageOfflineCache.ts signature cache).
-        if (user?.saved_signature_url) {
-          void signatureAsDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
-            .catch(() => {});
+        if (opts?.forceWarm || lastWarmedUserId !== session.user.id) {
+          lastWarmedUserId = session.user.id;
+          warmHomeCaches(queryClient, { force: opts?.forceWarm === true });
+          // Also warm what creation flows read at their START (template
+          // question sets, per-project details) so flows open offline later.
+          prefetchFlowStartCaches(queryClient);
+          // Disk-cache the reusable expert signature so incident/order PDFs
+          // can embed it offline (lib/imageOfflineCache.ts signature cache).
+          if (user?.saved_signature_url) {
+            void signatureAsDataUrl(STORAGE_BUCKETS.signatures, user.saved_signature_url)
+              .catch(() => {});
+          }
         }
       } catch (e) {
         if (cancelled || myEpoch !== epoch) return;
@@ -183,6 +211,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // null user so the user isn't bounced to login over a transient error.
         const cached = await readCachedUserProfile(session.user.id);
         if (cancelled || myEpoch !== epoch) return;
+        committedUserId = session.user.id;
         setState({ status: 'signedIn', session, user: cached });
       }
     };
@@ -213,6 +242,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (getSessionSettled || cancelled) return;
       committedOffline = true;
       lastUserId = stored.user.id;
+      committedUserId = stored.user.id;
       // Deliberately NOT warming caches here — offline prefetches are doomed;
       // the reconciled safeLoadUser() run warms them when network returns.
       setState({ status: 'signedIn', session: stored, user: cachedUser });
@@ -231,7 +261,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       if (data.session) {
         lastUserId = data.session.user.id;
-        void safeLoadUser(data.session);
+        // Skip when the INITIAL_SESSION listener beat us to the same user —
+        // the two paths fire on every launch with the same session.
+        if (bootLoadedUserId !== data.session.user.id) {
+          bootLoadedUserId = data.session.user.id;
+          void safeLoadUser(data.session);
+        }
       } else if (!committedOffline) {
         setState({ status: 'signedOut' });
       }
@@ -273,6 +308,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         // inspections from React Query's in-memory cache before the warming
         // prefetch lands.
         queryClient.clear();
+        // New identity (or none): the per-session commit/warm markers belong
+        // to the previous user.
+        committedUserId = null;
+        lastWarmedUserId = null;
       }
       lastUserId = nextUserId;
       if (session) {
@@ -281,7 +320,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         } catch {
           // Storage failure shouldn't block auth
         }
-        void safeLoadUser(session);
+        // Boot dedupe: INITIAL_SESSION duplicates the getSession() boot path
+        // on every launch — skip it when that path already loaded this user.
+        if (event === 'INITIAL_SESSION') {
+          if (bootLoadedUserId === session.user.id) return;
+          bootLoadedUserId = session.user.id;
+        }
+        // Only a real login can hit the JWT-propagation race, so only
+        // SIGNED_IN forces the warm-up past staleTime (see safeLoadUser).
+        void safeLoadUser(session, { forceWarm: event === 'SIGNED_IN' });
       } else {
         epoch++;
         setState({ status: 'signedOut' });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Camera, Pencil, Plus, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +36,7 @@ export function AttachmentBars({
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const hasPhotos = photos.length > 0;
   const hasNote = !!(note && note.length > 0);
   const [noteOpen, setNoteOpen] = useState(false);

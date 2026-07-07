@@ -4,10 +4,12 @@
  *
  * These lock down the wiring behind the "Home shows projects but no record
  * widgets after first login" fix (see docs/reports/BUG_REPORT.md):
- *  - `warmHomeCaches` must force-refetch (staleTime: 0) EVERY Home query,
- *    including the five record-widget lists, using the SAME query keys the
- *    widgets read — otherwise the prefetch warms a different cache entry and
- *    the JWT-race empty `[]` still sticks.
+ *  - `warmHomeCaches({ force: true })` (real logins) must force-refetch
+ *    (staleTime: 0) EVERY Home query, including the five record-widget lists,
+ *    using the SAME query keys the widgets read — otherwise the prefetch warms
+ *    a different cache entry and the JWT-race empty `[]` still sticks. Without
+ *    `force` (boot restores) it must NOT set staleTime: 0, so a fresh
+ *    persisted cache makes the fan-out a no-op.
  *  - `invalidateRecordLists` must be awaitable (Home's pull-to-refresh gates
  *    its spinner on it) and must cover every record namespace.
  *
@@ -18,6 +20,17 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { RECENT_COMPLETED_LIMIT } from '../../features/records/recordTypes';
+
+// recordTypes imports lucide-react-native, whose real module pulls react-native
+// Flow-syntax internals that vitest can't parse — stub the icons it uses.
+vi.mock('lucide-react-native', () => ({
+  ShieldCheck: () => null,
+  FileText: () => null,
+  Award: () => null,
+  TriangleAlert: () => null,
+  Megaphone: () => null,
+}));
+vi.mock('../../lib/riskAssessmentService', () => ({ riskAssessmentApi: {} }));
 
 vi.mock('../../lib/services', () => ({
   projectsApi: {}, projectFilesApi: {}, templatesApi: {}, inspectionsApi: {},
@@ -51,13 +64,24 @@ type PrefetchArg = { queryKey: readonly unknown[]; queryFn: () => Promise<unknow
 type InvalidateArg = { queryKey: readonly unknown[] };
 
 describe('warmHomeCaches', () => {
-  it('prefetches every Home query with staleTime: 0', () => {
+  it('prefetches every Home query with staleTime: 0 when forced (real login)', () => {
+    const prefetchQuery = vi.fn((_opts: PrefetchArg) => Promise.resolve());
+    warmHomeCaches({ prefetchQuery } as never, { force: true });
+
+    expect(prefetchQuery).toHaveBeenCalledTimes(9);
+    for (const [arg] of prefetchQuery.mock.calls) {
+      expect(arg.staleTime).toBe(0);
+      expect(typeof arg.queryFn).toBe('function');
+    }
+  });
+
+  it('respects the default staleTime when not forced (boot restore)', () => {
     const prefetchQuery = vi.fn((_opts: PrefetchArg) => Promise.resolve());
     warmHomeCaches({ prefetchQuery } as never);
 
     expect(prefetchQuery).toHaveBeenCalledTimes(9);
     for (const [arg] of prefetchQuery.mock.calls) {
-      expect(arg.staleTime).toBe(0);
+      expect(arg.staleTime).toBeUndefined();
       expect(typeof arg.queryFn).toBe('function');
     }
   });
@@ -100,7 +124,8 @@ describe('invalidateRecordLists', () => {
 
     expect(ret).toBeInstanceOf(Promise);
     await expect(ret).resolves.toBeUndefined();
-    expect(invalidateQueries).toHaveBeenCalledTimes(10);
+    // one call per namespace in invalidateRecordLists (lib/apiHooks.ts:193-205)
+    expect(invalidateQueries).toHaveBeenCalledTimes(11);
   });
 
   it('covers every record namespace surfaced on Home', () => {

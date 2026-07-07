@@ -141,22 +141,21 @@ export function useWizardState(id: string | undefined) {
         });
         if (ctrl.cancelled) return;
         const map: Record<string, Answer> = {};
-        const pmap: Record<string, AnswerPhoto[]> = {};
         for (const a of existing) {
           map[a.question_id] = a;
         }
-        const photoResults = await Promise.all(
-          existing.map((a) =>
-            answersApi.photos(a.id).catch((err) => {
-              logError(err, 'wizard.answers.photos');
-              return [] as AnswerPhoto[];
-            }),
-          ),
-        );
+        // Single batched .in() query instead of one request per answer (N+1).
+        const pmap = await answersApi
+          .photosByAnswerIds(existing.map((a) => a.id))
+          .catch((err): Record<string, AnswerPhoto[]> => {
+            logError(err, 'wizard.answers.photos');
+            return {};
+          });
         if (ctrl.cancelled) return;
-        existing.forEach((a, i) => {
-          pmap[a.id] = photoResults[i];
-        });
+        // Keep the legacy per-answer shape: every answer id keyed, [] when photo-less.
+        for (const a of existing) {
+          pmap[a.id] ??= [];
+        }
         if (!remoteOk) {
           toast.info(t('notifications.draftLoaded'));
         }

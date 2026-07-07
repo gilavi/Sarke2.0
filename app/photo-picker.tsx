@@ -37,6 +37,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { a11y } from '../lib/accessibility';
 import { useTheme } from '../lib/theme';
 import { useTranslation } from 'react-i18next';
 
@@ -87,9 +88,15 @@ const MemoizedAssetItem = memo(function AssetItem({
   /** 1-based position in the selection, or 0 when not selected. */
   selectionIndex: number;
 }) {
+  const { t } = useTranslation();
   const selected = selectionIndex > 0;
   return (
-    <Pressable onPress={() => void onPress(item)} style={styles.thumb} disabled={disabled}>
+    <Pressable
+      onPress={() => void onPress(item)}
+      style={styles.thumb}
+      disabled={disabled}
+      {...a11y(t('photoPicker.recentPhoto'), undefined, 'imagebutton', { selected, disabled })}
+    >
       <Image source={{ uri: item.uri }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
       {selectable && selected ? (
         <>
@@ -386,10 +393,20 @@ export default function PhotoPickerScreen() {
 
           {/* Top bar: cancel + system-library shortcut */}
           <View style={styles.topBar} pointerEvents="box-none">
-            <Pressable onPress={cancel} hitSlop={12} style={styles.iconBtn}>
+            <Pressable
+              onPress={cancel}
+              hitSlop={12}
+              style={styles.iconBtn}
+              {...a11y(t('photoPicker.close'), undefined, 'button')}
+            >
               <X size={22} color="#fff" strokeWidth={1.5} />
             </Pressable>
-            <Pressable onPress={openSystemLibrary} hitSlop={12} style={styles.libraryShortcut}>
+            <Pressable
+              onPress={openSystemLibrary}
+              hitSlop={12}
+              style={styles.libraryShortcut}
+              {...a11y(t('photoPicker.library'), undefined, 'button')}
+            >
               <Images size={18} color="#fff" strokeWidth={1.5} />
               <Text style={styles.libraryShortcutText}>{t('photoPicker.library')}</Text>
             </Pressable>
@@ -400,6 +417,7 @@ export default function PhotoPickerScreen() {
             <Pressable
               onPress={capture}
               disabled={capturing}
+              {...a11y(t('photoPicker.capture'), undefined, 'button', { disabled: capturing, busy: capturing })}
               style={({ pressed }) => [
                 styles.shutter,
                 pressed && { transform: [{ scale: 0.94 }] },
@@ -415,6 +433,7 @@ export default function PhotoPickerScreen() {
             <Pressable
               onPress={() => void commitSelection()}
               disabled={selecting}
+              {...a11y(t('photoPicker.done', { count: selectedIds.length }), undefined, 'button', { disabled: selecting })}
               style={({ pressed }) => [
                 styles.doneBar,
                 { backgroundColor: theme.colors.accent },

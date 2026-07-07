@@ -5,7 +5,7 @@
  * conclusion step). The `comment`/`photo_paths` state fields are kept on the
  * type for the PDF/schema but are no longer captured here.
  */
-import { useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, X, TriangleAlert } from 'lucide-react-native';
 import { ChecklistItemRow, type ChecklistRowOption } from '../inspection-parts/ChecklistItemRow';
@@ -48,7 +48,15 @@ export interface ChecklistRowProps {
   onCommentToggle?: () => void;
 }
 
-export function ChecklistRow({ item, state, onStateChange }: ChecklistRowProps) {
+/**
+ * Memoized so answering one item re-renders only the tapped row (the host
+ * rebuilds the whole `states` array on every answer, so ~30 rows re-rendered
+ * per tap without it). The comparator checks only what this row renders -
+ * label + selected result (+ comment for safety); `photo_paths` is a legacy
+ * never-rendered field rebuilt as a fresh array on every change, so comparing
+ * it by reference would defeat the memo.
+ */
+export const ChecklistRow = memo(function ChecklistRow({ item, state, onStateChange }: ChecklistRowProps) {
   const { t } = useTranslation();
   const options = useMemo<ChecklistRowOption[]>(
     () => [
@@ -58,13 +66,25 @@ export function ChecklistRow({ item, state, onStateChange }: ChecklistRowProps) 
     ],
     [item.description, t],
   );
+  // Stable handler so the inner ChecklistItemRow's own memo (which compares
+  // onChange by identity) also holds.
+  const handleChange = useCallback(
+    (v: string | null) => onStateChange({ result: v as ChecklistResult }),
+    [onStateChange],
+  );
   return (
     <ChecklistItemRow
       label={item.description}
       options={options}
       value={state.result}
-      onChange={v => onStateChange({ result: v as ChecklistResult })}
+      onChange={handleChange}
       dense
     />
   );
-}
+}, (prev, next) =>
+  prev.item.id === next.item.id &&
+  prev.item.description === next.item.description &&
+  prev.state.result === next.state.result &&
+  prev.state.comment === next.state.comment &&
+  prev.onStateChange === next.onStateChange,
+);

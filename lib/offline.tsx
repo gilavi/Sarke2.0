@@ -353,27 +353,27 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void readQueue().then((q) => setPendingCount(q.length));
     void readFailedQueue().then((q) => setFailedCount(q.length));
-    // Seed current state once before subscribing, so the first render
-    // after `netReady` reflects reality instead of the `true` default.
-    void NetInfo.fetch().then((s) => {
-      const online = !!s.isConnected && s.isInternetReachable !== false;
-      onlineRef.current = online;
-      setIsOnline(online);
-      setNetReady(true);
-      if (online) {
-        void flushAllQueues();
-      }
-    });
+    // NetInfo emits the current state immediately on subscription, so the
+    // listener alone seeds `netReady`/`isOnline` — a separate NetInfo.fetch()
+    // seed double-fired flushAllQueues on every online boot. `prevOnline`
+    // gates the reconnect work to actual transitions: the flush runs on the
+    // first online emission (boot) and on offline→online, not on every
+    // duplicate online emission (e.g. wifi→cellular).
+    let prevOnline: boolean | null = null;
     const unsub = NetInfo.addEventListener((s) => {
       const online = !!s.isConnected && s.isInternetReachable !== false;
+      const wasOnline = prevOnline;
+      prevOnline = online;
       onlineRef.current = online;
       setIsOnline(online);
       setNetReady(true);
-      if (online) {
+      if (online && wasOnline !== true) {
         void flushAllQueues();
         // Re-warm the flow-start caches (template questions, project details)
-        // that may have gone stale while offline.
-        prefetchFlowStartCaches(queryClient);
+        // that may have gone stale while offline. Only on a genuine
+        // offline→online transition — boot-time warming is owned by the
+        // post-auth path in lib/session.tsx.
+        if (wasOnline === false) prefetchFlowStartCaches(queryClient);
       }
     });
     return () => unsub();

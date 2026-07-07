@@ -108,7 +108,12 @@ export default function DraftsScreen() {
             {d.orders.length > 0 ? (
               <DraftGroup title={t('records.orders')} count={d.orders.length} styles={styles}>
                 {d.orders.map((o, i, arr) => (
-                  <OrderRow key={o.id} order={o} showBorder={i < arr.length - 1} />
+                  <OrderRow
+                    key={o.id}
+                    order={o}
+                    showBorder={i < arr.length - 1}
+                    onPress={() => router.push(`/orders/new?editId=${o.id}&projectId=${o.projectId}` as never)}
+                  />
                 ))}
               </DraftGroup>
             ) : null}

@@ -12,7 +12,7 @@
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
@@ -21,7 +21,9 @@ const outDir = process.env.TOKENS_OUT_DIR
   ? resolve(process.env.TOKENS_OUT_DIR)
   : resolve(repoRoot, 'web-app/src/generated');
 
-const tokens = await import(resolve(repoRoot, 'lib/design-tokens.ts'));
+// pathToFileURL: dynamic import() needs a file:// URL — a bare Windows path
+// (C:\…) throws ERR_UNSUPPORTED_ESM_URL_SCHEME.
+const tokens = await import(pathToFileURL(resolve(repoRoot, 'lib/design-tokens.ts')).href);
 const {
   primary,
   neutral,

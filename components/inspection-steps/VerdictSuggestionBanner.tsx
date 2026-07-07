@@ -6,6 +6,7 @@
  * Consolidates the six previously-inline copies (forklift, cargo-platform,
  * mobile-ladder, lifting-accessories, safety-net, fall-protection).
  */
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Lightbulb } from 'lucide-react-native';
@@ -23,7 +24,7 @@ export interface VerdictSuggestionBannerProps {
 export function VerdictSuggestionBanner({ text, onApply }: VerdictSuggestionBannerProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   const inner = (
     <>

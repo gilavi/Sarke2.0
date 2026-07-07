@@ -7,7 +7,6 @@ import {
   Switch,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
@@ -17,6 +16,7 @@ import { ChevronRight, CalendarDays, Infinity, TriangleAlert, Moon, Languages, F
 import type { LucideIcon } from 'lucide-react-native';
 import { Badge, Card } from '../../components/ui';
 import { Skeleton } from '../../components/Skeleton';
+import { UserAvatar } from '../../components/UserAvatar';
 import { useSession } from '../../lib/session';
 import { isExpiringSoon } from '../../lib/services';
 import {
@@ -75,8 +75,6 @@ export default function MoreScreen() {
   const drafts = counts.drafts;
   const expiring = certs.filter(isExpiringSoon).length;
   const systemTpl = templates.filter(tpl => tpl.is_system).length;
-  const avatarSeed = encodeURIComponent(user?.id ?? user?.email ?? 'guest');
-  const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&size=128`;
 
   const onToggleDark = (val: boolean) => {
     setMode(val ? 'dark' : 'light');
@@ -137,7 +135,7 @@ export default function MoreScreen() {
           a11y={a11y(t('profile.title'), t('a11y.resumeDraft'), 'button')}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} contentFit="cover" />
+            <UserAvatar user={user} size={56} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontWeight: '600', fontSize: 17, color: theme.colors.ink }}>
                 {`${user?.first_name ?? ''} ${user?.last_name ?? ''}`.trim() || '-'}
@@ -544,12 +542,6 @@ function HubTile({
 
 function getStyles(theme: Theme) {
   return StyleSheet.create({
-    avatar: {
-      width: 56,
-      height: 56,
-      borderRadius: 28,
-      backgroundColor: theme.colors.subtleSurface,
-    },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',

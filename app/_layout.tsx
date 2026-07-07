@@ -164,12 +164,20 @@ function AuthGate() {
           router.replace(target);
         }
       }
-      // Opportunistic retry of any signature uploads that failed earlier.
-      void flushPendingSignatures().catch((e) => logError(e, '_layout.flushPendingSignatures'));
-      // Opportunistic retry of any deferred PDF uploads.
-      void flushPendingPdfUploads().catch((e) => logError(e, '_layout.flushPendingPdfUploads'));
     }
   }, [state, segments, isTermsViewMode]);
+
+  // Opportunistic retry of signature uploads / deferred PDF uploads that
+  // failed earlier. Once per transition to signed-in — NOT per navigation
+  // (`state`/`segments` change on every route push, and each flush is at
+  // minimum an AsyncStorage queue read). Reconnect-time retries are owned by
+  // OfflineProvider's flushAllQueues (lib/offline.tsx).
+  const signedIn = state.status === 'signedIn';
+  useEffect(() => {
+    if (!signedIn) return;
+    void flushPendingSignatures().catch((e) => logError(e, '_layout.flushPendingSignatures'));
+    void flushPendingPdfUploads().catch((e) => logError(e, '_layout.flushPendingPdfUploads'));
+  }, [signedIn]);
 
   if (state.status === 'loading') {
     // Subtle full-screen skeleton instead of a spinner - hides the auth
@@ -219,25 +227,22 @@ function AuthGate() {
 }
 
 export default function RootLayout() {
+  // One registration per physical font file. The weight-suffixed aliases
+  // (Inter-Medium/SemiBold/Bold, SpaceGrotesk-*) used to register the same
+  // TTFs under 8 names — 8 native font loads for 3 files — and no style ever
+  // referenced them (an alias can't render a true weight anyway: all names
+  // pointed at the same glyph outlines). Only these two are consumed:
+  // Inter-Regular (FloatingLabelInput) + JetBrainsMono-Regular (theme mono).
   const [fontsLoaded] = useFonts({
-    'SpaceGrotesk-Bold': require('../assets/fonts/SpaceGrotesk.ttf'),
-    'SpaceGrotesk-SemiBold': require('../assets/fonts/SpaceGrotesk.ttf'),
-    'SpaceGrotesk-Medium': require('../assets/fonts/SpaceGrotesk.ttf'),
     'Inter-Regular': require('../assets/fonts/Inter.ttf'),
-    'Inter-Medium': require('../assets/fonts/Inter.ttf'),
-    'Inter-SemiBold': require('../assets/fonts/Inter.ttf'),
-    'Inter-Bold': require('../assets/fonts/Inter.ttf'),
     'JetBrainsMono-Regular': require('../assets/fonts/JetBrainsMono-Regular.ttf'),
   });
 
-  if (!fontsLoaded) {
-    return (
-      <ThemeProvider>
-        <FontsLoadingFallback />
-      </ThemeProvider>
-    );
-  }
-
+  // The provider tree mounts immediately; only the navigator subtree gates on
+  // fonts. That lets session bootstrap (SessionProvider getSession +
+  // SecureStore reads) and the React Query cache rehydration run in PARALLEL
+  // with font I/O instead of behind it. The fallback skeleton renders no
+  // custom-font text, and visually matches AuthGate's own loading skeleton.
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
@@ -253,7 +258,7 @@ export default function RootLayout() {
                       <SessionProvider>
                         <ThemedStatusBar />
                         <ErrorBoundary>
-                          <AuthGate />
+                          {fontsLoaded ? <AuthGate /> : <FontsLoadingFallback />}
                         </ErrorBoundary>
                       </SessionProvider>
                     </OfflineProvider>

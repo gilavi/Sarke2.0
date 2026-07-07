@@ -174,7 +174,7 @@ export default function ExcavatorInspectionScreen() {
     }),
     validateMissing: (insp) => {
       const missing: string[] = [];
-      if (!insp.serialNumber?.trim()) missing.push('სERIული ნომERი');
+      if (!insp.serialNumber?.trim()) missing.push('სერიული ნომერი');
       if (!insp.verdict)              missing.push('დასკვნა');
       return missing;
     },
@@ -532,7 +532,7 @@ export default function ExcavatorInspectionScreen() {
             <View style={{ paddingHorizontal: 20, paddingTop: 32, gap: 20, alignItems: 'center' }}>
               <PlateInput
                 ref={plateRef}
-                label="სახელმწიფო / ს.ნ ნომERი"
+                label="სახელმწიფო / ს.ნ ნომერი"
                 value={inspection.registrationNumber ?? ''}
                 onChangeText={v => {
                   update('registrationNumber', v || null);
@@ -568,7 +568,7 @@ export default function ExcavatorInspectionScreen() {
             bottomOffset={120}
           >
             <FloatingLabelInput
-              label="სERIული ნომERი *"
+              label="სერიული ნომერი *"
               value={inspection.serialNumber ?? ''}
               onChangeText={v => update('serialNumber', v || null)}
               onFocus={() => setFocusedField('serialNumber')}

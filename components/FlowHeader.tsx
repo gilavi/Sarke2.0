@@ -150,7 +150,7 @@ export function FlowHeader({
           labels={stepLabels}
           fillColor={theme.colors.ink}
           inkColor={theme.colors.ink}
-          inkFaintColor={theme.colors.inkFaint}
+          futureColor={theme.colors.inkSoft}
           trackColor={theme.colors.subtleSurface}
         />
       ) : showProgress ? (
@@ -192,7 +192,7 @@ function SegmentedStepper({
   labels,
   fillColor,
   inkColor,
-  inkFaintColor,
+  futureColor,
   trackColor,
 }: {
   step: number;
@@ -200,7 +200,8 @@ function SegmentedStepper({
   labels: string[];
   fillColor: string;
   inkColor: string;
-  inkFaintColor: string;
+  /** Future-step labels. inkSoft, not inkFaint — 10px Georgian on inkFaint fails contrast. */
+  futureColor: string;
   trackColor: string;
 }) {
   return (
@@ -225,8 +226,10 @@ function SegmentedStepper({
             style={{
               flex: 1,
               textAlign: 'center',
-              fontSize: 9,
-              color: i < step ? fillColor : i === step - 1 ? inkColor : inkFaintColor,
+              // 2xs type-scale floor (lib/design-tokens.ts) — Georgian step
+              // labels were illegible at 9px.
+              fontSize: 10,
+              color: i < step ? fillColor : i === step - 1 ? inkColor : futureColor,
               fontWeight: i === step - 1 ? '600' : '400',
             }}
             numberOfLines={1}

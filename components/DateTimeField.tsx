@@ -13,7 +13,7 @@
 // display so wheel UX is identical. iOS uses 'inline' for date pickers (calendar)
 // because it reads better on iOS.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Platform,
@@ -76,7 +76,7 @@ export function DateTimeField({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const styles = makeStyles(theme);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'date' | 'time'>('date');

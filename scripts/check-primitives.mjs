@@ -12,9 +12,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
-const SCAN_DIRS = ['app', 'components', 'features', 'hooks', 'lib', 'shims'];
+const SCAN_DIRS = ['app', 'components', 'features', 'hooks', 'lib', 'shims', 'locales'];
 const SKIP_DIRS = new Set(['node_modules', '.git', 'ios', 'android', '.expo', 'dist', 'build']);
-const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs']);
+const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json']);
 
 const RULES = [
   {
@@ -91,6 +91,26 @@ const RULES = [
       'Use useListLoadState / listsLoadState (hooks/useListLoadState.ts) instead of the inline ' +
       '"(q.isFetching || !q.isFetched)" guard — the inline recipe hangs on an offline paused query. ' +
       'See docs/primitives.md → "List load state".',
+  },
+  {
+    name: 'mixed-script-georgian',
+    // Latin letters spliced INSIDE a Georgian word — the signature of a botched
+    // case-sensitive find/replace (shipped as 'სERIული ნომERი' in the excavator
+    // flow, v1.2.1). Georgian text may legitimately sit next to Latin across a
+    // space/hyphen ("PDF-ის"), but a Georgian letter immediately followed by
+    // Latin letters and another Georgian letter is always corruption.
+    pattern: /[ა-ჰ][A-Za-z]+[ა-ჰ]/,
+    message:
+      'Latin letters embedded inside a Georgian word — almost certainly a corrupted find/replace. ' +
+      'Restore the Georgian spelling (e.g. "სერიული ნომერი", not "სERIული ნომERი").',
+  },
+  {
+    name: 'remote-avatar-service',
+    pattern: /api\.dicebear\.com/,
+    message:
+      'Render user identity via components/UserAvatar.tsx (local deterministic initials disc), not a remote ' +
+      'avatar service — boot-critical chrome must not depend on an external host, and it renders blank offline. ' +
+      'See docs/primitives.md → "User avatar".',
   },
   {
     name: 'mobile-only-photo-embed',

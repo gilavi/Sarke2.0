@@ -11,6 +11,7 @@
  *      negative (warning), anything in between is caution (eye). Every flow
  *      orders its options positive → negative, so this needs no per-route wiring.
  */
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Eye, ShieldCheck, TriangleAlert } from 'lucide-react-native';
@@ -73,7 +74,7 @@ export function VerdictSelector<T extends string = string>({
 }: VerdictSelectorProps<T>) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const vertical = layout === 'vertical';
 
   const resolvedTitle = title ?? t('inspections.verdictTitle');

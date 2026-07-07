@@ -3,6 +3,7 @@ import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { MapPin } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { useAccessibilitySettings } from '../lib/accessibility';
 import { useTheme } from '../lib/theme';
 import { A11yText as Text } from './primitives/A11yText';
 
@@ -22,10 +23,17 @@ interface SkeletonMapProps {
 export function SkeletonMap({ onAddLocation, hideContent }: SkeletonMapProps) {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const { reduceMotion } = useAccessibilitySettings();
   const pulse = useRef(new Animated.Value(1)).current;
   const loopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
+    // Reduce-motion: no infinite pulse — render the ring static.
+    if (reduceMotion) {
+      loopRef.current?.stop();
+      pulse.setValue(1);
+      return;
+    }
     loopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1.5, duration: 900, useNativeDriver: true }),
@@ -34,7 +42,7 @@ export function SkeletonMap({ onAddLocation, hideContent }: SkeletonMapProps) {
     );
     loopRef.current.start();
     return () => loopRef.current?.stop();
-  }, [pulse]);
+  }, [pulse, reduceMotion]);
 
   const accent = theme.colors.accent;
 

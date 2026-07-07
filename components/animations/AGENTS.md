@@ -45,8 +45,9 @@ number pop, sticky-header collapse).
   `Animated.Value` API.
 - All animations honour `useAccessibilitySettings().reduceMotion` —
   when true, props like `entering={reduceMotion ? undefined : FadeIn}`
-  should be applied at the call site (these wrappers don't disable
-  themselves automatically).
+  should be applied at the call site. `AnimatedSuccessIcon` gates
+  itself internally (snaps to the final ✓ state when reduce-motion is
+  on); the other wrappers don't disable themselves automatically.
 
 ## Canonical helpers used (from lib/)
 - `lib/accessibility` — `useAccessibilitySettings`.

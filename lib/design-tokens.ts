@@ -49,8 +49,12 @@ export const highlight = '#E6FF4D';
 export const semantic = {
   success: '#10B981',
   successSoft: '#D1FAE5',
+  /** AA text over successSoft (4.8:1) — small text on the soft fill needs this, not `success` (2.2:1). */
+  successStrong: '#047857',
   warning: '#F59E0B',
   warningSoft: '#FEF3C7',
+  /** AA text over warningSoft (6.4:1) — same value lib/statusColors.ts INCIDENT_COLORS.minor.text uses. */
+  warningStrong: '#92400E',
   danger: '#EF4444',
   dangerSoft: '#FEE2E2',
   info: '#3B82F6',
@@ -161,7 +165,9 @@ export const semanticLight = {
   surfaceSecondary: neutral[100],
   ink: neutral[900],
   inkSoft: neutral[600],
-  inkFaint: neutral[400],
+  // neutral[500] = 5.0:1 on the white background/surface (WCAG AA ≥ 4.5:1).
+  // The old neutral[400] was 2.9:1 — illegible at the 11-13px sizes it's used at.
+  inkFaint: neutral[500],
   border: neutral[200],
   borderStrong: neutral[300],
   accent: primary[500],

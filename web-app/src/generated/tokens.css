@@ -23,8 +23,10 @@
   --neutral-900: #1A1A1A;
   --success: #10B981;
   --success-soft: #D1FAE5;
+  --success-strong: #047857;
   --warning: #F59E0B;
   --warning-soft: #FEF3C7;
+  --warning-strong: #92400E;
   --danger: #EF4444;
   --danger-soft: #FEE2E2;
   --info: #3B82F6;
@@ -81,7 +83,7 @@
   --surface-secondary: #E9E7E0;
   --ink: #1A1A1A;
   --ink-soft: #4E4A44;
-  --ink-faint: #9C988F;
+  --ink-faint: #736F67;
   --border: #D6D6D1;
   --border-strong: #C2BEB6;
   --accent: #FE7A43;

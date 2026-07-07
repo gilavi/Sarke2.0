@@ -271,18 +271,19 @@ Props: `value`, `onChange`, `presets?`, `min?`, `max?`, `accessibilityLabelPrefi
 
 ## PDF security / integrity
 
-One file: [lib/pdfSecurity.ts](../lib/pdfSecurity.ts). Exports `injectSecurityMarkup`, `lockPdf`, `hashPdf`, `verifyPdf`, and `PdfSecurityOptions`.
+One file: [lib/pdfSecurity.ts](../lib/pdfSecurity.ts). Exports `injectSecurityMarkup`, `lockPdf`, `hashPdf`, `verifyPdf`, `notePdfCopy`, and `PdfSecurityOptions`.
 
-Pass `PdfSecurityOptions` as the 5th argument to `generateAndSharePdf` (from `lib/pdfOpen.ts`). The function will automatically inject the security CSS + footer watermark into the HTML before rendering and stamp pdf-lib metadata into the output file. Callers that upload the PDF to Supabase should also call `hashPdf(localUri)` on the returned URI and store the result in the corresponding DB table's `pdf_hash` column for tamper detection.
+Pass `PdfSecurityOptions` as the 5th argument to `generateAndSharePdf` (from `lib/pdfOpen.ts`). The function will automatically inject the security CSS + footer watermark into the HTML before rendering and stamp pdf-lib metadata into the output file. Callers that upload the PDF to Supabase should also call `hashPdf(localUri)` on the returned URI and store the result in the corresponding DB table's `pdf_hash` column for tamper detection — this is cheap: `lockPdf` memoizes the digest of the exact base64 it wrote, and `generateAndSharePdf` registers its pretty-named copy via `notePdfCopy`, so the post-share `hashPdf` never re-reads the multi-MB file.
 
 **Don't** call `pdf-lib`'s `PDFDocument` directly outside this file — it belongs in one place. **Don't** call `expo-crypto`'s `digestStringAsync` directly for PDF hashing — use `hashPdf`.
 
 | Export | Purpose |
 |---|---|
 | `injectSecurityMarkup(html, opts)` | Adds meta tags, `user-select:none` CSS, and fixed-position footer watermark to HTML before `printToFileAsync` |
-| `lockPdf(uri, opts)` | Stamps pdf-lib metadata (title, author, subject, producer, dates) into the PDF at `uri` in place |
-| `hashPdf(uri)` | SHA-256 digest of the PDF Base64 — deterministic for the same bytes |
-| `verifyPdf(uri, storedHash)` | Compares current hash to a previously stored value; returns `false` if the file was modified |
+| `lockPdf(uri, opts)` | Stamps pdf-lib metadata (title, author, subject, producer, dates) into the PDF at `uri` in place; memoizes the file's SHA-256 for `hashPdf` |
+| `hashPdf(uri)` | SHA-256 digest of the PDF Base64 — deterministic for the same bytes; served from the lock-time memo when available |
+| `verifyPdf(uri, storedHash)` | Compares current hash to a previously stored value; returns `false` if the file was modified — always re-reads the file, never the memo |
+| `notePdfCopy(from, to)` | Tells the hash memo that `to` is a byte-for-byte copy of `from` (used by `generateAndSharePdf`'s pretty-name copy — don't call it for anything that isn't an exact copy) |
 
 ## Illustration palette (monochrome SVG art)
 
@@ -301,6 +302,12 @@ Any illustration component (`QuestionAvatar`, `EmptyState`, `ErrorScreen`, `Skel
 | `hardware` / `material` / `materialLine` / `metal` / `metalDark` / `ground` | Fixed neutral grays for steel, decks, base bars |
 
 **Don't** reintroduce per-category color coding (the old `InspectionTypeAvatar` pastel rainbow, `EmptyState`'s blue/amber category tints). Differentiate with shape/emoji, not off-brand hues. Semantic status colors (`semantic.success` green for "completed", verdict greens/reds) are a **separate** system in [lib/statusColors.ts](../lib/statusColors.ts) and are intentionally not monochrome.
+
+## User avatar (signed-in user identity mark)
+
+One file: [`components/UserAvatar.tsx`](../components/UserAvatar.tsx). Exports `UserAvatar` (initials on a quiet themed disc) and `userInitials(user)`.
+
+The single owner of how the **current user** is depicted in app chrome — the tab bar's More tab and the More-screen profile card both render it, so the mark can't drift. Fully local and deterministic: initials come from `first_name`/`last_name` (fallback: email), colors from the theme. It replaced the dicebear network avatar; **don't** reintroduce a remote avatar service (`api.dicebear.com` is banned by `check-primitives`) — boot-critical chrome must not depend on an external host, and the old one drew an empty circle on an offline first launch. Project identity is the separate `ProjectAvatar` (electric-yellow initials block).
 
 ## PDF usage gate
 

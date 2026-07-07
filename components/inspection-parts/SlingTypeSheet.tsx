@@ -10,7 +10,7 @@
 // preserved verbatim from the lifting-accessories type catalog by user
 // override - see the AGENTS.md for that route.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react-native';
@@ -46,7 +46,7 @@ export function SlingTypeSheet({
 }: SlingTypeSheetProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   const [selected, setSelected] = useState<string[]>(initialValues);
   const [otherText, setOtherText] = useState(initialOther);

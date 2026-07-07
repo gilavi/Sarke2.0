@@ -10,6 +10,12 @@
  * Note: pdf-lib does not expose a PDF encryption API, so "protection" here
  * means traceability + deterrence (metadata, watermark, hash), not
  * cryptographic permission flags.
+ *
+ * Perf note: photo-heavy act PDFs run to several MB, so this module avoids
+ * every avoidable pass over the data on the JS thread — base64 goes straight
+ * into/out of pdf-lib (no hand-rolled string↔bytes loops), and the integrity
+ * hash is digested from the base64 already in memory at lock time instead of
+ * re-reading the file (see the hash memo below).
  */
 
 import { PDFDocument } from 'pdf-lib';
@@ -27,23 +33,43 @@ export interface PdfSecurityOptions {
   subject?: string;
 }
 
-// ─── Pure-JS Base64 ↔ Uint8Array (no Buffer polyfill needed) ────────────────
+// ─── Hash memo ───────────────────────────────────────────────────────────────
+// `lockPdf` already holds the exact base64 it writes to disk, so it digests
+// it there (one native SHA-256 call) and remembers the result per file URI —
+// every upload path calls `hashPdf` right after generating, which would
+// otherwise re-read the whole multi-MB file. `generateAndSharePdf` registers
+// its pretty-named byte-for-byte copy via `notePdfCopy` so the memo also
+// covers the URI callers actually receive.
 
-function base64ToUint8Array(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+const hashMemo = new Map<string, string>();
+const HASH_MEMO_MAX = 16;
+
+function rememberHash(uri: string, hash: string): void {
+  hashMemo.delete(uri);
+  hashMemo.set(uri, hash);
+  if (hashMemo.size > HASH_MEMO_MAX) {
+    const oldest = hashMemo.keys().next().value;
+    if (oldest !== undefined) hashMemo.delete(oldest);
+  }
 }
 
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let s = '';
-  // chunk to avoid call-stack overflow on large PDFs
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    s += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(s);
+/**
+ * Record that the PDF at `to` is a byte-for-byte copy of the one at `from`
+ * (the pretty-named share copy made by `generateAndSharePdf`), so
+ * `hashPdf(to)` can reuse the hash memoized when `from` was locked. If `from`
+ * has no memoized hash (lock skipped or failed), any stale entry for `to` is
+ * dropped instead — pretty-name paths are reused across shares and must
+ * never serve an old hash.
+ */
+export function notePdfCopy(from: string, to: string): void {
+  const hash = hashMemo.get(from);
+  if (hash !== undefined) rememberHash(to, hash);
+  else hashMemo.delete(to);
+}
+
+/** Let a queued frame (spinner, share UI) paint between multi-MB passes. */
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 // ─── HTML injection ──────────────────────────────────────────────────────────
@@ -132,8 +158,9 @@ export async function lockPdf(
     const b64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    const bytes = base64ToUint8Array(b64);
-    const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    // pdf-lib takes base64 input directly — no manual string→bytes pass.
+    await yieldToUi();
+    const pdfDoc = await PDFDocument.load(b64, { ignoreEncryption: true });
 
     const now = new Date();
     if (opts.title) pdfDoc.setTitle(opts.title);
@@ -145,12 +172,21 @@ export async function lockPdf(
     pdfDoc.setModificationDate(now);
     pdfDoc.setKeywords(['HUBBLE', 'safety', 'inspection', 'Georgia']);
 
-    const lockedBytes = await pdfDoc.save({ useObjectStreams: false });
-    const lockedB64 = uint8ArrayToBase64(lockedBytes);
+    // …and serializes straight back to base64 — no manual bytes→string pass.
+    await yieldToUi();
+    const lockedB64 = await pdfDoc.saveAsBase64({ useObjectStreams: false });
 
     await FileSystem.writeAsStringAsync(uri, lockedB64, {
       encoding: FileSystem.EncodingType.Base64,
     });
+
+    // Digest the base64 we already hold (native call, no file re-read) so a
+    // following hashPdf(uri) is free. Same hash input as ever — SHA-256 of
+    // the Base64 representation — so stored pdf_hash values keep verifying.
+    rememberHash(
+      uri,
+      await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, lockedB64),
+    );
   } catch {
     // If locking fails for any reason, we keep the original PDF intact.
     // PDF generation must not fail due to a metadata step.
@@ -160,12 +196,7 @@ export async function lockPdf(
 
 // ─── Integrity hash ──────────────────────────────────────────────────────────
 
-/**
- * Compute a SHA-256 digest of the PDF at `uri` (hashes the Base64
- * representation, which is deterministic for the same bytes). Store the
- * result alongside the PDF record in Supabase to enable tamper detection.
- */
-export async function hashPdf(uri: string): Promise<string> {
+async function digestPdfFile(uri: string): Promise<string> {
   const b64 = await FileSystem.readAsStringAsync(uri, {
     encoding: FileSystem.EncodingType.Base64,
   });
@@ -176,15 +207,29 @@ export async function hashPdf(uri: string): Promise<string> {
 }
 
 /**
+ * Compute a SHA-256 digest of the PDF at `uri` (hashes the Base64
+ * representation, which is deterministic for the same bytes). Served from
+ * the lock-time memo when the file was just stamped/copied by this pipeline
+ * — no file re-read — otherwise reads the file once and digests natively.
+ * Store the result alongside the PDF record in Supabase to enable tamper
+ * detection.
+ */
+export async function hashPdf(uri: string): Promise<string> {
+  return hashMemo.get(uri) ?? digestPdfFile(uri);
+}
+
+/**
  * Return `true` if the PDF at `uri` matches `storedHash`; `false` if the
- * file was modified after the hash was recorded.
+ * file was modified after the hash was recorded. Always re-reads and
+ * re-digests the file (never the memo) — tampering is what this exists to
+ * catch.
  */
 export async function verifyPdf(
   uri: string,
   storedHash: string,
 ): Promise<boolean> {
   try {
-    const current = await hashPdf(uri);
+    const current = await digestPdfFile(uri);
     return current === storedHash;
   } catch {
     return false;

@@ -1,7 +1,8 @@
 import React, {useMemo} from 'react';
-import { Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
+import { a11y } from '../../lib/accessibility';
 import { haptic } from '../../lib/haptics';
 import { useTheme } from '../../lib/theme';
 import { usePressBounce } from '../animations/usePressBounce';
@@ -159,20 +160,21 @@ export function Button({
       <Pressable
         onPress={handlePress}
         disabled={disabled || loading}
+        {...a11y(title, undefined, 'button', { disabled: !!(disabled || loading), busy: !!loading })}
         style={[
           styles.base,
           s,
           { backgroundColor: v.backgroundColor },
           v.borderColor ? { borderColor: v.borderColor, borderWidth: v.borderWidth } : null,
-          (disabled || loading) && styles.disabled,
+          disabled && styles.disabled,
           innerStyle,
         ]}
         {...rest}
       >
         {iconLeft ? (
-          <View style={{ marginRight: 8 }}>{iconLeft}</View>
+          <View style={[{ marginRight: 8 }, loading && styles.hidden]}>{iconLeft}</View>
         ) : LeftIcon ? (
-          <View style={{ marginRight: 8 }}>
+          <View style={[{ marginRight: 8 }, loading && styles.hidden]}>
             <LeftIcon
               size={textSizes[size].fontSize + 2}
               color={v.color}
@@ -186,19 +188,27 @@ export function Button({
             textSizes[size],
             { color: v.color, fontWeight: '600' },
             v.textDecorationLine ? { textDecorationLine: v.textDecorationLine as any } : undefined,
+            loading && styles.hidden,
           ]}
         >
           {title}
         </Text>
         {iconRight ? (
-          <View style={{ marginLeft: 8 }}>{iconRight}</View>
+          <View style={[{ marginLeft: 8 }, loading && styles.hidden]}>{iconRight}</View>
         ) : RightIcon ? (
-          <View style={{ marginLeft: 8 }}>
+          <View style={[{ marginLeft: 8 }, loading && styles.hidden]}>
             <RightIcon
               size={textSizes[size].fontSize + 2}
               color={v.color}
               strokeWidth={1.5}
             />
+          </View>
+        ) : null}
+        {/* Spinner overlays hidden content, so the button keeps its exact width
+            during loading — no layout jump when a CTA flips to busy. */}
+        {loading ? (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFillObject, styles.spinner]}>
+            <ActivityIndicator size="small" color={v.color} />
           </View>
         ) : null}
       </Pressable>
@@ -218,6 +228,13 @@ function getstyles(theme: any) {
   },
   disabled: {
     opacity: 0.5,
+  },
+  hidden: {
+    opacity: 0,
+  },
+  spinner: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 }

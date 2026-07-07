@@ -1391,7 +1391,10 @@
     "library": "Library",
     "done": "Done ({{count}})",
     "libraryPermRequired": "Library access is required to choose a photo",
-    "grantAccess": "Grant Access"
+    "grantAccess": "Grant Access",
+    "capture": "Take photo",
+    "close": "Close",
+    "recentPhoto": "Photo from library"
   },
   "generalEquipment": {
     "nameLabel": "Name",

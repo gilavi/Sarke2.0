@@ -27,10 +27,11 @@ vi.mock('expo-file-system/legacy', () => ({
   EncodingType: { Base64: 'base64' },
 }));
 
-// pdf-lib stub. PDFDocument.load resolves to an object whose setter methods are
-// spies. save() returns a fixed Uint8Array so we can assert the round-trip.
+// pdf-lib stub. PDFDocument.load resolves to an object whose setter methods
+// are spies. saveAsBase64() returns a fixed base64 string so we can assert
+// the round-trip (lockPdf feeds base64 straight into/out of pdf-lib).
 let loadThrows = false;
-const SAVED_BYTES = new Uint8Array([1, 2, 3, 4]);
+const SAVED_B64 = btoa('locked-bytes');
 
 const setTitle = vi.fn();
 const setAuthor = vi.fn();
@@ -40,7 +41,7 @@ const setCreator = vi.fn();
 const setCreationDate = vi.fn();
 const setModificationDate = vi.fn();
 const setKeywords = vi.fn();
-const save = vi.fn(async () => SAVED_BYTES);
+const saveAsBase64 = vi.fn(async () => SAVED_B64);
 
 const load = vi.fn(async (_bytes?: unknown, _opts?: unknown) => {
   if (loadThrows) throw new Error('load failed');
@@ -53,7 +54,7 @@ const load = vi.fn(async (_bytes?: unknown, _opts?: unknown) => {
     setCreationDate,
     setModificationDate,
     setKeywords,
-    save,
+    saveAsBase64,
   };
 });
 
@@ -73,7 +74,7 @@ vi.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
 }));
 
-const { injectSecurityMarkup, lockPdf, hashPdf, verifyPdf } = await import(
+const { injectSecurityMarkup, lockPdf, hashPdf, verifyPdf, notePdfCopy } = await import(
   '../../lib/pdfSecurity'
 );
 
@@ -258,7 +259,8 @@ describe('lockPdf', () => {
 
     expect(result).toBe('file://doc.pdf');
     expect(load).toHaveBeenCalledTimes(1);
-    // load called with the decoded bytes + ignoreEncryption flag.
+    // load is fed the file's base64 directly + the ignoreEncryption flag.
+    expect(load.mock.calls[0][0]).toBe(btoa('original-bytes'));
     expect(load.mock.calls[0][1]).toEqual({ ignoreEncryption: true });
 
     expect(setTitle).toHaveBeenCalledWith('Title');
@@ -276,8 +278,8 @@ describe('lockPdf', () => {
       'Georgia',
     ]);
 
-    expect(save).toHaveBeenCalledWith({ useObjectStreams: false });
-    // Saved bytes get written back to the same uri (base64-encoded).
+    expect(saveAsBase64).toHaveBeenCalledWith({ useObjectStreams: false });
+    // Saved base64 gets written back to the same uri.
     expect(writeAsStringAsync).toHaveBeenCalledTimes(1);
     expect(writeAsStringAsync.mock.calls[0][0]).toBe('file://doc.pdf');
   });
@@ -296,14 +298,12 @@ describe('lockPdf', () => {
     expect(setKeywords).toHaveBeenCalledTimes(1);
   });
 
-  it('writes the saved bytes back as the round-tripped base64 of SAVED_BYTES', async () => {
+  it('writes the saveAsBase64 output back to the same uri untouched', async () => {
     fsStore['file://rt.pdf'] = btoa('orig');
 
     await lockPdf('file://rt.pdf', { title: 'T' });
 
-    // uint8ArrayToBase64(SAVED_BYTES) == btoa of its char codes.
-    const expectedB64 = btoa(String.fromCharCode(...SAVED_BYTES));
-    expect(fsStore['file://rt.pdf']).toBe(expectedB64);
+    expect(fsStore['file://rt.pdf']).toBe(SAVED_B64);
   });
 
   it('swallows errors and still returns the uri when load throws', async () => {
@@ -335,7 +335,72 @@ describe('lockPdf', () => {
     expect(result).toBe('file://wfail.pdf');
     // Metadata was still stamped before the write blew up.
     expect(setTitle).toHaveBeenCalledWith('T');
-    expect(save).toHaveBeenCalledTimes(1);
+    expect(saveAsBase64).toHaveBeenCalledTimes(1);
+    // The failed write must not leave a memoized hash behind.
+    readAsStringAsync.mockClear();
+    await hashPdf('file://wfail.pdf');
+    expect(readAsStringAsync).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── hash memo (lockPdf ↔ hashPdf ↔ notePdfCopy) ─────────────────────────────
+
+describe('hash memo', () => {
+  it('lockPdf digests the in-memory base64 so hashPdf serves it without re-reading', async () => {
+    fsStore['file://memo.pdf'] = btoa('orig');
+
+    await lockPdf('file://memo.pdf', { title: 'T' });
+    expect(digestStringAsync).toHaveBeenCalledWith('SHA-256', SAVED_B64);
+
+    readAsStringAsync.mockClear();
+    const hash = await hashPdf('file://memo.pdf');
+    expect(hash).toBe('sha256(' + SAVED_B64 + ')');
+    expect(readAsStringAsync).not.toHaveBeenCalled();
+  });
+
+  it('notePdfCopy carries the memo over to the copy uri', async () => {
+    fsStore['file://src.pdf'] = btoa('orig');
+    await lockPdf('file://src.pdf', { title: 'T' });
+
+    notePdfCopy('file://src.pdf', 'file://copy.pdf');
+
+    readAsStringAsync.mockClear();
+    expect(await hashPdf('file://copy.pdf')).toBe('sha256(' + SAVED_B64 + ')');
+    expect(readAsStringAsync).not.toHaveBeenCalled();
+  });
+
+  it('notePdfCopy clears a stale destination memo when the source has none', async () => {
+    // First share: locked + copied → memo covers the pretty path.
+    fsStore['file://src2.pdf'] = btoa('orig');
+    await lockPdf('file://src2.pdf', { title: 'T' });
+    notePdfCopy('file://src2.pdf', 'file://pretty.pdf');
+
+    // Second share reuses the same pretty path, but its lock never ran.
+    notePdfCopy('file://never-locked.pdf', 'file://pretty.pdf');
+
+    // hashPdf must fall back to reading the actual (fresh) file bytes.
+    fsStore['file://pretty.pdf'] = btoa('fresh-bytes');
+    expect(await hashPdf('file://pretty.pdf')).toBe('sha256(' + btoa('fresh-bytes') + ')');
+  });
+
+  it('lockPdf swallows digest errors and still writes the locked file', async () => {
+    fsStore['file://dfail.pdf'] = btoa('orig');
+    digestThrows = true;
+
+    const result = await lockPdf('file://dfail.pdf', { title: 'T' });
+
+    expect(result).toBe('file://dfail.pdf');
+    expect(fsStore['file://dfail.pdf']).toBe(SAVED_B64);
+  });
+
+  it('verifyPdf ignores the memo and re-digests the file (tamper check)', async () => {
+    fsStore['file://tamper.pdf'] = btoa('orig');
+    await lockPdf('file://tamper.pdf', { title: 'T' });
+    const storedHash = await hashPdf('file://tamper.pdf'); // served from memo
+
+    fsStore['file://tamper.pdf'] = btoa('tampered'); // modified after lock
+
+    expect(await verifyPdf('file://tamper.pdf', storedHash)).toBe(false);
   });
 });
 

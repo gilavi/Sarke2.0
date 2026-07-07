@@ -21,8 +21,9 @@ edits it.
 - **Resume routes per type:** inspections →
   `routeForInspection(tpl.category, id, false)` (wizard); reports →
   `/reports/{id}/edit`; incidents → `/incidents/{id}`; briefings →
-  `/briefings/{id}`; orders → display-only (no order edit route exists, so
-  `OrderRow` gets no `onPress`).
+  `/briefings/{id}`; orders → `/orders/new?editId={id}&projectId={projectId}`
+  (NewOrderScreen hydrates docType + form from the draft, same route
+  `lib/documents/reopen.ts` consumers use).
 - **Three-state guard is unioned** across the five queries (skeleton while any
   is unsettled and the merged total is still 0).
 - The More-tab tile shows `useInspectionCounts().drafts` (inspection drafts

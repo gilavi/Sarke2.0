@@ -1391,7 +1391,10 @@
     "library": "ბიბლიოთეკა",
     "done": "დასრულება ({{count}})",
     "libraryPermRequired": "ბიბლიოთეკაზე წვდომა საჭიროა გასაჭრელად",
-    "grantAccess": "წვდომის მიცემა"
+    "grantAccess": "წვდომის მიცემა",
+    "capture": "სურათის გადაღება",
+    "close": "დახურვა",
+    "recentPhoto": "ფოტო ბიბლიოთეკიდან"
   },
   "generalEquipment": {
     "nameLabel": "დასახელება",

@@ -5,7 +5,7 @@
 // the typography / space / radius / shadows / motion / zIndex APIs.
 // Old code continues to work via the compatibility mappings below.
 
-import { Platform, useWindowDimensions } from 'react-native';
+import { Platform } from 'react-native';
 import {
   primary,
   neutral,
@@ -183,6 +183,10 @@ export const darkTheme = {
       warningSoft: '#3F2E0F',
       dangerSoft: '#3A1F1F',
       infoSoft: '#1A2E3A',
+      // On the dark soft fills the base hues already pass AA (4.9:1 / 6.1:1),
+      // so "strong" text falls back to them — only light mode needs darker inks.
+      successStrong: semantic.success,
+      warningStrong: semantic.warning,
     },
     // Backward compat keys in dark mode
     card: '#1A1A1A',
@@ -224,11 +228,10 @@ export const theme = lightTheme;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Responsive font size that respects accessibility settings. */
-export function useScaledFontSize(baseSize: number) {
-  const { fontScale } = useWindowDimensions();
-  return baseSize * Math.min(fontScale, 1.5);
-}
+// NOTE: the old `useScaledFontSize` helper was removed on purpose. Text must
+// scale by the OS fontScale exactly once — natively, via `maxFontSizeMultiplier`
+// on <Text> (see components/primitives/A11yText.tsx). Pre-scaling font sizes in
+// JS double-applies Dynamic Type (fontScale²). Don't reintroduce it.
 
 /** Convert a hex color to rgba with given opacity. */
 export function withOpacity(color: string, opacity: number): string {

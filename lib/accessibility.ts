@@ -30,6 +30,15 @@ export function useAccessibilitySettings() {
   };
 }
 
+/**
+ * Scale a NON-TEXT dimension (icon box, min tap target) by the OS font scale,
+ * capped at 1.5×.
+ *
+ * NEVER use this for a <Text> fontSize: RN already multiplies fontSize by
+ * fontScale natively, so pre-scaling double-applies Dynamic Type (fontScale²).
+ * For text, rely on `maxFontSizeMultiplier={1.5}` instead — see
+ * components/primitives/A11yText.tsx.
+ */
 export function useScaledSize(baseSize: number): number {
   const { fontScale } = useWindowDimensions();
   return baseSize * Math.min(fontScale, 1.5);

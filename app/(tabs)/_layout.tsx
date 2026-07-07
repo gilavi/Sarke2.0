@@ -3,13 +3,13 @@ import { AppState, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { House, Folder, BookOpen } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { Image } from 'expo-image';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme, withOpacity } from '../../lib/theme';
 import { useTranslation } from 'react-i18next';
 import { qk } from '../../lib/apiHooks';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { UserAvatar } from '../../components/UserAvatar';
 import { useSession } from '../../lib/session';
 import { useOffline } from '../../lib/offline';
 
@@ -80,7 +80,10 @@ function TabLabel({
         {
           color: focused ? theme.colors.ink : theme.colors.inkSoft,
           fontWeight: focused ? '700' : '500',
-          fontSize: focused ? 10 : 9,
+          // 2xs type-scale floor (lib/design-tokens.ts) — Georgian is not
+          // legible at 9px. Fixed size so the label doesn't jiggle on tab
+          // change; focus is carried by weight + color only.
+          fontSize: 10,
           letterSpacing: -0.2,
         },
       ]}
@@ -102,8 +105,9 @@ function MoreTabAvatar({
 }) {
   const { state } = useSession();
   const user = state.status === 'signedIn' ? state.user : null;
-  const avatarSeed = encodeURIComponent(user?.id ?? user?.email ?? 'guest');
-  const avatarUrl = `https://api.dicebear.com/9.x/adventurer/png?seed=${avatarSeed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&size=64`;
+  // Profile may still be loading/unavailable — fall back to the auth email so
+  // the disc shows a letter instead of a dash.
+  const email = state.status === 'signedIn' ? (state.session.user.email ?? null) : null;
 
   return (
     <View style={styles.iconContainer}>
@@ -115,19 +119,12 @@ function MoreTabAvatar({
           ]}
         />
       )}
-      <View
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 13,
-          overflow: 'hidden',
-          borderWidth: focused ? 2 : 1.5,
-          borderColor: focused ? theme.colors.ink : theme.colors.inkSoft,
-          backgroundColor: theme.colors.subtleSurface,
-        }}
-      >
-        <Image source={{ uri: avatarUrl }} style={{ width: 26, height: 26 }} contentFit="cover" />
-      </View>
+      <UserAvatar
+        user={user ?? { email }}
+        size={26}
+        borderWidth={focused ? 2 : 1.5}
+        borderColor={focused ? theme.colors.ink : theme.colors.inkSoft}
+      />
     </View>
   );
 }
@@ -236,7 +233,6 @@ export default function TabsLayout() {
         {/* Hidden routes — reachable via router.push, not shown in the bar.
             Calendar moved into the More tab (overdue surfaces on its hub tile). */}
         <Tabs.Screen name="calendar" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
-        <Tabs.Screen name="certificates" options={{ tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
       </Tabs>
       </SafeAreaInsetsContext.Provider>
     </View>

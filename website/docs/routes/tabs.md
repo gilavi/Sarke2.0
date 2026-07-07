@@ -7,7 +7,6 @@
 | `/` (home) | `app/(tabs)/index.tsx` | Dashboard: upcoming inspections, quick actions |
 | `/projects` | `app/(tabs)/projects.tsx` | List + create projects |
 | `/calendar` | `app/(tabs)/calendar.tsx` | Schedule view (next-due inspections) |
-| `/certificates` | `app/(tabs)/certificates.tsx` | Generated PDFs across all projects |
 | `/regulations` | `app/(tabs)/regulations.tsx` | Static regulatory content |
 | `/more` | `app/(tabs)/more.tsx` | Profile, settings, sign out, T&Cs |
 

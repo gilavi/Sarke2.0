@@ -1,6 +1,5 @@
 import React from 'react';
 import { Text, TextProps } from 'react-native';
-import { useScaledSize } from '../../lib/accessibility';
 import { useTheme } from '../../lib/theme';
 
 
@@ -21,7 +20,6 @@ const sizeMap = {
 
 export function A11yText({ size = 'base', weight = 'normal', color, style, children, ...rest }: A11yTextProps) {
   const { theme } = useTheme();
-  const scaledSize = useScaledSize(sizeMap[size]);
 
   const weightMap = {
     normal: '400',
@@ -30,11 +28,14 @@ export function A11yText({ size = 'base', weight = 'normal', color, style, child
     bold: '700',
   };
 
+  // Dynamic Type is applied exactly ONCE, natively: RN multiplies fontSize by
+  // the OS fontScale, capped by maxFontSizeMultiplier below. Do NOT pre-scale
+  // the size in JS (e.g. via useScaledSize) — that double-applies fontScale.
   return (
     <Text
       style={[
         {
-          fontSize: scaledSize,
+          fontSize: sizeMap[size],
           fontWeight: weightMap[weight] as any,
           color: color || theme.colors.ink,
           fontFamily: theme.typography.fontFamily.body,

@@ -212,21 +212,27 @@ export function invalidateRecordLists(qc: QueryClient): Promise<void> {
 }
 
 /**
- * Force-refetch every query the Home screen reads, bypassing `staleTime`.
+ * Warm every query the Home screen reads.
  *
- * Called from the post-login flow in `lib/session.tsx` once the JWT is provably
- * live (the users-row fetch in `safeLoadUser` has already succeeded). `staleTime: 0`
- * guarantees a network round-trip even when a cached value exists — without it a
- * query that earlier raced JWT propagation and cached an RLS-empty `[]` stays
- * "fresh" for the 5-minute default staleTime, leaving Home showing projects (warmed
- * here since 2026-05-27) but no record widgets. Warming the record-list keys too
- * closes that gap (see `docs/reports/BUG_REPORT.md`, "Home shows empty projects
- * after first login").
+ * Called from the post-auth flow in `lib/session.tsx` once the JWT is provably
+ * live (the users-row fetch in `safeLoadUser` has already succeeded) — once
+ * per user per app session, never on the hourly TOKEN_REFRESHED events.
+ *
+ * `opts.force` (real logins only — the SIGNED_IN auth event): `staleTime: 0`
+ * guarantees a network round-trip even when a cached value exists — without it
+ * a query that earlier raced JWT propagation and cached an RLS-empty `[]` stays
+ * "fresh" for the 5-minute default staleTime, leaving Home showing projects
+ * (warmed here since 2026-05-27) but no record widgets. Warming the record-list
+ * keys too closes that gap (see `docs/reports/BUG_REPORT.md`, "Home shows empty
+ * projects after first login"). That race only exists right after a login, so
+ * boot restores warm WITHOUT force: the default staleTime applies and a fresh
+ * persisted cache makes the fan-out a no-op instead of 9 forced REST
+ * round-trips per launch.
  *
  * Fire-and-forget: do NOT await it — a network blip must not delay post-auth nav.
  * Each prefetch swallows its own error so one failing call can't reject the rest.
  */
-export function warmHomeCaches(qc: QueryClient): void {
+export function warmHomeCaches(qc: QueryClient, opts?: { force?: boolean }): void {
   const recent = { status: 'completed' as const, limit: RECENT_COMPLETED_LIMIT };
   // The Resume-draft card reads the single most-recent draft inspection — a
   // different key from the completed feeds, but the same race, so warm it too.
@@ -243,7 +249,9 @@ export function warmHomeCaches(qc: QueryClient): void {
     { queryKey: qk.briefings.recent(recent), queryFn: () => briefingsApi.recent(recent) },
   ];
   for (const job of jobs) {
-    void qc.prefetchQuery({ ...job, staleTime: 0 }).catch(() => undefined);
+    void qc
+      .prefetchQuery(opts?.force ? { ...job, staleTime: 0 } : job)
+      .catch(() => undefined);
   }
 }
 

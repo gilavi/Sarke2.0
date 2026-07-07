@@ -3,7 +3,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { checkAndIncrementPdfCount } from './pdfGate';
-import { injectSecurityMarkup, lockPdf, type PdfSecurityOptions } from './pdfSecurity';
+import { injectSecurityMarkup, lockPdf, notePdfCopy, type PdfSecurityOptions } from './pdfSecurity';
 
 export { PdfLimitReachedError } from './pdfGate';
 export type { PdfSecurityOptions } from './pdfSecurity';
@@ -72,6 +72,9 @@ export async function generateAndSharePdf(
       } catch { /* ignore */ }
       try {
         await FileSystem.copyAsync({ from: uri, to: prettyUri });
+        // Byte-identical copy: let hashPdf(prettyUri) reuse the hash that
+        // lockPdf memoized instead of re-reading a multi-MB file.
+        notePdfCopy(uri, prettyUri);
         shareUri = prettyUri;
       } catch {
         // fall back to raw temp URI if copy fails

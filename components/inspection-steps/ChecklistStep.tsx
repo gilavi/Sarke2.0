@@ -3,13 +3,13 @@
  * legend + a scrollable list of items, each handled by ChecklistRow (which now
  * delegates to the shared ChecklistItemRow). Section headers + scroll only.
  */
-import { type ReactNode } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 import { ChecklistLegend } from '../inspection-parts/ChecklistLegend';
-import { ChecklistRow, CHECKLIST_LEGEND } from './ChecklistRow';
+import { ChecklistRow, CHECKLIST_LEGEND, type ChecklistItemState } from './ChecklistRow';
 
 // Re-export item types so existing equipment routes don't need to change imports.
 export type { ChecklistResult, ChecklistItem, ChecklistItemState } from './ChecklistRow';
@@ -34,6 +34,21 @@ export function ChecklistStep({
   footer,
 }: ChecklistStepProps) {
   const { theme } = useTheme();
+
+  // Latest-ref + per-id callback cache: each row gets a referentially stable
+  // onStateChange, so the memoized ChecklistRow skips re-rendering untouched
+  // rows even when the host passes an inline handler.
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+  const rowCallbacks = useRef(new Map<string, (patch: Partial<ChecklistItemState>) => void>());
+  const callbackFor = useCallback((id: string) => {
+    let cb = rowCallbacks.current.get(id);
+    if (!cb) {
+      cb = patch => onStateChangeRef.current(id, patch);
+      rowCallbacks.current.set(id, cb);
+    }
+    return cb;
+  }, []);
 
   function getState(id: string) {
     return states.find(s => s.id === id) ?? { id, result: null, comment: null, photo_paths: [] };
@@ -66,7 +81,7 @@ export function ChecklistStep({
             <ChecklistRow
               item={item}
               state={getState(item.id)}
-              onStateChange={patch => onStateChange(item.id, patch)}
+              onStateChange={callbackFor(item.id)}
             />
           </View>
         );

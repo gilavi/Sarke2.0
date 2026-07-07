@@ -38,7 +38,7 @@ import type { ProjectFile } from '../../types/models';
 import { briefingsApi } from '../../lib/briefingsApi';
 import { ordersApi } from '../../lib/ordersApi';
 import { pickProjectLogo } from '../../lib/projectLogo';
-import { a11y } from '../../lib/accessibility';
+import { a11y, useAccessibilitySettings } from '../../lib/accessibility';
 import { TourGuide, type TourStep } from '../../components/TourGuide';
 import { useTranslation } from 'react-i18next';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
@@ -95,15 +95,21 @@ export default function ProjectDetail() {
   const mapModalState = useProjectMapModal(project);
 
   // Gentle "breathing" pulse for the map location pin — matches the home ProjectCard.
+  // Reduce-motion renders the pin static (assigning 1 also cancels a running repeat).
+  const { reduceMotion } = useAccessibilitySettings();
   const breathe = useSharedValue(1);
   useEffect(() => {
+    if (reduceMotion) {
+      breathe.value = 1;
+      return;
+    }
     if (project?.latitude == null || project?.longitude == null) return;
     breathe.value = withRepeat(
       withTiming(1.35, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
-  }, [project?.latitude, project?.longitude, breathe]);
+  }, [project?.latitude, project?.longitude, breathe, reduceMotion]);
   const mapDotStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breathe.value }],
     opacity: interpolate(breathe.value, [1, 1.35], [1, 0.55]),

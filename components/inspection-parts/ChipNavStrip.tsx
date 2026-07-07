@@ -3,7 +3,7 @@
 // Each chip shows a status dot + label and highlights the active item; tapping
 // jumps to it. Originated as the fall-protection device tab strip, extracted so
 // other flows can reuse the same look + behaviour.
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { useTheme, type Theme } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
@@ -75,7 +75,7 @@ export interface ChipNavStripProps {
 export function ChipNavStrip({ items, activeIndex, onSelect, tone = 'status', dotMode = 'color' }: ChipNavStripProps) {
   const { theme } = useTheme();
   const { reduceMotion } = useAccessibilitySettings();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const neutral = tone === 'neutral';
 
   // Keep the active chip scrolled into view so jumping to an off-screen item

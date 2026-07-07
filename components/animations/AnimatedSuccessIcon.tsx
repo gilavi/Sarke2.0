@@ -12,6 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
+import { useAccessibilitySettings } from '../../lib/accessibility';
 import { useTheme } from '../../lib/theme';
 
 
@@ -32,12 +33,20 @@ export function AnimatedSuccessIcon({
   glowColor,
 }: Props) {
   const { theme } = useTheme();
+  const { reduceMotion } = useAccessibilitySettings();
   const color = colorProp ?? theme.colors.accent;
   const ringScale = useSharedValue(0);
   const checkOffset = useSharedValue(CHECK_PATH_LENGTH);
   const glowProgress = useSharedValue(0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      // Snap straight to the final state — no morph, no glow pulses.
+      ringScale.value = 1;
+      checkOffset.value = 0;
+      glowProgress.value = 0;
+      return;
+    }
     ringScale.value = withSpring(1, { damping: 11, stiffness: 180, mass: 1 });
     checkOffset.value = withDelay(
       280,
@@ -54,7 +63,7 @@ export function AnimatedSuccessIcon({
         false
       )
     );
-  }, [checkOffset, glowProgress, ringScale]);
+  }, [checkOffset, glowProgress, reduceMotion, ringScale]);
 
   const ringStyle = useAnimatedStyle(() => ({
     transform: [{ scale: ringScale.value }],
