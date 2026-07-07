@@ -58,7 +58,8 @@ routes).
   inspection-scoped). The reference table lists certs for incidents too — our
   schema doesn't, so incident shows signatures but no certificates.
 - **Signatures reuse `components/success`** (`SuccessSignatureSection` opens the
-  real `SignaturesScreen` modal; `SuccessCertificateSection` opens the
+  real `SignaturesScreen` modal — `onSharePdf` is forwarded so the modal's
+  header shows the "PDF" share pill; `SuccessCertificateSection` opens the
   `CertificatesManager` route). This module builds no new sheets. The act/incident
   no-persistence rule for captured signatures is unchanged (see
   `features/signatures/AGENTS.md`).

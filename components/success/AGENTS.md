@@ -52,7 +52,13 @@ This replaced ~6 byte-identical copies of the same `Screen` +
 - `SuccessCheckDisc.tsx` — animated black check disc (reduce-motion aware).
 - `SuccessSignatureSection.tsx` — the signatures list (edit opens the real
   `SignaturesScreen` modal; view-only for instruction). The inline list is a
-  live mirror of `useSignaturesState`.
+  live mirror of `useSignaturesState`. Takes the host screen's `onSharePdf?`
+  + `sharing?` and forwards them to the modal so its header shows the "PDF"
+  share pill instead of an X. The wrapper closes the modal and **defers**
+  the share until the Modal's `onDismiss` on iOS (immediate on Android) —
+  firing it in the same commit races the host's SubscriptionNotice / share
+  sheet against the fullscreen modal's dismissal; a ref also swallows
+  double-taps so a second concurrent share can't start.
 - `SuccessCertificateSection.tsx` — the certificates list (opens the existing
   `CertificatesManager` route; act only).
 - `SuccessListRow.tsx` — the shared row + avatar/lead visuals.

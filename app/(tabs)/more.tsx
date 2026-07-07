@@ -115,9 +115,11 @@ export default function MoreScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top', 'bottom']}>
+      {/* paddingBottom must clear the absolutely-positioned tab bar
+          (56px above the bottom safe inset — see app/(tabs)/_layout.tsx) */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 24, gap: 18 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 80, gap: 18 }}
         refreshControl={
           <RefreshControl
             queries={[countsQ, certsQ, templatesQ, projectsQ, paymentHistoryQ]}
@@ -164,7 +166,6 @@ export default function MoreScreen() {
             bg={theme.colors.semantic.successSoft}
             primary={loaded ? `${upcomingCount}` : null}
             secondary={loaded ? (overdueCount > 0 ? t('projects.overdueCount', { count: overdueCount }) : t('calendar.filterUpcoming')) : null}
-            badge={loaded && overdueCount > 0 ? t('projects.overdueCount', { count: overdueCount }) : undefined}
             onPress={() => router.push('/(tabs)/calendar')}
           />
           <HubTile

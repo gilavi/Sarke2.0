@@ -10,7 +10,15 @@ NOT from the wizard.
 
 ## Public API (from index.ts)
 - `SignaturesScreen` — the modal screen. Props: `visible`, `onClose`,
-  `creatorName`, `state`.
+  `creatorName`, `state`, `onSharePdf?`, `sharing?`, `onDismiss?`. When
+  `onSharePdf` is provided the header's top-right slot shows a "PDF"
+  share pill (DS `Button`, `Share2` icon, `loading={sharing}`) instead
+  of the X close button. **The parent must NOT fire its share flow in
+  the same commit that closes the modal** — hosts synchronously present
+  a sibling Modal (SubscriptionNotice) or share sheet and iOS drops a
+  present issued mid-dismissal. `SuccessSignatureSection` owns the
+  canonical wiring: close, then fire from the Modal's `onDismiss` on
+  iOS (immediately on Android, which has no race and no `onDismiss`).
 - `useSignaturesState()` — result-screen-scope state hook. Returns
   `{ creatorSignature, additionalRows, setCreatorSignature,
   clearCreatorSignature, addRow, removeRow, clear }`.
@@ -81,7 +89,9 @@ NOT from the wizard.
   wire up a shared cache (which would be a persistence violation).
 
 - **Self-contained header chrome.** `SignaturesScreen` renders its
-  own `უკან` back button + title + X close inside the modal, wraps
+  own `უკან` back button + title + a top-right action (the "PDF" share
+  pill when `onSharePdf` is passed, an X close otherwise) inside the
+  modal, wraps
   its body in its own `<SafeAreaProvider>`, and applies safe-area
   insets manually via `useSafeAreaInsets()`. **Do NOT** rewrap with
   a `<SafeAreaView edges={['top', 'bottom']}>` from a parent screen

@@ -1,6 +1,35 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-07-03 | Branch: `offline-mode`
+**Updated:** 2026-07-07 | Branch: `main`
+
+---
+
+## 2026-07-07 — More-tab polish + PDF share from the signatures modal
+
+- **More tab: duplicate overdue badge removed.** The calendar hub tile showed
+  the overdue count twice — as a yellow `Badge` next to the icon **and** as the
+  tile's secondary line. The badge is gone; the secondary line stays.
+- **More tab: გასვლა (sign out) no longer crops under the tab bar.** The tab
+  bar is absolutely positioned (56px above the bottom safe inset,
+  `app/(tabs)/_layout.tsx`) but the More screen's ScrollView only padded 24px —
+  the settings card's last row rendered underneath it. `paddingBottom` bumped
+  to 80 to clear the bar, matching the other tabs' clearance pattern.
+- **Signatures modal: "PDF" share pill replaces the X.** `SignaturesScreen`
+  gained an optional `onSharePdf` prop — when set, the header's top-right slot
+  renders the DS primary `Button` ("PDF" + `Share2` icon, same look as the
+  success-screen footer pill) instead of the X close button, so the PDF can be
+  generated straight after signing without backing out first. Wired through
+  `SuccessSignatureSection` from **both** hosts: `FlowSuccessScreen` (act /
+  incident / order success) and `DocumentDetails` (saved-record detail). The
+  `უკან` pill still closes; with no `onSharePdf` the X renders as before.
+  Two races caught by adversarial review and fixed in the same change: the
+  share fires from the Modal's `onDismiss` on iOS (not in the commit that
+  dismisses it — the hosts' quota-locked path presents the SubscriptionNotice
+  modal synchronously, which iOS drops mid-dismissal, permanently muting the
+  notice), and the pill takes `loading={sharing}` + a ref double-tap guard so
+  a second concurrent share can't burn an extra free-tier PDF credit.
+  AGENTS.md docs updated in `features/signatures`, `components/success`,
+  `components/document-details`.
 
 ---
 

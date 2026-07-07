@@ -130,6 +130,8 @@ export function FlowSuccessScreen(props: FlowSuccessScreenProps) {
             signatures={props.signatures}
             creatorName={props.creatorName}
             participants={props.participants}
+            onSharePdf={props.onSharePdf}
+            sharing={props.sharing}
           />
         ) : null}
 

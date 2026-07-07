@@ -136,6 +136,8 @@ export function DocumentDetails(props: DocumentDetailsProps) {
               signatures={props.signatures.state}
               creatorName={props.signatures.creatorName}
               participants={props.signatures.participants}
+              onSharePdf={props.onSharePdf}
+              sharing={props.sharing}
             />
           </View>
         ) : null}

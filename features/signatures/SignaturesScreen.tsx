@@ -23,9 +23,10 @@
 import { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Plus, X } from 'lucide-react-native';
+import { ChevronLeft, Plus, Share2, X } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { Button } from '../../components/primitives/Button';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { CreatorSignatureCard } from './CreatorSignatureCard';
@@ -41,9 +42,23 @@ interface Props {
    *  parent and shown on the creator card. Not editable here. */
   creatorName: string;
   state: SignaturesState;
+  /** Share/generate the document PDF straight from this screen. When
+   *  provided, the header's top-right slot renders a "PDF" share pill
+   *  instead of the X close button (the `უკან` pill still closes). The
+   *  parent closes the modal and defers its share-PDF flow until the
+   *  modal has actually dismissed (see `onDismiss`) — firing it in the
+   *  same commit races the host's SubscriptionNotice / share sheet
+   *  against the dismissal on iOS. */
+  onSharePdf?: () => void;
+  /** True while the host's share-PDF flow is running — dims/disables
+   *  the header pill so a second concurrent share can't start. */
+  sharing?: boolean;
+  /** Forwarded to the Modal's `onDismiss` (fires after the dismissal
+   *  animation completes; iOS-only in React Native). */
+  onDismiss?: () => void;
 }
 
-export function SignaturesScreen({ visible, onClose, creatorName, state }: Props) {
+export function SignaturesScreen({ visible, onClose, creatorName, state, onSharePdf, sharing, onDismiss }: Props) {
   return (
     <Modal
       visible={visible}
@@ -51,12 +66,15 @@ export function SignaturesScreen({ visible, onClose, creatorName, state }: Props
       presentationStyle="fullScreen"
       statusBarTranslucent
       onRequestClose={onClose}
+      onDismiss={onDismiss}
     >
       <SafeAreaProvider>
         <SignaturesScreenBody
           onClose={onClose}
           creatorName={creatorName}
           state={state}
+          onSharePdf={onSharePdf}
+          sharing={sharing}
         />
       </SafeAreaProvider>
     </Modal>
@@ -67,7 +85,9 @@ function SignaturesScreenBody({
   onClose,
   creatorName,
   state,
-}: Omit<Props, 'visible'>) {
+  onSharePdf,
+  sharing,
+}: Omit<Props, 'visible' | 'onDismiss'>) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const styles = useMemo(() => makeSignaturesScreenStyles(theme), [theme]);
@@ -100,14 +120,25 @@ function SignaturesScreenBody({
           <Text style={styles.headerPillText}>{t('common.back')}</Text>
         </Pressable>
         <Text style={styles.headerTitle}>{t('signature.screenTitle')}</Text>
-        <Pressable
-          onPress={onClose}
-          hitSlop={12}
-          style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-          {...a11y(t('common.close'), undefined, 'button')}
-        >
-          <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
-        </Pressable>
+        {onSharePdf ? (
+          <Button
+            title="PDF"
+            size="sm"
+            leftIcon={Share2}
+            loading={sharing}
+            onPress={onSharePdf}
+            {...a11y(t('success.actions.sharePdf'), undefined, 'button')}
+          />
+        ) : (
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+            {...a11y(t('common.close'), undefined, 'button')}
+          >
+            <X size={22} color={theme.colors.ink} strokeWidth={1.5} />
+          </Pressable>
+        )}
       </View>
 
       <ScrollView
