@@ -54,12 +54,6 @@ const RULES = [
       'Legacy image helper. Use one of: imageForDisplay (RN <Image>), pdfPhotoEmbed (PDF photos), signatureAsDataUrl (PDF/canvas signatures). See docs/primitives.md.',
   },
   {
-    name: 'pdfLanguage-direct-asyncStorage',
-    pattern: /AsyncStorage\.(set|get|remove)Item\(\s*['"]pdf_language['"]/,
-    message:
-      'Use lib/pdfLanguagePref.ts (savePdfLanguage / loadStoredPdfLanguage) instead of touching the AsyncStorage key directly.',
-  },
-  {
     name: 'direct-image-picker',
     pattern: /ImagePicker\.(launchCameraAsync|launchImageLibraryAsync)\s*\(/,
     message:
@@ -136,11 +130,10 @@ for (const dir of SCAN_DIRS) {
   for (const file of walk(join(ROOT, dir))) {
     if (file === selfPath) continue;
     // The canonical owner is allowed to mention the legacy names in comments
-    // or as soft-deprecation aliases; skip lib/imageUrl.ts and pdfLanguagePref.ts.
+    // or as soft-deprecation aliases; skip lib/imageUrl.ts.
     const rel = relative(ROOT, file);
     if (
       rel === 'lib/imageUrl.ts' ||
-      rel === 'lib/pdfLanguagePref.ts' ||
       rel === 'lib/projectLogo.ts' ||
       rel === 'hooks/usePhotoPicker.ts' ||
       rel === 'app/photo-picker.tsx'

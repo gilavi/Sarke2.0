@@ -103,10 +103,6 @@ Three patterns, documented in detail in [README.md](../README.md#keyboard-handli
 
 **Don't** wrap a sheet in `KeyboardAvoidingView` — the inner `KeyboardAwareScrollView` already lifts content, and stacking the two causes the overshoot bug. **Don't** roll a hand-listener `keyboardWillShow`/`Hide` — both have happened in this repo and both broke the keyboard sync.
 
-## PDF language preference
-
-One file: [lib/pdfLanguagePref.ts](../lib/pdfLanguagePref.ts). Exports `savePdfLanguage`, `loadStoredPdfLanguage`. Don't `AsyncStorage.setItem('pdf_language', ...)` directly — there used to be a duplicate writer in `lib/i18n.ts` that drifted. The check script blocks direct AsyncStorage access to that key.
-
 ## Date formatting
 
 One file: [lib/formatDate.ts](../lib/formatDate.ts). `lib/locale.ts` was deleted on 2026-05-02; do not resurrect it. `app/(tabs)/home.tsx` and `app/(tabs)/more.tsx` have small i18n-aware inline formatters for relative-time labels — that's intentional, they're tied to the i18n hook in those screens. If you need a generic absolute-date formatter, use `formatShortDateTime` here.
