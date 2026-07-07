@@ -7,8 +7,11 @@ import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { Check, TriangleAlert } from 'lucide-react-native';
 import {
   ChecklistSection,
+  ChecklistLegend,
+  type ChecklistLegendItem,
   DynamicTable,
   PhotoSection,
   IdentificationGrid,
@@ -67,6 +70,15 @@ const SAFETY_NET_RESULT_OPTIONS: ResultOption[] = [
   { value: 'na',   label: 'N/A',         short: 'N/A',        tone: 'neutral' },
   { value: 'pass', label: 'გამოც.',     short: 'გამოც.',    tone: 'good'    },
   { value: 'fail', label: 'პრობლ.',     short: 'პრობლ.',    tone: 'bad'     },
+];
+
+// Legend explaining the visual-checklist chip glyphs (✓ კარგი / ⚠ გამოსასწ. /
+// N/A), mirroring the printed act's markings key. Reuses ChecklistLegend like the
+// other equipment flows (cf. ChecklistStep's CHECKLIST_LEGEND).
+const SN_VISUAL_LEGEND: ChecklistLegendItem[] = [
+  { icon: Check,         label: 'კარგი' },
+  { icon: TriangleAlert, label: 'გამოსასწორებელი' },
+  { shortLabel: 'N/A',   label: 'არ გააჩნია ან არ ეკუთვნის' },
 ];
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -469,6 +481,7 @@ export default function SafetyNetInspectionScreen() {
               showsVerticalScrollIndicator={false}
               bottomOffset={120}
             >
+              <ChecklistLegend items={SN_VISUAL_LEGEND} />
               <ChecklistSection
                 title="ვიზუალური შემოწმება"
                 items={SN_VISUAL_ITEMS.map(e => {
@@ -515,7 +528,7 @@ export default function SafetyNetInspectionScreen() {
 
               <DynamicTable
                 columns={[
-                  { key: 'name', label: 'დასახელება', type: 'text' },
+                  { key: 'name', label: 'ტვირთის აღწერა', type: 'text' },
                   { key: 'unitWeightKg', label: 'ერთ.წ.(კგ)', type: 'number', keyboardType: 'decimal-pad' },
                   { key: 'quantity', label: 'რ-ბა', type: 'number', keyboardType: 'numeric' },
                   { key: 'totalWeightKg', label: 'სულ(კგ)', type: 'readonly' },

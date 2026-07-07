@@ -252,7 +252,7 @@ function renderSectionIV(insp: SafetyNetInspection): string {
       <thead>
         <tr>
           <th class="col-num">№</th>
-          <th>დასახელება</th>
+          <th>ტვირთის აღწერა</th>
           <th style="text-align:right;width:80px">ერთ.წ.(კგ)</th>
           <th style="text-align:right;width:60px">რ-ბა</th>
           <th style="text-align:right;width:80px">სულ(კგ)</th>
