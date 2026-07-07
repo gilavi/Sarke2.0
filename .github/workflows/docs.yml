@@ -16,11 +16,13 @@ on:
 permissions:
   contents: write
 
-# Shared with every other gh-pages writer (web, web-app, cms, staging, preview)
-# so pushes to the single gh-pages branch serialize instead of racing into
-# non-fast-forward push failures. cancel-in-progress:false = queue, don't drop.
+# Per-destination group (writes /docs/). Same-destination pushes serialize;
+# other gh-pages writers run in parallel. NOT one shared group — GitHub cancels
+# older pending runs in a group, which would silently drop sibling deploys when
+# several coincide (docs.yml + deploy-web-app.yml both fire on lib/** changes).
+# See deploy-web.yml for the full rationale.
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-docs
   cancel-in-progress: false
 
 jobs:

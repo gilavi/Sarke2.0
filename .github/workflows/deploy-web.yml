@@ -15,12 +15,15 @@ on:
 permissions:
   contents: write
 
-# Shared with every other gh-pages writer (docs, web-app, cms, staging,
-# preview) so pushes to the single gh-pages branch serialize instead of racing
-# into non-fast-forward push failures. cancel-in-progress:false = queue, don't
-# drop.
+# One group PER gh-pages destination. Same-destination pushes serialize (no
+# self-race); different destinations run in parallel. Do NOT fold all writers
+# into one shared group: GitHub keeps only one running + one pending run per
+# group and CANCELS older pending runs, so 3+ deploys coinciding (e.g. a
+# workflow-file or lib/** change firing several at once, or concurrent pushes)
+# would silently drop sibling deploys. A rare cross-destination push race on the
+# gh-pages ref surfaces as a visible, re-runnable failure — the lesser evil.
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-web
   cancel-in-progress: false
 
 jobs:

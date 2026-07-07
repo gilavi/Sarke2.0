@@ -14,13 +14,12 @@ on:
 permissions:
   contents: write
 
-# Shared with every other gh-pages writer (web, docs, cms, web-app prod,
-# staging) so pushes to the single gh-pages branch serialize instead of racing
-# into non-fast-forward push failures. This still only writes /app/preview/;
-# serialization just prevents a concurrent peaceiris push from a different
-# branch from colliding. cancel-in-progress:false = queue, don't drop.
+# Per-destination group (writes /app/preview/). Same-destination pushes
+# serialize; other gh-pages writers run in parallel. NOT one shared group —
+# GitHub cancels older pending runs in a group, which would silently drop
+# sibling deploys when several coincide. See deploy-web.yml for the rationale.
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-app-preview
   cancel-in-progress: false
 
 jobs:
