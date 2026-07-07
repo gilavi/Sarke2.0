@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { HubbleLogo } from '@/components/HubbleLogo';
 
@@ -17,6 +19,66 @@ export const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const } },
 };
 export const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
+
+// ─── Editorial section primitives (brand-board style) ───────────────────────────
+// `Kicker` — the mono eyebrow with a leading orange bar. `on-dark` recolours it for
+// graphite bands. `SectionHeading` — the mask-wipe reveal <h2> used across sections.
+
+export function Kicker({ children, dark = false, className }: { children: ReactNode; dark?: boolean; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-2.5 font-mono text-xs font-medium uppercase tracking-[0.22em]',
+        dark ? 'text-safety-400' : 'text-safety-600',
+        className,
+      )}
+    >
+      <span className={cn('h-px w-6', dark ? 'bg-safety-400' : 'bg-safety-500')} />
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Mask-wipe heading: the text rises from behind a clip edge when it scrolls into
+ * view (matches the reference's `.mask>i` reveal). Falls back to a plain fade for
+ * reduced-motion via framer's respect of the user setting.
+ */
+export function SectionHeading({
+  children,
+  dark = false,
+  className,
+  center = true,
+}: {
+  children: ReactNode;
+  dark?: boolean;
+  className?: string;
+  center?: boolean;
+}) {
+  return (
+    <h2
+      className={cn(
+        'font-black leading-[1.03] tracking-[-0.04em]',
+        'text-[clamp(30px,4.4vw,50px)]',
+        dark ? 'text-white' : 'text-neutral-900',
+        center && 'text-center',
+        className,
+      )}
+    >
+      <span className="block overflow-hidden pb-[0.08em]">
+        <motion.span
+          className="block"
+          initial={{ y: '0.4em', opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          viewport={{ once: true, margin: '0px 0px -8% 0px' }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {children}
+        </motion.span>
+      </span>
+    </h2>
+  );
+}
 
 // ─── Phone mockup app home screen ──────────────────────────────────────────
 export function PhoneMockup({ className }: { className?: string }) {
