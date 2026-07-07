@@ -160,7 +160,7 @@ function renderSectionII(insp: SafetyNetInspection): string {
   return `
     <div class="section-title">II - ბადის იდენტიფიკაცია</div>
     <table class="param-table">
-      <tr><td>მწარმოებელი</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
+      <tr><td>დასახელება</td><td>${escapeHtml(insp.manufacturer) || '-'}</td></tr>
       <tr><td>ბადის ზომა მ×მ</td><td>${escapeHtml(insp.netSize) || '-'}</td></tr>
       <tr><td>დგარის ზომა</td><td>${escapeHtml(insp.postSize) || '-'}</td></tr>
       <tr><td>დგარების რაოდენობა</td><td>${insp.postCount ?? '-'}</td></tr>
@@ -168,7 +168,7 @@ function renderSectionII(insp: SafetyNetInspection): string {
       <tr><td>სამაგრი წერტილების რ-ბა</td><td>${insp.anchorPointCount ?? '-'}</td></tr>
       <tr><td>კიდის ბაგირების რ-ბა</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
       <tr><td>უჯრედის მხარე</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
-      <tr><td>სამუშაო მანძილი</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
+      <tr><td>ბადის დგარებს შორის მანძილი</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
       <tr><td>სერტიფიკატი</td><td>${certPill}</td></tr>
     </table>
   `;

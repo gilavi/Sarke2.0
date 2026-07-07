@@ -362,7 +362,7 @@ export default function SafetyNetInspectionScreen() {
           status={inspection.verdict ? { tone: verdictTone, label: SN_VERDICT_LABEL[inspection.verdict] } : null}
           info={[
             { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
+            { label: 'დასახელება', value: inspection.manufacturer || '—' },
             { label: 'ბადის ზომა', value: inspection.netSize || '—' },
             { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
             { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
@@ -417,10 +417,10 @@ export default function SafetyNetInspectionScreen() {
             >
               <IdentificationGrid
                 fields={[
-                  { label: 'მწარმოებელი', value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
+                  { label: 'დასახელება', value: inspection.manufacturer, onChange: v => update('manufacturer', v) },
                   { label: 'ბადის ზომა მ×მ', value: inspection.netSize, onChange: v => update('netSize', v) },
                   { label: 'უჯრედის მხარე', value: inspection.cellSide, onChange: v => update('cellSide', v) },
-                  { label: 'სამუშაო მანძილი', value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
+                  { label: 'ბადის დგარებს შორის მანძილი', value: inspection.workingDistance, onChange: v => update('workingDistance', v) },
                   {
                     label: 'ბადის სერტიფიკატი',
                     value: inspection.certificate ?? '',
