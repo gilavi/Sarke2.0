@@ -18,6 +18,9 @@ on:
 permissions:
   contents: write
 
+# Shared with every other gh-pages writer (web, docs, cms, staging, preview) so
+# pushes to the single gh-pages branch serialize instead of racing into
+# non-fast-forward push failures. cancel-in-progress:false = queue, don't drop.
 concurrency:
   group: gh-pages-deploy
   cancel-in-progress: false
@@ -66,6 +69,12 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      # Guard 0b: the inspection engine is hand-mirrored from the mobile app; a
+      # direct @root/lib/inspection import would silently desync web ↔ mobile.
+      # Blocks the deploy. See scripts/check-inspection-mirror.mjs.
+      - name: Inspection-mirror guard
+        run: npm run lint:inspection-guard
 
       - name: Build
         env:

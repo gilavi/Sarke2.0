@@ -3,9 +3,13 @@
 ## What this module does
 Turns a structured inspection row into a print-ready HTML document, using one
 data-driven engine instead of per-type hand-written builders. It is a **hand
-mirror** of the Expo app's `lib/inspection/` (the `@root` import of the mobile
-tree is eslint-banned in web-app), so the web-generated PDF is byte-faithful to
-the mobile one and rows round-trip.
+mirror** of the Expo app's `lib/inspection/` — importing the mobile engine via
+`@root/lib/inspection` is **blocked** by `npm run lint:inspection-guard`
+(`scripts/check-inspection-mirror.mjs`), a required step in `ci-web-app.yml` and
+`deploy-web-app.yml` — so the web-generated PDF is byte-faithful to the mobile
+one and rows round-trip. (The broad `@root` allowlist rule in `eslint.config.js`
+is only a warning, because a few other shared imports are accepted; this one
+engine reach is the hard-fail.)
 
 ## Public API
 - `buildInspectionPdf(schema, { inspection, projectName, signaturesSession }, photos)`
@@ -30,7 +34,9 @@ the mobile one and rows round-trip.
 
 ## Gotchas
 - **Keep in sync with Expo by hand.** When the mobile `lib/inspection/schemas/<type>.ts`
-  or `pdfStyles.ts` changes, port the change here. Do **not** add an `@root` import.
+  or `pdfStyles.ts` changes, port the change here. Do **not** add an
+  `@root/lib/inspection` import — `npm run lint:inspection-guard` fails the build
+  (CI + prod deploy) if you do.
 - **Signatures are never persisted** (regulatory). Schemas deliberately OMIT the
   persisted signature section the mobile schema renders; the captured signature is
   appended by `buildInspectionPdf` from the in-memory `signaturesSession`.

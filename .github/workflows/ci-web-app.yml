@@ -45,6 +45,13 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # BLOCKING: the hand-mirrored inspection engine must never import the live
+      # mobile engine (@root/lib/inspection). This one @root reach hard-fails
+      # even though the broad lint stays informational. See CLAUDE.md + the
+      # scripts/check-inspection-mirror.mjs header.
+      - name: Inspection-mirror guard
+        run: npm run lint:inspection-guard
+
       # Non-blocking until the query-key migration on the page layer lands and
       # the tree can be auto-fixed/formatted. Flip to a required step then.
       - name: Lint (informational)

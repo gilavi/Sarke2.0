@@ -16,12 +16,45 @@ on:
 permissions:
   contents: write
 
+# Shared with every other gh-pages writer (web, docs, web-app, staging,
+# preview) so pushes to the single gh-pages branch serialize instead of racing
+# into non-fast-forward push failures. cancel-in-progress:false = queue, don't
+# drop.
 concurrency:
-  group: gh-pages-deploy-cms
+  group: gh-pages-deploy
   cancel-in-progress: false
 
 jobs:
+  # Gate: a red typecheck blocks the deploy. The CMS `build` script is just
+  # `vite build` (no tsc), so this job is the ONLY place cms/ is typechecked
+  # before it ships. No test suite exists, so typecheck is the check.
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cms
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cms/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --legacy-peer-deps
+          else
+            npm install --legacy-peer-deps --no-audit --no-fund
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
   build-deploy:
+    needs: checks
     runs-on: ubuntu-latest
     defaults:
       run:

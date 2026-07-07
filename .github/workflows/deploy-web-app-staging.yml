@@ -23,8 +23,13 @@ on:
 permissions:
   contents: write
 
+# Shared with every other gh-pages writer (web, docs, cms, web-app prod,
+# preview) so pushes to the single gh-pages branch serialize instead of racing
+# into non-fast-forward push failures. This still only writes /app-staging/;
+# serialization just prevents a concurrent peaceiris push from a different
+# branch from colliding. cancel-in-progress:false = queue, don't drop.
 concurrency:
-  group: gh-pages-deploy-staging
+  group: gh-pages-deploy
   cancel-in-progress: false
 
 jobs:
