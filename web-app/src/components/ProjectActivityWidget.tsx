@@ -95,7 +95,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
       : project.address || null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-colors hover:border-neutral-300 dark:hover:border-neutral-700 dark:border-neutral-800 dark:bg-neutral-900">
       {/* ── Map header (mirrors the /projects card) ── */}
       <div className="relative flex h-[148px] flex-col justify-between border-b border-neutral-100 p-4 dark:border-neutral-800">
         {tileUrl ? (
@@ -134,7 +134,7 @@ export function ProjectActivityWidget({ project, onNewAct }: Props) {
             type="button"
             onClick={onNewAct}
             aria-label="ახალი აქტი"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-neutral-700 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-brand-600 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-800"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 dark:border-neutral-700 bg-white/90 text-neutral-700 backdrop-blur-sm transition hover:bg-white hover:text-brand-600 dark:bg-neutral-800/90 dark:text-neutral-200 dark:hover:bg-neutral-800"
           >
             <Plus size={16} />
           </button>

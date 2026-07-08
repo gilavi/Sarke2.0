@@ -1,15 +1,22 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ScrollText, ShieldCheck } from 'lucide-react';
 import { getProject, type Project } from '@/lib/data/projects';
-import { projectKeys } from '@/app/queryKeys';
+import { listOrdersByProject } from '@/lib/data/orders';
+import { useActRows } from '@/lib/data/recordRows';
+import { orderKeys, projectKeys } from '@/app/queryKeys';
+import { routes } from '@/app/routes';
 import { AsyncBoundary } from '@/components/async/AsyncBoundary';
+import { QuickActionsRow, type QuickActionDef } from '@/components/ui/quick-actions';
 import { ProjectHeader } from './ProjectHeader';
 import { ProjectDetailsCard } from './ProjectDetailsCard';
 import { CrewSection } from './CrewSection';
 import { SignersSection } from './SignersSection';
 import { FilesSection } from './FilesSection';
 import { DangerZoneSection } from './DangerZoneSection';
+import { RecordsSection } from './RecordsSection';
+import { OrdersSection } from './OrdersSection';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { humanizeError } from '@/lib/errors';
 
@@ -27,6 +34,7 @@ function SectionGroup({ label }: { label: string }) {
 export default function ProjectDetail() {
   const { id = '' } = useParams<{ id: string }>();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: project, isLoading, error: queryError } = useQuery({
     queryKey: projectKeys.detail(id),
@@ -35,6 +43,31 @@ export default function ProjectDetail() {
     placeholderData: () =>
       qc.getQueryData<Project[]>(projectKeys.lists())?.find((p) => p.id === id) ?? undefined,
   });
+
+  // Counts for the stats strip (same cache keys the sections below subscribe to).
+  const { rows: actRows } = useActRows(id);
+  const { data: orders } = useQuery({
+    queryKey: orderKeys.list(id),
+    queryFn: () => listOrdersByProject(id),
+    enabled: !!id,
+  });
+
+  const quickActions: QuickActionDef[] = [
+    {
+      key: 'inspection',
+      label: 'შემოწმება',
+      icon: ShieldCheck,
+      tone: 'brand',
+      onClick: () => navigate(`${routes.inspections.new}?project=${id}`),
+    },
+    {
+      key: 'order',
+      label: 'ბრძანება',
+      icon: ScrollText,
+      tone: 'cert',
+      onClick: () => navigate(`${routes.orders.new}?project=${id}`),
+    },
+  ];
 
   const [editing, setEditing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -69,6 +102,26 @@ export default function ProjectDetail() {
           onError={setActionError}
         />
       </AsyncBoundary>
+
+      <QuickActionsRow actions={quickActions} />
+
+      {/* Stats strip: record counts for this project. */}
+      <div className="flex divide-x divide-[var(--border-default)] rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
+        <p className="flex-1 px-4 py-3 text-center text-sm text-[var(--text-secondary)]">
+          <span className="font-bold tabular-nums text-[var(--text-primary)]">{actRows.length}</span> აქტი
+        </p>
+        <p className="flex-1 px-4 py-3 text-center text-sm text-[var(--text-secondary)]">
+          <span className="font-bold tabular-nums text-[var(--text-primary)]">{orders?.length ?? 0}</span> ბრძანება
+        </p>
+      </div>
+
+      <AsyncBoundary>
+        <RecordsSection projectId={project.id} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <OrdersSection projectId={project.id} onError={setActionError} />
+      </AsyncBoundary>
+
       <SectionGroup label="გუნდი" />
       <AsyncBoundary>
         <CrewSection project={project} onError={setActionError} />

@@ -3,24 +3,25 @@ import { render, screen } from '@/test-utils';
 import StatusBadge from '@/components/StatusBadge';
 
 describe('StatusBadge - known statuses', () => {
-  it('completed → "დასრულდა" with brand styling', () => {
-    const { container } = render(<StatusBadge status="completed" />);
-    expect(screen.getByText('დასრულდა')).toBeInTheDocument();
-    // StatusBadge maps "completed" to a Mantine <Badge color="brand"> (the
-    // Hubble brand palette, registered in main.tsx). test-utils wraps in a
-    // bare MantineProvider, so the token appears verbatim in the style attr.
-    const badge = container.querySelector('.mantine-Badge-root');
-    expect(badge?.getAttribute('style') ?? '').toContain('brand');
+  it('completed → "დასრულდა" with emerald styling', () => {
+    render(<StatusBadge status="completed" />);
+    const badge = screen.getByText('დასრულდა');
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toContain('emerald');
   });
 
-  it('draft → "დრაფტი"', () => {
+  it('draft → "დრაფტი" with amber styling', () => {
     render(<StatusBadge status="draft" />);
-    expect(screen.getByText('დრაფტი')).toBeInTheDocument();
+    const badge = screen.getByText('დრაფტი');
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toContain('amber');
   });
 
-  it('in_progress → "მიმდინარე"', () => {
+  it('in_progress → "მიმდინარე" with amber styling', () => {
     render(<StatusBadge status="in_progress" />);
-    expect(screen.getByText('მიმდინარე')).toBeInTheDocument();
+    const badge = screen.getByText('მიმდინარე');
+    expect(badge).toBeInTheDocument();
+    expect(badge.className).toContain('amber');
   });
 
   it('overdue → "ვადაგასული"', () => {
@@ -45,30 +46,23 @@ describe('StatusBadge - unknown status', () => {
     expect(screen.getByText('something_weird')).toBeInTheDocument();
   });
 
-  it('falls back to gray styling', () => {
-    const { container } = render(<StatusBadge status="unknown" />);
-    // Unknown statuses fall back to <Badge color="gray">.
-    const badge = container.querySelector('.mantine-Badge-root');
-    expect(badge?.getAttribute('style') ?? '').toContain('gray');
+  it('falls back to neutral styling', () => {
+    render(<StatusBadge status="unknown" />);
+    expect(screen.getByText('unknown').className).toContain('neutral');
   });
 });
 
-describe('StatusBadge - showIcon prop', () => {
-  it('renders an icon by default for known statuses', () => {
+describe('StatusBadge - rendering', () => {
+  it('is a plain span pill (no Mantine badge)', () => {
     const { container } = render(<StatusBadge status="completed" />);
-    // lucide icon renders as an svg
-    expect(container.querySelector('svg')).toBeInTheDocument();
-  });
-
-  it('showIcon={false} suppresses the icon', () => {
-    const { container } = render(<StatusBadge status="completed" showIcon={false} />);
-    expect(container.querySelector('svg')).not.toBeInTheDocument();
+    expect(container.querySelector('.mantine-Badge-root')).not.toBeInTheDocument();
+    expect(container.querySelector('span')?.className).toContain('rounded-full');
   });
 });
 
 describe('StatusBadge - className prop', () => {
-  it('forwards extra className to the badge root', () => {
-    const { container } = render(<StatusBadge status="draft" className="my-custom-class" />);
-    expect(container.querySelector('.mantine-Badge-root')).toHaveClass('my-custom-class');
+  it('forwards extra className to the pill', () => {
+    render(<StatusBadge status="draft" className="my-custom-class" />);
+    expect(screen.getByText('დრაფტი')).toHaveClass('my-custom-class');
   });
 });

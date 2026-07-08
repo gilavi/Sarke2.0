@@ -1,6 +1,35 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-07-07 | Branch: `main`
+**Updated:** 2026-07-08 | Branch: `main`
+
+---
+
+## 2026-07-08 — Web dashboard UX redesign, phase 1 (branch `gio-web-redesign`, unshipped)
+
+Ground-up UX pass on `web-app/` toward the approved "Stripe register" direction
+(prototype iterated with gilavi 2026-07-08; see the design-notes artifact).
+Structural fixes, all previously confirmed against source:
+
+- **Creation flow is one full-page split view** — flow on the left, a **live
+  preview of the act on the right**, rendered by the real PDF engine
+  (`buildInspectionPdf`) so the preview is the signed document. New unified
+  picker at `/inspections/new` (all 12 act types from `STRUCTURED_ACT_LIST` +
+  generic templates); the modal→page teleport for structured templates is gone.
+- **Orders un-orphaned** — the fully-built order wizard finally has a route
+  (`/orders/new`) and entry points (Home + project page + project Orders
+  section). Previously zero routes pointed at it.
+- **Project page is a record hub** — quick-action verbs (project preselected),
+  stats strip, newest acts section, orders section. Previously a project's own
+  inspections were invisible on its page.
+- **History lists every act type** — merged via new `lib/data/recordRows.ts`
+  (`useActRows`); previously 5 of ~11 sources were queried and 6 structured
+  types vanished from every list once created. Row delete is always visible
+  (was hover-only → unreachable on touch) and orders join the list with a
+  type filter row.
+- **Reusable kit** — `IconChip`, `ListRow`, `SectionHeader`, `QuickActionsRow`,
+  `SplitWizard`/`DocPreviewFrame` in `web-app/src/components/ui/` (see
+  [primitives.md](primitives.md)); warm v3 tokens in `index.css`; mesh-gradient
+  blobs and the double page-transition removed from the shell.
 
 ---
 

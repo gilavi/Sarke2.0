@@ -65,7 +65,7 @@ describe('FilesSection', () => {
     openSpy.mockRestore();
   });
 
-  it('clicking trash calls deleteProjectFile', async () => {
+  it('clicking trash → confirm → deleteProjectFile is called', async () => {
     const file = {
       id: 'f1', project_id: 'p1', user_id: 'u1', name: 'doc.pdf', size_bytes: 1024,
       mime_type: 'application/pdf', storage_path: 'files/doc.pdf', created_at: '2026-05-01',
@@ -74,11 +74,12 @@ describe('FilesSection', () => {
     vi.mocked(deleteProjectFile).mockResolvedValue(undefined);
     renderSection(<FilesSection projectId="p1" onError={() => {}} />);
     await screen.findByText('doc.pdf');
-    // Trash button (the one with text-red-600 and no name); we find by querying
-    // for buttons inside the row that have the Trash2 icon.
+    // Trash icon button (DeleteButton iconOnly) opens the confirm dialog;
+    // the delete only fires after the "წაშლა" confirmation.
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     expect(trash.length).toBeGreaterThan(0);
     fireEvent.click(trash[0].closest('button')!);
+    fireEvent.click(await screen.findByRole('button', { name: 'წაშლა' }));
     await waitFor(() => expect(deleteProjectFile).toHaveBeenCalled());
   });
 

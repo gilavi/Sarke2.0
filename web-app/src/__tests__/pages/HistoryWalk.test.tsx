@@ -36,6 +36,36 @@ vi.mock('@/lib/data/cargoPlatform', async (io) => ({
   listCargoPlatformInspections: vi.fn(),
   deleteCargoPlatformInspection: vi.fn(),
 }));
+vi.mock('@/lib/data/safetyNet', async (io) => ({
+  ...(await io<object>()),
+  listSafetyNetInspections: vi.fn(),
+  deleteSafetyNetInspection: vi.fn(),
+}));
+vi.mock('@/lib/data/mobileLadder', async (io) => ({
+  ...(await io<object>()),
+  listMobileLadderInspections: vi.fn(),
+  deleteMobileLadderInspection: vi.fn(),
+}));
+vi.mock('@/lib/data/forklift', async (io) => ({
+  ...(await io<object>()),
+  listForkliftInspections: vi.fn(),
+  deleteForkliftInspection: vi.fn(),
+}));
+vi.mock('@/lib/data/liftingAccessories', async (io) => ({
+  ...(await io<object>()),
+  listLiftingAccessoriesInspections: vi.fn(),
+  deleteLiftingAccessoriesInspection: vi.fn(),
+}));
+vi.mock('@/lib/data/fallProtection', async (io) => ({
+  ...(await io<object>()),
+  listFallProtectionInspections: vi.fn(),
+  deleteFallProtectionInspection: vi.fn(),
+}));
+vi.mock('@/lib/data/orders', async (io) => ({
+  ...(await io<object>()),
+  listOrders: vi.fn(),
+  deleteOrder: vi.fn(),
+}));
 
 import { listProjects } from '@/lib/data/projects';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
@@ -43,6 +73,12 @@ import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
+import { listSafetyNetInspections } from '@/lib/data/safetyNet';
+import { listMobileLadderInspections } from '@/lib/data/mobileLadder';
+import { listForkliftInspections } from '@/lib/data/forklift';
+import { listLiftingAccessoriesInspections } from '@/lib/data/liftingAccessories';
+import { listFallProtectionInspections } from '@/lib/data/fallProtection';
+import { listOrders } from '@/lib/data/orders';
 import History from '@/pages/History';
 
 function renderPage(ui: React.ReactElement) {
@@ -63,6 +99,14 @@ beforeEach(() => {
       contact_phone: null, logo: null, crew: null, latitude: null, longitude: null,
       created_at: today },
   ]);
+  // The redesigned History also queries the 5 newer structured acts + orders;
+  // they stay empty in these walks.
+  for (const fn of [
+    listSafetyNetInspections, listMobileLadderInspections, listForkliftInspections,
+    listLiftingAccessoriesInspections, listFallProtectionInspections, listOrders,
+  ]) {
+    vi.mocked(fn).mockResolvedValue([] as never);
+  }
 });
 
 describe('History', () => {

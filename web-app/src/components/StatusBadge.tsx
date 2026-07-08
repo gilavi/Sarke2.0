@@ -1,32 +1,33 @@
-import { Badge } from '@mantine/core';
-import { AlertCircle, CheckCircle2, Clock, Hourglass, type LucideProps } from 'lucide-react';
-import type { ComponentType } from 'react';
-type LucideIcon = ComponentType<LucideProps>;
+import { cn } from '@/lib/utils';
 
 type Status = 'draft' | 'completed' | 'in_progress' | 'overdue' | 'due_today' | 'upcoming' | string;
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; Icon: LucideIcon | null }> = {
-  completed:   { label: 'დასრულდა',   color: 'brand',  Icon: CheckCircle2 },
-  draft:       { label: 'დრაფტი',     color: 'yellow', Icon: Hourglass    },
-  in_progress: { label: 'მიმდინარე',  color: 'blue',   Icon: Clock        },
-  overdue:     { label: 'ვადაგასული', color: 'red',    Icon: AlertCircle  },
-  due_today:   { label: 'დღეს',       color: 'orange', Icon: Clock        },
-  upcoming:    { label: 'დაგეგმილი',  color: 'gray',   Icon: Clock        },
+/**
+ * StatusBadge — plain span pill (no Mantine) with the canonical Georgian
+ * status labels. Tones: green = done, amber = still open, red = overdue.
+ */
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  completed:   { label: 'დასრულდა',   className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
+  draft:       { label: 'დრაფტი',     className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' },
+  in_progress: { label: 'მიმდინარე',  className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' },
+  overdue:     { label: 'ვადაგასული', className: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' },
+  due_today:   { label: 'დღეს',       className: 'bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300' },
+  upcoming:    { label: 'დაგეგმილი',  className: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-500/15 dark:text-neutral-300' },
 };
 
-export default function StatusBadge({ status, showIcon = true, className }: { status: Status; showIcon?: boolean; className?: string }) {
-  const config = STATUS_CONFIG[status] ?? { label: status, color: 'gray', Icon: null };
-  const Icon = config.Icon;
+const FALLBACK_CLASS = 'bg-neutral-100 text-neutral-600 dark:bg-neutral-500/15 dark:text-neutral-300';
+
+export default function StatusBadge({ status, className }: { status: Status; className?: string }) {
+  const config = STATUS_CONFIG[status] ?? { label: status, className: FALLBACK_CLASS };
   return (
-    <Badge
-      color={config.color}
-      variant="light"
-      size="sm"
-      radius="xl"
-      leftSection={showIcon && Icon ? <Icon size={10} strokeWidth={2.5} /> : undefined}
-      className={className}
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold',
+        config.className,
+        className,
+      )}
     >
       {config.label}
-    </Badge>
+    </span>
   );
 }

@@ -207,6 +207,20 @@ The four equipment inspection detail pages (bobcat, excavator, general-equipment
 
 The web-app uses **borders and backgrounds** for separation, never box-shadows. Don't add Tailwind `shadow-*` / `drop-shadow-*` utility classes in `web-app/src` — [`scripts/check-no-shadows.mjs`](../web-app/scripts/check-no-shadows.mjs) (run by `npm run lint`) blocks them. Modals/popovers get a `border`; cards rely on their existing `border`; hover affordance is a border-color change, not `hover:shadow-*`. The `shadow-*` light props on three.js elements in `Scene3D.tsx` are exempt — they're three.js config, not CSS.
 
+## Web dashboard redesign kit (web-app)
+
+The 2026-07 redesign (branch `gio-web-redesign`) added five reusable owners in [`web-app/src/components/ui/`](../web-app/src/components/ui/). Reach for these before styling a row/section/flow inline:
+
+| Use case | Owner |
+|---|---|
+| Tinted square icon chip leading a row/widget (tone = record family) | `IconChip` — [icon-chip.tsx](../web-app/src/components/ui/icon-chip.tsx) |
+| Record/list row (chip + title/sub + trailing meta + always-visible `actions` outside the link) | `ListRow` — [list-row.tsx](../web-app/src/components/ui/list-row.tsx) |
+| Section heading (title + count + trailing link/button) | `SectionHeader` — [section-header.tsx](../web-app/src/components/ui/section-header.tsx) |
+| Mobile-parity creation-verb row (Home + project page) | `QuickActionsRow` — [quick-actions.tsx](../web-app/src/components/ui/quick-actions.tsx) |
+| Full-page split creation flow: form left, live document preview right (Stripe invoice-editor pattern) | `SplitWizard` + `DocPreviewFrame` — [split-wizard.tsx](../web-app/src/components/ui/split-wizard.tsx) |
+
+Rules: row actions are **never** hover-only (touch has no hover — History's old `opacity-0 group-hover` delete was invisible on tablets); every document flow gets the split layout with `DocPreviewFrame` fed by the real PDF engine (`buildInspectionPdf` HTML), so the preview can't drift from the signed artifact; `ListRow.actions` renders outside the navigation target so a delete tap never also navigates.
+
 ## Web dashboard inspection create/edit wizard (web-app)
 
 One wizard owns the dashboard's question/template-driven inspection create + edit flow: [`web-app/src/components/InspectionWizard.tsx`](../web-app/src/components/InspectionWizard.tsx). It handles the generic flow and — via a `WizardPreset` — streamlined per-type flows (e.g. harness: locked template, project-only info step, grid-first checklist, required conclusion, navigate-to-detail on success).

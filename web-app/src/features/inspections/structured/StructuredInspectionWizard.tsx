@@ -1,17 +1,20 @@
 /**
  * The unified structured-inspection DRAFT flow. ONE component builds every
- * structured act (bobcat, safety-net, …) through the harness-styled wizard shell,
- * driven by a per-act `WizardDescriptor`. Step rhythm matches harness:
- *   specs → checklist section(s)/custom → verdict, then "დასრულება".
+ * structured act (bobcat, safety-net, …) through the full-page SplitWizard
+ * layout: the step flow on the left, a LIVE preview of the actual document on
+ * the right (the same `buildInspectionPdf` HTML the print route renders —
+ * every per-answer save refetches the row and re-renders the preview).
  *
  * Create pattern (project standard): on a `/<type>/new` route the wizard shows
  * only the specs step; "next" creates the row and navigates to its detail route,
  * where the remaining steps unlock - so there is no `/<type>/draft` dead-end.
  *
- * On completion it marks the row completed and navigates to the result screen
- * (StructuredActPage routes completed rows there) carrying the success payload -
- * signature capture + PDF live on that result screen, like harness. This wizard
- * never shows a signature step.
+ * Closing: drafts are persisted per answer, so ✕/Esc opens a confirm dialog
+ * ("progress is saved") and lands on /home. On completion it marks the row
+ * completed and navigates to the result screen (StructuredActPage routes
+ * completed rows there) carrying the success payload - signature capture + PDF
+ * live on that result screen, like harness. This wizard never shows a
+ * signature step.
  */
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -20,12 +23,14 @@ import { toastError } from '@/lib/errors';
 import { SkeletonDetailPage } from '@/components/SkeletonCard';
 import { ErrorView, EmptyView } from '@/components/async/AsyncBoundary';
 import type { SuccessModalData } from '@/components/web/SuccessModal';
-import { WizardFrame } from '@/components/wizard';
+import { SplitWizard, DocPreviewFrame } from '@/components/ui/split-wizard';
+import { Button } from '@/components/ui/button';
+import { WizardCloseDialog } from './WizardCloseDialog';
 import { useAuth } from '@/lib/auth';
 import { listProjects } from '@/lib/data/projects';
 import { projectKeys } from '@/app/queryKeys';
-import { routes } from '@/app/routes';
 import { useStructuredInspection } from './useStructuredInspection';
+import { useActPreviewHtml } from './useActPreviewHtml';
 import { SpecStep } from './steps/SpecStep';
 import { StepBody } from './steps/StepBody';
 import type { WizardDescriptor } from './types';
@@ -49,6 +54,21 @@ export function StructuredInspectionWizard<T extends { id: string; status: strin
   const [projectId, setProjectId] = useState(() => searchParams.get('project') ?? '');
   const [specValues, setSpecValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  const projectName = wiz.isNew
+    ? (projects ?? []).find((p) => p.id === projectId)?.name
+    : wiz.project?.name;
+
+  // The live document preview: the real PDF HTML while a draft row exists,
+  // a blank act sheet on the legacy `/new` spec step.
+  const previewHtml = useActPreviewHtml({
+    category: descriptor.category,
+    item: wiz.item,
+    projectName: projectName ?? '',
+    templateName: descriptor.title,
+    inspectorName: profileName,
+  });
 
   if (!wiz.isNew && wiz.isLoading) return <SkeletonDetailPage />;
   if (!wiz.isNew && wiz.isError) return <ErrorView error={wiz.error} />;
@@ -56,22 +76,23 @@ export function StructuredInspectionWizard<T extends { id: string; status: strin
 
   const item = wiz.item;
   // The specs/info step is dropped from the equipment act flow — the create
-  // modal already captured the project, so the act goes straight to the
+  // flow already captured the project, so the act goes straight to the
   // checklist (harness/xaracho never had a specs step).
   const steps = descriptor.steps[0]?.kind === 'specs' ? descriptor.steps.slice(1) : descriptor.steps;
   const total = steps.length;
   const current = steps[wiz.step];
   const isLast = wiz.step === total - 1;
   const itemId = item?.id ?? '';
-
-  const projectName = wiz.isNew
-    ? (projects ?? []).find((p) => p.id === projectId)?.name
-    : wiz.project?.name;
+  const busy = wiz.creating || submitting;
 
   async function handleNext() {
     if (wiz.isNew) {
       if (!projectId) return;
-      await wiz.create({ projectId, inspectorName: profileName, specValues });
+      try {
+        await wiz.create({ projectId, inspectorName: profileName, specValues });
+      } catch (e) {
+        toastError(e);
+      }
       return;
     }
     if (isLast) {
@@ -105,37 +126,52 @@ export function StructuredInspectionWizard<T extends { id: string; status: strin
     return true;
   })();
 
-  const stepName = wiz.isNew ? 'ზოგადი ინფორმაცია' : `${current.title} · ${wiz.step + 1}/${total}`;
-
   // Mono "N / M შემოწმებული" counter for checklist steps (answered / total).
   const progressCounter = (() => {
     if (wiz.isNew || !item || current?.kind !== 'checklist') return undefined;
-    const total = current.items.length;
-    if (total === 0) return undefined;
+    const totalItems = current.items.length;
+    if (totalItems === 0) return undefined;
     const answered = current.getStates(item).filter((s) => s.result != null).length;
-    return `${answered} / ${total} შემოწმებული`;
+    return `${answered} / ${totalItems} შემოწმებული`;
   })();
 
+  const subtitle = wiz.isNew
+    ? 'ზოგადი ინფორმაცია'
+    : [`ნაბიჯი ${wiz.step + 1}/${total}`, progressCounter].filter(Boolean).join(' · ');
+
+  // Drafts persist per answer — ✕/Esc confirms instead of losing context. On
+  // `/new` nothing exists yet, so close leaves immediately.
+  function requestClose() {
+    if (busy || confirmClose) return;
+    if (wiz.isNew) {
+      navigate('/home');
+      return;
+    }
+    setConfirmClose(true);
+  }
+
   return (
-    <WizardFrame
-      open
-      onClose={() => navigate(routes.inspections.list())}
-      projectName={projectName}
-      inspectionName={descriptor.title}
-      stepName={stepName}
-      showProgress={!wiz.isNew}
-      progressPercent={total > 1 ? (wiz.step / (total - 1)) * 100 : 0}
-      progressCounter={progressCounter}
-      closeDisabled={wiz.updating || wiz.creating || submitting}
-      stepKey={wiz.step}
-      direction={wiz.direction}
-      onBack={() => wiz.goStep(wiz.step - 1)}
-      onNext={handleNext}
-      backDisabled={wiz.step === 0 || wiz.updating || wiz.creating || submitting}
-      nextDisabled={!canGoNext || submitting}
-      nextLabel={wiz.isNew ? 'შექმნა' : isLast ? 'დასრულება' : 'შემდეგი'}
-      hideNextArrow={isLast}
-      submitting={wiz.creating || submitting}
+    <SplitWizard
+      title={descriptor.title}
+      subtitle={subtitle}
+      saved={!wiz.isNew && !wiz.updating}
+      onClose={requestClose}
+      preview={<DocPreviewFrame html={previewHtml} />}
+      footer={
+        <>
+          <Button
+            variant="outline"
+            onClick={() => wiz.goStep(wiz.step - 1)}
+            disabled={wiz.step === 0 || wiz.updating || busy}
+          >
+            უკან
+          </Button>
+          <div className="flex-1" />
+          <Button onClick={handleNext} disabled={!canGoNext || submitting} loading={busy}>
+            {wiz.isNew ? 'შექმნა' : isLast ? 'დასრულება' : 'შემდეგი'}
+          </Button>
+        </>
+      }
     >
       {wiz.isNew ? (
         <SpecStep
@@ -151,15 +187,20 @@ export function StructuredInspectionWizard<T extends { id: string; status: strin
           onSpecChange={(k, v) => setSpecValues((p) => ({ ...p, [k]: v }))}
         />
       ) : item ? (
-        <StepBody
-          step={current}
-          item={item}
-          itemId={itemId}
-          onSave={wiz.save}
-          onDelete={wiz.del}
-          deleting={wiz.deleting}
-        />
+        <div className="space-y-5">
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">{current.title}</h2>
+          <StepBody
+            step={current}
+            item={item}
+            itemId={itemId}
+            onSave={wiz.save}
+            onDelete={wiz.del}
+            deleting={wiz.deleting}
+          />
+        </div>
       ) : null}
-    </WizardFrame>
+
+      <WizardCloseDialog open={confirmClose} onOpenChange={setConfirmClose} onConfirm={() => navigate('/home')} />
+    </SplitWizard>
   );
 }
