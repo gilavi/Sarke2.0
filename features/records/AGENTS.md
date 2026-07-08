@@ -28,6 +28,8 @@ only a neutral per-type glyph for identity.
   "view all" link, with loading / empty / rows states). Caller maps items to
   rows and passes them as `children`. `sectionCard` is an empty style (no box,
   no inner padding): content sits flush at the host's 20px page gutter.
+- `briefingTopicsLabel(topics, t)` (from `topics.ts`) — the comma-joined
+  briefing-topic title; also used by History's client-side search.
 - `ReportRow`, `BriefingRow`, `OrderRow` — status-free rows. (Inspections reuse
   `components/InspectionRow`; incidents reuse `IncidentRow` from
   `components/projects/ProjectRowHelpers` — its colored badge is incident
@@ -54,9 +56,14 @@ only a neutral per-type glyph for identity.
     (`onViewAll`). The host supplies the header. Optional `onDeleteReport(report)`
     → forwards to each card's `onDelete`.
   - `ReportCardGrid` — full-screen 2-column grid for **History reports tab** and
-    a project's **all-reports** list. Carries the canonical three-state guard +
+    a project's **all-reports** list. Carries the canonical four-state guard +
     pull-to-refresh; optional `ListHeaderComponent`. Optional
-    `onDeleteReport(report)` → forwards to each card's `onDelete`.
+    `onDeleteReport(report)` → forwards to each card's `onDelete`. Optional
+    `totalCount` (unfiltered loaded-row count — History passes it so its
+    client-side search/project filter renders "no results" instead of the
+    confirmed-empty copy) and `paging` (`{ hasNextPage, isFetchingNextPage,
+    onLoadMore }` — infinite scroll + "load more" footer); omit both and it
+    behaves exactly as before.
   - `ReportThumb` — the small 16:9 avatar still used by the Drafts `ReportRow`.
 - `getRecordStyles(theme)` — section-card + row styles.
 
@@ -86,7 +93,9 @@ only a neutral per-type glyph for identity.
 ## Canonical helpers consumed
 
 - `useRecent{Inspections,Reports,Incidents,Briefings,Orders}` + the
-  `RecentRecordsOpts` (`{ limit, status }`) contract from `lib/apiHooks.ts`.
+  `RecentRecordsOpts` (`{ limit, offset, status }`) contract from
+  `lib/apiHooks.ts` (`offset` is History's pagination —
+  `features/history/useHistoryFeed.ts`; the Home widgets never pass it).
 - `components/InspectionRow`, `components/projects/ProjectRowHelpers`
   (`IncidentRow`, `ViewMoreRow`), `components/Skeleton` (`SkeletonRow`),
   `lib/formatDate` (`formatShortDateTime`), `lib/inspectionRouting`

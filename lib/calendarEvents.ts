@@ -1,4 +1,4 @@
-import type { Inspection, Briefing, Template, Project } from '../types/models';
+import type { CalendarInspectionRow, Briefing, Template, Project } from '../types/models';
 import type { ScheduleStore } from './calendarSchedule';
 
 export type CalendarEventStatus = 'completed' | 'due_today' | 'overdue' | 'upcoming';
@@ -46,7 +46,7 @@ export function isSameDay(a: Date, b: Date): boolean {
  *                one per project for briefings (shows what's next).
  */
 export function buildCalendarEvents(
-  inspections: Inspection[],
+  inspections: CalendarInspectionRow[],
   briefings: Briefing[],
   templates: Template[],
   projects: Project[],
@@ -94,7 +94,7 @@ export function buildCalendarEvents(
   }
 
   // ── FUTURE: most recent completed inspection per (project, template) ─────
-  const latestInspByGroup = new Map<string, Inspection>();
+  const latestInspByGroup = new Map<string, CalendarInspectionRow>();
   for (const insp of inspections) {
     if (insp.status !== 'completed' || !insp.completed_at) continue;
     const key = `${insp.project_id}:${insp.template_id}`;

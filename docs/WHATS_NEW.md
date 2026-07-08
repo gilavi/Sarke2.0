@@ -1,6 +1,76 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-07-07 | Branch: `main`
+**Updated:** 2026-07-08 | Branch: `main`
+
+---
+
+## 2026-07-08 — History: search, project filter, pagination past 50, lazy tabs
+
+Two audit findings fixed together (perf + UX) on the History screen.
+
+- **Tabs mount lazily.** The pager used to mount all five type-tabs (5
+  FlatLists + 5 queries) the moment History opened. Now only the active tab's
+  body renders — visited tabs stay mounted, and a starting swipe pre-mounts the
+  neighbours so the incoming page has content mid-gesture. Opening History
+  subscribes 1 query instead of 5.
+- **Pagination past the 50-item cap.** Each tab's feed is now a
+  `useInfiniteQuery` (`features/history/useHistoryFeed.ts`) that pages by
+  offset (`RecentRecordsOpts.offset` → PostgREST `.range()`, wired through all
+  five `recent()` services) in 50-row pages: infinite scroll +
+  a "მეტის ჩატვირთვა" footer button. Page 1 is seeded from the exact cache
+  entry the Home widgets warm, so Home → History stays an instant cache hit,
+  and the `'paged'` key suffix keeps `invalidateRecordLists` covering it.
+- **Search + project filter.** A "ძებნა…" field and (for multi-project
+  accounts) a project chip row above the pager filter every tab client-side
+  over its loaded rows — title / type label / project name (+ incident
+  location/description, briefing topics). Filtered-out lists show
+  "ვერაფერი მოიძებნა", never the confirmed-empty copy; the four-state
+  `useListLoadState` guard keeps running on the unfiltered count.
+- `InspectionHistoryTab` also swapped its per-row `templates.find`/
+  `projects.find` scans for memoized Maps.
+
+Files: `features/history/*` (screen split into `HistoryTabs.tsx`,
+`HistorySearchBar.tsx`, `useHistoryFeed.ts`, `historyListUtils.ts`),
+`features/records/ReportCardGrid.tsx` (+ optional `totalCount`/`paging`),
+`RecentRecordsOpts.offset` in `types/models.ts` + the five record services,
+locale keys `history.searchPlaceholder/searchNoResults/clearSearch/loadMore/
+allProjects`, tests in `tests/unit/historyFeed.test.ts`.
+
+---
+
+## 2026-07-08 — Home project-card maps: cached snapshots instead of 8 live MKMapViews
+
+Perf fix from the runtime audit. On iOS, `liteMode` is Android-only, so every
+`ProjectCard` map background was a **full live MKMapView** (~15–30 MB native
+memory + a tile-fetch session each) — Home's carousel mounted up to 8 of them
+on the first screen after boot, and the Projects tab one per project.
+
+- **New primitive: [`hooks/useMapCardSnapshot.ts`](../hooks/useMapCardSnapshot.ts).**
+  On a cache miss the card mounts its live map once, rasterizes it via
+  `takeSnapshot()` (MKMapSnapshotter, current region/bounds) into
+  `<cacheDirectory>/map-card-snapshots/` keyed by project id + coords + card
+  size + OS color scheme, and unmounts the map after the `expo-image` raster
+  has drawn (no swap flash). Every later mount renders the PNG only — zero
+  live maps on a warm Home. Only map tiles touch disk. Android keeps its cheap
+  `liteMode` map (hook is inert there). Broken cache files self-heal via the
+  image's `onError` → evict + live-map fallback.
+- **Visuals unchanged by design:** the monochrome treatment (grey
+  `mixBlendMode: 'saturation'` layer + radial SVG mask + accent location dot)
+  renders identically on top of the snapshot — it's a brand element
+  (see 2026-06-18 entry below).
+- **Location-dot pulse hygiene:** the infinite Reanimated `withRepeat`
+  breathing pulse is now cancelled on card unmount and disabled entirely under
+  OS reduce-motion (dot stays visible, static).
+- `ProjectCard`'s memo comparator now also compares `latitude`/`longitude`, so
+  editing a project's location refreshes the card (and its snapshot key)
+  instead of showing the stale map.
+
+Files: `components/home/ProjectCard.tsx` (slimmed to card chrome),
+`components/home/ProjectCardMap.tsx` (new sibling — the monochrome map
+backdrop, keeps ProjectCard under the 200-line target),
+`hooks/useMapCardSnapshot.ts` (new), docs row in `docs/primitives.md`.
+No changes to `app/(tabs)/home.tsx` or the interactive maps
+(`MapPicker`/`MapPreview`/`ProjectMapModal`/project-detail hero).
 
 ---
 

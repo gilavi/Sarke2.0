@@ -42,6 +42,7 @@ import type {
   ProjectFile,
   Template,
   Inspection,
+  CalendarInspectionRow,
   Answer,
   Qualification,
   Certificate,
@@ -583,11 +584,20 @@ import { buildCalendarEvents, getOverdueCount } from './calendarEvents';
 import type { ScheduleStore } from './calendarSchedule';
 import type { CalendarEvent } from './calendarEvents';
 
+// Calendar-source feeds. Lean by design (inspections: named-column select;
+// briefings: signature-stripped briefings_list_lean view) and unbounded — see
+// inspectionsApi.listAll for why a date window would be wrong. The long
+// staleTime is safe: invalidateRecordLists invalidates the 'calendar'
+// namespace after every record create/finish/delete, app/(tabs)/_layout.tsx
+// invalidates on foreground, and the calendar's pull-to-refresh refetches
+// directly — so passive remounts stop re-downloading two full-history feeds.
+const CALENDAR_FEED_STALE_MS = 15 * 60 * 1000;
+
 export function useAllInspections() {
-  return useQuery<Inspection[]>({
+  return useQuery<CalendarInspectionRow[]>({
     queryKey: qk.calendar.allInspections,
     queryFn: () => inspectionsApi.listAll(),
-    staleTime: 2 * 60 * 1000,
+    staleTime: CALENDAR_FEED_STALE_MS,
   });
 }
 
@@ -595,7 +605,7 @@ export function useAllBriefings() {
   return useQuery<Briefing[]>({
     queryKey: qk.calendar.allBriefings,
     queryFn: () => briefingsApi.listAll(),
-    staleTime: 2 * 60 * 1000,
+    staleTime: CALENDAR_FEED_STALE_MS,
   });
 }
 

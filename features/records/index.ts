@@ -13,6 +13,7 @@ export { ReportCardGrid } from './ReportCardGrid';
 export { useReportCoverUri } from './useReportCover';
 export { useReportDelete } from './useReportDelete';
 export { BriefingTopicAvatar } from './BriefingTopicAvatar';
+export { briefingTopicsLabel } from './topics';
 export {
   RECORD_TYPES,
   RECORD_TYPE_KEYS,

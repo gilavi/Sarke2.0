@@ -61,7 +61,12 @@ sites keep working unchanged after the split.
   so list feeds never carry base64 signature payloads. Each falls back to the
   legacy query via `isMissingDbObjectError` (real/_shared.ts) when the
   migration isn't applied. `getById` stays on the base tables — detail/PDF
-  paths need the full row. See docs/primitives.md → "Lean list feeds".
+  paths need the full row. `inspectionsApi.listAll` (the calendar/overdue
+  feed, real + mock) is lean by column selection instead — it returns only
+  the `CalendarInspectionRow` pick (id / project_id / template_id / status /
+  completed_at), never full rows, and is deliberately unbounded (see the
+  comment on it before adding a date window). See docs/primitives.md →
+  "Lean list feeds".
 - The toggle is **module-load-time only**. Flipping `useMockData` in
   app.json requires a full app restart — the live binding to `src` is
   resolved when this module first imports.

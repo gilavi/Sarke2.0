@@ -8,14 +8,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { InspectionRow } from '../../components/InspectionRow';
 import {
-  useRecentInspections,
   useTemplates,
   useProjects,
   useCertificateCounts,
   invalidateRecordLists,
 } from '../../lib/apiHooks';
 import { inspectionsApi } from '../../lib/services';
-import { RECENT_COMPLETED_LIMIT } from '../records';
 import { useTheme } from '../../lib/theme';
 import { a11y } from '../../lib/accessibility';
 import { friendlyError } from '../../lib/errorMap';
@@ -23,29 +21,55 @@ import { useToast } from '../../lib/toast';
 import { formatShortDateTime } from '../../lib/formatDate';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { routeForInspection } from '../../lib/inspectionRouting';
-import type { Inspection } from '../../types/models';
+import type { Inspection, Template } from '../../types/models';
 import { RecordHistoryList } from './RecordHistoryList';
+import type { HistoryTabFilters } from './HistoryTabs';
+import { matchesQuery, projectNameMap } from './historyListUtils';
+import { feedPaging, useHistoryInspections } from './useHistoryFeed';
 
 /**
  * Inspections tab of the History screen. Completed-only (no draft/completed
  * status dot — `InspectionRow` omits the badge when `status` is undefined),
  * keeps the per-row certificate-count badge and swipe-to-delete that the old
- * single-type History had.
+ * single-type History had. Paged feed (useHistoryInspections) + the screen's
+ * search / project filter applied client-side over the loaded rows.
  */
-export function InspectionHistoryTab() {
+export function InspectionHistoryTab({ search, projectId }: HistoryTabFilters) {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const toast = useToast();
   const qc = useQueryClient();
 
-  const inspQ = useRecentInspections({ status: 'completed', limit: RECENT_COMPLETED_LIMIT });
+  const inspQ = useHistoryInspections();
   const templatesQ = useTemplates();
   const { data: projects = [] } = useProjects();
 
-  const items = inspQ.data ?? [];
+  const all = inspQ.data ?? [];
   const templates = templatesQ.data ?? [];
-  const completedIds = useMemo(() => items.map((i) => i.id), [items]);
+  const templateById = useMemo(() => {
+    const map = new Map<string, Template>();
+    for (const tpl of templates) map.set(tpl.id, tpl);
+    return map;
+  }, [templates]);
+  const projectNames = useMemo(() => projectNameMap(projects), [projects]);
+
+  const items = useMemo(
+    () =>
+      all.filter(
+        (q) =>
+          (!projectId || q.project_id === projectId) &&
+          matchesQuery(search, [
+            inspectionDisplayName(templateById.get(q.template_id)?.name),
+            projectNames.get(q.project_id),
+          ]),
+      ),
+    [all, search, projectId, templateById, projectNames],
+  );
+
+  // Badge counts for every LOADED row (not the filtered slice — a keystroke
+  // must not mint a new query key and refetch the counts).
+  const completedIds = useMemo(() => all.map((i) => i.id), [all]);
   const { data: certCounts = {} } = useCertificateCounts(completedIds);
 
   const onDelete = useCallback(
@@ -74,13 +98,14 @@ export function InspectionHistoryTab() {
     <RecordHistoryList
       query={inspQ}
       items={items}
+      totalCount={all.length}
       keyOf={(q) => q.id}
       refreshQueries={[inspQ, templatesQ]}
+      paging={feedPaging(inspQ)}
       emptyText={t('records.emptyInspections')}
       renderRow={(q, isLast) => {
-        const tpl = templates.find((x) => x.id === q.template_id);
-        const p = projects.find((pr) => pr.id === q.project_id);
-        const proj = p ? p.company_name || p.name : '';
+        const tpl = templateById.get(q.template_id);
+        const proj = projectNames.get(q.project_id) ?? '';
         const n = certCounts[q.id] ?? 0;
         return (
           <Swipeable

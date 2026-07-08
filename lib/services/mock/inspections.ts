@@ -1,4 +1,4 @@
-import type { Inspection, InspectionAttachment } from '../../../types/models';
+import type { CalendarInspectionRow, Inspection, InspectionAttachment } from '../../../types/models';
 import { load, now, save, uuid } from './_store';
 
 export const inspectionsApi = {
@@ -108,7 +108,9 @@ export const inspectionsApi = {
       .filter(i => set.has(i.template_id))
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
-  listAll: async (): Promise<Inspection[]> => {
+  // Calendar/overdue feed — mirrors the real API's lean CalendarInspectionRow
+  // return (the mock just serves full rows, which satisfy the pick).
+  listAll: async (): Promise<CalendarInspectionRow[]> => {
     const db = await load();
     return db.inspections
       .filter(i => i.status === 'completed')

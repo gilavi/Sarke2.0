@@ -59,13 +59,17 @@ async function fetchList(opts: {
   projectId?: string;
   status?: string;
   limit?: number;
+  /** Only applied alongside `limit` (see RecentRecordsOpts). */
+  offset?: number;
 }): Promise<Order[]> {
   const run = (table: string) => {
     let q = supabase.from(table).select('*');
     if (opts.projectId) q = q.eq('project_id', opts.projectId);
     if (opts.status) q = q.eq('status', opts.status);
     let t = q.order('created_at', { ascending: false });
-    if (opts.limit != null) t = t.limit(opts.limit);
+    if (opts.limit != null) {
+      t = opts.offset ? t.range(opts.offset, opts.offset + opts.limit - 1) : t.limit(opts.limit);
+    }
     return t;
   };
   let res = leanViewAvailable ? await run('orders_list_lean') : null;
@@ -83,7 +87,7 @@ async function fetchList(opts: {
 export const ordersApi = {
   /** List feed — form_data signature blobs stripped (see fetchList). */
   recent: async (opts: RecentRecordsOpts = {}): Promise<Order[]> => {
-    return fetchList({ status: opts.status, limit: opts.limit });
+    return fetchList({ status: opts.status, limit: opts.limit, offset: opts.offset });
   },
 
   /** List feed — form_data signature blobs stripped (see fetchList). */

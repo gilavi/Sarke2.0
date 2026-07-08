@@ -11,9 +11,22 @@ navigating into a project detail screen.
   the chosen one.
 
 ## Internal files
-- `ProjectCard.tsx`, `ProjectPickerSheet.tsx`.
+- `ProjectCard.tsx`, `ProjectCardMap.tsx` (the card's monochrome map
+  backdrop — snapshot/live-map switch + radial mask + pulsing dot),
+  `ProjectPickerSheet.tsx`.
 
 ## Gotchas / non-obvious things
+- `ProjectCard`'s map background is a **cached raster snapshot** on iOS,
+  not a live map: `useMapCardSnapshot` (hooks/) resolves a PNG from disk;
+  only on a cache miss does the live `MapView` mount, capture one
+  snapshot via `onMapReady` → `takeSnapshot`, and unmount once the image
+  has drawn. Don't "simplify" it back to an always-mounted `MapView` —
+  on iOS `liteMode` is a no-op and Home used to hold up to 8 live
+  MKMapViews (~15–30 MB each). Android keeps the cheap `liteMode` map
+  (the hook is inert there). The monochrome look (desaturation layer +
+  radial SVG mask + pulsing location dot) is a brand element — keep it
+  on top of whichever layer renders. The dot's breathing pulse is
+  cancelled on unmount and stilled under reduce-motion.
 - `ProjectPickerSheet` is the entry point for "start inspection from
   home". It calls into the inspection registry via the parent
   callback, so adding a new equipment type doesn't require touching
@@ -35,7 +48,10 @@ navigating into a project detail screen.
   `HeaderCloseButton`, not raw icons.
 
 ## Canonical helpers used
-- `lib/theme`, `lib/services`, `lib/geocode`.
+- `lib/theme`, `lib/services`, `lib/geocode`, `lib/accessibility`
+  (`useAccessibilitySettings` for the reduce-motion gate).
+- `hooks/useMapCardSnapshot` — cached map raster for `ProjectCard`
+  (see docs/primitives.md → "Decorative map card → cached snapshot").
 - `components/BottomSheet`, `components/primitives/A11yText`,
   `components/ProjectAvatar`, `components/HeaderBackButton`,
   `components/HeaderCloseButton`, `components/inputs/GeocodingAddressInput`.

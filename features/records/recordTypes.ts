@@ -42,9 +42,11 @@ export const RECORD_TYPE_KEYS = RECORD_TYPES.map((r) => r.key);
 /**
  * Row cap for the cross-project "completed records" feed. Deliberately shared
  * by the Home widgets (which slice the first 4) and the History per-type lists
- * (which show them all) so the two hit the SAME React Query cache entry — Home
- * pre-warms History and switching is instant. Widget counts are accurate up to
- * this cap; paginate later if a single type ever exceeds it.
+ * so the two hit the SAME React Query cache entry — Home pre-warms History and
+ * switching is instant. Widget counts are accurate up to this cap. History
+ * pages PAST it via `features/history/useHistoryFeed.ts` (offset pages of this
+ * same size, seeded from the warmed first page), so older documents stay
+ * reachable there.
  */
 export const RECENT_COMPLETED_LIMIT = 50;
 

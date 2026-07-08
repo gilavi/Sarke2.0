@@ -62,6 +62,8 @@ async function fetchList(opts: {
   projectId?: string;
   status?: string;
   limit?: number;
+  /** Only applied alongside `limit` (see RecentRecordsOpts). */
+  offset?: number;
   orderBy: 'created_at' | 'date_time';
 }): Promise<Briefing[]> {
   const run = (table: string) => {
@@ -69,7 +71,9 @@ async function fetchList(opts: {
     if (opts.projectId) q = q.eq('project_id', opts.projectId);
     if (opts.status) q = q.eq('status', opts.status);
     let t = q.order(opts.orderBy, { ascending: false });
-    if (opts.limit != null) t = t.limit(opts.limit);
+    if (opts.limit != null) {
+      t = opts.offset ? t.range(opts.offset, opts.offset + opts.limit - 1) : t.limit(opts.limit);
+    }
     return t;
   };
   let res = leanViewAvailable ? await run('briefings_list_lean') : null;
@@ -87,7 +91,7 @@ async function fetchList(opts: {
 export const briefingsApi = {
   /** List feed — signature payloads stripped (see fetchList). */
   recent: async (opts: RecentRecordsOpts = {}): Promise<Briefing[]> => {
-    return fetchList({ status: opts.status, limit: opts.limit, orderBy: 'created_at' });
+    return fetchList({ status: opts.status, limit: opts.limit, offset: opts.offset, orderBy: 'created_at' });
   },
 
   /** List feed — signature payloads stripped (see fetchList). */

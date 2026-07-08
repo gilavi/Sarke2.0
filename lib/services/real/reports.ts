@@ -7,7 +7,10 @@ export const reportsApi = {
     let q = supabase.from('reports').select('*');
     if (opts.status) q = q.eq('status', opts.status);
     let t = q.order('created_at', { ascending: false });
-    if (opts.limit != null) t = t.limit(opts.limit);
+    // offset only applies alongside limit (see RecentRecordsOpts).
+    if (opts.limit != null) {
+      t = opts.offset ? t.range(opts.offset, opts.offset + opts.limit - 1) : t.limit(opts.limit);
+    }
     const { data, error } = await t;
     if (error) throw error;
     return (data ?? []) as Report[];

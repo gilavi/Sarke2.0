@@ -39,8 +39,13 @@ export type QuestionnaireStatus = InspectionStatus;
  * slicing client-side. `limit` caps the row count. All five record tables
  * use the same `'draft' | 'completed'` lifecycle, and RLS scopes every read
  * to the signed-in user, so these queries are safe across all projects.
+ *
+ * `offset` pages past the first `limit` rows (History's infinite scroll —
+ * `features/history/useHistoryFeed.ts`): rows `[offset, offset + limit - 1]`
+ * via PostgREST `.range()`. Only applied when `limit` is also set; ignored
+ * otherwise.
  */
-export type RecentRecordsOpts = { limit?: number; status?: InspectionStatus };
+export type RecentRecordsOpts = { limit?: number; offset?: number; status?: InspectionStatus };
 
 export interface AppUser {
   id: string;
@@ -225,6 +230,17 @@ export interface Inspection {
 
 /** @deprecated Use `Inspection`. Kept so legacy imports compile. */
 export type Questionnaire = Inspection;
+
+/**
+ * Lean calendar-feed projection of an inspection row. `inspectionsApi.listAll`
+ * (the calendar/overdue source, unbounded by design — see the comment there)
+ * selects only these columns so the full completed history stays cheap to
+ * ship and cache; `getById`/`recent` return the full `Inspection` row.
+ */
+export type CalendarInspectionRow = Pick<
+  Inspection,
+  'id' | 'project_id' | 'template_id' | 'status' | 'completed_at'
+>;
 
 export type GridValues = Record<string, Record<string, string>>;
 

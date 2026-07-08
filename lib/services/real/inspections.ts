@@ -4,7 +4,7 @@ import { supabase, STORAGE_BUCKETS } from '../../supabase';
 import { enqueueOutboxOp, isNetworkError } from '../../outbox/storage';
 import { logError } from '../../logError';
 import { isInspection } from '../../guards';
-import type { Inspection, InspectionAttachment, RecentRecordsOpts } from '../../../types/models';
+import type { CalendarInspectionRow, Inspection, InspectionAttachment, RecentRecordsOpts } from '../../../types/models';
 import { throwIfError, throwIfErrorMaybe } from './_shared';
 import { storageApi } from './storage';
 
@@ -24,7 +24,10 @@ export const inspectionsApi = {
     let q = supabase.from('inspections').select('*');
     if (opts.status) q = q.eq('status', opts.status);
     let t = q.order('created_at', { ascending: false });
-    if (opts.limit != null) t = t.limit(opts.limit);
+    // offset only applies alongside limit (see RecentRecordsOpts).
+    if (opts.limit != null) {
+      t = opts.offset ? t.range(opts.offset, opts.offset + opts.limit - 1) : t.limit(opts.limit);
+    }
     const { data, error } = await t;
     if (error) throw error;
     return data ?? [];
@@ -162,14 +165,22 @@ export const inspectionsApi = {
     if (error) throw error;
     return data ?? [];
   },
-  listAll: async (): Promise<Inspection[]> => {
+  // Calendar/overdue feed. Deliberately unbounded: the calendar lists the full
+  // completed history, and buildCalendarEvents derives next-due dates from the
+  // LATEST completion per (project, template) group — a date window would
+  // silently drop the most-overdue schedules. Kept lean instead: only the
+  // columns the calendar derivation reads (lib/calendarEvents.ts +
+  // lib/calendarSchedule.ts migration), so conclusion texts / photo paths /
+  // harness names never ride along on every calendar, More-tab, and
+  // project-detail visit.
+  listAll: async (): Promise<CalendarInspectionRow[]> => {
     const { data, error } = await supabase
       .from('inspections')
-      .select('*')
+      .select('id, project_id, template_id, status, completed_at')
       .eq('status', 'completed')
       .order('completed_at', { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data ?? []) as CalendarInspectionRow[];
   },
 };
 

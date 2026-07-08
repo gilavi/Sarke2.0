@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
-  ScrollView,
+  SectionList,
   StyleSheet,
   View,
+  type ViewToken,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -102,27 +103,31 @@ function relativeDayLabel(date: Date, t: TFunction): string {
 
 // ── Section grouping ──────────────────────────────────────────────────────────
 
+/** One virtualized list row: an event, or the red "overdue" sub-header. */
+type SectionRow =
+  | { kind: 'overdue-header'; key: string }
+  | { kind: 'event'; key: string; event: CalendarEvent; isLast: boolean };
+
 type DaySection = {
-  dateKey: string;
+  /** startOfDay(date).toDateString() — stable per calendar day. */
+  key: string;
   date: Date;
   label: string;
-  overdue: CalendarEvent[];
-  rest: CalendarEvent[];
+  data: SectionRow[];
 };
 
 function buildSections(events: CalendarEvent[]): DaySection[] {
-  const map = new Map<string, DaySection>();
+  const map = new Map<string, {
+    date: Date;
+    label: string;
+    overdue: CalendarEvent[];
+    rest: CalendarEvent[];
+  }>();
   for (const event of events) {
     const sod = startOfDay(event.date);
     const key = sod.toDateString();
     if (!map.has(key)) {
-      map.set(key, {
-        dateKey: key,
-        date: sod,
-        label: formatDayLabel(sod),
-        overdue: [],
-        rest: [],
-      });
+      map.set(key, { date: sod, label: formatDayLabel(sod), overdue: [], rest: [] });
     }
     const sec = map.get(key)!;
     if (event.status === 'overdue') {
@@ -131,23 +136,24 @@ function buildSections(events: CalendarEvent[]): DaySection[] {
       sec.rest.push(event);
     }
   }
-  return Array.from(map.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
-}
-
-/** Returns the section whose date best matches the current scroll Y. */
-function findVisibleSection(
-  scrollY: number,
-  offsets: Record<string, number>,
-  sections: DaySection[],
-): DaySection | null {
-  let best: DaySection | null = null;
-  for (const sec of sections) {
-    const off = offsets[sec.dateKey];
-    if (off === undefined) continue;
-    if (off <= scrollY + 64) best = sec;
-    else break;
-  }
-  return best;
+  return Array.from(map.entries())
+    .sort((a, b) => a[1].date.getTime() - b[1].date.getTime())
+    .map(([key, g]) => {
+      const rows: SectionRow[] = [];
+      if (g.overdue.length > 0) rows.push({ kind: 'overdue-header', key: `${key}-overdue` });
+      g.overdue.forEach((event, i) => {
+        rows.push({
+          kind: 'event',
+          key: event.id,
+          event,
+          isLast: i === g.overdue.length - 1 && g.rest.length === 0,
+        });
+      });
+      g.rest.forEach((event, i) => {
+        rows.push({ kind: 'event', key: event.id, event, isLast: i === g.rest.length - 1 });
+      });
+      return { key, date: g.date, label: g.label, data: rows };
+    });
 }
 
 // ── Main screen ───────────────────────────────────────────────────────────────
@@ -161,10 +167,11 @@ export default function CalendarScreen() {
   const [selectedDay, setSelectedDay] = useState<Date>(() => startOfDay(new Date()));
   const [weekOffset, setWeekOffset] = useState(0);
 
-  const scrollRef = useRef<ScrollView>(null);
-  const sectionOffsets = useRef<Record<string, number>>({});
+  const listRef = useRef<SectionList<SectionRow, DaySection>>(null);
   const suppressScrollSync = useRef(false);
   const didInitialScroll = useRef(false);
+  /** Section index of an in-flight programmatic scroll (bounds retry loops). */
+  const pendingScrollIndex = useRef<number | null>(null);
 
   const inspectionsQ = useAllInspections();
   const briefingsQ = useAllBriefings();
@@ -224,25 +231,60 @@ export default function CalendarScreen() {
     [filteredEvents, weekDays],
   );
 
-  // Scroll to today (or nearest future section) once sections + layout are ready
+  const sectionIndexByKey = useMemo(() => {
+    const m: Record<string, number> = {};
+    sections.forEach((s, i) => { m[s.key] = i; });
+    return m;
+  }, [sections]);
+
+  const scrollToSectionIndex = useCallback((sectionIndex: number, animated: boolean) => {
+    suppressScrollSync.current = true;
+    pendingScrollIndex.current = sectionIndex;
+    listRef.current?.scrollToLocation({ sectionIndex, itemIndex: 0, viewPosition: 0, animated });
+    setTimeout(() => {
+      suppressScrollSync.current = false;
+      pendingScrollIndex.current = null;
+    }, animated ? 700 : 400);
+  }, []);
+
+  // Without getItemLayout a far-away section may not be measured yet:
+  // coarse-jump near the estimated offset, then retry the precise scroll once
+  // the render window has caught up. pendingScrollIndex is cleared by
+  // scrollToSectionIndex's timeout, which bounds the retries.
+  const handleScrollToIndexFailed = useCallback(
+    (info: { index: number; averageItemLength: number }) => {
+      const target = pendingScrollIndex.current;
+      const responder = listRef.current?.getScrollResponder() as
+        | { scrollTo?: (opts: { x?: number; y?: number; animated?: boolean }) => void }
+        | null
+        | undefined;
+      responder?.scrollTo?.({ y: info.index * info.averageItemLength, animated: false });
+      if (target == null) return;
+      setTimeout(() => {
+        if (pendingScrollIndex.current === target) {
+          listRef.current?.scrollToLocation({
+            sectionIndex: target,
+            itemIndex: 0,
+            viewPosition: 0,
+            animated: false,
+          });
+        }
+      }, 120);
+    },
+    [],
+  );
+
+  // Scroll to today (or nearest future section) once data arrives
   useEffect(() => {
     if (sections.length === 0 || didInitialScroll.current) return;
-    const todayKey = today.toDateString();
-    const target =
-      sections.find(s => s.dateKey >= todayKey) ?? sections[sections.length - 1];
-    const tryScroll = () => {
-      const off = sectionOffsets.current[target.dateKey];
-      if (off !== undefined) {
-        didInitialScroll.current = true;
-        suppressScrollSync.current = true;
-        scrollRef.current?.scrollTo({ y: off, animated: false });
-        setTimeout(() => { suppressScrollSync.current = false; }, 300);
-      } else {
-        // Layout not yet measured - retry shortly
-        setTimeout(tryScroll, 80);
-      }
-    };
-    setTimeout(tryScroll, 100);
+    const todayTime = today.getTime();
+    let index = sections.findIndex(s => s.date.getTime() >= todayTime);
+    if (index === -1) index = sections.length - 1;
+    didInitialScroll.current = true;
+    // Give the list one frame to mount; far targets resolve via
+    // handleScrollToIndexFailed.
+    const timer = setTimeout(() => scrollToSectionIndex(index, false), 100);
+    return () => clearTimeout(timer);
   // Only run when sections change in length (new data arrived)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections.length]);
@@ -265,28 +307,57 @@ export default function CalendarScreen() {
     (day: Date) => {
       const d = startOfDay(day);
       setSelectedDay(d);
-      const key = d.toDateString();
-      const off = sectionOffsets.current[key];
-      if (off !== undefined) {
-        suppressScrollSync.current = true;
-        scrollRef.current?.scrollTo({ y: off, animated: true });
-        setTimeout(() => { suppressScrollSync.current = false; }, 600);
-      }
+      const index = sectionIndexByKey[d.toDateString()];
+      if (index !== undefined) scrollToSectionIndex(index, true);
     },
-    [],
+    [sectionIndexByKey, scrollToSectionIndex],
   );
 
-  const handleScroll = useCallback(
-    (y: number) => {
-      if (suppressScrollSync.current) return;
-      const visible = findVisibleSection(y, sectionOffsets.current, sections);
-      if (!visible) return;
-      if (!isSameDay(visible.date, selectedDay)) {
-        setSelectedDay(visible.date);
-        setWeekOffset(weekOffsetForDate(visible.date));
-      }
+  // Drives the week-strip selection from the scroll position. Replaces the old
+  // per-frame onScroll handler: fires only when the visible item set changes,
+  // and the functional setStates bail out unless a day boundary was actually
+  // crossed — memoized EventRows never re-render from this. Kept identity-
+  // stable via useRef (VirtualizedList forbids swapping it mid-flight).
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 5, minimumViewTime: 40 }).current;
+  const handleViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (suppressScrollSync.current || !didInitialScroll.current) return;
+      const first = viewableItems.find(v => v.isViewable);
+      const section = (first as { section?: DaySection } | undefined)?.section;
+      if (!section?.date) return;
+      const day = section.date;
+      setSelectedDay(prev => (isSameDay(prev, day) ? prev : day));
+      setWeekOffset(prev => {
+        const next = weekOffsetForDate(day);
+        return prev === next ? prev : next;
+      });
     },
-    [sections, selectedDay],
+  ).current;
+
+  const keyExtractor = useCallback((item: SectionRow) => item.key, []);
+
+  // Stable across selectedDay changes so memoized rows skip re-rendering
+  // while scrolling; only the section headers (rendered per-frame anyway)
+  // read the selection.
+  const renderItem = useCallback(
+    ({ item }: { item: SectionRow }) => {
+      if (item.kind === 'overdue-header') {
+        return (
+          <View style={styles.overdueHeader}>
+            <Text style={styles.overdueHeaderText}>{t('calendar.overdueSection')}</Text>
+          </View>
+        );
+      }
+      return (
+        <EventRow
+          event={item.event}
+          isLast={item.isLast}
+          templateCategoryMap={templateCategoryMap}
+          t={t}
+        />
+      );
+    },
+    [styles, t, templateCategoryMap],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -389,75 +460,48 @@ export default function CalendarScreen() {
           <Text style={styles.emptyText}>{t('calendar.noEvents')}</Text>
         </View>
       ) : (
-        <ScrollView
-          ref={scrollRef}
+        <SectionList<SectionRow, DaySection>
+          ref={listRef}
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 48 }}
-          onScroll={e => handleScroll(e.nativeEvent.contentOffset.y)}
-          scrollEventThrottle={16}
+          sections={sections}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          renderSectionHeader={({ section }) => (
+            /* Day section header (inline: it reads selectedDay/today) */
+            <View style={[
+              styles.sectionHeader,
+              isSameDay(section.date, selectedDay) && styles.sectionHeaderActive,
+            ]}>
+              <Text style={[
+                styles.sectionHeaderText,
+                isSameDay(section.date, today) && styles.sectionHeaderToday,
+              ]}>
+                {section.label}
+              </Text>
+              {isSameDay(section.date, today) && (
+                <View style={styles.todayPill}>
+                  <Text style={styles.todayPillText}>{t('calendar.today')}</Text>
+                </View>
+              )}
+            </View>
+          )}
+          stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
+          onViewableItemsChanged={handleViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
+          initialNumToRender={14}
+          maxToRenderPerBatch={12}
+          windowSize={7}
+          extraData={selectedDay}
           refreshControl={
             <RefreshControl
               queries={[inspectionsQ, briefingsQ]}
               onRefresh={() => queryClient.invalidateQueries({ queryKey: ['schedules'] })}
             />
           }
-        >
-          {sections.map(section => (
-            <View
-              key={section.dateKey}
-              onLayout={e => {
-                sectionOffsets.current[section.dateKey] = e.nativeEvent.layout.y;
-              }}
-            >
-              {/* Day section header */}
-              <View style={[
-                styles.sectionHeader,
-                isSameDay(section.date, selectedDay) && styles.sectionHeaderActive,
-              ]}>
-                <Text style={[
-                  styles.sectionHeaderText,
-                  isSameDay(section.date, today) && styles.sectionHeaderToday,
-                ]}>
-                  {section.label}
-                </Text>
-                {isSameDay(section.date, today) && (
-                  <View style={styles.todayPill}>
-                    <Text style={styles.todayPillText}>{t('calendar.today')}</Text>
-                  </View>
-                )}
-              </View>
-
-              <>
-                {section.overdue.length > 0 && (
-                  <>
-                    <View style={styles.overdueHeader}>
-                      <Text style={styles.overdueHeaderText}>{t('calendar.overdueSection')}</Text>
-                    </View>
-                    {section.overdue.map((event, idx) => (
-                      <EventRow
-                        key={event.id}
-                        event={event}
-                        isLast={idx === section.overdue.length - 1 && section.rest.length === 0}
-                        templateCategoryMap={templateCategoryMap}
-                        t={t}
-                      />
-                    ))}
-                  </>
-                )}
-                {section.rest.map((event, idx) => (
-                  <EventRow
-                    key={event.id}
-                    event={event}
-                    isLast={idx === section.rest.length - 1}
-                    templateCategoryMap={templateCategoryMap}
-                    t={t}
-                  />
-                ))}
-              </>
-            </View>
-          ))}
-        </ScrollView>
+        />
       )}
     </SafeAreaView>
   );
@@ -465,7 +509,10 @@ export default function CalendarScreen() {
 
 // ── Event row ─────────────────────────────────────────────────────────────────
 
-function EventRow({
+// memo: the screen re-renders on every scroll-driven day change (selectedDay);
+// with stable props (events/sections are memoized upstream) the visible rows
+// must skip that re-render — pre-memo, every mounted row repainted per change.
+const EventRow = memo(function EventRow({
   event,
   isLast,
   templateCategoryMap,
@@ -478,7 +525,7 @@ function EventRow({
 }) {
   const router = useRouter();
   const { theme } = useTheme();
-  const rowStyles = useMemo(() => createRowStyles(theme.colors), [theme.colors]);
+  const rowStyles = getRowStyles(theme.colors);
 
   const category = event.type === 'inspection'
     ? (templateCategoryMap[event.templateId ?? ''] ?? null)
@@ -521,6 +568,16 @@ function EventRow({
       <ChevronRight size={14} color={theme.colors.border} strokeWidth={1.5} />
     </Pressable>
   );
+});
+
+// Row styles are cached per theme palette (one StyleSheet.create per theme
+// switch instead of one per row mount).
+let rowStylesCache: { colors: unknown; styles: ReturnType<typeof createRowStyles> } | null = null;
+function getRowStyles(colors: any) {
+  if (!rowStylesCache || rowStylesCache.colors !== colors) {
+    rowStylesCache = { colors, styles: createRowStyles(colors) };
+  }
+  return rowStylesCache.styles;
 }
 
 // Matches home screen recentRow styles exactly

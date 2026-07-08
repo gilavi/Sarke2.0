@@ -924,7 +924,12 @@
     "resumeDraft": "Resume draft",
     "emptyTitle": "History is empty",
     "emptyHint": "Completed inspections will appear here",
-    "startInspection": "Start inspection"
+    "startInspection": "Start inspection",
+    "searchPlaceholder": "Search…",
+    "searchNoResults": "Nothing found",
+    "clearSearch": "Clear search",
+    "loadMore": "Load more",
+    "allProjects": "All"
   },
   "records": {
     "inspections": "Inspections",

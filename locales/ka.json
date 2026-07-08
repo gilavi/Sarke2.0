@@ -924,7 +924,12 @@
     "resumeDraft": "დრაფტის გაგრძელება",
     "emptyTitle": "ისტორია ცარიელია",
     "emptyHint": "დასრულებული შემოწმების აქტები გამოჩნდება აქ",
-    "startInspection": "შემოწმების აქტის დაწყება"
+    "startInspection": "შემოწმების აქტის დაწყება",
+    "searchPlaceholder": "ძებნა…",
+    "searchNoResults": "ვერაფერი მოიძებნა",
+    "clearSearch": "ძებნის გასუფთავება",
+    "loadMore": "მეტის ჩატვირთვა",
+    "allProjects": "ყველა"
   },
   "records": {
     "inspections": "შემოწმების აქტები",

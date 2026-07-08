@@ -1,11 +1,13 @@
 import { type ReactElement } from 'react';
-import { FlatList, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, View, useWindowDimensions } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
 import { RefreshControl } from '../../components/primitives';
 import { Skeleton } from '../../components/Skeleton';
 import { OfflineEmptyState } from '../../components/OfflineEmptyState';
 import { useListLoadState, type LoadStateQuery } from '../../hooks/useListLoadState';
 import { useTheme } from '../../lib/theme';
+import { a11y } from '../../lib/accessibility';
 import type { Report } from '../../types/models';
 import { ReportCard } from './ReportCard';
 
@@ -16,8 +18,14 @@ const GAP = 12;
  * Full-screen 2-column grid of report `ReportCard`s — the browse layout for the
  * History reports tab and a project's "all reports" list. Same card as the
  * section rails, just laid out to fill the screen. Carries the canonical
- * three-state guard (skeleton until the query produces a real answer, per-type
- * empty copy once it settles `[]`, cards otherwise) plus pull-to-refresh.
+ * four-state guard (skeleton until the query produces a real answer, offline
+ * when paused with nothing cached, per-type empty copy once it settles `[]`,
+ * cards otherwise) plus pull-to-refresh.
+ *
+ * History passes `totalCount` (loaded rows BEFORE its client-side search /
+ * project filter — a filtered-out list renders "no results", never the
+ * confirmed-empty copy) and `paging` (infinite scroll + "load more" footer).
+ * Other surfaces omit both and behave exactly as before.
  */
 export function ReportCardGrid({
   reports,
@@ -27,6 +35,8 @@ export function ReportCardGrid({
   refreshQueries,
   emptyText,
   ListHeaderComponent,
+  totalCount,
+  paging,
 }: {
   reports: Report[];
   onPressReport: (report: Report) => void;
@@ -36,12 +46,17 @@ export function ReportCardGrid({
   emptyText: string;
   refreshQueries?: unknown[];
   ListHeaderComponent?: ReactElement | null;
+  /** Unfiltered loaded-row count; defaults to `reports.length` (no filtering). */
+  totalCount?: number;
+  paging?: { hasNextPage: boolean; isFetchingNextPage: boolean; onLoadMore: () => void };
 }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const cardWidth = Math.floor((width - H_PADDING * 2 - GAP) / 2);
-  // Canonical offline-aware guard (hooks/useListLoadState).
-  const loadState = useListLoadState(query, reports.length);
+  // Canonical offline-aware guard (hooks/useListLoadState) on the RAW count.
+  const loadState = useListLoadState(query, totalCount ?? reports.length);
+  const canLoadMore = !!paging?.hasNextPage && !paging.isFetchingNextPage;
 
   return (
     <FlatList
@@ -70,6 +85,10 @@ export function ReportCardGrid({
       initialNumToRender={8}
       windowSize={7}
       removeClippedSubviews
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      onEndReached={canLoadMore ? paging.onLoadMore : undefined}
+      onEndReachedThreshold={0.4}
       ListEmptyComponent={
         loadState === 'skeleton' ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingTop: 8 }}>
@@ -86,10 +105,31 @@ export function ReportCardGrid({
         ) : (
           <View style={{ paddingTop: 56, alignItems: 'center' }}>
             <Text style={{ textAlign: 'center', color: theme.colors.inkFaint, fontSize: 14, fontWeight: '500' }}>
-              {emptyText}
+              {/* 'data' + zero rendered cards = the search/project filter matched nothing. */}
+              {loadState === 'data' ? t('history.searchNoResults') : emptyText}
             </Text>
           </View>
         )
+      }
+      ListFooterComponent={
+        paging?.isFetchingNextPage ? (
+          <View style={{ paddingVertical: 18, alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={theme.colors.accent} />
+          </View>
+        ) : paging?.hasNextPage && loadState === 'data' ? (
+          <Pressable
+            onPress={paging.onLoadMore}
+            style={({ pressed }) => [
+              { paddingVertical: 16, alignItems: 'center' },
+              pressed && { opacity: 0.6 },
+            ]}
+            {...a11y(t('history.loadMore'), undefined, 'button')}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: theme.colors.accent }}>
+              {t('history.loadMore')}
+            </Text>
+          </Pressable>
+        ) : null
       }
     />
   );
