@@ -142,7 +142,7 @@ function ListCard({ to, title, icon: Icon, iconColor, iconBg, items, isLoading }
   const preview = items.slice(0, 3);
   const extra = items.length - 3;
   return (
-    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
       <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
         <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${iconBg} ${iconColor}`}>
           <Icon size={15} />
@@ -231,7 +231,7 @@ export default function Account() {
       </header>
 
       {/* Profile + subscription combined card */}
-      <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]">
         {/* User identity + plan - merged row */}
         <div className={cn(
           'flex items-center gap-3 px-5 py-4 border-b border-neutral-100 dark:border-neutral-800',

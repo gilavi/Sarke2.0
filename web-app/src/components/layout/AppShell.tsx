@@ -6,6 +6,30 @@ import { Sidebar } from './Sidebar';
 import { HubbleLogo } from '@/components/HubbleLogo';
 import SettingsModal from '@/components/SettingsModal';
 
+/** Per-route tab titles (M10: every tab used to be just "Hubble"). Longest
+ *  prefix wins so /inspections/new beats /inspections. */
+const ROUTE_TITLES: [prefix: string, label: string][] = [
+  ['/inspections/new', 'ახალი შემოწმება'],
+  ['/orders/new', 'ახალი ბრძანება'],
+  ['/home', 'მთავარი'],
+  ['/projects', 'პროექტები'],
+  ['/history', 'ისტორია'],
+  ['/calendar', 'კალენდარი'],
+  ['/regulations', 'რეგულაციები'],
+  ['/certificates', 'სერტიფიკატები'],
+  ['/qualifications', 'კვალიფიკაციები'],
+  ['/templates', 'შაბლონები'],
+  ['/safety', '3D უსაფრთხოება'],
+  ['/account', 'პროფილი'],
+];
+
+function routeTitle(pathname: string): string {
+  const hit = ROUTE_TITLES.filter(([p]) => pathname.startsWith(p)).sort(
+    (a, b) => b[0].length - a[0].length,
+  )[0];
+  return hit ? `${hit[1]} — Hubble` : 'Hubble';
+}
+
 export const AppShell = memo(function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -18,6 +42,7 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
   // content for keyboard/screen-reader users.
   useEffect(() => {
     setSidebarOpen(false);
+    document.title = routeTitle(location.pathname);
     const main = document.getElementById('main-content');
     if (main) {
       main.scrollTop = 0;

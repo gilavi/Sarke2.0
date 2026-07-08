@@ -30,6 +30,13 @@ Structural fixes, all previously confirmed against source:
   `SplitWizard`/`DocPreviewFrame` in `web-app/src/components/ui/` (see
   [primitives.md](primitives.md)); warm v3 tokens in `index.css`; mesh-gradient
   blobs and the double page-transition removed from the shell.
+- **Polish pass (same day)** — per-route tab titles (every tab used to be just
+  "Hubble"); Georgian 404 with a safe public destination (was English +
+  auth-gated link); certificate label typo fixed to mobile's spelling
+  (სერტიფიკატები); mobile-parity date line on Home; Calendar now shows **all**
+  act types via `useActRows` (7 types used to be missing) and, with Projects /
+  Account / auth pages, is retuned to the warm CSS-var tokens; radius + empty-
+  state copy normalized.
 
 ---
 

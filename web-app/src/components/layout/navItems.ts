@@ -36,7 +36,7 @@ export const topNavItems: NavItemDef[] = [
 
 export const moreNavItems: NavItemDef[] = [
   { to: '/regulations',  label: 'რეგულაციები',   icon: BookOpen,     shortcut: 'G L', tint: '#1FB6A6' },
-  { to: '/certificates', label: 'სერთიფიკატები', icon: Certificate,  shortcut: 'G F', tint: '#F0A52E' },
+  { to: '/certificates', label: 'სერტიფიკატები', icon: Certificate,  shortcut: 'G F', tint: '#F0A52E' },
   { to: '/templates',    label: 'შაბლონები',     icon: SquaresFour,  shortcut: 'G T', tint: '#E866A0' },
   { to: '/safety',       label: '3D უსაფრთხოება', icon: Cube, tint: '#2FB6CC' },
 ];

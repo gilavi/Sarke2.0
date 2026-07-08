@@ -138,7 +138,7 @@ function renderSectionII(insp: SafetyNetInspection): string {
       <tr><td>ბადის კიდეზე არსებული ბაგირის რაოდენობა</td><td>${insp.edgeRopeCount ?? '-'}</td></tr>
       <tr><td>ბადის უჯრედის გვერდების სიგრძე</td><td>${escapeHtml(insp.cellSide) || '-'}</td></tr>
       <tr><td>ბადის დგარებს შორის მანძილი</td><td>${escapeHtml(insp.workingDistance) || '-'}</td></tr>
-      <tr><td>ბადის სერთიფიკატი</td><td>${certPill}</td></tr>
+      <tr><td>ბადის სერტიფიკატი</td><td>${certPill}</td></tr>
     </table>
   `;
 }

@@ -52,7 +52,7 @@ export default function Qualifications() {
       {displayError && <ErrorMessage>{displayError}</ErrorMessage>}
       {isLoading && <SkeletonList count={4} />}
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">სერტიფიკატები არ არის ატვირთული.</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">კვალიფიკაციები ჯერ არ არის</p>
       )}
 
       {items && items.length > 0 && (

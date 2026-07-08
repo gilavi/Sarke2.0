@@ -18,6 +18,16 @@ import { staggerContainer, fadeUpItem, STAGGER } from '@/lib/animations';
 
 const PROJECT_PREVIEW = 6;
 
+/** "ოთხშაბათი, 8 ივლისი" — same date line the mobile home header shows. */
+function todayLabel(): string {
+  const label = new Intl.DateTimeFormat('ka-GE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date());
+  return label.charAt(0).toLocaleUpperCase('ka-GE') + label.slice(1);
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
@@ -60,12 +70,11 @@ export default function Home() {
       {/* ═════ Row 1: Title + primary CTA ═════ */}
       <motion.header variants={fadeUpItem()} className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
+          {/* Date eyebrow — mobile home parity (date line above the greeting). */}
+          <p className="text-xs font-semibold text-[var(--text-muted)]">{todayLabel()}</p>
+          <h1 className="mt-0.5 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
             მოგესალმებით{firstName ? `, ${firstName}` : ''}
           </h1>
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Hubble - თქვენი შრომის უსაფრთხოების ცენტრი.
-          </p>
         </div>
         <Button className="shrink-0 gap-1.5" onClick={() => navigate('/inspections/new')}>
           <ClipboardCheck size={15} />
@@ -104,9 +113,9 @@ export default function Home() {
             ))}
           </div>
         ) : (projects?.length ?? 0) === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
+          <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
             <FolderOpen size={24} className="mb-2 text-neutral-300 dark:text-neutral-600" />
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">პროექტი არ არის</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">პროექტები ჯერ არ არის</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
