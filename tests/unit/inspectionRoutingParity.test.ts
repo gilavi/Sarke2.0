@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 
 // The registry pulls in every equipment service; stub the Supabase-backed
@@ -42,6 +44,24 @@ describe('inspectionRegistry <-> routeForInspection parity', () => {
         `category "${category}" fell through to the generic wizard route`,
       ).not.toBe(`/inspections/${ID}/wizard`);
       expect(completedRoute).toContain(ID);
+    }
+  });
+
+  // Every equipment route's completed branch must go through the shared
+  // EquipmentResultScreen (features/inspection-result) — the per-route
+  // copy-pasted EquipmentResultDetails + SubscriptionNotice wiring is what let
+  // the 10 sibling routes drift. Harness is exempt: it is template-based and
+  // redirects to the generic act detail (/inspections/[id]).
+  it('every registered equipment category route file renders the shared EquipmentResultScreen', () => {
+    for (const category of Object.keys(inspectionRegistry)) {
+      // '/inspections/<folder>/<id>' → folder
+      const folder = routeForInspection(category, ID, true).split('/')[2];
+      const routeFile = join(process.cwd(), 'app', 'inspections', folder, '[id].tsx');
+      const body = readFileSync(routeFile, 'utf8');
+      expect(
+        body.includes('EquipmentResultScreen'),
+        `route for "${category}" (app/inspections/${folder}/[id].tsx) must render the shared EquipmentResultScreen`,
+      ).toBe(true);
     }
   });
 });

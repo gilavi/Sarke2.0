@@ -17,7 +17,7 @@ import { InspectionShell, InspectionShellSkeleton, ConclusionStep } from '../../
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { ChecklistLegend } from '../../../components/inspection-parts';
 import { EquipmentRow } from '../../../components/generalEquipment/EquipmentRow';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -367,33 +367,25 @@ export default function GeneralEquipmentScreen() {
     ];
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="ტექნიკური აღჭურვილობა"
-          status={filledRows.length > 0 ? { tone: statusTone, label: statusLabel } : null}
-          info={[
-            { label: t('details.info.object'), value: inspection.objectName || '—' },
-            { label: t('details.info.location'), value: inspection.address || '—' },
-            ...(inspection.inspectionType
-              ? [{ label: 'შემოწმების სახე', value: INSPECTION_TYPE_LABEL[inspection.inspectionType] }]
-              : []),
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={GENERAL_EQUIPMENT_RESULT_OPTIONS}
-          notes={inspection.conclusion}
-          summaryPhotos={inspection.summaryPhotos ?? []}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="ტექნიკური აღჭურვილობა"
+        status={filledRows.length > 0 ? { tone: statusTone, label: statusLabel } : null}
+        info={[
+          { label: t('details.info.object'), value: inspection.objectName || '—' },
+          { label: t('details.info.location'), value: inspection.address || '—' },
+          ...(inspection.inspectionType
+            ? [{ label: 'შემოწმების სახე', value: INSPECTION_TYPE_LABEL[inspection.inspectionType] }]
+            : []),
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={GENERAL_EQUIPMENT_RESULT_OPTIONS}
+        notes={inspection.conclusion}
+        summaryPhotos={inspection.summaryPhotos ?? []}
+      />
     );
   }
 

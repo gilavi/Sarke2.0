@@ -12,6 +12,9 @@ vi.mock('../../lib/theme', async () => (await import('../mocks/rn-ui')).themeMoc
 vi.mock('../../lib/haptics', async () => (await import('../mocks/rn-ui')).hapticsMock());
 vi.mock('../../lib/accessibility', async () => (await import('../mocks/rn-ui')).accessibilityMock());
 vi.mock('../../components/primitives/A11yText', async () => (await import('../mocks/rn-ui')).a11yTextMock());
+// The default title resolves via t('inspections.verdictTitle'); back the mock
+// with the real ka.json so the Georgian-string assertion tests the shipped copy.
+vi.mock('react-i18next', async () => (await import('../mocks/rn-ui')).i18nKaMock());
 
 import { VerdictSelector, type VerdictOption } from '../../components/inspection-steps/VerdictSelector';
 import { haptic } from '../../lib/haptics';

@@ -14,8 +14,7 @@ import { PlateInput, type PlateInputHandle } from '../../../components/inputs/Pl
 import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
-import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -373,31 +372,23 @@ export default function BobcatInspectionScreen() {
     }));
 
     return (
-      <>
-        <EquipmentResultDetails
-          title={screenTitle}
-          status={inspection.verdict ? { tone: verdictTone, label: VERDICT_LABEL[inspection.verdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: t('inspections.equipmentModelLabel'), value: inspection.equipmentModel || '—' },
-            { label: t('inspections.registrationNumberLabel'), value: inspection.registrationNumber || '—' },
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={BOBCAT_RESULT_OPTIONS}
-          notes={inspection.notes}
-          summaryPhotos={inspection.summaryPhotos ?? []}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title={screenTitle}
+        status={inspection.verdict ? { tone: verdictTone, label: VERDICT_LABEL[inspection.verdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.company || '—' },
+          { label: t('inspections.equipmentModelLabel'), value: inspection.equipmentModel || '—' },
+          { label: t('inspections.registrationNumberLabel'), value: inspection.registrationNumber || '—' },
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={BOBCAT_RESULT_OPTIONS}
+        notes={inspection.notes}
+        summaryPhotos={inspection.summaryPhotos ?? []}
+      />
     );
   }
 

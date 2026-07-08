@@ -10,7 +10,7 @@ import { InspectionShell } from '../../../components/inspection-steps/Inspection
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
 import { ConclusionStep } from '../../../components/inspection-steps';
 import { IdentificationGrid } from '../../../components/inspection-parts/IdentificationGrid';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection, RenderItem, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { SectionHeader } from '../../../components/SectionHeader';
@@ -406,31 +406,23 @@ export default function FallProtectionInspectionScreen() {
         : '—';
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="დამჭერი მოწყობილობა"
-          status={overallVerdict ? { tone: verdictTone, label: FP_VERDICT_LABELS[overallVerdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: 'მისამართი', value: inspection.address || '—' },
-            { label: 'უსაფრთხოების ხელმძღვანელი', value: inspection.safetyLeaderName || '—' },
-            { label: 'ტელეფონი', value: inspection.safetyLeaderPhone || '—' },
-            { label: 'შემოწმების სახე', value: inspTypeLabel },
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={FALL_PROTECTION_RESULT_OPTIONS}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="დამჭერი მოწყობილობა"
+        status={overallVerdict ? { tone: verdictTone, label: FP_VERDICT_LABELS[overallVerdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.company || '—' },
+          { label: 'მისამართი', value: inspection.address || '—' },
+          { label: 'უსაფრთხოების ხელმძღვანელი', value: inspection.safetyLeaderName || '—' },
+          { label: 'ტელეფონი', value: inspection.safetyLeaderPhone || '—' },
+          { label: 'შემოწმების სახე', value: inspTypeLabel },
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={FALL_PROTECTION_RESULT_OPTIONS}
+      />
     );
   }
 

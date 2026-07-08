@@ -353,6 +353,12 @@ One file: [`lib/inspectionRouting.ts`](../lib/inspectionRouting.ts). `routeForIn
 
 **Don't** hand-roll an inline `/inspections/<type>/${id}` switch in a screen — that dispatch has drifted twice (`app/history.tsx`, then `app/projects/[id]/inspections.tsx` covered 3 of 10 types and silently sent the rest to the empty generic detail). `check-primitives` bans the equipment-route literals outside this file (flow-internal navigation under `app/inspections/**`, e.g. `…/done`, is allowed). Per-project lists should read the unified RPC (`useUnifiedInspectionsByProject`) and pass `item.source` straight in — see `features/project-detail/sections/InspectionsSection.tsx`.
 
+## Equipment completed-inspection view
+
+One component: [`features/inspection-result/EquipmentResultScreen.tsx`](../features/inspection-result/EquipmentResultScreen.tsx). Every typed equipment route's `status === 'completed'` branch renders `<EquipmentResultScreen flow={{…from useInspectionFlow}} title status info sections resultOptions notes summaryPhotos />` — it owns the Edit(reopen)/Share-PDF/Back wiring and the `SubscriptionNotice` limit sheet.
+
+**Don't** render `EquipmentResultDetails` + `SubscriptionNotice` directly from a route — the hand-wired `onEdit/onShare/onBack/sharing/pdfLocked` block is the sibling-drift pattern this screen replaced. The route keeps only the per-type data mapping (verdict tone/label, info rows, normalized `ChecklistSection[]`, `ResultOption[]` vocabulary). Guarded by `tests/unit/inspectionRoutingParity.test.ts` (every `inspectionRegistry` category's route file must reference `EquipmentResultScreen`).
+
 ## Order (ბრძანება) PDF builder
 
 One file: [`lib/orderPdf.ts`](../lib/orderPdf.ts). Exports `buildLaborSafetyOrderHtml(args: OrderPdfArgs): string`.

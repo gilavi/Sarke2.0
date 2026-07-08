@@ -4,6 +4,61 @@
 
 ---
 
+## 2026-07-08 — Incident flow extracted to features/incident-new (route was 1,137 lines)
+
+Audit findings (arch-routes #5 + perf-runtime): `app/incidents/new.tsx` was
+1,137 lines — 3.8× the 300-line route rule — and kept the whole 4-step form in
+one `useState`, so every keystroke re-rendered the entire route.
+
+- **Route is now a 1-line delegate** to `features/incident-new/NewIncidentScreen`
+  (same pattern as `app/orders/new.tsx` → `features/order-new`). The module
+  splits by concern: `useIncidentForm` (form state + stable per-field setter
+  bag + edit-mode hydration), `useIncidentDraftSave` / `useIncidentPdfSave`
+  (the outbox-backed save flows, logic unchanged), `incidentFormSchema`
+  (pure validation), four memoized `Step*` components, `styles`, and the
+  pre-existing `saveIncident.ts` save layer (gained `composeIncidentPdfHtml`).
+- **Per-keystroke re-render fixed:** steps are `React.memo`'d and receive
+  primitives + stable setters; `IncidentField` memo-wraps the canonical
+  `FloatingLabelInput`, so typing in one field re-renders only that field
+  (Step 3's witness list + photo grid are also memo-isolated).
+- **Batch-4 exit behavior preserved exactly:** silent exit-to-draft for new
+  incidents with substance (`exitSavesDraft` → outbox write + honest
+  `incidents.exitDraftBody` dialog copy), discard warning otherwise,
+  `backIsExit` on step 1, Android hardware-back via FlowHeader, iOS
+  swipe-back disabled while dirty.
+- Behavior is byte-identical; no schema, i18n, or dependency changes. Module
+  docs in `features/incident-new/AGENTS.md`.
+
+---
+
+## 2026-07-08 — Equipment routes: shared completed-view (EquipmentResultScreen)
+
+Audit finding (arch-routes/arch-code): the 9 typed equipment routes
+(`app/inspections/{bobcat,excavator,forklift,general-equipment,cargo-platform,safety-net,mobile-ladder,fall-protection,lifting-accessories}/[id].tsx`)
+each copy-pasted the same `status === 'completed'` wiring block —
+`EquipmentResultDetails` + `onEdit={reopen}` / `onShare={handlePdf}` /
+`onBack={router.back}` / `sharing` / `pdfLocked` + the
+`SubscriptionNotice` limit sheet — which is exactly the sibling-drift
+class that has shipped bugs before.
+
+- **New `EquipmentResultScreen`** in `features/inspection-result/` owns
+  that wiring once. Routes now pass only their per-type data (`title`,
+  verdict `status` pill, `info` rows, normalized `sections`,
+  `resultOptions` vocabulary, `notes`, `summaryPhotos`) plus a `flow`
+  pick straight from `useInspectionFlow`. Route paths, params,
+  back-stack, and rendered output are unchanged.
+- **Drift guard:** `tests/unit/inspectionRoutingParity.test.ts` now also
+  asserts every `inspectionRegistry` category's route file renders the
+  shared screen, so inspection type #10 can't reintroduce a bespoke
+  completed branch.
+- Harness untouched (template-based generic act — redirects to
+  `/inspections/[id]`). Bobcat still pushes its `/done` success route
+  after completion (sole flow doing so; unifying it with the inline
+  celebration pattern is a separate, noted decision).
+- Regulatory unchanged: signatures still live only in
+  `EquipmentResultDetails`' `useSignaturesState` component state and are
+  never persisted.
+
 ## 2026-07-08 — Exit dialog now tells the truth (and hardware back respects it)
 
 Audit finding (ux-flows): the shared exit-confirmation dialog was

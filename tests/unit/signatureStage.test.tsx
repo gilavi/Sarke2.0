@@ -9,6 +9,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 
 vi.mock('../../lib/theme', async () => (await import('../mocks/rn-ui')).themeMock());
 vi.mock('../../components/primitives/A11yText', async () => (await import('../mocks/rn-ui')).a11yTextMock());
+// The "sign here" hint resolves via t(); back the mock with the real ka.json so
+// the Georgian-string assertion keeps testing the shipped copy.
+vi.mock('react-i18next', async () => (await import('../mocks/rn-ui')).i18nKaMock());
 vi.mock('react-native-signature-canvas', () => ({
   __esModule: true,
   default: () => React.createElement('div', { 'data-testid': 'canvas' }),
@@ -44,9 +47,11 @@ describe('SignatureStage', () => {
   });
 
   it('shows the "sign here" hint before a stroke and hides it after', () => {
+    // Current shipped copy of briefings.signHereHint (locales/ka.json).
+    const HINT = 'ხელი მოაწერეთ ჩარჩოში';
     const { queryByText, rerender } = render(<SignatureStage {...base} hasStroke={false} />);
-    expect(queryByText('ამ სივრცეში ხელი მოაწერეთ')).toBeTruthy();
+    expect(queryByText(HINT)).toBeTruthy();
     rerender(<SignatureStage {...base} hasStroke />);
-    expect(queryByText('ამ სივრცეში ხელი მოაწერეთ')).toBeNull();
+    expect(queryByText(HINT)).toBeNull();
   });
 });

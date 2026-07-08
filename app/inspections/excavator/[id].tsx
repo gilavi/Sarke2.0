@@ -17,7 +17,7 @@ import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { ChecklistStepHandle, VerdictOption } from '../../../components/inspection-steps';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -491,31 +491,23 @@ export default function ExcavatorInspectionScreen() {
     ];
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="ექსკავატორი"
-          status={inspection.verdict ? { tone: verdictTone, label: EXCAVATOR_VERDICT_LABEL[inspection.verdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.projectName || '—' },
-            { label: 'სახელმწიფო / ს.ნ ნომერი', value: inspection.registrationNumber || '—' },
-            { label: 'სერიული ნომერი', value: inspection.serialNumber || '—' },
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={EXCAVATOR_RESULT_OPTIONS}
-          notes={inspection.notes}
-          summaryPhotos={inspection.summaryPhotos ?? []}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="ექსკავატორი"
+        status={inspection.verdict ? { tone: verdictTone, label: EXCAVATOR_VERDICT_LABEL[inspection.verdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.projectName || '—' },
+          { label: 'სახელმწიფო / ს.ნ ნომერი', value: inspection.registrationNumber || '—' },
+          { label: 'სერიული ნომერი', value: inspection.serialNumber || '—' },
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={EXCAVATOR_RESULT_OPTIONS}
+        notes={inspection.notes}
+        summaryPhotos={inspection.summaryPhotos ?? []}
+      />
     );
   }
 

@@ -1,5 +1,6 @@
 /**
- * Unit tests for the CATEGORY_LABEL map in app/templates.tsx.
+ * Unit tests for the category labels rendered by app/templates.tsx (the
+ * CATEGORY_LABEL map now lives in lib/inspectionRouting `labelForSource`).
  * Covers Bug 6: raw identifiers like "xaracho" / "bobcat" were showing instead
  * of human-readable Georgian category names.
  */
@@ -24,16 +25,22 @@ vi.mock('../../lib/apiHooks', () => ({
   useTemplates: () => mockUseTemplates(),
 }));
 
-vi.mock('../../lib/theme', () => ({
-  useTheme: () => ({
-    theme: {
-      colors: {
-        ink: '#000', inkSoft: '#666', inkFaint: '#999',
-        accent: '#007aff', regsTint: '#888',
-      },
-    },
-  }),
-}));
+// Full shared theme: the screen renders ScreenHeader → IconButton, which reads
+// theme.colors.semantic.*Soft, radius, and motion tokens at render — a partial
+// inline theme crashes with "Cannot read properties of undefined".
+vi.mock('../../lib/theme', async () => {
+  const { makeTheme } = await import('../mocks/rn-ui');
+  const theme = makeTheme() as ReturnType<typeof makeTheme> & {
+    colors: ReturnType<typeof makeTheme>['colors'] & { regsTint: string };
+  };
+  theme.colors.regsTint = '#888';
+  return { useTheme: () => ({ theme }) };
+});
+
+// The system/mine labels resolve via t('templates.labelSystem'/'labelMine');
+// back the mock with the real ka.json so the Georgian-string assertions
+// ('სისტემური' / 'ჩემი') keep testing the shipped copy.
+vi.mock('react-i18next', async () => (await import('../mocks/rn-ui')).i18nKaMock());
 
 vi.mock('../../components/ui', () => ({
   Card: ({ children }: { children: React.ReactNode }) =>

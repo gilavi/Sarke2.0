@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import {
   ChecklistSection,
   DynamicTable,
@@ -356,31 +356,23 @@ export default function SafetyNetInspectionScreen() {
     ];
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="ბადის შემოწმება"
-          status={inspection.verdict ? { tone: verdictTone, label: SN_VERDICT_LABEL[inspection.verdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
-            { label: 'ბადის ზომა', value: inspection.netSize || '—' },
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={SAFETY_NET_RESULT_OPTIONS}
-          notes={inspection.verdictComment}
-          summaryPhotos={inspection.summaryPhotos}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="ბადის შემოწმება"
+        status={inspection.verdict ? { tone: verdictTone, label: SN_VERDICT_LABEL[inspection.verdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.company || '—' },
+          { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
+          { label: 'ბადის ზომა', value: inspection.netSize || '—' },
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={SAFETY_NET_RESULT_OPTIONS}
+        notes={inspection.verdictComment}
+        summaryPhotos={inspection.summaryPhotos}
+      />
     );
   }
 

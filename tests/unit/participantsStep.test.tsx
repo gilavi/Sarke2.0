@@ -10,6 +10,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 vi.mock('../../lib/theme', async () => (await import('../mocks/rn-ui')).themeMock());
 vi.mock('../../lib/accessibility', async () => (await import('../mocks/rn-ui')).accessibilityMock());
 vi.mock('lucide-react-native', async () => (await import('../mocks/rn-ui')).lucideMock());
+// The step resolves its labels via t(); back the mock with the real ka.json so
+// the Georgian-string assertions below keep testing the shipped copy.
+vi.mock('react-i18next', async () => (await import('../mocks/rn-ui')).i18nKaMock());
 vi.mock('../../components/primitives/A11yText', async () => (await import('../mocks/rn-ui')).a11yTextMock());
 vi.mock('../../components/inputs/FloatingLabelInput', () => ({
   FloatingLabelInput: React.forwardRef(function Input(

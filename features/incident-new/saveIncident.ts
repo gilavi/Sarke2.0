@@ -19,9 +19,10 @@ import { saveRecordThroughOutbox, enqueueOutboxOp } from '../../lib/outbox';
 import { isNetworkError } from '../../lib/outbox/storage';
 import { stageCompressedPhotoForOffline } from '../../lib/photoCompression';
 import { stagePdfForQueue, queuePdfUpload } from '../../lib/pdfUploadQueue';
-import { pdfPhotoEmbed } from '../../lib/imageUrl';
+import { pdfPhotoEmbed, signatureAsDataUrl } from '../../lib/imageUrl';
+import { buildIncidentPdfHtml } from '../../lib/incidentPdf';
 import { logError } from '../../lib/logError';
-import type { Incident, IncidentStatus, IncidentType } from '../../types/models';
+import type { Incident, IncidentStatus, IncidentType, Project } from '../../types/models';
 
 /** Georgian display title for the pending-sync list (all incident outbox ops). */
 const DISPLAY_TITLE = 'ინციდენტი';
@@ -236,6 +237,42 @@ async function localPhotoForPdf(uri: string): Promise<string> {
     console.warn('[incident] local pdf embed failed, using file uri', e);
   }
   return uri;
+}
+
+/**
+ * Compose the incident PDF's HTML: resolve the inspector's reusable saved
+ * signature to a data: URL (strict — never a signed URL the print WebView
+ * can't fetch; disk-cached so it resolves offline), embed the photos, and hand
+ * both to the canonical `buildIncidentPdfHtml`. Failed signature resolution is
+ * swallowed (the PDF just omits the signature graphic).
+ *
+ * REGULATORY: the signature here is the inspector's *reusable saved* signature,
+ * referenced by storage path; its data: URL exists only inside the returned
+ * HTML. No captured signature data is persisted.
+ */
+export async function composeIncidentPdfHtml(args: {
+  incident: Incident;
+  project: Project;
+  inspectorName: string;
+  inspectorSigPath: string | null;
+  uploaded: UploadedIncidentPhoto[];
+}): Promise<string> {
+  const { incident, project, inspectorName, inspectorSigPath, uploaded } = args;
+  let sigDataUrl: string | undefined;
+  if (inspectorSigPath) {
+    sigDataUrl = await signatureAsDataUrl(
+      STORAGE_BUCKETS.signatures,
+      inspectorSigPath,
+    ).catch(() => undefined);
+  }
+  const photoDataUrls = await embedIncidentPhotosForPdf(uploaded);
+  return buildIncidentPdfHtml({
+    incident,
+    project,
+    inspectorName,
+    inspectorSignatureDataUrl: sigDataUrl,
+    photoDataUrls,
+  });
 }
 
 /**

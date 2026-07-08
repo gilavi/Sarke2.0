@@ -102,6 +102,12 @@ vi.mock('../../components/home/ProjectCard', () => ({ ProjectCard: () => null })
 vi.mock('../../components/home/ProjectPickerSheet', () => ({ ProjectPickerSheet: () => null }));
 vi.mock('../../features/home-records/ResumeDraftCard', () => ({ ResumeDraftCard: () => null }));
 vi.mock('../../features/home-records/HomeRecordsSection', () => ({ HomeRecordsSection: () => null }));
+// PendingSyncSection owns the outbox (lib/outbox → lib/queryClient → netinfo,
+// whose Flow syntax vitest can't parse) — stub it like the other heavy children.
+vi.mock('../../components/PendingSyncSection', () => ({ PendingSyncSection: () => null }));
+// OfflineEmptyState pulls the real EmptyState → real react-native-svg (Flow
+// syntax again); the offline branch is never driven in this test.
+vi.mock('../../components/OfflineEmptyState', () => ({ OfflineEmptyState: () => null }));
 
 import HomeScreen from '../../app/(tabs)/home';
 

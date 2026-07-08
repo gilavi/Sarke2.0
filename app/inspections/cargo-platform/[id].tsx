@@ -11,7 +11,7 @@ import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInpu
 import { Selector } from '../../../components/ui/Selector';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection as ChecklistSectionData, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import {
@@ -356,32 +356,24 @@ export default function CargoPlatformInspectionScreen() {
     }));
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="პლატფორმის შემოწმება"
-          status={inspection.verdict ? { tone: verdictTone, label: CP_VERDICT_LABEL[inspection.verdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: t('details.info.location'), value: inspection.address || '—' },
-            { label: 'სართული / ზონა', value: inspection.floorZone || '—' },
-            { label: 'პლატფორმის ტიპი / მოდელი', value: inspection.platformTypeModel || '—' },
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={CARGO_PLATFORM_RESULT_OPTIONS}
-          notes={inspection.verdictComment}
-          summaryPhotos={inspection.summaryPhotos ?? []}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="პლატფორმის შემოწმება"
+        status={inspection.verdict ? { tone: verdictTone, label: CP_VERDICT_LABEL[inspection.verdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.company || '—' },
+          { label: t('details.info.location'), value: inspection.address || '—' },
+          { label: 'სართული / ზონა', value: inspection.floorZone || '—' },
+          { label: 'პლატფორმის ტიპი / მოდელი', value: inspection.platformTypeModel || '—' },
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={CARGO_PLATFORM_RESULT_OPTIONS}
+        notes={inspection.verdictComment}
+        summaryPhotos={inspection.summaryPhotos ?? []}
+      />
     );
   }
 

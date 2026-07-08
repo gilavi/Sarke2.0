@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { InspectionShell } from '../../../components/inspection-steps/InspectionShell';
 import { InspectionShellSkeleton } from '../../../components/inspection-steps/InspectionShellSkeleton';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection as ResultChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -337,32 +337,24 @@ export default function ForkliftInspectionScreen() {
     }));
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="ჩანგლიანი დამტვირთველი"
-          status={inspection.verdict ? { tone: verdictTone, label: FORKLIFT_VERDICT_LABEL[inspection.verdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: 'მარკა / მოდელი', value: inspection.brandModel || '—' },
-            { label: 'ინვენტ. / სერიული ნომერი', value: inspection.inventoryNumber || '—' },
-            ...(inspection.engineType ? [{ label: 'ძრავის ტიპი', value: ENGINE_TYPE_LABEL[inspection.engineType] }] : []),
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={FORKLIFT_RESULT_OPTIONS}
-          notes={inspection.notes}
-          summaryPhotos={inspection.summaryPhotos ?? []}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="ჩანგლიანი დამტვირთველი"
+        status={inspection.verdict ? { tone: verdictTone, label: FORKLIFT_VERDICT_LABEL[inspection.verdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.company || '—' },
+          { label: 'მარკა / მოდელი', value: inspection.brandModel || '—' },
+          { label: 'ინვენტ. / სერიული ნომერი', value: inspection.inventoryNumber || '—' },
+          ...(inspection.engineType ? [{ label: 'ძრავის ტიპი', value: ENGINE_TYPE_LABEL[inspection.engineType] }] : []),
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={FORKLIFT_RESULT_OPTIONS}
+        notes={inspection.notes}
+        summaryPhotos={inspection.summaryPhotos ?? []}
+      />
     );
   }
 

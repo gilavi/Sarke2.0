@@ -5,3 +5,8 @@ export {
   EquipmentResultDetails,
   type EquipmentResultDetailsProps,
 } from './EquipmentResultDetails';
+export {
+  EquipmentResultScreen,
+  type EquipmentResultScreenProps,
+  type EquipmentResultFlow,
+} from './EquipmentResultScreen';

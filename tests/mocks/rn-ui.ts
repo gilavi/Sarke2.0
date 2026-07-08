@@ -14,6 +14,7 @@
  */
 import React from 'react';
 import { vi } from 'vitest';
+import ka from '../../locales/ka.json';
 
 /** A theme object covering every token the new components read. Distinct,
  *  readable sentinel values so a test can assert a specific token mapping. */
@@ -34,6 +35,7 @@ export function makeTheme() {
       borderStrong: '#C4C4C4',
       subtleSurface: '#F4F4F4',
       surface: '#FFFFFF',
+      surfaceSecondary: '#F5F5F5',
       card: '#FFFFFF',
       background: '#FAFAFA',
       hairline: '#ECECEC',
@@ -42,7 +44,19 @@ export function makeTheme() {
       warn: '#F59E0B',
       white: '#FFFFFF',
       inverse: { background: '#1A1A1A', ink: '#FFFFFF' },
-      semantic: { success: '#1D9E75', warning: '#F59E0B', danger: '#DC2626' },
+      // Full semantic set (soft values mirror lib/design-tokens.ts). Primitives
+      // like IconButton read the *Soft variants (e.g. dangerSoft) at render, so
+      // every key must exist or the render throws.
+      semantic: {
+        success: '#1D9E75',
+        successSoft: '#D1FAE5',
+        warning: '#F59E0B',
+        warningSoft: '#FEF3C7',
+        danger: '#DC2626',
+        dangerSoft: '#FEE2E2',
+        info: '#3B82F6',
+        infoSoft: '#DBEAFE',
+      },
     },
     radius: { sm: 8, md: 12, lg: 16, input: 12 },
     typography: { fontFamily: { body: 'System', bodyMedium: 'System', bodySemiBold: 'System' } },
@@ -53,6 +67,25 @@ export function makeTheme() {
 /** Mock body for `../../lib/theme`. */
 export function themeMock() {
   return { useTheme: () => ({ theme: makeTheme() }) };
+}
+
+/** Mock body for `react-i18next`, backed by the real `locales/ka.json` bundle.
+ *  Components under test render the actual Georgian strings (not raw keys), so
+ *  assertions like `getByText('გადაწყვეტილება')` exercise the shipped copy.
+ *  Supports dotted keys and simple `{{var}}` interpolation; unknown keys fall
+ *  back to the key itself (mirrors an uninitialised i18n instance). */
+export function i18nKaMock() {
+  const t = (key: string, opts?: Record<string, unknown>) => {
+    const raw = key
+      .split('.')
+      .reduce<unknown>((o, k) => (o == null ? undefined : (o as Record<string, unknown>)[k]), ka);
+    if (typeof raw !== 'string') return key;
+    return raw.replace(/\{\{(\w+)\}\}/g, (_m, name: string) => String(opts?.[name] ?? ''));
+  };
+  return {
+    useTranslation: () => ({ t, i18n: { language: 'ka' } }),
+    Trans: ({ children }: { children?: React.ReactNode }) => children ?? null,
+  };
 }
 
 /** Mock body for `../../lib/accessibility`. Reimplements `a11y` faithfully so

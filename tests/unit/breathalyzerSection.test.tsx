@@ -1,7 +1,8 @@
 /**
  * Unit tests for BreathalyzerSection.
  * Covers Bug 2: empty state was showing the wrong subtitle ("ფაილები არ არის ატვირთული")
- * instead of breathalyzer-specific copy ("ალკოტესტი ჩაწერილი არ არის").
+ * instead of breathalyzer-specific copy (now "ჯერ ჟურნალი არ არის" —
+ * projects.breathalyzerEmptySubtitle in locales/ka.json).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
@@ -17,6 +18,17 @@ vi.mock('@expo/vector-icons', () => ({
 vi.mock('expo-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
+
+// The shared project-detail styles module imports ProjectAvatar (for its color
+// constants), which imports expo-image → expo-modules-core, whose native
+// EventEmitter crashes at import under jsdom. Stub the image component.
+vi.mock('expo-image', () => ({
+  Image: () => null,
+}));
+
+// The section resolves its copy via t(); back the mock with the real ka.json so
+// the Georgian-string assertions below keep testing the shipped copy.
+vi.mock('react-i18next', async () => (await import('../mocks/rn-ui')).i18nKaMock());
 
 vi.mock('../../lib/theme', () => ({
   useTheme: () => ({
@@ -103,7 +115,8 @@ describe('BreathalyzerSection - empty state', () => {
     );
     const empty = getByTestId('section-empty');
     expect(empty).toBeTruthy();
-    expect(empty.getAttribute('data-subtitle')).toBe('ალკოტესტი ჩაწერილი არ არის');
+    // Current shipped copy of projects.breathalyzerEmptySubtitle (ka.json).
+    expect(empty.getAttribute('data-subtitle')).toBe('ჯერ ჟურნალი არ არის');
   });
 
   it('passes subtitle prop to SectionEmptyState (not undefined)', () => {
@@ -114,7 +127,7 @@ describe('BreathalyzerSection - empty state', () => {
         loading: false,
       }),
     );
-    expect(lastSectionEmptyProps.subtitle).toBe('ალკოტესტი ჩაწერილი არ არის');
+    expect(lastSectionEmptyProps.subtitle).toBe('ჯერ ჟურნალი არ არის');
   });
 
   it('does NOT render the empty state while loading', () => {
@@ -161,7 +174,8 @@ describe('BreathalyzerSection - section header', () => {
         loading: false,
       }),
     );
-    expect(getByText('+ ალკოტესტი')).toBeTruthy();
+    // Current shipped copy of projects.addBreathalyzer (ka.json).
+    expect(getByText('+ ჟურნალი')).toBeTruthy();
   });
 
   it('renders log count when logs are present', () => {

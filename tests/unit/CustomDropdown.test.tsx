@@ -25,6 +25,11 @@ vi.mock('../../lib/haptics', () => ({
   haptic: { light: vi.fn(), medium: vi.fn() },
 }));
 
+// The cancel row + placeholder resolve via t('components.dropdownCancel') /
+// t('components.dropdownPlaceholder'); back the mock with the real ka.json so
+// the Georgian-string assertions ('გაუქმება') keep testing the shipped copy.
+vi.mock('react-i18next', async () => (await import('../mocks/rn-ui')).i18nKaMock());
+
 vi.mock('../../lib/theme', () => ({
   useTheme: () => ({
     theme: {

@@ -18,6 +18,13 @@ vi.mock('../../lib/accessibility', async () => (await import('../mocks/rn-ui')).
 vi.mock('../../components/primitives/A11yText', async () => (await import('../mocks/rn-ui')).a11yTextMock());
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
 
+// OfflineEmptyState pulls the real EmptyState, whose illustrations import the
+// real react-native-svg (Flow-syntax source vitest can't parse). Stub it — the
+// offline branch is never driven here (fetchStatus is never 'paused').
+vi.mock('../../components/OfflineEmptyState', () => ({
+  OfflineEmptyState: () => React.createElement('div', { 'data-testid': 'offline' }),
+}));
+
 // InspectionTypeAvatar require()s PNG assets — stub it to a plain marker.
 vi.mock('../../components/InspectionTypeAvatar', () => ({
   InspectionTypeAvatar: ({ category }: { category?: string | null }) =>

@@ -1,8 +1,10 @@
 /**
  * Unit tests for `useBriefingSigning` — the 3-phase briefing signing state
  * machine (worker → interstitial → inspector). All I/O is mocked: briefings/
- * projects APIs, the router, react-query, the completion recorder, and RN Alert
- * (whose button callbacks we invoke manually to drive the skip flow).
+ * projects APIs, the router, react-query, the completion recorder, the offline
+ * write outbox (routed straight to briefingsApi.update, i.e. exactly its online
+ * path), and RN Alert (whose button callbacks we invoke manually to drive the
+ * skip flow).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
@@ -21,14 +23,41 @@ vi.mock('../../lib/services', () => ({ projectsApi: { getById: (...a: unknown[])
 const recordCompletion = vi.fn(async (..._a: unknown[]) => {});
 vi.mock('../../lib/calendarSchedule', () => ({ recordCompletion: (...a: unknown[]) => recordCompletion(...a) }));
 
-vi.mock('../../lib/apiHooks', () => ({ qk: { calendar: { schedules: ['calendar', 'schedules'], allBriefings: ['calendar', 'allBriefings'] } } }));
+const invalidateRecordLists = vi.fn();
+vi.mock('../../lib/apiHooks', () => ({
+  qk: {
+    briefings: { byId: (id: string) => ['briefings', 'byId', id] },
+    projects: { byId: (id: string) => ['projects', 'byId', id] },
+    calendar: { schedules: ['calendar', 'schedules'], allBriefings: ['calendar', 'allBriefings'] },
+  },
+  invalidateRecordLists: (...a: unknown[]) => invalidateRecordLists(...a),
+}));
+
+// cachedRead is a cache-first wrapper around the fetcher; the passthrough keeps
+// the load path exercising briefingsApi.getById / projectsApi.getById directly.
+vi.mock('../../lib/cachedRead', () => ({
+  cachedRead: (_key: unknown, fn: () => unknown) => fn(),
+}));
+
+// The hook persists every signing write through the outbox. Online, the outbox
+// is documented as "exactly the old briefingsApi.update" — so route it there,
+// keeping this file's update-payload assertions meaningful. (Mocking the barrel
+// also keeps the real outbox graph — netinfo/expo-crypto native deps vitest
+// can't parse — out of the module graph.)
+vi.mock('../../lib/outbox', () => ({
+  saveRecordThroughOutbox: async (args: { recordId: string; payload: Record<string, unknown> }) => ({
+    queued: false,
+    record: await update(args.recordId, args.payload),
+  }),
+}));
 
 const routerBack = vi.fn();
 const routerReplace = vi.fn();
 vi.mock('expo-router', () => ({ useRouter: () => ({ back: routerBack, replace: routerReplace }) }));
 
 const invalidateQueries = vi.fn();
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries }) }));
+const queryClientStub = { invalidateQueries };
+vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => queryClientStub }));
 
 import { useBriefingSigning } from '../../components/briefings/useBriefingSigning';
 
@@ -170,7 +199,7 @@ describe('useBriefingSigning - handleOK', () => {
     expect(result.current.currentIdx).toBe(1);
   });
 
-  it('inspector branch completes the briefing, records completion, invalidates calendar, routes to done', async () => {
+  it('inspector branch completes the briefing, records completion, invalidates record lists, routes to done', async () => {
     const { result } = await mountFor(
       makeBriefing([{ name: 'A', signature: 'x' }]),
     );
@@ -180,7 +209,11 @@ describe('useBriefingSigning - handleOK', () => {
     });
     expect(update).toHaveBeenCalledWith('b1', { inspectorSignature: 'INSPECTORSIG', status: 'completed' });
     expect(recordCompletion).toHaveBeenCalledWith('briefings', 'b1', '2026-06-18T10:00:00Z', 'p1');
-    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    // Calendar/record refresh is now delegated to invalidateRecordLists(qc)
+    // (which covers the calendar namespaces) instead of two direct
+    // queryClient.invalidateQueries calls.
+    expect(invalidateRecordLists).toHaveBeenCalledTimes(1);
+    expect(invalidateRecordLists).toHaveBeenCalledWith(queryClientStub);
     expect(routerReplace).toHaveBeenCalledWith('/briefings/b1/done');
   });
 

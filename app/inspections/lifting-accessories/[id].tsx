@@ -14,7 +14,7 @@ import {
   SlingsCharacteristicsStep,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection as ChecklistSectionData, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -360,32 +360,24 @@ export default function LiftingAccessoriesInspectionScreen() {
     ];
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="სტროპები და ჩამჭერები"
-          status={inspection.verdict ? { tone: verdictTone, label: LA_VERDICT_LABELS[inspection.verdict] } : null}
-          info={[
-            { label: t('details.info.project'), value: inspection.company || '—' },
-            { label: 'სერ. NN / ID', value: inspection.serialNumber || '—' },
-            { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
-            { label: 'WLL (კგ)', value: inspection.wllKg || '—' },
-            { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
-            { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
-            { label: t('details.info.code'), value: shortCode(inspection.id) },
-          ]}
-          sections={sections}
-          resultOptions={LIFTING_ACCESSORIES_RESULT_OPTIONS}
-          notes={inspection.verdictComment}
-          summaryPhotos={inspection.summaryPhotos}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="სტროპები და ჩამჭერები"
+        status={inspection.verdict ? { tone: verdictTone, label: LA_VERDICT_LABELS[inspection.verdict] } : null}
+        info={[
+          { label: t('details.info.project'), value: inspection.company || '—' },
+          { label: 'სერ. NN / ID', value: inspection.serialNumber || '—' },
+          { label: 'მწარმოებელი', value: inspection.manufacturer || '—' },
+          { label: 'WLL (კგ)', value: inspection.wllKg || '—' },
+          { label: t('details.info.date'), value: new Date(inspection.inspectionDate).toLocaleDateString('ka-GE') },
+          { label: t('details.info.expert'), value: inspection.inspectorName || creatorName || '—' },
+          { label: t('details.info.code'), value: shortCode(inspection.id) },
+        ]}
+        sections={sections}
+        resultOptions={LIFTING_ACCESSORIES_RESULT_OPTIONS}
+        notes={inspection.verdictComment}
+        summaryPhotos={inspection.summaryPhotos}
+      />
     );
   }
 

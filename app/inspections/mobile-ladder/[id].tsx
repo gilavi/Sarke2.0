@@ -11,7 +11,7 @@ import {
   IdentificationGrid,
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
-import { EquipmentResultDetails } from '../../../features/inspection-result';
+import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection as ResultChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -330,24 +330,16 @@ export default function MobileLadderInspectionScreen() {
     ];
 
     return (
-      <>
-        <EquipmentResultDetails
-          title="კიბის შემოწმება"
-          status={inspection.verdict ? { tone: verdictTone, label: ML_VERDICT_LABELS[inspection.verdict] } : null}
-          info={info}
-          sections={sections}
-          resultOptions={MOBILE_LADDER_RESULT_OPTIONS}
-          notes={inspection.verdictComment}
-          summaryPhotos={inspection.summaryPhotos ?? []}
-          creatorName={creatorName}
-          onEdit={() => void reopen()}
-          onShare={(sig) => void handlePdf(sig)}
-          onBack={() => router.back()}
-          sharing={generatingPdf}
-          pdfLocked={pdfLocked}
-        />
-        <SubscriptionNotice visible={limitNoticeVisible} onClose={() => setLimitNoticeVisible(false)} />
-      </>
+      <EquipmentResultScreen
+        flow={{ creatorName, reopen, handlePdf, generatingPdf, pdfLocked, limitNoticeVisible, setLimitNoticeVisible }}
+        title="კიბის შემოწმება"
+        status={inspection.verdict ? { tone: verdictTone, label: ML_VERDICT_LABELS[inspection.verdict] } : null}
+        info={info}
+        sections={sections}
+        resultOptions={MOBILE_LADDER_RESULT_OPTIONS}
+        notes={inspection.verdictComment}
+        summaryPhotos={inspection.summaryPhotos ?? []}
+      />
     );
   }
 
