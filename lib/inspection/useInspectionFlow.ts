@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { onlineManager } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '../toast';
 import { useSession } from '../session';
@@ -219,10 +220,16 @@ export function useInspectionFlow<T extends BaseInspection>(
   useEffect(() => () => { if (celebrationTimer.current) clearTimeout(celebrationTimer.current); }, []);
 
   // ── Debounced autosave ───────────────────────────────────────────────────────
+  // Offline (or on a network-classified failure) api.patch queues through the
+  // outbox instead of throwing (lib/inspection/service.ts), so the error toast
+  // only fires for real (validation/RLS) failures. Seeding the detail cache
+  // keeps a re-entered offline wizard consistent with the queued edits —
+  // cachedRead serves this exact key on the next offline load.
   const scheduleSave = useCallback((insp: T) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       setSaving(true);
+      queryClient.setQueryData(qk.equipmentInspection.byId(schema.category, insp.id), insp);
       api.patch(insp.id, cfg.toPatch(insp))
         .catch(e => toast.error(friendlyError(e, t('errors.saveFailed'))))
         .finally(() => setSaving(false));
@@ -259,6 +266,9 @@ export function useInspectionFlow<T extends BaseInspection>(
     }
     setCompleting(true);
     try {
+      // Offline both writes queue through the outbox (service.ts) — the flow
+      // proceeds and the toast says "saved offline" instead of "completed".
+      const offline = !onlineManager.isOnline();
       await api.patch(insp.id, cfg.toPatch(insp));
       await api.complete(insp.id);
       invalidateRecordLists(queryClient);
@@ -269,9 +279,11 @@ export function useInspectionFlow<T extends BaseInspection>(
         completedAt,
         `${insp.projectId}:${cfg.templateId}`,
       ).catch(() => {});
+      const completed = { ...insp, status: 'completed', completedAt } as T;
       setInspection(prev => prev ? { ...prev, status: 'completed', completedAt } as T : prev);
+      queryClient.setQueryData(qk.equipmentInspection.byId(schema.category, insp.id), completed);
       await AsyncStorage.removeItem(persistKey);
-      toast.success(t('inspections.completeSuccess'));
+      toast.success(offline ? t('components.savedOffline') : t('inspections.completeSuccess'));
       setCelebrating(true);
       haptic.inspectionComplete();
       celebrationTimer.current = setTimeout(() => setCelebrating(false), 2000);

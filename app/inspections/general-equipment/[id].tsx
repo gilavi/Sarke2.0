@@ -21,13 +21,12 @@ import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useToast } from '../../../lib/toast';
 import { generalEquipmentApi } from '../../../lib/generalEquipmentService';
 import { imageForDisplay } from '../../../lib/imageUrl';
 import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalEquipment';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useEquipmentPhotos } from '../../../lib/inspection/useEquipmentPhotos';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
-import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -73,7 +72,6 @@ export default function GeneralEquipmentScreen() {
   const { pickPhotosWithAnnotation } = usePhotoPicker();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const toast = useToast();
   const session = useSession();
 
   const userId = session?.state?.status === 'signedIn' ? session.state.session.user.id : null;
@@ -198,85 +196,28 @@ export default function GeneralEquipmentScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling - per equipment row ────────────────────────────────────
+  // ── Photo handling (shared quartet; keyed per equipment row) ────────────────
 
-  const handleAddEquipmentPhoto = useCallback(async (itemId: string) => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await generalEquipmentApi.uploadPhoto(insp.id, 'equipment', itemId, result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const equipment = prev.equipment.map(r =>
-            r.id === itemId ? { ...r, photo_paths: [...r.photo_paths, path] } : r,
-          );
-          const next = { ...prev, equipment };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeleteEquipmentPhoto = useCallback(async (itemId: string, path: string) => {
-    try {
-      await generalEquipmentApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const equipment = prev.equipment.map(r =>
-        r.id === itemId ? { ...r, photo_paths: r.photo_paths.filter(p => p !== path) } : r,
-      );
-      const next = { ...prev, equipment };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection]);
-
-  // ── Photo handling - summary ──────────────────────────────────────────────
-
-  const handleAddSummaryPhoto = useCallback(async () => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await generalEquipmentApi.uploadPhoto(insp.id, 'summary', 'summary', result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
-    try {
-      await generalEquipmentApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, summaryPhotos: prev.summaryPhotos.filter(p => p !== path) };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection]);
+  const {
+    handleAddItemPhoto: handleAddEquipmentPhoto,
+    handleDeleteItemPhoto: handleDeleteEquipmentPhoto,
+    handleAddSummaryPhoto,
+    handleDeleteSummaryPhoto,
+  } = useEquipmentPhotos<GeneralEquipmentInspection, string>({
+    inspectionRef, setInspection, scheduleSave,
+    pickPhotos: pickPhotosWithAnnotation,
+    uploadItemPhoto: (inspectionId, itemId, uri) =>
+      generalEquipmentApi.uploadPhoto(inspectionId, 'equipment', itemId, uri),
+    uploadSummaryPhoto: (inspectionId, uri) =>
+      generalEquipmentApi.uploadPhoto(inspectionId, 'summary', 'summary', uri),
+    deletePhoto: generalEquipmentApi.deletePhoto,
+    updateItemPaths: (insp, itemId, update) => ({
+      ...insp,
+      equipment: insp.equipment.map(r =>
+        r.id === itemId ? { ...r, photo_paths: update(r.photo_paths ?? []) } : r,
+      ),
+    }),
+  });
 
   // ── Step navigation ───────────────────────────────────────────────────────
 

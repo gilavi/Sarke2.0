@@ -15,9 +15,18 @@
 import { supabase, STORAGE_BUCKETS } from '../supabase';
 import { onlineManager } from '@tanstack/react-query';
 import { storageApi } from '../services';
-import { enqueueOutboxOp, isNetworkError } from '../outbox/storage';
+import {
+  enqueueOutboxOp,
+  isNetworkError,
+  hasQueuedEquipmentWrite,
+  removeQueuedFileUpload,
+  reviveFailedGroup,
+} from '../outbox/storage';
 import { logError } from '../logError';
 import * as Crypto from 'expo-crypto';
+
+/** Georgian pending-sync title shared by every equipment outbox op. */
+const EQUIPMENT_DISPLAY_TITLE = 'აღჭურვილობის შემოწმების აქტი';
 
 // Validates a UUID-shaped string. Surfaces a clear typed error before Supabase
 // produces a vague FK violation when a caller passes an empty/array/wrong-shape
@@ -145,7 +154,7 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
           rpcArgs,
           table,
           insertRow: insert,
-          displayTitle: 'აღჭურვილობის შემოწმების აქტი',
+          displayTitle: EQUIPMENT_DISPLAY_TITLE,
         });
         return cfg.toModel({
           ...insert,
@@ -194,8 +203,32 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
     patch: async (id, patch) => {
       const db = cfg.toDb(patch);
       if (Object.keys(db).length === 0) return;
-      const { error } = await supabase.from(table).update(db).eq('id', id);
-      if (error) throw new Error(error.message);
+      // Offline (or a network-failed write): queue the patch. Enqueue-side
+      // coalescing folds it into the row's still-queued creation or previous
+      // patch, so a whole offline autosave session stays one op.
+      const enqueue = () =>
+        enqueueOutboxOp({
+          kind: 'equipment_patch',
+          groupId: id,
+          inspectionId: id,
+          table,
+          patch: db,
+          syncParent: null,
+          displayTitle: EQUIPMENT_DISPLAY_TITLE,
+        });
+      if (!onlineManager.isOnline()) return enqueue();
+      // Pending-write guard: while this row's creation (or an earlier patch)
+      // is still queued — or died into the failed queue (revived first) — a
+      // direct UPDATE hits a row that doesn't exist yet and silently no-ops,
+      // losing the edit when the queued create later replays.
+      if ((await reviveFailedGroup(id)) || (await hasQueuedEquipmentWrite(id))) return enqueue();
+      try {
+        const { error } = await supabase.from(table).update(db).eq('id', id);
+        if (error) throw new Error(error.message);
+      } catch (e) {
+        if (isNetworkError(e)) return enqueue();
+        throw e;
+      }
     },
 
     reopen: async (id) => {
@@ -209,22 +242,84 @@ export function makeInspectionService<T, P extends object = Record<string, unkno
 
     complete: async (id) => {
       const completedAt = new Date().toISOString();
-      const { error } = await supabase
-        .from(table)
-        .update({ status: 'completed', completed_at: completedAt })
-        .eq('id', id);
-      if (error) throw new Error(error.message);
-      await syncParent(id, 'completed', completedAt);
+      // Offline completion queues BOTH halves of the dual-write (equipment
+      // row + parent public.inspections mirror) as one op; it never coalesces
+      // into a queued create, so the parent mirror replays after the row
+      // exists (group FIFO).
+      const enqueue = () =>
+        enqueueOutboxOp({
+          kind: 'equipment_patch',
+          groupId: id,
+          inspectionId: id,
+          table,
+          patch: { status: 'completed', completed_at: completedAt },
+          syncParent: { status: 'completed', completedAt },
+          displayTitle: EQUIPMENT_DISPLAY_TITLE,
+        });
+      if (!onlineManager.isOnline()) return enqueue();
+      if ((await reviveFailedGroup(id)) || (await hasQueuedEquipmentWrite(id))) return enqueue();
+      try {
+        const { error } = await supabase
+          .from(table)
+          .update({ status: 'completed', completed_at: completedAt })
+          .eq('id', id);
+        if (error) throw new Error(error.message);
+        await syncParent(id, 'completed', completedAt);
+      } catch (e) {
+        // Both updates are idempotent, so replaying the whole pair after a
+        // half-applied pass (row updated, parent mirror network-failed) is safe.
+        if (isNetworkError(e)) return enqueue();
+        throw e;
+      }
     },
 
     uploadPhotoAt: async (subpath, photoUri) => {
       const uuid = Crypto.randomUUID();
       const path = `${pathPrefix}/${subpath}/${uuid}.jpg`;
-      await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, photoUri, 'image/jpeg', 'inspection');
-      return path;
+      // Offline (or a network-failed upload): compress + stage the photo on
+      // disk, queue a file_upload op, and resolve with the final storage path
+      // — the caller stores the path in photo_paths exactly like an online
+      // upload (paths are pre-computed, so the row may land before its
+      // objects; see lib/outbox/AGENTS.md). Every service prefixes `subpath`
+      // with the inspection id, which is the op's group.
+      const stage = async () => {
+        const inspectionId = subpath.split('/')[0];
+        // Dynamic imports on purpose (mirrors the flush kick in
+        // lib/outbox/storage.ts): the compression/cache modules pull in
+        // expo-image-manipulator / expo-file-system, which must not load at
+        // module-init for every service.ts consumer.
+        const { stageCompressedPhotoForOffline } = await import('../photoCompression');
+        const localUri = await stageCompressedPhotoForOffline(photoUri, 'inspection');
+        await enqueueOutboxOp({
+          kind: 'file_upload',
+          groupId: inspectionId,
+          bucket: STORAGE_BUCKETS.answerPhotos,
+          path,
+          localUri,
+          contentType: 'image/jpeg',
+          displayTitle: EQUIPMENT_DISPLAY_TITLE,
+        });
+        // Let imageForDisplay render the staged photo before it uploads.
+        void import('../imageOfflineCache')
+          .then((m) => m.seedDisplayCacheFromLocalFile(STORAGE_BUCKETS.answerPhotos, path, localUri))
+          .catch(() => undefined);
+        return path;
+      };
+      if (!onlineManager.isOnline()) return stage();
+      try {
+        await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, photoUri, 'image/jpeg', 'inspection');
+        return path;
+      } catch (e) {
+        if (isNetworkError(e)) return stage();
+        throw e;
+      }
     },
 
     deletePhoto: async (path) => {
+      // A photo whose offline upload is still queued never reached the
+      // server: dropping the op (and its staged file) is the whole delete.
+      const removed = await removeQueuedFileUpload(STORAGE_BUCKETS.answerPhotos, path);
+      if (removed) return;
       await storageApi.remove(STORAGE_BUCKETS.answerPhotos, path).catch((e) => logError(e, `${pathPrefix}.deletePhoto`));
     },
   };

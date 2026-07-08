@@ -36,10 +36,23 @@ const upsertMock = vi.fn(async (_row: unknown, _opts: unknown) => {
   calls.push('upsert');
   return { error: null };
 });
+type UpdateCall = { table: string; payload: Record<string, unknown>; id: unknown };
+const updateCalls: UpdateCall[] = [];
+const updateMock = vi.fn(async (_c: UpdateCall) => ({ error: null }));
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     rpc: (fn: string, args: unknown) => rpcMock(fn, args),
-    from: () => ({ upsert: (row: unknown, opts: unknown) => upsertMock(row, opts) }),
+    from: (table: string) => ({
+      upsert: (row: unknown, opts: unknown) => upsertMock(row, opts),
+      update: (payload: Record<string, unknown>) => ({
+        eq: (_col: string, id: unknown) => {
+          const call = { table, payload, id };
+          updateCalls.push(call);
+          calls.push(`update:${table}`);
+          return updateMock(call);
+        },
+      }),
+    }),
   },
 }));
 
@@ -109,10 +122,12 @@ const op = (over: Partial<OutboxOp>): OutboxOp =>
 beforeEach(() => {
   store.clear();
   calls.length = 0;
+  updateCalls.length = 0;
   orderCreate.mockReset().mockResolvedValue({ id: 'o1' });
   orderUpdate.mockReset().mockResolvedValue({ id: 'o1' });
   rpcMock.mockClear();
   upsertMock.mockClear();
+  updateMock.mockReset().mockResolvedValue({ error: null });
   invalidateMock.mockClear();
 });
 
@@ -205,6 +220,61 @@ describe('flushOutbox', () => {
       p_id: 'i1',
     });
     expect(upsertMock).toHaveBeenCalledWith({ id: 'i1' }, { onConflict: 'id', ignoreDuplicates: true });
+  });
+
+  it('replays an equipment_patch as an UPDATE, mirroring the parent when syncParent is set', async () => {
+    await writeOutboxQueue([
+      op({
+        kind: 'equipment_patch',
+        groupId: 'i1',
+        inspectionId: 'i1',
+        table: 'bobcat_inspections',
+        patch: { serial_number: 'SN-9' },
+        syncParent: null,
+      } as Partial<OutboxOp>),
+      op({
+        kind: 'equipment_patch',
+        groupId: 'i1',
+        inspectionId: 'i1',
+        table: 'bobcat_inspections',
+        patch: { status: 'completed', completed_at: 'T' },
+        syncParent: { status: 'completed', completedAt: 'T' },
+      } as Partial<OutboxOp>),
+    ]);
+    await flushOutbox();
+    expect(await readOutboxQueue()).toHaveLength(0);
+    // Autosave patch → equipment table only; completion → equipment table
+    // then the parent public.inspections mirror (the unified feeds read it).
+    expect(updateCalls).toEqual([
+      { table: 'bobcat_inspections', payload: { serial_number: 'SN-9' }, id: 'i1' },
+      { table: 'bobcat_inspections', payload: { status: 'completed', completed_at: 'T' }, id: 'i1' },
+      { table: 'inspections', payload: { status: 'completed', completed_at: 'T' }, id: 'i1' },
+    ]);
+  });
+
+  it('an equipment group replays creation before its queued patches (FIFO)', async () => {
+    await writeOutboxQueue([
+      op({
+        kind: 'inspection_create',
+        groupId: 'i1',
+        variant: 'equipment',
+        inspectionId: 'i1',
+        projectId: 'p1',
+        rpcArgs: { p_id: 'i1' },
+        table: 'bobcat_inspections',
+        insertRow: { id: 'i1' },
+      } as Partial<OutboxOp>),
+      op({
+        kind: 'equipment_patch',
+        groupId: 'i1',
+        inspectionId: 'i1',
+        table: 'bobcat_inspections',
+        patch: { status: 'completed', completed_at: 'T' },
+        syncParent: { status: 'completed', completedAt: 'T' },
+      } as Partial<OutboxOp>),
+    ]);
+    await flushOutbox();
+    expect(calls).toEqual(['rpc', 'upsert', 'update:bobcat_inspections', 'update:inspections']);
   });
 
   it('uploads staged pdfs and applies their db patch', async () => {

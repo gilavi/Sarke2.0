@@ -136,6 +136,27 @@ export function enqueueOutboxOp(op: NewOutboxOp): Promise<void> {
         }
       }
     }
+    // Equipment autosave patches coalesce into the newest queued write of the
+    // same row — the still-queued creation (edit-after-queued-create) or the
+    // previous patch — so a 700ms-debounced offline edit session stays ONE op.
+    // A completion (syncParent set) must append instead: the parent-status
+    // mirror has to replay AFTER the equipment row exists (group FIFO), and
+    // an inspection_create's insertRow can't carry the parent update.
+    if (op.kind === 'equipment_patch' && !op.syncParent) {
+      for (let i = ops.length - 1; i >= 0; i--) {
+        const prev = ops[i];
+        if (prev.kind === 'equipment_patch' && prev.inspectionId === op.inspectionId && prev.table === op.table) {
+          ops[i] = { ...prev, patch: { ...prev.patch, ...op.patch } };
+          await writeOutboxQueue(ops);
+          return;
+        }
+        if (prev.kind === 'inspection_create' && prev.inspectionId === op.inspectionId && prev.table === op.table) {
+          ops[i] = { ...prev, insertRow: { ...prev.insertRow, ...op.patch } };
+          await writeOutboxQueue(ops);
+          return;
+        }
+      }
+    }
     ops.push({
       ...op,
       id: Crypto.randomUUID(),
@@ -191,6 +212,45 @@ export function reviveFailedGroup(groupId: string): Promise<boolean> {
       ...revive.map((f) => ({ ...f, attempts: 0, lastError: undefined })),
     ]);
     await writeOutboxFailed(failed.filter((f) => f.groupId !== groupId));
+    return true;
+  });
+}
+
+/**
+ * True when a write for this equipment inspection (creation or patch) is
+ * still queued — the pending-create guard for makeInspectionService: a direct
+ * UPDATE against a row whose creation hasn't replayed yet silently no-ops
+ * (no row-count check), losing the edit when the create later lands.
+ */
+export async function hasQueuedEquipmentWrite(inspectionId: string): Promise<boolean> {
+  const ops = await readOutboxQueue();
+  return ops.some(
+    (o) =>
+      (o.kind === 'inspection_create' && o.inspectionId === inspectionId) ||
+      (o.kind === 'equipment_patch' && o.inspectionId === inspectionId),
+  );
+}
+
+/**
+ * Drop a queued file_upload for bucket+path (photo deleted before its offline
+ * upload ever ran) and clean its staged file. Returns true when one was found
+ * — the caller can then skip the storage remove (nothing ever reached the
+ * server).
+ */
+export function removeQueuedFileUpload(bucket: string, path: string): Promise<boolean> {
+  return runOutboxExclusive(async () => {
+    const ops = await readOutboxQueue();
+    const idx = ops.findIndex((o) => o.kind === 'file_upload' && o.bucket === bucket && o.path === path);
+    if (idx < 0) return false;
+    const [removed] = ops.splice(idx, 1);
+    if ('localUri' in removed && removed.localUri) {
+      // Dynamic import: keep this leaf module free of static expo-file-system
+      // (same reasoning as the flushOutbox kick below).
+      void import('expo-file-system/legacy')
+        .then((fs) => fs.deleteAsync(removed.localUri, { idempotent: true }))
+        .catch(() => undefined);
+    }
+    await writeOutboxQueue(ops);
     return true;
   });
 }

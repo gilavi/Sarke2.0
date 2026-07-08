@@ -23,6 +23,12 @@ vi.mock('expo-crypto', () => {
 
 vi.mock('../../lib/logError', () => ({ logError: vi.fn() }));
 
+// removeQueuedFileUpload cleans staged files via a dynamic expo-file-system import.
+const deleteAsync = vi.fn(async (..._a: unknown[]) => undefined);
+vi.mock('expo-file-system/legacy', () => ({
+  deleteAsync: (...a: unknown[]) => deleteAsync(...a),
+}));
+
 import {
   enqueueOutboxOp,
   readOutboxQueue,
@@ -30,10 +36,39 @@ import {
   writeOutboxFailed,
   reviveFailedGroup,
   pendingInspectionIds,
+  hasQueuedEquipmentWrite,
+  removeQueuedFileUpload,
 } from '../../lib/outbox/storage';
-import type { NewOutboxOp, OutboxOp, RecordSaveOp } from '../../lib/outbox/types';
+import type { EquipmentPatchOp, InspectionCreateOp, NewOutboxOp, OutboxOp, RecordSaveOp } from '../../lib/outbox/types';
 
 type NewRecordSaveOp = Extract<NewOutboxOp, { kind: 'record_save' }>;
+type NewEquipmentPatchOp = Extract<NewOutboxOp, { kind: 'equipment_patch' }>;
+
+const inspectionCreateOp = (id: string): Extract<NewOutboxOp, { kind: 'inspection_create' }> => ({
+  kind: 'inspection_create',
+  groupId: id,
+  variant: 'equipment',
+  inspectionId: id,
+  projectId: 'p1',
+  rpcArgs: { p_id: id },
+  table: 'bobcat_inspections',
+  insertRow: { id, status: 'draft', items: [] },
+  displayTitle: '',
+});
+
+const equipmentPatchOp = (
+  id: string,
+  patch: Record<string, unknown>,
+  syncParent: NewEquipmentPatchOp['syncParent'] = null,
+): NewEquipmentPatchOp => ({
+  kind: 'equipment_patch',
+  groupId: id,
+  inspectionId: id,
+  table: 'bobcat_inspections',
+  patch,
+  syncParent,
+  displayTitle: '',
+});
 
 const createOp = (recordId: string, payload: Record<string, unknown>): NewRecordSaveOp => ({
   kind: 'record_save',
@@ -100,6 +135,82 @@ describe('enqueueOutboxOp', () => {
       displayTitle: '',
     });
     expect(await readOutboxQueue()).toHaveLength(3);
+  });
+});
+
+describe('enqueueOutboxOp — equipment_patch coalescing', () => {
+  it('folds a patch into the still-queued inspection_create insertRow (edit-after-queued-create)', async () => {
+    await enqueueOutboxOp(inspectionCreateOp('i1'));
+    await enqueueOutboxOp(equipmentPatchOp('i1', { serial_number: 'SN-9', items: [{ id: 1 }] }));
+    const ops = await readOutboxQueue();
+    expect(ops).toHaveLength(1);
+    const op = ops[0] as InspectionCreateOp;
+    expect(op.kind).toBe('inspection_create');
+    expect(op.insertRow).toEqual({ id: 'i1', status: 'draft', serial_number: 'SN-9', items: [{ id: 1 }] });
+  });
+
+  it('folds successive patches of the same row into one op', async () => {
+    await enqueueOutboxOp(equipmentPatchOp('i1', { serial_number: 'SN-1' }));
+    await enqueueOutboxOp(equipmentPatchOp('i1', { serial_number: 'SN-2', notes: 'x' }));
+    const ops = await readOutboxQueue();
+    expect(ops).toHaveLength(1);
+    expect((ops[0] as EquipmentPatchOp).patch).toEqual({ serial_number: 'SN-2', notes: 'x' });
+  });
+
+  it('a completion (syncParent) always APPENDS so the parent mirror replays after the row exists', async () => {
+    await enqueueOutboxOp(inspectionCreateOp('i1'));
+    await enqueueOutboxOp(
+      equipmentPatchOp('i1', { status: 'completed', completed_at: 'T' }, { status: 'completed', completedAt: 'T' }),
+    );
+    const ops = await readOutboxQueue();
+    expect(ops).toHaveLength(2);
+    expect(ops[0].kind).toBe('inspection_create');
+    expect(ops[1].kind).toBe('equipment_patch');
+    expect((ops[1] as EquipmentPatchOp).syncParent).toEqual({ status: 'completed', completedAt: 'T' });
+  });
+
+  it('does NOT coalesce across different inspections', async () => {
+    await enqueueOutboxOp(equipmentPatchOp('i1', { notes: 'a' }));
+    await enqueueOutboxOp(equipmentPatchOp('i2', { notes: 'b' }));
+    expect(await readOutboxQueue()).toHaveLength(2);
+  });
+});
+
+describe('hasQueuedEquipmentWrite', () => {
+  it('sees queued creations and patches for the id, nothing else', async () => {
+    await enqueueOutboxOp(inspectionCreateOp('i1'));
+    await enqueueOutboxOp(equipmentPatchOp('i2', { notes: 'x' }));
+    expect(await hasQueuedEquipmentWrite('i1')).toBe(true);
+    expect(await hasQueuedEquipmentWrite('i2')).toBe(true);
+    expect(await hasQueuedEquipmentWrite('i3')).toBe(false);
+  });
+});
+
+describe('removeQueuedFileUpload', () => {
+  const fileOp = (path: string): Extract<NewOutboxOp, { kind: 'file_upload' }> => ({
+    kind: 'file_upload',
+    groupId: 'i1',
+    bucket: 'answer-photos',
+    path,
+    localUri: `file:///staged/${path.split('/').pop()}`,
+    contentType: 'image/jpeg',
+    displayTitle: '',
+  });
+
+  it('drops the queued upload, deletes its staged file, and reports true', async () => {
+    await enqueueOutboxOp(fileOp('bobcat/i1/1/a.jpg'));
+    await enqueueOutboxOp(fileOp('bobcat/i1/2/b.jpg'));
+    expect(await removeQueuedFileUpload('answer-photos', 'bobcat/i1/1/a.jpg')).toBe(true);
+    const ops = await readOutboxQueue();
+    expect(ops).toHaveLength(1);
+    expect((ops[0] as { path: string }).path).toBe('bobcat/i1/2/b.jpg');
+    // Dynamic-import cleanup is fire-and-forget — let the microtask run.
+    await new Promise((r) => setTimeout(r, 0));
+    expect(deleteAsync).toHaveBeenCalledWith('file:///staged/a.jpg', { idempotent: true });
+  });
+
+  it('reports false when nothing is queued for the path', async () => {
+    expect(await removeQueuedFileUpload('answer-photos', 'missing.jpg')).toBe(false);
   });
 });
 

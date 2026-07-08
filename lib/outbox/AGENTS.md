@@ -22,7 +22,8 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
   patches (risk, breathalyzer) have no row-count check and would silently
   no-op, losing the edit when the create later replays.
 - `enqueueOutboxOp(op)` — raw enqueue for `file_upload` / `pdf_upload` /
-  `inspection_create` ops (record ops should use saveRecordThroughOutbox).
+  `inspection_create` / `equipment_patch` ops (record ops should use
+  saveRecordThroughOutbox).
 - `flushOutbox()` / `retryOutboxFailed(groupId?)` /
   `dismissOutboxFailed(groupId?)` — retry/dismiss take an optional groupId
   for per-document actions (omit = all failed groups). Dismiss permanently
@@ -35,12 +36,22 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
 
 ## Internal files
 - `types.ts` — the op union (`record_save`, `file_upload`, `pdf_upload`,
-  `inspection_create`) + `NewOutboxOp`. Everything must round-trip JSON.
+  `inspection_create`, `equipment_patch`) + `NewOutboxOp`. Everything must
+  round-trip JSON. `equipment_patch` is the offline UPDATE for a
+  `<type>_inspections` row (makeInspectionService patch/complete); when its
+  `syncParent` is set the flush also mirrors status/completed_at onto the
+  parent public.inspections row (the unified feeds read the parent).
 - `storage.ts` — AsyncStorage keys `@outbox:queue|failed` (+ `:backup`,
   corruption-fallback pattern from lib/offline.tsx), the change emitter, the
   mutation lock, enqueue + **coalescing**: an UPDATE for a record whose
   earlier record_save is still queued merges into that op's payload
-  (edit-after-queued-create). Leaf module — no imports into apiHooks or
+  (edit-after-queued-create); an `equipment_patch` likewise folds into the
+  row's still-queued `inspection_create` insertRow or the previous patch —
+  EXCEPT completions (`syncParent` set), which always append so the parent
+  mirror replays after the row exists. Also `hasQueuedEquipmentWrite(id)`
+  (the equipment pending-write guard) and `removeQueuedFileUpload(bucket,
+  path)` (photo deleted before its offline upload ran — drops the op + staged
+  file). Leaf module — no imports into apiHooks or
   services, so `lib/inspection/service.ts` can enqueue cycle-free. Every
   enqueue while `onlineManager` still reports online (i.e. the op got here
   via a network-classified failure) schedules a `flushOutbox` kick — without
@@ -63,7 +74,9 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
   half-applied pass must not drop; the report registry mapper strips
   create-only keys for exactly this path). `inspection_create` runs the
   parent RPC first, then UPSERTS the row (`ignoreDuplicates`) — the
-  CLAUDE.md parent-row-first rule.
+  CLAUDE.md parent-row-first rule. `equipment_patch` is a plain UPDATE on the
+  op's table (+ the parent mirror when `syncParent` is set); both halves are
+  idempotent, and group FIFO guarantees the row's creation replayed first.
 - `saveRecord.ts` / `useOutbox.ts` / `index.ts` — the public surface.
 
 ## Gotchas

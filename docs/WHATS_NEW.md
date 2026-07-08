@@ -4,6 +4,67 @@
 
 ---
 
+## 2026-07-08 — Batch 6: the 9 typed equipment wizards now edit + complete offline
+
+Audit finding (ux-flows #1, high impact): the phase-3 outbox queued equipment
+inspection **creation**, but every subsequent write — the 700ms-debounced
+autosave, photo uploads, and completion — was a direct Supabase call. A field
+expert filling a 24-item excavator checklist with no signal got an error toast
+per keystroke batch, couldn't Finish, and lost every answer on unmount. Real
+offline editing covered 2 of 11 inspection types (the generic + harness acts);
+now it covers all 11.
+
+- **Autosave + completion queue through the outbox** — `makeInspectionService`
+  `patch`/`complete` ([lib/inspection/service.ts](../lib/inspection/service.ts))
+  now mirror the create path: offline (or on a network-classified failure) they
+  enqueue a new `equipment_patch` op instead of throwing. Enqueue-side
+  coalescing ([lib/outbox/storage.ts](../lib/outbox/storage.ts)) folds a patch
+  into the row's still-queued `inspection_create` insertRow
+  (edit-after-queued-create) or the previous patch, so a whole offline editing
+  session replays as one op; a completion always appends, carrying the parent
+  `public.inspections` status mirror (`syncParent`) so the unified feeds see
+  the act after the row exists (group FIFO). A **pending-write guard**
+  (`hasQueuedEquipmentWrite` + failed-group revival) also coalesces an *online*
+  patch for a row whose creation is still queued — the direct UPDATE would
+  silently no-op and the edit would vanish when the create replayed.
+- **Photos stage to disk offline** — `uploadPhotoAt` compresses + stages the
+  photo (`stageCompressedPhotoForOffline`) and queues a `file_upload` op
+  grouped under the inspection (the incident-flow pattern), still resolving
+  with the final storage path so `photo_paths` stays identical to the online
+  shape. The staged copy also **seeds the image display cache**
+  (`seedDisplayCacheFromLocalFile`, [lib/imageOfflineCache.ts](../lib/imageOfflineCache.ts)),
+  so offline-added photos render immediately instead of as blank squares.
+  Deleting a not-yet-uploaded photo just drops its queued op + staged file
+  (`removeQueuedFileUpload`). Covers all 9 typed flows incl. fall-protection's
+  device photos (they share `uploadPhotoAt`).
+- **Flow UX** — `useInspectionFlow` completion offline toasts the existing
+  `components.savedOffline` instead of an error; the autosave error-toast spam
+  disappears because network failures queue instead of throwing. Autosave and
+  completion now **seed `qk.equipmentInspection.byId`**, so re-entering the
+  wizard offline (cachedRead) shows the queued edits/completed state instead
+  of stale data. Queued photo adds toast the generic wizard's
+  `notifications.photoSavedLocally` (both keys already existed in ka+en — no
+  i18n changes).
+- **Shared photo quartet extracted** — the ~80-line add/delete item+summary
+  photo handler quartet duplicated across 8 routes now lives in
+  [lib/inspection/useEquipmentPhotos.ts](../lib/inspection/useEquipmentPhotos.ts)
+  (routes pass only the type-specific upload fn + item-array updater; bobcat +
+  excavator keep their AsyncStorage summary strip via `summaryStorageKey`).
+  Route line deltas: bobcat 522→461, cargo-platform 608→549, excavator
+  806→746, forklift 569→510, general-equipment 637→578, lifting-accessories
+  543→480, mobile-ladder 520→456, safety-net 609→549.
+- **Still online-only (deliberate):** reopening a completed act (`reopen` is a
+  rare recovery action; it fails with a clear toast offline) and the PDF
+  share/quota path (unchanged; the completion itself doesn't touch the quota
+  RPC). Captured result-screen signatures remain component-state only
+  (regulatory) — nothing signature-related is queued or persisted.
+- Tests: `tests/unit/inspectionServiceOffline.test.ts`,
+  `useEquipmentPhotos.test.ts`, `useInspectionFlowOffline.test.ts` (new) +
+  extended `outboxStorage` / `outboxFlush` coverage for `equipment_patch`
+  coalescing, ordering, and `removeQueuedFileUpload`.
+
+---
+
 ## 2026-07-08 — Incident flow extracted to features/incident-new (route was 1,137 lines)
 
 Audit findings (arch-routes #5 + perf-runtime): `app/incidents/new.tsx` was

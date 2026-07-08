@@ -1,8 +1,10 @@
 // Internal cache stores for lib/imageUrl.ts — NOT a public primitive.
 // Consume the public API (imageForDisplay / signatureAsDataUrl) instead of
 // these helpers; this file exists as a sibling only to keep lib/imageUrl.ts
-// under its file-size target. Sole exception: `purgeSignedUrlMemo` is the
-// sign-out hook consumed by lib/session.tsx.
+// under its file-size target. Two documented exceptions: `purgeSignedUrlMemo`
+// is the sign-out hook consumed by lib/session.tsx, and
+// `seedDisplayCacheFromLocalFile` is the offline-photo seed consumed by
+// lib/inspection/service.ts.
 
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -121,6 +123,29 @@ export function warmDisplayCache(signedUrl: string, file: string): void {
       }
     } catch {
       // best-effort warm
+    }
+  })();
+}
+
+/**
+ * Seed the display cache for a storage object from a LOCAL file. Used when a
+ * photo upload is staged for the offline outbox (lib/inspection/service.ts):
+ * the storage object doesn't exist yet, but imageForDisplay's offline branch
+ * finds this copy and the photo renders immediately. Fire-and-forget; the ext
+ * normalization matches imageForDisplay's cache-key scheme (normalizedExt).
+ */
+export function seedDisplayCacheFromLocalFile(bucket: string, path: string, localUri: string): void {
+  void (async () => {
+    try {
+      const raw = (path.split('?')[0] ?? '').split('.').pop() ?? '';
+      const ext = raw.toLowerCase().replace(/[^a-z0-9]/g, '') || 'img';
+      const file = await displayCacheFile(bucket, path, ext);
+      if (!file) return;
+      const info = await FileSystem.getInfoAsync(file);
+      if (info.exists) return;
+      await FileSystem.copyAsync({ from: localUri, to: file });
+    } catch {
+      // best-effort seed
     }
   })();
 }

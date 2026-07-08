@@ -20,13 +20,12 @@ import {
 } from '../../../components/inspection-parts';
 import { ConclusionStep, type VerdictOption } from '../../../components/inspection-steps';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useToast } from '../../../lib/toast';
 import { cargoPlatformApi } from '../../../lib/cargoPlatformService';
 import { cargoPlatformSchema } from '../../../lib/inspection/schemas/cargoPlatform';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useEquipmentPhotos } from '../../../lib/inspection/useEquipmentPhotos';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { friendlyError } from '../../../lib/errorMap';
 import { CelebrationBurst } from '../../../components/animations';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
@@ -87,7 +86,6 @@ export default function CargoPlatformInspectionScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const toast = useToast();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
 
   // Enabled finish button + on-press field errors (see useSubmitGuard).
@@ -196,83 +194,26 @@ export default function CargoPlatformInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photos ──────────────────────────────────────────────────────────────────
+  // ── Photos (shared quartet) ─────────────────────────────────────────────────
 
-  const handleAddItemPhoto = useCallback(async (itemId: number) => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await cargoPlatformApi.uploadPhoto(insp.id, itemId, result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const items = prev.items.map(i =>
-            i.id === itemId ? { ...i, photo_paths: [...(i.photo_paths ?? []), path] } : i,
-          );
-          const next = { ...prev, items };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeleteItemPhoto = useCallback(async (itemId: number, path: string) => {
-    try {
-      await cargoPlatformApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const items = prev.items.map(i =>
-        i.id === itemId ? { ...i, photo_paths: (i.photo_paths ?? []).filter(p => p !== path) } : i,
-      );
-      const next = { ...prev, items };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection]);
-
-  const handleAddSummaryPhoto = useCallback(async () => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await cargoPlatformApi.uploadPhoto(insp.id, 'summary', result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const next = { ...prev, summaryPhotos: [...prev.summaryPhotos, path] };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
-    try {
-      await cargoPlatformApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, summaryPhotos: prev.summaryPhotos.filter(p => p !== path) };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection]);
+  const {
+    handleAddItemPhoto,
+    handleDeleteItemPhoto,
+    handleAddSummaryPhoto,
+    handleDeleteSummaryPhoto,
+  } = useEquipmentPhotos<CargoPlatformInspection, number>({
+    inspectionRef, setInspection, scheduleSave,
+    pickPhotos: pickPhotosWithAnnotation,
+    uploadItemPhoto: (inspectionId, itemId, uri) => cargoPlatformApi.uploadPhoto(inspectionId, itemId, uri),
+    uploadSummaryPhoto: (inspectionId, uri) => cargoPlatformApi.uploadPhoto(inspectionId, 'summary', uri),
+    deletePhoto: cargoPlatformApi.deletePhoto,
+    updateItemPaths: (insp, itemId, update) => ({
+      ...insp,
+      items: insp.items.map(i =>
+        i.id === itemId ? { ...i, photo_paths: update(i.photo_paths ?? []) } : i,
+      ),
+    }),
+  });
 
   // ── Step navigation ─────────────────────────────────────────────────────────
 

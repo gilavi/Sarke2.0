@@ -21,7 +21,6 @@ import { EquipmentResultScreen } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
-import { useToast } from '../../../lib/toast';
 import { useBottomSheet } from '../../../components/BottomSheet';
 import { excavatorApi } from '../../../lib/excavatorService';
 import { imageForDisplay } from '../../../lib/imageUrl';
@@ -29,11 +28,11 @@ import { STORAGE_BUCKETS } from '../../../lib/supabase';
 
 import { excavatorSchema } from '../../../lib/inspection/schemas/excavator';
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
+import { useEquipmentPhotos } from '../../../lib/inspection/useEquipmentPhotos';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTranslation } from 'react-i18next';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
-import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SuggestionPills } from '../../../components/SuggestionPills';
@@ -114,7 +113,6 @@ export default function ExcavatorInspectionScreen() {
   const styles = useMemo(() => getstyles(theme), [theme]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const toast = useToast();
   const session = useSession();
   const showSheet = useBottomSheet();
 
@@ -252,87 +250,29 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling ─────────────────────────────────────────────────────────
+  // ── Photo handling (shared quartet; summary strip lives in AsyncStorage) ───
 
-  const handleAddPhoto = useCallback(async (section: Section, itemId: number) => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await excavatorApi.uploadPhoto(insp.id, section, itemId, result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const key = sectionKey(section);
-          const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
-          const idx = arr.findIndex(i => i.id === itemId);
-          if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: [...(arr[idx].photo_paths ?? []), path] };
-          const next = { ...prev, [key]: arr };
-          scheduleSave(next);
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, scheduleSave, toast, inspectionRef, setInspection]);
-
-  const handleDeletePhoto = useCallback(async (section: Section, itemId: number, path: string) => {
-    try {
-      await excavatorApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const key = sectionKey(section);
-      const arr = [...(prev[key] as ExcavatorChecklistItemState[])];
-      const idx = arr.findIndex(i => i.id === itemId);
-      if (idx >= 0) arr[idx] = { ...arr[idx], photo_paths: (arr[idx].photo_paths ?? []).filter(p => p !== path) };
-      const next = { ...prev, [key]: arr };
-      scheduleSave(next);
-      return next;
-    });
-  }, [scheduleSave, toast, setInspection]);
-
-  // ── Summary Photos ─────────────────────────────────────────────────────────
-
-  const handleAddSummaryPhoto = useCallback(async () => {
-    const results = await pickPhotosWithAnnotation();
-    if (results.length === 0) return;
-    const insp = inspectionRef.current;
-    if (!insp) return;
-    for (const result of results) {
-      try {
-        const path = await excavatorApi.uploadSummaryPhoto(insp.id, result.uri);
-        setInspection(prev => {
-          if (!prev) return prev;
-          const next = { ...prev, summaryPhotos: [...(prev.summaryPhotos ?? []), path] };
-          AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
-          return next;
-        });
-      } catch (e) {
-        toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
-      }
-    }
-  }, [pickPhotosWithAnnotation, toast, inspectionRef, setInspection, summaryPhotosKey]);
-
-  const handleDeleteSummaryPhoto = useCallback(async (path: string) => {
-    try {
-      await excavatorApi.deletePhoto(path);
-    } catch (e) {
-      toast.error(friendlyError(e, 'ფოტოს წაშლა ვერ მოხერხდა'));
-      return;
-    }
-    setInspection(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, summaryPhotos: (prev.summaryPhotos ?? []).filter(p => p !== path) };
-      AsyncStorage.setItem(summaryPhotosKey, JSON.stringify(next.summaryPhotos)).catch(() => {});
-      return next;
-    });
-  }, [summaryPhotosKey, toast, setInspection]);
+  const {
+    handleAddItemPhoto: handleAddPhoto,
+    handleDeleteItemPhoto: handleDeletePhoto,
+    handleAddSummaryPhoto,
+    handleDeleteSummaryPhoto,
+  } = useEquipmentPhotos<ExcavatorInspection, { section: Section; itemId: number }>({
+    inspectionRef, setInspection, scheduleSave,
+    pickPhotos: pickPhotosWithAnnotation,
+    uploadItemPhoto: (inspectionId, key, uri) =>
+      excavatorApi.uploadPhoto(inspectionId, key.section, key.itemId, uri),
+    uploadSummaryPhoto: excavatorApi.uploadSummaryPhoto,
+    deletePhoto: excavatorApi.deletePhoto,
+    updateItemPaths: (insp, key, update) => {
+      const k = sectionKey(key.section);
+      const arr = (insp[k] as ExcavatorChecklistItemState[]).map(i =>
+        i.id === key.itemId ? { ...i, photo_paths: update(i.photo_paths ?? []) } : i,
+      );
+      return { ...insp, [k]: arr };
+    },
+    summaryStorageKey: summaryPhotosKey,
+  });
 
   // ── Help sheet ─────────────────────────────────────────────────────────────
 

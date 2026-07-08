@@ -92,6 +92,21 @@ async function executeOp(op: OutboxOp): Promise<void> {
       if (error) throw new Error(error.message);
       return;
     }
+    case 'equipment_patch': {
+      // Group FIFO guarantees the row's inspection_create replayed first.
+      // Plain UPDATEs are idempotent, so a retry after a half-applied pass
+      // (equipment row updated, parent mirror failed) is safe.
+      const { error } = await supabase.from(op.table).update(op.patch).eq('id', op.inspectionId);
+      if (error) throw new Error(error.message);
+      if (op.syncParent) {
+        const { error: parentError } = await supabase
+          .from('inspections')
+          .update({ status: op.syncParent.status, completed_at: op.syncParent.completedAt })
+          .eq('id', op.inspectionId);
+        if (parentError) throw new Error(parentError.message);
+      }
+      return;
+    }
   }
 }
 

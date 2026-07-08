@@ -81,7 +81,30 @@ export interface InspectionCreateOp extends OutboxOpBase {
   insertRow: Record<string, unknown>;
 }
 
-export type OutboxOp = RecordSaveOp | FileUploadOp | PdfUploadOp | InspectionCreateOp;
+/**
+ * UPDATE a `<type>_inspections` row for the typed equipment flows — the
+ * offline path for makeInspectionService.patch/complete. Enqueue-side
+ * coalescing (storage.ts) folds a patch into a still-queued
+ * inspection_create's insertRow or into the previous equipment_patch of the
+ * same row; a completion (syncParent set) always appends so the parent
+ * public.inspections status mirror runs AFTER the row exists (group FIFO).
+ */
+export interface EquipmentPatchOp extends OutboxOpBase {
+  kind: 'equipment_patch';
+  inspectionId: string;
+  /** The `<type>_inspections` table the patch applies to. */
+  table: string;
+  /** snake_case column patch (already mapped through the service's toDb). */
+  patch: Record<string, unknown>;
+  /**
+   * complete()/reopen() only: mirror status + completed_at onto the parent
+   * public.inspections row after the equipment-table update (the unified
+   * feeds read the parent — see service.ts syncParent).
+   */
+  syncParent: { status: 'draft' | 'completed'; completedAt: string | null } | null;
+}
+
+export type OutboxOp = RecordSaveOp | FileUploadOp | PdfUploadOp | InspectionCreateOp | EquipmentPatchOp;
 
 // Omit over a union must distribute per-member (plain Omit collapses the
 // union to its common keys).
