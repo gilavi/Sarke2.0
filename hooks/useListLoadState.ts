@@ -55,3 +55,16 @@ export function listsLoadState(queries: LoadStateQuery[], count: number): ListLo
 export function useListLoadState(q: LoadStateQuery, count: number): ListLoadState {
   return listLoadState(q, count);
 }
+
+/**
+ * Flow-entry settle gate: true once the query has produced an answer the flow
+ * can act on. Gating on `isFetched` alone hangs offline — a paused
+ * never-fetched query (cold cache, no network) never becomes fetched — so
+ * 'paused' counts as settled-with-no-data: the flow renders its picker/offline
+ * state instead of a permanently blank screen. React Query resumes paused
+ * fetches on reconnect, so consumers refresh by themselves once back online.
+ * Consumers: components/FlowProjectPicker.tsx, app/inspections/new.tsx.
+ */
+export function querySettled(q: Pick<LoadStateQuery, 'isFetched' | 'fetchStatus'>): boolean {
+  return q.isFetched || q.fetchStatus === 'paused';
+}

@@ -22,7 +22,10 @@ vi.mock('expo-crypto', () => {
 vi.mock('expo-file-system/legacy', () => ({
   deleteAsync: vi.fn(async () => undefined),
 }));
-vi.mock('../../lib/logError', () => ({ logError: vi.fn() }));
+vi.mock('../../lib/logError', () => ({
+  logError: vi.fn(),
+  toErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+}));
 
 const calls: string[] = [];
 const rpcMock = vi.fn(async (_fn: string, _args: unknown) => {
@@ -152,6 +155,10 @@ describe('flushOutbox', () => {
     const failed = await readOutboxFailed();
     expect(failed).toHaveLength(2);
     expect(failed.every((o) => o.groupId === 'g1')).toBe(true);
+    // The failing op keeps WHY it failed for the pending-sync UI; the
+    // orphaned child never ran, so it carries no error of its own.
+    expect(failed[0].lastError).toBe('bad payload');
+    expect(failed[1].lastError).toBeUndefined();
   });
 
   it('aborts on an auth error WITHOUT burning attempts', async () => {
@@ -276,5 +283,33 @@ describe('retryOutboxFailed', () => {
     expect(await readOutboxFailed()).toHaveLength(0);
     expect(await readOutboxQueue()).toHaveLength(0); // flushed successfully
     expect(orderCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries ONLY the requested group when given a groupId', async () => {
+    await writeOutboxFailed([
+      op({ lastError: 'boom g1' }),
+      op({ groupId: 'g2', recordId: 'g2', lastError: 'boom g2' }),
+    ]);
+    await retryOutboxFailed('g1');
+    // g1 revived + flushed; g2 stays in the failed queue untouched.
+    const failed = await readOutboxFailed();
+    expect(failed).toHaveLength(1);
+    expect(failed[0].groupId).toBe('g2');
+    expect(failed[0].lastError).toBe('boom g2');
+    expect(await readOutboxQueue()).toHaveLength(0);
+    expect(orderCreate).toHaveBeenCalledTimes(1);
+    expect(orderCreate).toHaveBeenCalledWith({ id: 'g1' });
+  });
+
+  it('clears lastError on revive', async () => {
+    // Auth error aborts the flush without consuming the op, so the revived op
+    // is still observable in the queue afterwards.
+    orderCreate.mockRejectedValueOnce(new Error('JWT expired'));
+    await writeOutboxFailed([op({ lastError: 'boom' })]);
+    await retryOutboxFailed('g1');
+    const queue = await readOutboxQueue();
+    expect(queue).toHaveLength(1);
+    expect(queue[0].attempts).toBe(0);
+    expect(queue[0].lastError).toBeUndefined();
   });
 });

@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   listLoadState,
   listsLoadState,
+  querySettled,
   type LoadStateQuery,
 } from '../../hooks/useListLoadState';
 
@@ -89,5 +90,26 @@ describe('listsLoadState', () => {
         0,
       ),
     ).toBe('offline');
+  });
+});
+
+describe('querySettled', () => {
+  // Flow-entry gate (app/inspections/new.tsx, FlowProjectPicker): the exact
+  // hang the audit found was a seed effect gated on isFetched alone — a
+  // paused never-fetched query (offline, cold cache) never becomes fetched,
+  // so the screen stayed a blank View with no back affordance forever.
+  it('settles once fetched, regardless of fetchStatus', () => {
+    expect(querySettled(q({ isFetched: true }))).toBe(true);
+    expect(querySettled(q({ isFetched: true, fetchStatus: 'fetching' }))).toBe(true);
+    expect(querySettled(q({ isFetched: true, fetchStatus: 'paused' }))).toBe(true);
+  });
+
+  it('treats a paused never-fetched query as settled (offline cold cache must not hang)', () => {
+    expect(querySettled(q({ fetchStatus: 'paused' }))).toBe(true);
+  });
+
+  it('does NOT settle while the first fetch is still producing an answer', () => {
+    expect(querySettled(q({}))).toBe(false); // idle, never fetched
+    expect(querySettled(q({ isFetching: true, fetchStatus: 'fetching' }))).toBe(false);
   });
 });

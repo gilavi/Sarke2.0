@@ -217,8 +217,13 @@ export default function NewBriefingScreen() {
 
   return (
     <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {/* Swipe-back would bypass the exit confirmation and discard the form —
+          disable it while there is anything to lose (hardware back is handled
+          by FlowHeader). */}
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: !hasAnyData }} />
 
+      {/* Nothing is persisted before onStart creates the draft row, so the
+          exit dialog uses the honest discard copy (default body). */}
       <FlowHeader
         flowTitle={t('briefings.flowTitle')}
         project={project}
@@ -229,6 +234,8 @@ export default function NewBriefingScreen() {
         onBack={onBack}
         onClose={() => router.back()}
         confirmExit={hasAnyData}
+        backIsExit={step === 1}
+        exitCopy={{ body: t('wizard.exitBodyDiscard') }}
         surfaceColor={theme.colors.surface}
       />
 

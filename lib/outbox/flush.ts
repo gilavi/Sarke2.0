@@ -10,7 +10,7 @@ import { supabase } from '../supabase';
 import { storageApi } from '../services';
 import { queryClient } from '../queryClient';
 import { invalidateRecordLists } from '../apiHooks';
-import { logError } from '../logError';
+import { logError, toErrorMessage } from '../logError';
 import { outboxRegistry } from './registry';
 import {
   readOutboxQueue,
@@ -133,7 +133,9 @@ export async function flushOutbox(): Promise<void> {
           const attempts = op.attempts + 1;
           if (attempts >= MAX_OP_ATTEMPTS) {
             logError(e, `outbox.flush.fail.${op.kind}`);
-            newlyFailed.push({ ...op, attempts: 0 });
+            // Keep the raw message on the op — the pending-sync UI surfaces
+            // it (via friendlyError) so the user learns WHY the sync failed.
+            newlyFailed.push({ ...op, attempts: 0, lastError: toErrorMessage(e) });
             failGroups.add(op.groupId);
           } else {
             still.push({ ...op, attempts });
@@ -156,14 +158,19 @@ export async function flushOutbox(): Promise<void> {
   }
 }
 
-/** Move every failed group back into the queue (attempts reset) and flush. */
-export async function retryOutboxFailed(): Promise<void> {
+/** Move failed groups (one, or all) back into the queue (attempts reset) and flush. */
+export async function retryOutboxFailed(groupId?: string): Promise<void> {
   await runOutboxExclusive(async () => {
     const failed = await readOutboxFailed();
-    if (failed.length === 0) return;
+    const revive = groupId ? failed.filter((f) => f.groupId === groupId) : failed;
+    if (revive.length === 0) return;
+    const keep = groupId ? failed.filter((f) => f.groupId !== groupId) : [];
     const queue = await readOutboxQueue();
-    await writeOutboxQueue([...queue, ...failed.map((f) => ({ ...f, attempts: 0 }))]);
-    await writeOutboxFailed([]);
+    await writeOutboxQueue([
+      ...queue,
+      ...revive.map((f) => ({ ...f, attempts: 0, lastError: undefined })),
+    ]);
+    await writeOutboxFailed(keep);
   });
   await flushOutbox();
 }

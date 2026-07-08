@@ -103,8 +103,13 @@ export default function NewReportTitleScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {/* Swipe-back would bypass the exit confirmation and discard the title —
+          disable it while there is anything to lose (hardware back is handled
+          by FlowHeader). */}
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: trimmed.length === 0 }} />
 
+      {/* The report row is only created on "next", so exiting discards the
+          typed title — honest discard copy (default body). */}
       <FlowHeader
         flowTitle={t('records.reports')}
         project={project}
@@ -115,6 +120,8 @@ export default function NewReportTitleScreen() {
         onBack={() => router.back()}
         onClose={() => router.back()}
         confirmExit={trimmed.length > 0}
+        backIsExit
+        exitCopy={{ body: t('wizard.exitBodyDiscard') }}
         surfaceColor={theme.colors.surface}
       />
 

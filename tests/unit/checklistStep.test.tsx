@@ -7,16 +7,37 @@
  * item → rows, section headers, the legend, and onStateChange({ result }).
  */
 import React from 'react';
-import { render, fireEvent, cleanup } from '@testing-library/react';
+import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ChecklistStep } from '../../components/inspection-steps/ChecklistStep';
-import type { ChecklistItem, ChecklistItemState } from '../../components/inspection-steps/ChecklistStep';
+import type { ChecklistItem, ChecklistItemState, ChecklistStepHandle } from '../../components/inspection-steps/ChecklistStep';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────────
 
 vi.mock('react-native-keyboard-controller', () => ({
   KeyboardAwareScrollView: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'scroll-view' }, children),
+}));
+
+// Blocked-Next reveal side effects (toast + a11y announcement) — spied so the
+// revealFirstUnanswered tests can assert them.
+const { toastError, announceSpy } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+  announceSpy: vi.fn(),
+}));
+
+vi.mock('../../lib/toast', () => ({
+  useToast: () => ({ show: vi.fn(), success: vi.fn(), error: toastError, info: vi.fn(), hide: vi.fn() }),
+}));
+
+vi.mock('../../lib/accessibility', () => ({
+  announce: announceSpy,
+  // reduceMotion: true keeps the highlight static (no Animated.timing) in jsdom.
+  useAccessibilitySettings: () => ({
+    reduceMotion: true, screenReaderEnabled: false, boldText: false, fontScale: 1, isAccessibilityEnabled: false,
+  }),
+  a11y: (label: string) => ({ accessible: true, accessibilityLabel: label }),
+  useScaledSize: (n: number) => n,
 }));
 
 vi.mock('@expo/vector-icons', () => ({
@@ -67,11 +88,11 @@ vi.mock('../../lib/theme', () => ({
   useTheme: () => ({
     theme: {
       colors: {
-        ink: '#000', inkSoft: '#666', inkFaint: '#999',
+        ink: '#000', inkSoft: '#666', inkFaint: '#999', accent: '#FE7A43',
         surface: '#fff', subtleSurface: '#f2f2f2', hairline: '#e0e0e0',
         inverse: { background: '#000', ink: '#fff' },
       },
-      radius: { md: 12 },
+      radius: { md: 12, lg: 16 },
     },
   }),
 }));
@@ -94,7 +115,11 @@ function makeStates(overrides: Partial<ChecklistItemState>[] = []): ChecklistIte
   }));
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  toastError.mockClear();
+  announceSpy.mockClear();
+});
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
@@ -196,6 +221,49 @@ describe('ChecklistStep - section headers', () => {
       <ChecklistStep items={ITEMS} states={makeStates()} onStateChange={vi.fn()} showSectionHeaders />,
     );
     expect(getAllByText('A - თვლები').length).toBe(1);
+  });
+});
+
+describe('ChecklistStep - revealFirstUnanswered (blocked Next guidance)', () => {
+  function renderWithRef(states: ChecklistItemState[]) {
+    const ref = React.createRef<ChecklistStepHandle>();
+    const utils = render(
+      <ChecklistStep ref={ref} items={ITEMS} states={states} onStateChange={vi.fn()} />,
+    );
+    return { ref, ...utils };
+  }
+
+  it('highlights the first unanswered row and returns true', () => {
+    const { ref, container } = renderWithRef(makeStates([{ result: 'good' }])); // i1 answered, i2+i3 not
+    let result: boolean | undefined;
+    act(() => { result = ref.current!.revealFirstUnanswered(); });
+    expect(result).toBe(true);
+    const overlays = container.querySelectorAll('[data-testid="checklist-highlight"]');
+    expect(overlays.length).toBe(1);
+    // The overlay sits next to the first UNANSWERED row (i2), not the answered i1.
+    const wrapper = overlays[0].parentElement!;
+    expect(wrapper.textContent).toContain('სამუხრუჭე პედალი');
+    expect(wrapper.textContent).not.toContain('საბურავის მდგომარეობა');
+  });
+
+  it('shows the hint toast and announces the row for screen readers', () => {
+    const { ref } = renderWithRef(makeStates());
+    act(() => { ref.current!.revealFirstUnanswered(); });
+    expect(toastError).toHaveBeenCalledWith('უპასუხეთ მონიშნულ პუნქტს');
+    expect(announceSpy).toHaveBeenCalledTimes(1);
+    expect(String(announceSpy.mock.calls[0][0])).toContain('საბურავის მდგომარეობა');
+  });
+
+  it('returns false and stays quiet when every row is answered', () => {
+    const { ref, container } = renderWithRef(
+      makeStates([{ result: 'good' }, { result: 'deficient' }, { result: 'unusable' }]),
+    );
+    let result: boolean | undefined;
+    act(() => { result = ref.current!.revealFirstUnanswered(); });
+    expect(result).toBe(false);
+    expect(toastError).not.toHaveBeenCalled();
+    expect(announceSpy).not.toHaveBeenCalled();
+    expect(container.querySelectorAll('[data-testid="checklist-highlight"]').length).toBe(0);
   });
 });
 

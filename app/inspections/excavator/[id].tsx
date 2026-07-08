@@ -16,7 +16,7 @@ import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { Button } from '../../../components/ui';
 import { ExcavatorMaintenanceItem } from '../../../components/excavator/ExcavatorMaintenanceItem';
 import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
-import type { VerdictOption } from '../../../components/inspection-steps';
+import type { ChecklistStepHandle, VerdictOption } from '../../../components/inspection-steps';
 import { EquipmentResultDetails } from '../../../features/inspection-result';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
@@ -128,6 +128,9 @@ export default function ExcavatorInspectionScreen() {
 
   // Enabled finish button + on-press field errors (see useSubmitGuard).
   const { attempted, markAttempted, reset: resetAttempted } = useSubmitGuard();
+
+  // Blocked-Next guidance on the checklist step (scroll + highlight + toast).
+  const checklistRef = useRef<ChecklistStepHandle>(null);
 
   // Plate-input step state (reuses SerialKeypad like bobcat)
   const plateRef = useRef<PlateInputHandle>(null);
@@ -389,6 +392,13 @@ export default function ExcavatorInspectionScreen() {
   // Clear the "attempted" error reveal whenever the step changes.
   useEffect(() => { resetAttempted(); }, [step, resetAttempted]);
 
+  // On a blocked Next, reveal the red fields; on the checklist step also guide
+  // the user to the first unanswered row (scroll + highlight + toast + a11y).
+  const handleBlockedNext = useCallback(() => {
+    markAttempted();
+    if (step === CHECKLIST_STEP) checklistRef.current?.revealFirstUnanswered();
+  }, [markAttempted, step]);
+
   // ── List item update helper ────────────────────────────────────────────────
 
   const updateItem = useCallback((itemId: number, result: 'good' | 'deficient' | 'unusable') => {
@@ -520,8 +530,9 @@ export default function ExcavatorInspectionScreen() {
         animate={animateSteps}
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
+        blockNext={step === CHECKLIST_STEP}
         completing={completing}
-        onBlockedNext={markAttempted}
+        onBlockedNext={handleBlockedNext}
         onNext={handleNext}
         onPrev={handlePrev}
         onClose={() => router.back()}
@@ -595,6 +606,7 @@ export default function ExcavatorInspectionScreen() {
         {/* ── Step 3: Checklist + Maintenance ─────────────────────────── */}
         {step === CHECKLIST_STEP && (
           <ChecklistStep
+            ref={checklistRef}
             items={checklistItems}
             states={checklistStates}
             onStateChange={handleChecklistStateChange}

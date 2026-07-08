@@ -11,6 +11,9 @@ export interface OutboxGroup {
   displayTitle: string;
   /** Op count in the group (row + photos + pdf …). */
   opCount: number;
+  /** Raw message of the error that failed the group out (failed groups only) —
+   *  map through friendlyError before showing it to the user. */
+  lastError?: string;
 }
 
 function toGroups(ops: OutboxOp[]): OutboxGroup[] {
@@ -20,11 +23,13 @@ function toGroups(ops: OutboxOp[]): OutboxGroup[] {
     if (g) {
       g.opCount++;
       if (!g.displayTitle && op.displayTitle) g.displayTitle = op.displayTitle;
+      if (!g.lastError && op.lastError) g.lastError = op.lastError;
     } else {
       byGroup.set(op.groupId, {
         groupId: op.groupId,
         displayTitle: op.displayTitle,
         opCount: 1,
+        lastError: op.lastError,
       });
     }
   }

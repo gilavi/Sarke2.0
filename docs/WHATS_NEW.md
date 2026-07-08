@@ -4,6 +4,127 @@
 
 ---
 
+## 2026-07-08 — Exit dialog now tells the truth (and hardware back respects it)
+
+Audit finding (ux-flows): the shared exit-confirmation dialog was
+hardcoded to "პროგრესი შეინახება…" while every flow that shows it
+(incident, order, briefing, report title) actually discarded the
+in-memory form; the order flow never even showed the dialog (it has no
+✕ — only the unwrapped back button), and Android hardware back popped
+any flow silently.
+
+- **`ExitConfirmationModal` takes per-flow `title`/`body`** and its
+  default body is now the destructive `wizard.exitBodyDiscard`
+  ("პროგრესი დაიკარგება — შეყვანილი მონაცემები არ შეინახება.") — a flow
+  must opt in to reassuring copy, never inherit it.
+- **`FlowHeader`: `exitCopy` + `backIsExit` + hardware back.** The back
+  button is confirmed only when it exits the flow (step 1); Android
+  hardware back mirrors the back button (steps back mid-flow, confirms
+  at the boundary, falls through to the ✕ when back is absent/disabled)
+  and is intercepted only while `confirmExit` reports unsaved state.
+  iOS swipe-back is disabled while the form is dirty on the four
+  discard-prone flows so it can't bypass the dialog.
+- **Incident flow now really saves on exit.** A NEW incident with real
+  content (beyond the type tap) is silently persisted as a draft on
+  exit-confirm via the existing `uploadIncidentPhotos` +
+  `saveIncidentRow` outbox path — the dialog honestly says
+  `incidents.exitDraftBody` ("დრაფტად შეინახება"); edit mode and bare
+  type picks keep the honest discard copy.
+- **Briefing signing keeps truthful "saved" copy** —
+  `briefings.signExitBody` says the ინსტრუქტაჟი (not "შემოწმება") stays
+  incomplete; confirmed signatures were already persisted per signer.
+- New keys in both locales: `wizard.exitBodyDiscard`,
+  `incidents.exitDraftBody`, `briefings.signExitBody`. Tests:
+  `tests/unit/flowHeaderExit.test.tsx`, `tests/unit/exitModal.test.tsx`.
+
+## 2026-07-08 — Blocked "Next" on equipment checklists now points at the unanswered row
+
+Audit finding (ux-flows): pressing Next on the excavator's 24-item
+checklist with rows unanswered gave no clue which row was missed — the
+step wasn't actually gated (`blockNext` was never passed), so the
+misleading secondary "გაგრძელება" button silently skipped ahead.
+
+- **Shared reveal in `ChecklistStep`.** New imperative
+  `ChecklistStepHandle.revealFirstUnanswered()` (via `ref`): scrolls the
+  first unanswered row into view (`useScrollToError`), flashes a ~1.5s
+  accent border/tint on it (static — no fade — under reduce-motion),
+  shows the new `inspections.answerHighlightedItem` error toast
+  ("უპასუხეთ მონიშნულ პუნქტს") and announces the row label via
+  `AccessibilityInfo.announceForAccessibility`. The highlight overlay
+  lives on the non-memoized wrapper, so the memoized `ChecklistRow`s
+  don't re-render on reveal.
+- **Excavator checklist is now genuinely gated.** The route passes
+  `blockNext` on the checklist step and wires `onBlockedNext` →
+  `markAttempted()` + `revealFirstUnanswered()`, matching
+  fall-protection's jump-to-missing-device precedent. Bobcat's checklist
+  was never gated (`canGoNext` returns `true` there) and is unchanged.
+- Any other flow that gates a `ChecklistStep` gets the guidance by
+  passing the same two props.
+
+Files: `components/inspection-steps/{ChecklistStep.tsx,index.ts,AGENTS.md}`,
+`app/inspections/excavator/[id].tsx`, locales,
+`tests/unit/checklistStep.test.tsx`, `docs/primitives.md`.
+
+---
+
+## 2026-07-08 — Offline cold-cache dead-end at the "new inspection" entry fixed
+
+Audit finding (ux-flows): opening "ახალი შემოწმება" offline with a cold
+cache (fresh install, 7-day persister expiry, or a CACHE_BUSTER bump)
+rendered a bare blank View forever — no header, no back button — because
+`app/inspections/new.tsx` gated its seed effect on `isFetched`, which a
+paused offline query never reaches.
+
+- **Paused counts as settled.** New canonical `querySettled(q)` export in
+  `hooks/useListLoadState.ts` (`isFetched || fetchStatus === 'paused'`);
+  the seed effect and `FlowProjectPicker` (which owned the inline recipe)
+  both consume it. Offline cold-cache now seeds immediately and renders the
+  template/project pickers, whose own `useListLoadState` guards show
+  `OfflineEmptyState`; React Query resumes the paused fetches on reconnect,
+  so the pickers fill in by themselves (auto-retry for free).
+- **The blank/creating frames always carry a `FlowHeader`** (back + close),
+  so a hung fetch or create can always be escaped. Backing out mid-create no
+  longer teleports the user into the wizard when the create later lands —
+  the act simply appears as a draft.
+- **Generic wizard failed-load dead-end.** A settled-but-failed wizard load
+  (e.g. `OfflineDataMissingError` on an uncached inspection opened offline)
+  used to sit on the loading skeleton forever; it now renders
+  `NavigationRecovery` (back + retry) with honest copy — new keys
+  `inspections.loadOfflineBody` / `inspections.loadErrorBody` (ka + en).
+- Equipment routes already recovered (toast + `router.back()` from
+  `useInspectionFlow`) — unchanged.
+
+Files: `app/inspections/new.tsx`, `hooks/useListLoadState.ts`,
+`components/FlowProjectPicker.tsx`,
+`features/inspection-wizard/{InspectionWizard,NavigationRecovery}.tsx`,
+locales, `tests/unit/useListLoadState.test.ts`, `docs/primitives.md`.
+
+---
+
+## 2026-07-08 — Failed offline syncs: confirm-before-dismiss, failure reason, per-group retry
+
+Audit finding (ux-flows): the ✕ on a failed sync group in the Home
+pending-sync section permanently deleted the document with no confirmation
+and no explanation of why the sync failed.
+
+- **Dismiss now confirms.** The ✕ opens a destructive Alert
+  ("დოკუმენტის წაშლა" / "…სამუდამოდ დაიკარგება. ნამდვილად წაშალო?") before
+  `dismissOutboxFailed(groupId)` runs.
+- **Failure reason on the card.** When a group exhausts its attempts, the
+  flush stamps the failing op's `lastError` (raw message); `useOutbox`
+  surfaces the group's first `lastError` and the failed card renders it
+  through `friendlyError`. Cleared on every revive path
+  (`retryOutboxFailed`, `reviveFailedGroup`).
+- **Per-group retry.** `retryOutboxFailed(groupId?)` now revives one group
+  (omit = all); the card's retry button retries just its own document.
+
+Files: `lib/outbox/{types,flush,storage,useOutbox}.ts`,
+`components/PendingSyncSection.tsx`, `lib/outbox/AGENTS.md`, locale keys
+`components.pendingSyncDismissTitle/Body`, tests in
+`tests/unit/outboxFlush.test.ts` + `tests/unit/outboxStorage.test.ts`.
+
+---
+
 ## 2026-07-08 — History: search, project filter, pagination past 50, lazy tabs
 
 Two audit findings fixed together (perf + UX) on the History screen.

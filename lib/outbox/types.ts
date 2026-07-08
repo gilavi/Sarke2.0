@@ -23,6 +23,12 @@ interface OutboxOpBase {
   enqueuedAt: string;
   /** Georgian display title for the pending-sync UI. */
   displayTitle: string;
+  /**
+   * Raw message of the error that moved this op to the failed queue — the
+   * pending-sync UI maps it through friendlyError. Set by the flush when a
+   * group fails out; cleared when the group is retried/revived.
+   */
+  lastError?: string;
 }
 
 /** Create/update a record row through the entity registry. */

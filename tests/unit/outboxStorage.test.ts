@@ -26,9 +26,12 @@ vi.mock('../../lib/logError', () => ({ logError: vi.fn() }));
 import {
   enqueueOutboxOp,
   readOutboxQueue,
+  readOutboxFailed,
+  writeOutboxFailed,
+  reviveFailedGroup,
   pendingInspectionIds,
 } from '../../lib/outbox/storage';
-import type { NewOutboxOp, RecordSaveOp } from '../../lib/outbox/types';
+import type { NewOutboxOp, OutboxOp, RecordSaveOp } from '../../lib/outbox/types';
 
 type NewRecordSaveOp = Extract<NewOutboxOp, { kind: 'record_save' }>;
 
@@ -117,6 +120,39 @@ describe('pendingInspectionIds', () => {
     const ids = await pendingInspectionIds();
     expect(ids.has('i1')).toBe(true);
     expect(ids.size).toBe(1);
+  });
+});
+
+describe('reviveFailedGroup', () => {
+  const failedOp = (recordId: string, over: Partial<OutboxOp> = {}): OutboxOp =>
+    ({
+      ...createOp(recordId, { id: recordId }),
+      id: `failed-${recordId}`,
+      attempts: 0,
+      enqueuedAt: '2026-07-02T00:00:00Z',
+      ...over,
+    }) as OutboxOp;
+
+  it('revives only the requested group, resetting attempts and clearing lastError', async () => {
+    await writeOutboxFailed([
+      failedOp('b1', { lastError: 'boom b1' }),
+      failedOp('b2', { lastError: 'boom b2' }),
+    ]);
+    expect(await reviveFailedGroup('b1')).toBe(true);
+    const queue = await readOutboxQueue();
+    expect(queue).toHaveLength(1);
+    expect(queue[0].groupId).toBe('b1');
+    expect(queue[0].attempts).toBe(0);
+    expect(queue[0].lastError).toBeUndefined();
+    const failed = await readOutboxFailed();
+    expect(failed).toHaveLength(1);
+    expect(failed[0].groupId).toBe('b2');
+    expect(failed[0].lastError).toBe('boom b2');
+  });
+
+  it('returns false when the group has no failed ops', async () => {
+    expect(await reviveFailedGroup('missing')).toBe(false);
+    expect(await readOutboxQueue()).toHaveLength(0);
   });
 });
 

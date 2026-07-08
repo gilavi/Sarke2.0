@@ -25,6 +25,7 @@ import { InspectionShellSkeleton } from '../../components/inspection-steps';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { haptic } from '../../lib/haptics';
 import { isOscillating } from '../../lib/navigationGuard';
+import { useOffline } from '../../lib/offline';
 import { useToast } from '../../lib/toast';
 
 import { useWizardState } from './useWizardState';
@@ -54,6 +55,9 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   // Drives the compact footer while typing. Must run unconditionally (before
   // the early returns below) to satisfy the Rules of Hooks.
   const keyboardOpen = useKeyboardState(s => s.isVisible);
+  // Reactive connectivity — picks the honest recovery copy below (offline
+  // cold-cache vs generic load failure) and updates if the network returns.
+  const { isOnline } = useOffline();
 
   const ws = useWizardState(inspectionId);
 
@@ -201,16 +205,28 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
   // Hold the loading screen until EVERYTHING we need is ready.
   const ready = !loading && !!questionnaire && !!template;
   if (!ready) {
-    if (loadTimedOut) {
+    if (questionnaire?.status === 'completed' && !isOscillating('wizard', 'detail')) {
+      return <CompletedRedirect id={questionnaire.id} />;
+    }
+    // Recovery (back + retry) when the load hung > 5 s (loadTimedOut) OR
+    // settled without producing a wizard (!loading) — e.g. an offline
+    // cold-cache OfflineDataMissingError from wizardBootstrap. The skeleton
+    // below must only cover an in-flight load, never a failed one: a settled
+    // failure used to sit on it forever, shimmering as if still loading.
+    if (loadTimedOut || !loading) {
       return (
         <NavigationRecovery
           id={inspectionId}
+          body={
+            loading
+              ? undefined // timed out mid-load — keep the timeout copy
+              : isOnline
+                ? t('inspections.loadErrorBody')
+                : t('inspections.loadOfflineBody')
+          }
           onRetry={() => { setLoadTimedOut(false); setLoading(true); load(); }}
         />
       );
-    }
-    if (questionnaire?.status === 'completed' && !isOscillating('wizard', 'detail')) {
-      return <CompletedRedirect id={questionnaire.id} />;
     }
     return (
       <InspectionShellSkeleton

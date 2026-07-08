@@ -8,11 +8,19 @@ import { useTheme } from '../../lib/theme';
 
 interface ExitModalProps {
   visible: boolean;
+  /**
+   * Override the dialog copy so it tells the truth for THIS flow: autosaving
+   * flows promise the save, discarding flows warn about the loss. Defaults to
+   * the destructive "პროგრესი დაიკარგება" body — a flow that really persists
+   * progress must opt in to the reassuring copy, never the other way round.
+   */
+  title?: string;
+  body?: string;
   onStay: () => void;
   onExit: () => void;
 }
 
-export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProps) {
+export function ExitConfirmationModal({ visible, title, body, onStay, onExit }: ExitModalProps) {
   const showBottomSheet = useBottomSheet();
   const sheetRef = useRef<{ dismiss: () => void } | null>(null);
   const actionRef = useRef<'stay' | 'exit' | null>(null);
@@ -33,10 +41,10 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
         content: () => (
           <View style={styles.content}>
             <A11yText size="xl" weight="bold" color={theme.colors.ink} style={styles.title}>
-              {t('wizard.exitTitle')}
+              {title ?? t('wizard.exitTitle')}
             </A11yText>
             <A11yText size="sm" color={theme.colors.inkFaint} style={styles.subtitle}>
-              {t('wizard.exitBody')}
+              {body ?? t('wizard.exitBodyDiscard')}
             </A11yText>
 
             <View style={styles.buttonRow}>
@@ -86,7 +94,7 @@ export function ExitConfirmationModal({ visible, onStay, onExit }: ExitModalProp
       sheetRef.current = null;
       actionRef.current = null;
     };
-  }, [visible, onStay, onExit, showBottomSheet]);
+  }, [visible, title, body, onStay, onExit, showBottomSheet]);
 
   return null;
 }

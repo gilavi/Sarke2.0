@@ -186,7 +186,10 @@ export function reviveFailedGroup(groupId: string): Promise<boolean> {
     const revive = failed.filter((f) => f.groupId === groupId);
     if (revive.length === 0) return false;
     const queue = await readOutboxQueue();
-    await writeOutboxQueue([...queue, ...revive.map((f) => ({ ...f, attempts: 0 }))]);
+    await writeOutboxQueue([
+      ...queue,
+      ...revive.map((f) => ({ ...f, attempts: 0, lastError: undefined })),
+    ]);
     await writeOutboxFailed(failed.filter((f) => f.groupId !== groupId));
     return true;
   });

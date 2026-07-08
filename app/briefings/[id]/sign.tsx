@@ -42,6 +42,9 @@ export default function BriefingSignScreen() {
   }
 
   const header = (
+    // Truthful exit copy: confirmed signatures persist as they're captured
+    // (persistParticipants) and the briefing row stays a resumable draft —
+    // only the current unconfirmed canvas stroke is dropped.
     <FlowHeader
       flowTitle={t('briefings.flowTitle')}
       project={s.project}
@@ -53,6 +56,7 @@ export default function BriefingSignScreen() {
       backDisabled={s.backDisabled}
       onClose={s.onCancel}
       confirmExit
+      exitCopy={{ body: t('briefings.signExitBody') }}
       surfaceColor={theme.colors.surface}
     />
   );

@@ -12,12 +12,13 @@
 // template + project known), so picking a type and backing out never leaves a
 // draft. Equipment categories dispatch via `inspectionRegistry`; everything else
 // (xaracho, harness, …) falls back to the generic `questionnairesApi.create`.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Plus, ChevronRight } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from '../../components/primitives/A11yText';
+import { FlowHeader } from '../../components/FlowHeader';
 import { InspectionShell, ProjectPickerStep, TemplatePickerStep } from '../../components/inspection-steps';
 import { ProjectPickerSheet } from '../../components/home/ProjectPickerSheet';
 import { routeForInspection } from '../../lib/inspectionRouting';
@@ -26,6 +27,7 @@ import { planInspectionStart, type StartStep } from '../../lib/inspection/startF
 import { questionnairesApi } from '../../lib/services';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProjects, useTemplates, invalidateRecordLists, qk } from '../../lib/apiHooks';
+import { querySettled } from '../../hooks/useListLoadState';
 import { inspectionDisplayName } from '../../lib/shared/documentName';
 import { useTheme } from '../../lib/theme';
 import { useToast } from '../../lib/toast';
@@ -55,6 +57,10 @@ export default function NewInspectionFlow() {
 
   const seeded = useRef(false);
   const createdRef = useRef(false);
+  // The pre-step frames now carry a live back/close (see `frame` below), so the
+  // user can leave mid-create; don't navigate them into the wizard afterwards.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const createAndEnter = async (template: Template, project: Project) => {
     if (createdRef.current) return;
@@ -78,6 +84,9 @@ export default function NewInspectionFlow() {
       qc.setQueryData(qk.templates.byId(template.id), template);
       qc.setQueryData(qk.projects.byId(project.id), project);
       invalidateRecordLists(qc);
+      // If the user backed out while the create was in flight, the act exists
+      // as a draft (lists were invalidated) — don't yank them into its wizard.
+      if (!mountedRef.current) return;
       router.replace(routeForInspection(template.category, created.id, false) as any);
     } catch (e) {
       createdRef.current = false;
@@ -88,7 +97,13 @@ export default function NewInspectionFlow() {
 
   useEffect(() => {
     if (seeded.current) return;
-    if (!templatesQ.isFetched || !projectsQ.isFetched) return;
+    // Offline-aware settle gate (querySettled, hooks/useListLoadState): a
+    // cold-cache offline query sits at fetchStatus 'paused' and never becomes
+    // isFetched, so gating on isFetched alone hung this screen blank forever.
+    // Seeding from a paused-empty answer renders the picker steps, whose own
+    // load guards show OfflineEmptyState; React Query resumes the paused
+    // fetches on reconnect, so the pickers fill in by themselves.
+    if (!querySettled(templatesQ) || !querySettled(projectsQ)) return;
     seeded.current = true;
     const plan = planInspectionStart({
       templates: templatesQ.data ?? [],
@@ -104,7 +119,7 @@ export default function NewInspectionFlow() {
       void createAndEnter(plan.preTemplate, plan.preProject);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templatesQ.isFetched, projectsQ.isFetched]);
+  }, [templatesQ.isFetched, templatesQ.fetchStatus, projectsQ.isFetched, projectsQ.fetchStatus]);
 
   const onTemplateSelect = (template: Template) => {
     setTpl(template);
@@ -131,15 +146,30 @@ export default function NewInspectionFlow() {
     }
   };
 
-  // Blank background while seeding, auto-creating, or creating — the flow either
-  // routes away or paints a real step in the same tick; never flash a picker.
-  const blank = <View style={{ flex: 1, backgroundColor: theme.colors.card }} />;
-  if (!steps || steps.length === 0) return blank;
+  // Blank-bodied frame while seeding, auto-creating, or creating — the flow
+  // either routes away or paints a real step in the next tick, but the header
+  // (back + close) must never wait on loading: if a fetch or create hangs or
+  // fails, the user can always leave (see the offline cold-cache dead-end in
+  // the 2026-07 UX audit). Never flash a picker here.
+  const frame = (children?: ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
+      <FlowHeader
+        flowTitle={t('inspections.title')}
+        leading="back"
+        trailing="close"
+        onBack={() => router.back()}
+        onClose={() => router.back()}
+        surfaceColor={theme.colors.card}
+      />
+      {children}
+    </View>
+  );
+  if (!steps || steps.length === 0) return frame();
   if (creating) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.card, alignItems: 'center', justifyContent: 'center' }}>
+    return frame(
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.colors.accent} />
-      </View>
+      </View>,
     );
   }
 

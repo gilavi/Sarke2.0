@@ -10,6 +10,7 @@ import { Button } from './ui';
 import { ProjectPickerStep } from './inspection-steps';
 import { ProjectPickerSheet } from './home/ProjectPickerSheet';
 import { useProjects, useTemplates } from '../lib/apiHooks';
+import { querySettled } from '../hooks/useListLoadState';
 import { useTheme } from '../lib/theme';
 import { haptic } from '../lib/haptics';
 import { a11y } from '../lib/accessibility';
@@ -72,10 +73,11 @@ export function FlowProjectPicker({ flowTitle, action, onPicked, onBack }: FlowP
   // While the query is in-flight, or when there's exactly one project (the
   // auto-pick effect above is about to fire `onPicked` and navigate away),
   // render a blank background so the list never flashes on screen.
-  // Offline-aware: a paused never-fetched query will never settle, so treat it
-  // as settled-with-no-data — the picker renders (ProjectPickerStep shows its
-  // own offline empty state) instead of a permanently blank screen.
-  const settled = isFetched || fetchStatus === 'paused';
+  // Offline-aware (querySettled): a paused never-fetched query will never
+  // settle, so treat it as settled-with-no-data — the picker renders
+  // (ProjectPickerStep shows its own offline empty state) instead of a
+  // permanently blank screen.
+  const settled = querySettled({ isFetched, fetchStatus });
   const willAutoPick = !settled || projects.length === 1 || autoPicked.current;
   if (willAutoPick) {
     return (

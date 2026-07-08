@@ -10,7 +10,7 @@ export { ProjectPickerStep } from './ProjectPickerStep';
 export { TemplatePickerStep } from './TemplatePickerStep';
 export type { InspectionShellProps } from './InspectionShell';
 export type { InspectionShellSkeletonProps } from './InspectionShellSkeleton';
-export type { ChecklistItem, ChecklistItemState, ChecklistResult, ChecklistStepProps } from './ChecklistStep';
+export type { ChecklistItem, ChecklistItemState, ChecklistResult, ChecklistStepProps, ChecklistStepHandle } from './ChecklistStep';
 export type { VerdictOption, VerdictTone, ConclusionStepProps } from './ConclusionStep';
 export type { VerdictSelectorProps } from './VerdictSelector';
 export type { VerdictSuggestionBannerProps } from './VerdictSuggestionBanner';

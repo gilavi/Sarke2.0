@@ -10,9 +10,13 @@ import { useTheme } from '../../lib/theme';
 export function NavigationRecovery({
   id,
   onRetry,
+  body,
 }: {
   id: string;
   onRetry: () => void;
+  /** Body copy override — defaults to the load-timeout message. The wizard
+   *  passes honest failed-load copy (offline cold cache vs generic error). */
+  body?: string;
 }) {
   void id;
   const { t } = useTranslation();
@@ -27,7 +31,7 @@ export function NavigationRecovery({
           {t('errors.loadFailed')}
         </Text>
         <Text style={{ fontSize: 14, color: theme.colors.inkSoft, marginBottom: 24, textAlign: 'center' }}>
-          {t('inspections.loadTimeout')}
+          {body ?? t('inspections.loadTimeout')}
         </Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <Button variant="secondary" onPress={() => router.back()} title={t('common.back')} />

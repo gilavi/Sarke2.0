@@ -85,7 +85,14 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   `ChecklistLegend` + the list; manages scroll state + section headers.
   Row rendering delegates to `ChecklistRow` → the shared
   `ChecklistItemRow`. No per-row comments/photos (flag the result only;
-  detail lives on the conclusion step).
+  detail lives on the conclusion step). Exposes an imperative
+  `ChecklistStepHandle` via `ref`: `revealFirstUnanswered()` scrolls to
+  the first row with no result, flashes a brief accent highlight on it
+  (static under reduce-motion), shows the `inspections.answerHighlightedItem`
+  error toast and announces the row label for screen readers. Wire it from
+  the route's `onBlockedNext` together with `blockNext` on the checklist
+  step (see `app/inspections/excavator/[id].tsx`) so a blocked Next guides
+  the user instead of only buzzing.
 - `ConclusionStep` — the **single, shared "last step"** for every
   inspection flow (equipment routes, harness, the scaffold wizard via a
   thin delegating wrapper, and — per device, behind the device tab strip
@@ -162,6 +169,12 @@ renamed in Phase 1 to clarify its role vs `inspection-parts/`.
   `comment`/`photo_paths` state fields and the `onPhotoPress`/
   `showCommentButton` props remain on the types (PDF reads them, render
   empty) but are no longer captured in the UI.
+- `ChecklistRow` is memoized (custom comparator) so answering one item
+  re-renders only the tapped row. The blocked-Next highlight overlay in
+  `ChecklistStep` deliberately lives on the NON-memoized wrapper `View`
+  outside `ChecklistRow` — don't move it (or any per-row transient state)
+  into `ChecklistRow` props without extending its comparator, or the
+  reveal will re-render all ~24 rows.
 
 ## Canonical helpers used
 - `components/inspection-parts` — the smaller atoms.

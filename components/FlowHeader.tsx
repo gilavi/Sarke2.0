@@ -1,5 +1,5 @@
-import { type ReactNode, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { A11yText as Text } from './primitives/A11yText';
@@ -36,8 +36,25 @@ interface FlowHeaderProps {
   onHelp?: () => void;
   /** Render the back button greyed-out and unpressable. */
   backDisabled?: boolean;
-  /** When true, show a confirm alert before invoking onBack/onClose. */
+  /**
+   * When true, the flow has unsaved state: exiting (the ✕ close button, the
+   * back button when `backIsExit`, and Android hardware back) first shows the
+   * shared exit-confirmation dialog.
+   */
   confirmExit?: boolean;
+  /**
+   * True when pressing back would LEAVE the flow (e.g. on step 1) rather than
+   * step back inside it — those presses then go through the same confirmation.
+   * Android hardware back mirrors the back button, so it steps back mid-flow
+   * and confirms only at the real exit boundary.
+   */
+  backIsExit?: boolean;
+  /**
+   * Per-flow copy for the exit dialog. REQUIRED to be honest: pass the
+   * "progress is saved" body only if the flow really persists on exit
+   * (autosave/draft); discarding flows keep the destructive default.
+   */
+  exitCopy?: { title?: string; body?: string };
   /** Custom trailing element rendered when `trailing` is 'none'. */
   trailingElement?: ReactNode;
   /** Header surface color. Defaults to the app background; inspection flows pass white. */
@@ -62,6 +79,8 @@ export function FlowHeader({
   onHelp,
   backDisabled,
   confirmExit,
+  backIsExit,
+  exitCopy,
   trailingElement,
   surfaceColor,
 }: FlowHeaderProps) {
@@ -71,15 +90,44 @@ export function FlowHeader({
   const [exitVisible, setExitVisible] = useState(false);
   const pendingExitRef = useRef<(() => void) | null>(null);
 
-  const wrapExit = (cb?: () => void) => () => {
+  const wrapExit = (cb: (() => void) | undefined, confirm: boolean | undefined) => () => {
     if (!cb) return;
-    if (confirmExit) {
+    if (confirm) {
       pendingExitRef.current = cb;
       setExitVisible(true);
     } else {
       cb();
     }
   };
+
+  // Android hardware back must behave like the on-screen controls instead of
+  // silently popping the route (which would discard the flow's unsaved state):
+  // mirror the back button when it can act (step back mid-flow, confirm at the
+  // exit boundary), else fall through to the confirmed close. Registered only
+  // while the flow reports unsaved state, so every other consumer keeps the
+  // system default. The exit dialog itself is an RN Modal whose
+  // onRequestClose handles back-while-open (dismiss = stay).
+  useEffect(() => {
+    if (!confirmExit) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (leading === 'back' && onBack && !backDisabled) {
+        if (backIsExit) {
+          pendingExitRef.current = onBack;
+          setExitVisible(true);
+        } else {
+          onBack();
+        }
+        return true;
+      }
+      if (onClose) {
+        pendingExitRef.current = onClose;
+        setExitVisible(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [confirmExit, backIsExit, leading, onBack, onClose, backDisabled]);
 
   const showProgress = step !== undefined && totalSteps !== undefined;
   const progress = showProgress
@@ -98,7 +146,10 @@ export function FlowHeader({
     >
       <View style={styles.row}>
         {leading === 'back' ? (
-          <HeaderBackButton onPress={onBack} disabled={backDisabled} />
+          <HeaderBackButton
+            onPress={onBack && backIsExit ? wrapExit(onBack, confirmExit) : onBack}
+            disabled={backDisabled}
+          />
         ) : null}
 
         <View style={styles.titleBlock}>
@@ -136,7 +187,7 @@ export function FlowHeader({
             <>
               {trailingElement ?? null}
               {trailing === 'close' ? (
-                <HeaderCloseButton hitSlop={4} onPress={wrapExit(onClose)} />
+                <HeaderCloseButton hitSlop={4} onPress={wrapExit(onClose, confirmExit)} />
               ) : null}
             </>
           )}
@@ -171,6 +222,8 @@ export function FlowHeader({
 
       <ExitConfirmationModal
         visible={exitVisible}
+        title={exitCopy?.title}
+        body={exitCopy?.body}
         onStay={() => {
           setExitVisible(false);
           pendingExitRef.current = null;

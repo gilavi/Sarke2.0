@@ -18,7 +18,12 @@ which has its own AGENTS.md.
 - `QuestionCard` — generic step container with title + body.
 - `ChecklistItemStep` — single yes/no row used inside step bodies.
 - `ExitModal` — confirmation modal when the user backs out with
-  unsaved progress.
+  unsaved progress. Takes optional `title`/`body` so each flow shows
+  copy that is TRUE for it; the default body is the destructive
+  `wizard.exitBodyDiscard` ("პროგრესი დაიკარგება…") — flows that really
+  persist on exit (autosave/draft) must opt in to "saved" copy.
+  `FlowHeader` is the only mounter (via `confirmExit`/`backIsExit`/
+  `exitCopy`, incl. Android hardware back).
 - `PhotoThumbs` — horizontal photo strip + add-photo tile.
 - `StepSectionLabel` — small caps section label inside a step.
 - `WizardNav` — back/next nav footer (separate from the wizard's
@@ -33,8 +38,11 @@ One file per export above, plus `kamari/` (see its own AGENTS.md).
 - `WizardStepTransition` unmounts the previous step when transitioning
   — keep step components stateless w.r.t. anything that shouldn't be
   reset on transition (use refs/context if needed).
-- `ExitModal`'s "confirm exit" copy is Georgian-only — do not
-  localise the strings; this is the inspector-facing flow.
+- `ExitModal`'s copy goes through `t()` (`wizard.exit*` keys in
+  `locales/ka.json` + `en.json`). Never hardcode a "progress will be
+  saved" body here — that promise was false for every discarding flow
+  (the 2026-07 ux-flows audit's worst data-loss trap); per-flow truth
+  lives in the `title`/`body` props.
 
 ## Canonical helpers used
 - `lib/theme`, `lib/haptics`, `lib/accessibility`.

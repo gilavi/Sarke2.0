@@ -69,7 +69,12 @@ queue.
   shared `photoUrlCache` (defined in `wizardSchema.ts`).
 - `CompletedRedirect.tsx` — fires a one-shot router.replace when the
   wizard route is hit for an already-completed inspection.
-- `NavigationRecovery.tsx` — fallback UI shown if load hangs > 5 s.
+- `NavigationRecovery.tsx` — fallback UI (back + retry) shown if load
+  hangs > 5 s OR settles without producing a wizard (failed load — e.g.
+  `OfflineDataMissingError` on an offline cold cache). The orchestrator
+  passes honest `body` copy for the failed case
+  (`inspections.loadOfflineBody` / `inspections.loadErrorBody`); a failed
+  load must never sit on the shimmer skeleton.
 
 ## Signatures are NOT owned here
 The wizard does not own or display any signature UI. Signatures are

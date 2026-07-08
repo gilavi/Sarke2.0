@@ -23,10 +23,14 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
   no-op, losing the edit when the create later replays.
 - `enqueueOutboxOp(op)` — raw enqueue for `file_upload` / `pdf_upload` /
   `inspection_create` ops (record ops should use saveRecordThroughOutbox).
-- `flushOutbox()` / `retryOutboxFailed()` / `dismissOutboxFailed(groupId?)`.
+- `flushOutbox()` / `retryOutboxFailed(groupId?)` /
+  `dismissOutboxFailed(groupId?)` — retry/dismiss take an optional groupId
+  for per-document actions (omit = all failed groups). Dismiss permanently
+  drops the document, so the UI confirms first (PendingSyncSection).
 - `pendingInspectionIds()` — consumed by `lib/offline.tsx` to defer
   answer/patch ops whose inspection creation is still queued.
-- `useOutbox()` — pending/failed groups for `components/PendingSyncSection`.
+- `useOutbox()` — pending/failed groups for `components/PendingSyncSection`
+  (failed groups carry the group's `lastError` for the reason line).
 - `isNetworkError(e)` (from `./storage`) — the shared failure classifier.
 
 ## Internal files
@@ -49,9 +53,12 @@ flushes the three sequentially: **outbox → offline queue → pdf queue**
   method-per-field api is dispatched on payload keys, and a coalesced
   `close` is unpacked inside its create wrapper.
 - `flush.ts` — FIFO; a failing op skips the rest of its group this pass;
-  3 exhausted attempts move the WHOLE group to the failed queue; an
-  auth-classified error aborts the flush without burning attempts (token
-  hasn't refreshed yet). A replayed create hitting 23505/duplicate-key
+  3 exhausted attempts move the WHOLE group to the failed queue, stamping
+  the failing op's `lastError` (raw message; the pending-sync UI shows it
+  via `friendlyError`). `lastError` is cleared whenever a failed group is
+  revived — `retryOutboxFailed` here and `reviveFailedGroup` in storage.
+  An auth-classified error aborts the flush without burning attempts
+  (token hasn't refreshed yet). A replayed create hitting 23505/duplicate-key
   re-applies its payload as an UPDATE (edits coalesced in after a
   half-applied pass must not drop; the report registry mapper strips
   create-only keys for exactly this path). `inspection_create` runs the

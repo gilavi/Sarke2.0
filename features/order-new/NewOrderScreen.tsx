@@ -390,15 +390,23 @@ export default function NewOrderScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {/* Swipe-back would bypass the exit confirmation and discard the form —
+          disable it while there is anything to lose (hardware back is handled
+          by FlowHeader). */}
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: !isFormDirty }} />
 
+      {/* This flow has no ✕ close: the only exit is the back button on step 1
+          (backIsExit), which confirms with honest discard copy — nothing is
+          persisted before the final step's explicit save. */}
       <FlowHeader
         flowTitle={t('orders.orderTitle')}
         project={project}
         step={step}
         totalSteps={getTotalSteps(docType)}
         onBack={goBack}
-        confirmExit={step === 1 && isFormDirty}
+        confirmExit={isFormDirty}
+        backIsExit={step === 1}
+        exitCopy={{ body: t('wizard.exitBodyDiscard') }}
       />
 
       <KeyboardSafeArea headerHeight={44} contentStyle={{ padding: 16 }} scrollRef={scrollRef}>

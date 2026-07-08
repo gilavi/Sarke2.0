@@ -190,8 +190,9 @@ export default function NewIncident() {
 
   // ── navigation ──────────────────────────────────────────────────────────────
 
-  const isFormDirty = useMemo(() => (
-    form.type !== null ||
+  // Real content beyond the step-1 type tap — the bar for silently keeping a
+  // draft on exit (a bare type pick isn't worth a row in Drafts).
+  const hasSubstance = useMemo(() => (
     form.injuredName.trim().length > 0 ||
     form.injuredRole.trim().length > 0 ||
     form.location.trim().length > 0 ||
@@ -201,10 +202,45 @@ export default function NewIncident() {
     form.witnesses.length > 0 ||
     form.photos.length > 0
   ), [form]);
+  const isFormDirty = form.type !== null || hasSubstance;
+
+  // A NEW incident with real content is silently kept as a draft on exit (the
+  // draft path already exists — same write as the step-4 "save" button), so
+  // the exit dialog's "saved as draft" copy is true. Edit mode keeps explicit
+  // saves only; there the dialog warns that the changes are discarded.
+  const exitSavesDraft = !editId && !!projectId && form.type !== null && hasSubstance;
+
+  const exitFlow = () => {
+    const pid = projectId;
+    if (exitSavesDraft && form.type && pid) {
+      // Fire-and-forget: the row write goes through the outbox (offline it
+      // queues), so leaving never blocks on the network. Failure = the old
+      // discard, surfaced honestly via toast.
+      const type = form.type;
+      (async () => {
+        const uploaded = await uploadIncidentPhotos(incidentId, form.photos);
+        const { queued } = await saveIncidentRow({
+          incidentId,
+          projectId: pid,
+          mode: 'create',
+          userId,
+          fields: buildIncidentFields(
+            { ...form, type },
+            uploaded.map(u => u.path),
+            inspector.sigPath,
+            'draft',
+          ),
+        });
+        invalidateRecordLists(queryClient);
+        toast.success(queued ? t('components.savedOffline') : t('incidents.savedDraft'));
+      })().catch(() => toast.error(t('errors.saveFailed')));
+    }
+    router.back();
+  };
 
   const goBack = () => {
     if (step === 1) {
-      router.back();
+      exitFlow();
     } else {
       setStep((prev) => (prev - 1) as Step);
     }
@@ -434,7 +470,10 @@ export default function NewIncident() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.card }}>
-      <Stack.Screen options={{ headerShown: false }} />
+      {/* Swipe-back would bypass the exit confirmation and discard the form —
+          disable it while there is anything to lose (hardware back is handled
+          by FlowHeader). */}
+      <Stack.Screen options={{ headerShown: false, gestureEnabled: !isFormDirty }} />
 
       <FlowHeader
         flowTitle={t('incidents.flowTitle')}
@@ -444,8 +483,10 @@ export default function NewIncident() {
         leading="back"
         trailing="close"
         onBack={goBack}
-        onClose={() => router.back()}
+        onClose={exitFlow}
         confirmExit={isFormDirty}
+        backIsExit={step === 1}
+        exitCopy={{ body: exitSavesDraft ? t('incidents.exitDraftBody') : t('wizard.exitBodyDiscard') }}
         surfaceColor={theme.colors.surface}
       />
 
