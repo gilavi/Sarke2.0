@@ -71,6 +71,11 @@ export const routePattern = {
   // Orders (ბრძანებები) - full-page creation wizard (reads `?project=`).
   orderNew: '/orders/new',
 
+  // Photo reports (რეპორტები) - full-page creation wizard (reads `?project=`);
+  // `reportDetail` branches on status: draft → editor, completed → read-only view.
+  reportNew: '/reports/new',
+  reportDetail: '/reports/:id',
+
   // Structured equipment acts (restored on branch): create/edit via
   // StructuredActPage, PDF via StructuredInspectionPrint.
   bobcatNew: `${bobcat}/new`, bobcatDetail: `${bobcat}/:id`, bobcatPrint: `${bobcat}/:id/print`,
@@ -144,6 +149,11 @@ export const routes = {
 
   orders: {
     new: '/orders/new' as const,
+  },
+
+  reports: {
+    new: '/reports/new' as const,
+    detail: (id: string) => `/reports/${id}`,
   },
 
   // Structured equipment acts (restored on branch).

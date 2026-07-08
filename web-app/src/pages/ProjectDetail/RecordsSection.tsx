@@ -1,4 +1,4 @@
-import { ShieldCheck } from 'lucide-react';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
 import StatusBadge from '@/components/StatusBadge';
 import { SkeletonList } from '@/components/SkeletonCard';
 import { ListRow } from '@/components/ui/list-row';
@@ -30,8 +30,7 @@ export function RecordsSection({ projectId }: { projectId: string }) {
           {visible.map((row) => (
             <ListRow
               key={row.id}
-              icon={ShieldCheck}
-              tone="brand"
+              leading={<InspectionTypeIcon type={row.type} size="md" />}
               title={row.label}
               subtitle={row.date ? new Date(row.date).toLocaleDateString('ka-GE') : undefined}
               trailing={<StatusBadge status={row.status} />}

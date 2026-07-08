@@ -26,21 +26,23 @@ export function DangerZoneSection({ project, onError }: Props) {
   });
 
   return (
-    <section className="pt-4">
-      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="text-sm font-semibold text-red-900">პროექტის წაშლა</div>
-            <div className="text-xs text-red-700">
+    <section className="mt-4 border-t border-[var(--border-default)] pt-6">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-red-900 dark:text-red-300">პროექტის წაშლა</div>
+            <div className="text-xs text-red-700 dark:text-red-400">
               ყველა შემოწმება, ინსტრუქტაჟი, ინციდენტი, რეპორტი და ფაილი წაიშლება.
             </div>
           </div>
-          <DeleteButton
-            label="პროექტის წაშლა"
-            description="ყველა შემოწმება, ინსტრუქტაჟი, ინციდენტი, რეპორტი და ფაილი წაიშლება. ეს მოქმედება შეუქცევადია."
-            onDelete={() => deleteMutation.mutate()}
-            isPending={deleteMutation.isPending}
-          />
+          <div className="shrink-0">
+            <DeleteButton
+              label="პროექტის წაშლა"
+              description="ყველა შემოწმება, ინსტრუქტაჟი, ინციდენტი, რეპორტი და ფაილი წაიშლება. ეს მოქმედება შეუქცევადია."
+              onDelete={() => deleteMutation.mutate()}
+              isPending={deleteMutation.isPending}
+            />
+          </div>
         </div>
       </div>
     </section>

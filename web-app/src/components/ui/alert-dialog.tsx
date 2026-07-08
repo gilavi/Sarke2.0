@@ -55,13 +55,17 @@ export function AlertDialogContent({
 }) {
   const { open, onOpenChange } = useContext(AlertDialogContext);
   return (
+    // withinPortal must stay ON (default): the page column lives inside an
+    // overflow-hidden container + a framer-motion transform, so an inline
+    // "fixed" modal gets clipped/mispositioned in real browsers (the
+    // "delete never confirms" bug) — jsdom tests can't catch this.
     <Modal
       opened={open}
       onClose={() => onOpenChange(false)}
       withCloseButton={false}
       radius="md"
       centered
-      withinPortal={false}
+      zIndex={400}
       classNames={{ content: className ?? '' }}
     >
       {children}

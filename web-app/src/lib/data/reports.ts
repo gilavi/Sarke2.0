@@ -6,6 +6,12 @@ export type ReportRow = Tables<'reports'>;
 
 export type ReportStatus = 'draft' | 'completed';
 
+/** Slide render layouts — mirrors the mobile `ReportSlideLayout` (types/models.ts). */
+export type ReportSlideLayout = 'text-photo' | 'photo-full' | 'two-side' | 'two-stacked';
+
+/** A slide holds at most 2 photos (mobile `MAX_SLIDE_PHOTOS`). */
+export const MAX_SLIDE_PHOTOS = 2;
+
 /** One photo on a slide. Mirrors the mobile `SlideImage` (types/models.ts). */
 export interface SlideImage {
   image_path: string | null;
@@ -22,6 +28,35 @@ export interface ReportSlide {
   annotated_image_path: string | null;
   /** Canonical 1–2 photo list (mobile writes this); may be absent on old rows. */
   images?: SlideImage[];
+  /** Chosen render layout. When unset, `slideLayout()` derives it from photo count. */
+  layout?: ReportSlideLayout;
+}
+
+/**
+ * The slide's photos as the canonical `SlideImage[]` (legacy-pair fallback for
+ * old rows). Entries with no path at all are dropped.
+ */
+export function slideImages(slide: ReportSlide): SlideImage[] {
+  const imgs = slide.images?.length
+    ? slide.images
+    : [{ image_path: slide.image_path, annotated_image_path: slide.annotated_image_path }];
+  return imgs.filter((im) => im.image_path || im.annotated_image_path);
+}
+
+/**
+ * Storage paths to DISPLAY for a slide, one per photo — the annotated variant
+ * when present, otherwise the original. Mirrors mobile `slideImages()` usage.
+ */
+export function slideDisplayPaths(slide: ReportSlide): string[] {
+  return slideImages(slide)
+    .map((im) => im.annotated_image_path ?? im.image_path)
+    .filter((p): p is string => !!p);
+}
+
+/** Effective layout: the stored choice, else derived from photo count (mobile `slideLayout()`). */
+export function slideLayout(slide: ReportSlide): ReportSlideLayout {
+  if (slide.layout) return slide.layout;
+  return slideImages(slide).length >= 2 ? 'two-side' : 'text-photo';
 }
 
 /**
@@ -101,6 +136,41 @@ export async function createReport(args: {
   return data as Report;
 }
 
+/** Patch top-level report fields (title / status). Returns the updated row. */
+export async function updateReport(
+  id: string,
+  patch: Partial<Pick<Report, 'title' | 'status'>>,
+): Promise<Report> {
+  const { data, error } = await supabase
+    .from('reports')
+    .update(patch)
+    .eq('id', id)
+    .select(COLS)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Report;
+}
+
+/**
+ * Upload one slide photo to the `report-photos` bucket under the report's
+ * project/report prefix. Returns the storage path (feed to `updateReportSlide`).
+ */
+export async function uploadReportPhoto(
+  report: Pick<Report, 'id' | 'project_id'>,
+  file: File,
+): Promise<string> {
+  const dotIdx = file.name.lastIndexOf('.');
+  const ext = dotIdx > 0 ? file.name.slice(dotIdx + 1) : 'bin';
+  const path = `${report.project_id}/${report.id}/${Date.now()}_${randomId()}.${ext}`;
+  await upload(STORAGE_BUCKETS.reportPhotos, path, file);
+  return path;
+}
+
+/** Best-effort delete of a single report-photos object. */
+export async function deleteReportPhotoObject(path: string): Promise<void> {
+  await removeObjects(STORAGE_BUCKETS.reportPhotos, [path]);
+}
+
 function randomId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
@@ -148,11 +218,19 @@ export async function addReportSlide(args: {
 export async function updateReportSlide(
   report: Report,
   slideId: string,
-  patch: Partial<Pick<ReportSlide, 'title' | 'description'>>,
+  patch: Partial<Pick<ReportSlide, 'title' | 'description' | 'images' | 'layout'>>,
 ): Promise<Report> {
-  const updated = (report.slides ?? []).map((s) =>
-    s.id === slideId ? { ...s, ...patch } : s,
-  );
+  const updated = (report.slides ?? []).map((s) => {
+    if (s.id !== slideId) return s;
+    const next = { ...s, ...patch };
+    // Keep the legacy single-photo mirror in sync when the photo list changes,
+    // so older readers (and mobile's fallback path) keep working.
+    if (patch.images) {
+      next.image_path = patch.images[0]?.image_path ?? null;
+      next.annotated_image_path = patch.images[0]?.annotated_image_path ?? null;
+    }
+    return next;
+  });
   const { data, error } = await supabase
     .from('reports')
     .update({ slides: updated as unknown as Json })

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { FileText, ShieldCheck } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
 import StatusBadge from '@/components/StatusBadge';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonList } from '@/components/SkeletonCard';
@@ -49,8 +50,7 @@ export function RecentRecordsFeed() {
             return (
               <ListRow
                 key={row.id}
-                icon={ShieldCheck}
-                tone="brand"
+                leading={<InspectionTypeIcon type={row.type} size="md" />}
                 title={row.label}
                 subtitle={[name, date].filter(Boolean).join(' · ')}
                 trailing={<StatusBadge status={row.status} />}

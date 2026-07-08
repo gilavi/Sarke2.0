@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Routes, Route } from 'react-router-dom';
-import { screen, fireEvent, waitFor } from '@/test-utils';
+import { screen, fireEvent, waitFor, within } from '@/test-utils';
 import { renderPage } from '../helpers/renderPage';
 
 vi.mock('@/lib/data/projects', async (io) => ({ ...(await io<object>()), getProject: vi.fn() }));
@@ -82,10 +82,10 @@ describe('ProjectFiles page', () => {
     // Trash button - find by lucide-trash class.
     const trash = document.body.querySelectorAll('[class*="lucide-trash"]');
     fireEvent.click(trash[0].closest('button')!);
-    // Wait for the AlertDialog to appear, then click the confirm button.
-    await screen.findByText('ჩანაწერის წაშლა');
-    const allBtns = screen.getAllByRole('button', { name: /^წაშლა$/ });
-    fireEvent.click(allBtns[allBtns.length - 1]);
+    // Wait for the AlertDialog (portalled to body), then click ITS confirm
+    // button — the row trigger is also labeled "წაშლა", so scope to the dialog.
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^წაშლა$/ }));
     await waitFor(() => expect(deleteProjectFile).toHaveBeenCalled());
   });
 });

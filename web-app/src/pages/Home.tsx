@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FolderOpen, ClipboardCheck, ShieldCheck, ScrollText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FolderOpen, ShieldCheck, Award, FileText } from 'lucide-react';
 import { QuickActionsRow, type QuickActionDef } from '@/components/ui/quick-actions';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
@@ -43,10 +42,13 @@ export default function Home() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Same icons/tones as the mobile app (ShieldCheck/brand, Award/cert) —
+  // sized up into web cards. Only flows that actually exist.
   const quickActions: QuickActionDef[] = [
     {
       key: 'inspection',
       label: 'შემოწმება',
+      description: 'ახალი შემოწმების აქტი',
       icon: ShieldCheck,
       tone: 'brand',
       onClick: () => navigate('/inspections/new'),
@@ -54,9 +56,18 @@ export default function Home() {
     {
       key: 'order',
       label: 'ბრძანება',
-      icon: ScrollText,
+      description: 'ახალი ბრძანება — PDF',
+      icon: Award,
       tone: 'cert',
       onClick: () => navigate('/orders/new'),
+    },
+    {
+      key: 'report',
+      label: 'რეპორტი',
+      description: 'ფოტო-რეპორტი სლაიდებით',
+      icon: FileText,
+      tone: 'danger',
+      onClick: () => navigate('/reports/new'),
     },
   ];
 
@@ -67,19 +78,13 @@ export default function Home() {
       initial="hidden"
       animate="visible"
     >
-      {/* ═════ Row 1: Title + primary CTA ═════ */}
-      <motion.header variants={fadeUpItem()} className="flex items-center justify-between gap-4">
-        <div>
-          {/* Date eyebrow — mobile home parity (date line above the greeting). */}
-          <p className="text-xs font-semibold text-[var(--text-muted)]">{todayLabel()}</p>
-          <h1 className="mt-0.5 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
-            მოგესალმებით{firstName ? `, ${firstName}` : ''}
-          </h1>
-        </div>
-        <Button className="shrink-0 gap-1.5" onClick={() => navigate('/inspections/new')}>
-          <ClipboardCheck size={15} />
-          ახალი შემოწმების აქტი
-        </Button>
+      {/* ═════ Row 1: Title (creation lives in the action cards below) ═════ */}
+      <motion.header variants={fadeUpItem()}>
+        {/* Date eyebrow — mobile home parity (date line above the greeting). */}
+        <p className="text-xs font-semibold text-[var(--text-muted)]">{todayLabel()}</p>
+        <h1 className="mt-0.5 font-display text-heading-1 text-neutral-900 dark:text-neutral-100">
+          მოგესალმებით{firstName ? `, ${firstName}` : ''}
+        </h1>
       </motion.header>
 
       {/* ═════ Row 2: Quick creation verbs ═════ */}

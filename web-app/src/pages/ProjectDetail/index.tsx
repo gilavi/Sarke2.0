@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ScrollText, ShieldCheck } from 'lucide-react';
+import { Award, FileText, ShieldCheck } from 'lucide-react';
 import { getProject, type Project } from '@/lib/data/projects';
 import { listOrdersByProject } from '@/lib/data/orders';
 import { useActRows } from '@/lib/data/recordRows';
@@ -17,6 +17,7 @@ import { FilesSection } from './FilesSection';
 import { DangerZoneSection } from './DangerZoneSection';
 import { RecordsSection } from './RecordsSection';
 import { OrdersSection } from './OrdersSection';
+import { ReportsSection } from './ReportsSection';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { humanizeError } from '@/lib/errors';
 
@@ -56,6 +57,7 @@ export default function ProjectDetail() {
     {
       key: 'inspection',
       label: 'შემოწმება',
+      description: 'ახალი შემოწმების აქტი',
       icon: ShieldCheck,
       tone: 'brand',
       onClick: () => navigate(`${routes.inspections.new}?project=${id}`),
@@ -63,9 +65,18 @@ export default function ProjectDetail() {
     {
       key: 'order',
       label: 'ბრძანება',
-      icon: ScrollText,
+      description: 'ახალი ბრძანება — PDF',
+      icon: Award,
       tone: 'cert',
       onClick: () => navigate(`${routes.orders.new}?project=${id}`),
+    },
+    {
+      key: 'report',
+      label: 'რეპორტი',
+      description: 'ფოტო-რეპორტი სლაიდებით',
+      icon: FileText,
+      tone: 'danger',
+      onClick: () => navigate(`${routes.reports.new}?project=${id}`),
     },
   ];
 
@@ -120,6 +131,9 @@ export default function ProjectDetail() {
       </AsyncBoundary>
       <AsyncBoundary>
         <OrdersSection projectId={project.id} onError={setActionError} />
+      </AsyncBoundary>
+      <AsyncBoundary>
+        <ReportsSection projectId={project.id} onError={setActionError} />
       </AsyncBoundary>
 
       <SectionGroup label="გუნდი" />

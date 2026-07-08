@@ -10,6 +10,7 @@
  *   modal flow: InspectionWizard is mounted on top of this page.
  */
 import { useMemo, useState, type ReactNode } from 'react';
+import { InspectionTypeIcon } from '@/components/InspectionTypeIcon';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
@@ -30,8 +31,8 @@ import {
 import { buildBlankActPreviewHtml } from '@/features/inspections/structured/useActPreviewHtml';
 
 type PickerEntry =
-  | { kind: 'act'; key: string; label: string; act: StructuredAct }
-  | { kind: 'generic'; key: string; label: string; template: Template };
+  | { kind: 'act'; key: string; label: string; typeTag: string; act: StructuredAct }
+  | { kind: 'generic'; key: string; label: string; typeTag: string; template: Template };
 
 export default function NewActPage() {
   const navigate = useNavigate();
@@ -57,12 +58,13 @@ export default function NewActPage() {
       kind: 'act',
       key: act.key,
       label: act.menuLabel,
+      typeTag: act.key,
       act,
     }));
     // Generic questionnaire templates = those with no structured counterpart.
     const generic: PickerEntry[] = (templates ?? [])
       .filter((t) => getStructuredActByCategory(t.category) == null)
-      .map((t) => ({ kind: 'generic', key: t.id, label: t.name, template: t }));
+      .map((t) => ({ kind: 'generic', key: t.id, label: t.name, typeTag: t.category ?? 'harness', template: t }));
     return [...acts, ...generic];
   }, [templates]);
 
@@ -150,7 +152,7 @@ export default function NewActPage() {
             {entries.map((entry) => (
               <ListRow
                 key={`${entry.kind}:${entry.key}`}
-                leading={<AvatarChip label={entry.label} />}
+                leading={<InspectionTypeIcon type={entry.typeTag} size="md" />}
                 title={entry.label}
                 trailing={<ChevronRight size={16} className="text-[var(--text-muted)]" />}
                 onClick={() => handleTemplatePick(entry)}

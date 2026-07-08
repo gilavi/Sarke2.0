@@ -30,6 +30,7 @@ vi.mock('@/lib/data/incidents', async (io) => ({ ...(await io<object>()), listIn
 vi.mock('@/lib/data/briefings', async (io) => ({ ...(await io<object>()), listBriefings: vi.fn() }));
 vi.mock('@/lib/data/certificates', async (io) => ({ ...(await io<object>()), listCertificates: vi.fn() }));
 vi.mock('@/lib/data/qualifications', async (io) => ({ ...(await io<object>()), listQualifications: vi.fn() }));
+vi.mock('@/lib/data/reports', async (io) => ({ ...(await io<object>()), listReports: vi.fn(), deleteReport: vi.fn() }));
 
 import { useAuth } from '@/lib/auth';
 import { usePaymentHistory } from '@/lib/subscription';
@@ -50,6 +51,7 @@ import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 import { listCertificates } from '@/lib/data/certificates';
 import { listQualifications } from '@/lib/data/qualifications';
+import { listReports } from '@/lib/data/reports';
 
 import Home from '@/pages/Home';
 import History from '@/pages/History';
@@ -67,7 +69,7 @@ beforeEach(() => {
     listExcavatorInspections, listCargoPlatformInspections, listSafetyNetInspections,
     listMobileLadderInspections, listForkliftInspections, listLiftingAccessoriesInspections,
     listFallProtectionInspections, listOrders, listIncidents, listBriefings,
-    listCertificates, listQualifications,
+    listCertificates, listQualifications, listReports,
   ]) {
     vi.mocked(fn).mockResolvedValue([] as never);
   }

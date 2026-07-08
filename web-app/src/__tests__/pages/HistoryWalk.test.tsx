@@ -66,6 +66,11 @@ vi.mock('@/lib/data/orders', async (io) => ({
   listOrders: vi.fn(),
   deleteOrder: vi.fn(),
 }));
+vi.mock('@/lib/data/reports', async (io) => ({
+  ...(await io<object>()),
+  listReports: vi.fn(),
+  deleteReport: vi.fn(),
+}));
 
 import { listProjects } from '@/lib/data/projects';
 import { listInspections, deleteInspection } from '@/lib/data/inspections';
@@ -79,6 +84,7 @@ import { listForkliftInspections } from '@/lib/data/forklift';
 import { listLiftingAccessoriesInspections } from '@/lib/data/liftingAccessories';
 import { listFallProtectionInspections } from '@/lib/data/fallProtection';
 import { listOrders } from '@/lib/data/orders';
+import { listReports } from '@/lib/data/reports';
 import History from '@/pages/History';
 
 function renderPage(ui: React.ReactElement) {
@@ -104,6 +110,7 @@ beforeEach(() => {
   for (const fn of [
     listSafetyNetInspections, listMobileLadderInspections, listForkliftInspections,
     listLiftingAccessoriesInspections, listFallProtectionInspections, listOrders,
+    listReports,
   ]) {
     vi.mocked(fn).mockResolvedValue([] as never);
   }
