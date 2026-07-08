@@ -30,6 +30,14 @@ Structural fixes, all previously confirmed against source:
   `SplitWizard`/`DocPreviewFrame` in `web-app/src/components/ui/` (see
   [primitives.md](primitives.md)); warm v3 tokens in `index.css`; mesh-gradient
   blobs and the double page-transition removed from the shell.
+- **Bug-fix + reports pass (same day, evening)** — confirm dialogs now
+  portal to `<body>` (they rendered invisibly under an overflow-hidden +
+  transformed ancestor — project delete looked dead); Home CTA replaced by
+  card-style creation verbs with mobile's icons/tones; the exact mobile
+  illustrations now lead the act picker and every act row; NEW რეპორტი flow
+  (`/reports/new`, `/reports/:id`) — slide editor in the SplitWizard with a
+  live presentation preview, cover thumbnails on project page + History
+  (PDF generation deferred).
 - **Polish pass (same day)** — per-route tab titles (every tab used to be just
   "Hubble"); Georgian 404 with a safe public destination (was English +
   auth-gated link); certificate label typo fixed to mobile's spelling
