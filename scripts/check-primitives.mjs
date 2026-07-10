@@ -10,8 +10,14 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = decodeURIComponent(new URL('..', import.meta.url).pathname);
+// fileURLToPath (not `new URL(...).pathname`) so this resolves to a NATIVE path
+// on every OS. The old `decodeURIComponent(new URL('..', …).pathname)` produced
+// `/C:/…/` on Windows, which `path.join` turned into the invalid `\C:\…` — every
+// readdirSync then threw ENOENT and walk() silently scanned zero files, making
+// the whole guardrail a no-op on Windows (it only ever ran on Linux CI).
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SCAN_DIRS = ['app', 'components', 'features', 'hooks', 'lib', 'shims', 'locales'];
 const SKIP_DIRS = new Set(['node_modules', '.git', 'ios', 'android', '.expo', 'dist', 'build']);
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json']);
@@ -138,6 +144,39 @@ const RULES = [
       'via renderInspectionPdf (lib/inspection/renderMobile.ts), which resolves signed URLs on web and base64 on mobile. ' +
       'See docs/primitives.md → "Inspection PDF engine".',
   },
+  {
+    name: 'raw-error-toast',
+    // toast.error() must receive a localized string: a t('…') key or a
+    // friendlyError(e, fallback) mapping (lib/errorMap.ts). A bare caught error,
+    // a toErrorMessage() call, a String(e), or a `…${toErrorMessage(e)}`
+    // template leaks raw English / Postgres text into the Georgian UI — the
+    // exact "same primitive, different defaults" class primitives.md warns of.
+    // t('…')-keyed calls (even with a { detail } param) and plain string
+    // literals are allowed because the anchored group only fires on the raw
+    // forms that immediately follow `toast.error(`.
+    pattern: /toast\.error\(\s*(`|toErrorMessage\s*\(|String\s*\(|(?:e|err|error|ex)\s*[),])/,
+    message:
+      'Route user-facing errors through friendlyError(e, fallback) (lib/errorMap.ts) before toast.error — ' +
+      'a bare error / toErrorMessage() / String(e) / template literal surfaces raw untranslated text in the ' +
+      'Georgian UI. t(\'…\') keys and string literals are fine. See docs/primitives.md → "User-facing errors".',
+  },
+  {
+    name: 'raw-rn-text',
+    // Raw react-native <Text> ships no Dynamic Type cap and no theme ink color,
+    // so it breaks in dark mode and overflows at large accessibility sizes.
+    // Render through the A11yText primitive instead:
+    //   import { A11yText as Text } from '.../components/primitives/A11yText';
+    // Scoped to the UI layers; A11yText itself is the only allowed raw consumer.
+    // wholeFile so multi-line `import { … Text … }` blocks are caught too.
+    wholeFile: true,
+    onlyPrefixes: ['app/', 'features/', 'components/'],
+    allow: ['components/primitives/A11yText.tsx'],
+    pattern: /import\s*\{[^}]*\bText\b[^}]*\}\s*from\s+['"]react-native['"]/,
+    message:
+      'Render text via the A11yText primitive (import { A11yText as Text } from ".../components/primitives/A11yText"), ' +
+      'not raw react-native Text — the raw primitive has no Dynamic Type cap and no theme color, so it breaks in ' +
+      'dark mode and at large font sizes. See docs/primitives.md → "Accessible text (A11yText)".',
+  },
 ];
 
 function* walk(dir) {
@@ -166,14 +205,17 @@ function* walk(dir) {
 }
 
 let violations = 0;
-const selfPath = new URL(import.meta.url).pathname;
+const selfPath = fileURLToPath(import.meta.url);
 
 for (const dir of SCAN_DIRS) {
   for (const file of walk(join(ROOT, dir))) {
     if (file === selfPath) continue;
     // The canonical owner is allowed to mention the legacy names in comments
     // or as soft-deprecation aliases; skip lib/imageUrl.ts and pdfLanguagePref.ts.
-    const rel = relative(ROOT, file);
+    // Normalize to forward slashes so the path-based allow-lists below (and the
+    // per-rule allow/allowPrefixes/onlyPrefixes) match on Windows too, where
+    // relative() returns backslash-separated paths.
+    const rel = relative(ROOT, file).split('\\').join('/');
     if (
       rel === 'lib/imageUrl.ts' ||
       rel === 'lib/pdfLanguagePref.ts' ||
@@ -188,6 +230,24 @@ for (const dir of SCAN_DIRS) {
     } catch {
       continue;
     }
+
+    // Whole-file rules run once against the full body so multi-line import
+    // blocks (e.g. `import {\n  Text,\n} from 'react-native'`) are caught, which
+    // a per-line scan would miss.
+    for (const rule of RULES) {
+      if (!rule.wholeFile) continue;
+      if (rule.allow && rule.allow.includes(rel)) continue;
+      if (rule.onlyPrefixes && !rule.onlyPrefixes.some((p) => rel.startsWith(p))) continue;
+      if (rule.allowPrefixes && rule.allowPrefixes.some((p) => rel.startsWith(p))) continue;
+      const m = rule.pattern.exec(body);
+      if (m) {
+        const lineNo = body.slice(0, m.index).split('\n').length;
+        console.error(`${rel}:${lineNo}  [${rule.name}] ${rule.message}`);
+        console.error(`    ${m[0].split('\n').join(' ').trim()}`);
+        violations++;
+      }
+    }
+
     const lines = body.split('\n');
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -195,7 +255,9 @@ for (const dir of SCAN_DIRS) {
       const trimmed = line.trim();
       if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
       for (const rule of RULES) {
+        if (rule.wholeFile) continue;
         if (rule.allow && rule.allow.includes(rel)) continue;
+        if (rule.onlyPrefixes && !rule.onlyPrefixes.some((p) => rel.startsWith(p))) continue;
         if (rule.allowPrefixes && rule.allowPrefixes.some((p) => rel.startsWith(p))) continue;
         if (rule.pattern.test(line)) {
           console.error(`${rel}:${i + 1}  [${rule.name}] ${rule.message}`);

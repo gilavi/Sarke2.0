@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 
 interface ChipProps {
   children: ReactNode;

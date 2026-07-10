@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type { CargoPlatformInspection, CPItemState, CPCargoRow, CPSignatory } from '../types/cargoPlatform';
 import { buildDefaultCPItems, buildDefaultCargoRow } from '../types/cargoPlatform';
 
@@ -108,27 +109,28 @@ type CargoPlatformPatch = Partial<{
   signatures: CPSignatory[];
 }>;
 
-function toDb(patch: CargoPlatformPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'           in patch) db.company              = patch.company;
-  if ('address'           in patch) db.address              = patch.address;
-  if ('inspectorName'     in patch) db.inspector_name       = patch.inspectorName;
-  if ('floorZone'         in patch) db.floor_zone           = patch.floorZone;
-  if ('inspectionDate'    in patch) db.inspection_date      = patch.inspectionDate;
-  if ('platformTypeModel' in patch) db.platform_type_model  = patch.platformTypeModel;
-  if ('platformLength'    in patch) db.platform_length_m    = patch.platformLength;
-  if ('platformWidth'     in patch) db.platform_width_m     = patch.platformWidth;
-  if ('platformColorDesc' in patch) db.platform_color_desc  = patch.platformColorDesc;
-  if ('sideGuardrail'     in patch) db.side_guardrail       = patch.sideGuardrail;
-  if ('frontGuardrail'    in patch) db.front_guardrail      = patch.frontGuardrail;
-  if ('guardrailHeight'   in patch) db.guardrail_height     = patch.guardrailHeight;
-  if ('cargo'             in patch) db.cargo                = patch.cargo;
-  if ('items'             in patch) db.items                = patch.items;
-  if ('verdict'           in patch) db.verdict              = patch.verdict;
-  if ('verdictComment'    in patch) db.verdict_comment      = patch.verdictComment;
-  if ('summaryPhotos'     in patch) db.summary_photos       = patch.summaryPhotos;
-  return db;
-}
+// Mechanical camel→snake writes; `signatures` is intentionally absent (the
+// column was dropped from cargo_platform_inspections and signatures are
+// memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<CargoPlatformPatch>({
+  company: 'company',
+  address: 'address',
+  inspectorName: 'inspector_name',
+  floorZone: 'floor_zone',
+  inspectionDate: 'inspection_date',
+  platformTypeModel: 'platform_type_model',
+  platformLength: 'platform_length_m',
+  platformWidth: 'platform_width_m',
+  platformColorDesc: 'platform_color_desc',
+  sideGuardrail: 'side_guardrail',
+  frontGuardrail: 'front_guardrail',
+  guardrailHeight: 'guardrail_height',
+  cargo: 'cargo',
+  items: 'items',
+  verdict: 'verdict',
+  verdictComment: 'verdict_comment',
+  summaryPhotos: 'summary_photos',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

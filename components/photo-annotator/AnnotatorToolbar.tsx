@@ -7,7 +7,8 @@
 //              (moved out of the old floating canvas pills into the sheet, so they
 //              no longer occlude the photo and never risk baking into the capture).
 
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import {
   ArrowRight,
   Circle,

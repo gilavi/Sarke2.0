@@ -1,43 +1,41 @@
-// Services dispatcher.
+// Services facade — the single entry point for the data layer.
 //
-// Reads `expo.extra.useMockData` from app.json. When true, all API surfaces
-// are served by the in-memory mock in `./mock`; when false, the real
-// Supabase-backed implementation in `./real` is used.
+// Historically this dispatched between `./real` (Supabase-backed) and `./mock`
+// (an in-memory AsyncStorage fake) at module-load time based on
+// `expo.extra.useMockData`. That runtime toggle is retired:
+//   * the flag is statically `false` (app.config.ts) and never env-driven, so
+//     `./mock` was compiled into every production Hermes bundle (~1,000 lines)
+//     but never executed;
+//   * the mock only ever covered part of the app — briefings/orders, all nine
+//     equipment services, breathalyzer and risk-assessment already bypass it —
+//     so flipping the flag produced a half-mocked app that still wrote to prod
+//     Supabase for the newest, riskiest domains.
 //
-// Rationale: on gio-experiment the DB schema (inspections / qualifications
-// / certificates-as-PDFs) isn't applied to the live Supabase yet - main
-// needs the old schema to keep working. Flipping `useMockData: true` lets
-// us iterate on the new UX against a local AsyncStorage-backed fake DB.
+// Production always uses `./real`. The mock modules remain under
+// `lib/services/mock/` as a **test-only fixture**, imported directly by vitest
+// (tests/unit/mockServices.test.ts). Because nothing in the app import graph
+// references `./mock` anymore, Metro drops it from the shipped bundle.
+//
+// `from '../../lib/services'` still resolves here, so existing call sites keep
+// working unchanged.
 
-import Constants from 'expo-constants';
-import * as real from './real';
-import * as mock from './mock';
-
-const useMock = Constants.expoConfig?.extra?.useMockData === true;
-
-// Emitted once so it's obvious in Metro logs which mode is active.
-if (useMock) {
-  // eslint-disable-next-line no-console
-  console.log('[services] MOCK mode - using in-memory AsyncStorage store.');
-}
-
-const src: typeof real = useMock ? (mock as unknown as typeof real) : real;
-
-export const projectsApi = src.projectsApi;
-export const projectFilesApi = src.projectFilesApi;
-export const templatesApi = src.templatesApi;
-export const inspectionsApi = src.inspectionsApi;
-/** @deprecated alias kept for older imports. */
-export const questionnairesApi = src.questionnairesApi;
-export const answersApi = src.answersApi;
-export const qualificationsApi = src.qualificationsApi;
-export const certificatesApi = src.certificatesApi;
-export const inspectionAttachmentsApi = src.inspectionAttachmentsApi;
-export const projectItemsApi = src.projectItemsApi;
-export const schedulesApi = src.schedulesApi;
-export const storageApi = src.storageApi;
-export const remoteSigningApi = src.remoteSigningApi;
-export const incidentsApi = src.incidentsApi;
-export const reportsApi = src.reportsApi;
-export const paymentRecordsApi = src.paymentRecordsApi;
-export const isExpiringSoon = src.isExpiringSoon;
+export {
+  projectsApi,
+  projectFilesApi,
+  templatesApi,
+  inspectionsApi,
+  /** @deprecated alias kept for older imports; identical to `inspectionsApi`. */
+  questionnairesApi,
+  inspectionAttachmentsApi,
+  answersApi,
+  qualificationsApi,
+  certificatesApi,
+  isExpiringSoon,
+  projectItemsApi,
+  schedulesApi,
+  remoteSigningApi,
+  storageApi,
+  reportsApi,
+  incidentsApi,
+  paymentRecordsApi,
+} from './real';

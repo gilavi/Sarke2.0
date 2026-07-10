@@ -5,7 +5,6 @@
 // the typography / space / radius / shadows / motion / zIndex APIs.
 // Old code continues to work via the compatibility mappings below.
 
-import { Platform } from 'react-native';
 import {
   primary,
   neutral,
@@ -22,9 +21,17 @@ import {
   type ShadowSpec,
 } from './design-tokens';
 
-// Helvetica Neue ships on every iOS/iPadOS device; Android falls back to the
-// system font (Roboto) by leaving fontFamily unset — fontWeight still works.
-const GEO_FONT = Platform.OS === 'ios' ? 'HelveticaNeue' : undefined;
+// Leave the UI fontFamily UNSET on both platforms so text renders in the OS
+// system font (San Francisco on iOS, Roboto on Android). Both cover Mkhedruli,
+// so ქართული and Latin runs in the same string ('PDF', dates, serials) render
+// in ONE coherent typeface per line, and fontWeight still applies.
+//
+// The old iOS `'HelveticaNeue'` had NO Georgian glyphs: it was a dishonest
+// declaration — Georgian silently fell back to the system Georgian font while
+// Latin stayed Helvetica Neue, mixing two typefaces on every bilingual line.
+// `undefined` makes the declaration match reality (what we ask for is what
+// renders) without changing how Georgian looks (still the system font).
+const GEO_FONT: string | undefined = undefined;
 
 // Color primitives, the type scale, radii, motion, z-index and shadow specs all
 // come from the canonical lib/design-tokens.ts so web + mobile never drift. This
@@ -209,7 +216,7 @@ export const darkTheme = {
     regsSoft: '#221A40',
 
     actionColors: {
-      inspection:  { bg: 'rgba(255,109,46,0.15)', icon: primary[400] },
+      inspection:  { bg: 'rgba(254,122,67,0.15)', icon: primary[400] }, // primary[500] wash
       incident:    { bg: '#3F2E0F',              icon: semantic.warning },
       briefing:    { bg: '#1A2E3A',              icon: semantic.info },
       report:      { bg: '#3A1F1F',              icon: semantic.danger },

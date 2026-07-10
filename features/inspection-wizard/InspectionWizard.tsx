@@ -183,10 +183,13 @@ export function InspectionWizard({ inspectionId }: { inspectionId: string }) {
     const currentStep = steps[stepIndex];
     if (currentStep?.kind === 'question' && currentStep.question.type === 'measure') {
       const value = answers[currentStep.question.id]?.value_num ?? null;
-      const err = measureError(currentStep.question, value);
-      if (err) {
+      // A localized min/max validation hint (not a thrown error) — shown as-is,
+      // so it does not go through friendlyError. Named to keep it distinct from
+      // caught-error toasts (and to satisfy the raw-error toast lint rule).
+      const rangeMsg = measureError(currentStep.question, value);
+      if (rangeMsg) {
         haptic.validationError();
-        toast.error(err);
+        toast.error(rangeMsg);
         return;
       }
     }

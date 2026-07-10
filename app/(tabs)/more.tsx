@@ -41,6 +41,7 @@ import { saveLanguage } from '../../lib/i18n';
 import i18n from '../../lib/i18n';
 import { REGULATIONS } from '../../lib/regulations';
 import { relativeTime } from '../../lib/homeUtils';
+import { PAYMENT_STATUS_COLORS } from '../../lib/statusColors';
 import type { PaymentRecord, Project, Qualification, Template } from '../../types/models';
 
 export default function MoreScreen() {
@@ -284,12 +285,8 @@ export default function MoreScreen() {
 
 // ───────── PAYMENT HISTORY ─────────
 
-const STATUS_COLOR: Record<PaymentRecord['status'], string> = {
-  success: '#34C759',
-  pending: '#FF9500',
-  failed: '#FF3B30',
-  refunded: '#8E8E93',
-};
+// Status badge colours come from the canonical semantic palette
+// (lib/statusColors.ts PAYMENT_STATUS_COLORS) — never inline iOS system hexes.
 
 function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
   const { theme } = useTheme();
@@ -323,12 +320,12 @@ function PaymentHistoryCard({ records }: { records: PaymentRecord[] }) {
                 </Text>
               </View>
               <View style={{
-                backgroundColor: `${STATUS_COLOR[rec.status]}20`,
+                backgroundColor: `${PAYMENT_STATUS_COLORS[rec.status]}20`,
                 borderRadius: 6,
                 paddingHorizontal: 8,
                 paddingVertical: 3,
               }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS_COLOR[rec.status] }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: PAYMENT_STATUS_COLORS[rec.status] }}>
                   {STATUS_LABEL[rec.status]}
                 </Text>
               </View>

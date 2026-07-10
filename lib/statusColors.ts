@@ -5,7 +5,7 @@
  */
 
 import { theme } from './theme';
-import type { IncidentType } from '../types/models';
+import type { IncidentType, PaymentRecord } from '../types/models';
 
 // ── Inspection / calendar event status ────────────────────────────────────────
 
@@ -36,6 +36,24 @@ export const STATUS_DOT_COLOR: Record<CalendarStatus, string> = {
   due_today: theme.colors.semantic.warning,
   due_soon:  theme.colors.semantic.warning,
   upcoming:  theme.colors.neutral[400],
+};
+
+// ── Payment status ────────────────────────────────────────────────────────────
+
+/**
+ * Text + soft-fill (used at `${color}20`) colour for a payment-history status
+ * badge. Maps onto the canonical semantic palette — NOT the raw iOS system
+ * colours (#34C759 / #FF9500 / #FF3B30 / #8E8E93) the more tab hardcoded before,
+ * which reintroduced a second "success" green. `success` is now the same
+ * `semantic.success` green as every other success state in the app. The base
+ * semantic hues + `neutral[400]` are identical in light and dark, so this static
+ * map is theme-independent (like {@link STATUS_BADGE_BG}).
+ */
+export const PAYMENT_STATUS_COLORS: Record<PaymentRecord['status'], string> = {
+  success:  theme.colors.semantic.success,   // #10B981 — one green, app-wide
+  pending:  theme.colors.semantic.warning,   // #F59E0B
+  failed:   theme.colors.semantic.danger,    // #EF4444
+  refunded: theme.colors.neutral[400],       // muted / de-emphasised
 };
 
 // ── Incident type ─────────────────────────────────────────────────────────────

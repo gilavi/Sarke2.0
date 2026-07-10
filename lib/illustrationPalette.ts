@@ -2,9 +2,10 @@
 // SVG illustrations (QuestionAvatar, EmptyState, ErrorScreen, SkeletonMap, …).
 //
 // Hubble illustrations are strictly MONOCHROME: shades of the primary (brand
-// orange #FF6D2E), the secondary (electric/hi-vis yellow), and black / warm
-// neutrals. No green, no blue, no amber - those were pre-rebrand leftovers
-// that read as "wrong" against the current identity.
+// orange primary[500] #FE7A43, sourced live via `c.accent` below), the secondary
+// (electric/hi-vis yellow), and black / warm neutrals. No green, no blue, no
+// amber - those were pre-rebrand leftovers that read as "wrong" against the
+// current identity.
 //
 // All illustration components must source their colors from here (via
 // `useIllustrationPalette`) instead of hardcoding hex values, so the system

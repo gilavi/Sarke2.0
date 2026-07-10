@@ -15,9 +15,16 @@ need a button / card / pill / text, reach here first.
 - `Badge` — small pill for counts and status.
 - `Screen` — themed `<Screen>` wrapper handling edge-to-edge layout
   + safe-area edges + status-bar tinting.
-- `A11yText` — `<Text>` with built-in size + weight + color tokens
-  and accessibility role/label support. Wizard screens import this
-  as `Text` (`import { A11yText as Text } from ...`).
+- `A11yText` — the **single owner of on-screen text**. `<Text>` with
+  built-in size/weight/color tokens, a `theme.colors.ink` default,
+  and a `maxFontSizeMultiplier={1.5}` Dynamic Type cap. Screens import
+  it aliased as `Text` (`import { A11yText as Text } from ...`), so
+  existing `<Text style={…}>` JSX is unchanged. Raw `Text` from
+  `react-native` is **banned** across `app/`/`features/`/`components/`
+  (`check-primitives` → `raw-rn-text`, whole-file); A11yText's own impl
+  is the one allow-listed raw consumer. `Button`, `Input`, `Badge`, and
+  every input/tour/annotator/`ui` text component route through it.
+  See [docs/primitives.md](../../docs/primitives.md#accessible-text-a11ytext).
 - `FabButton` — floating action button.
 - `ActionSheetItem` — single row in an action sheet.
 - `RefreshControl` — themed pull-to-refresh. Pass as the

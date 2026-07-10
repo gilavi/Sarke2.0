@@ -1,5 +1,6 @@
 import React, {useMemo} from 'react';
-import { Pressable, Text, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { haptic } from '../../lib/haptics';

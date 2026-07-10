@@ -8,74 +8,24 @@ import {
   ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, X } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { X } from 'lucide-react-native';
 import { A11yText as Text } from '../components/primitives/A11yText';
+import { ScreenHeader } from '../components/ScreenHeader';
+import { useTheme, withOpacity, type Theme } from '../lib/theme';
 import { useTranslation } from 'react-i18next';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
+// Each scaffold part maps to a localized title + a localized array of numbered
+// steps (locales/*.json → guide.*). No copy is hardcoded here — the screen is
+// Georgian-native like the rest of the app, with English parity for `en`.
 const PARTS_DATA = {
-  frame_left: {
-    titleKey: 'guide.frameLeft' as const,
-    title_eng: 'Left Vertical Frame',
-    steps: [
-      'Place on firm, level surface. No dirt or debris under legs.',
-      'Check all spring clips / pins are locked and seated fully.',
-      'Use a level - frame must be plumb (vertical) within 1°.',
-      'Ensure coupling pins are greased and slide freely.',
-    ],
-  },
-  frame_right: {
-    titleKey: 'guide.frameRight' as const,
-    title_eng: 'Right Vertical Frame',
-    steps: [
-      'Mirror the left frame exactly. Both must be parallel.',
-      'Brace connection holes must align perfectly before inserting braces.',
-      'Never climb until both frames are independently stable.',
-    ],
-  },
-  cross_brace: {
-    titleKey: 'guide.crossBrace' as const,
-    title_eng: 'Cross Bracing',
-    steps: [
-      'Install braces BEFORE climbing or loading the platform.',
-      'Hook one end first, then stretch and lock the opposite end.',
-      'Never omit braces - they provide 70% of lateral stability.',
-      'Check tension: brace should not rattle or bow under hand pressure.',
-    ],
-  },
-  platform: {
-    titleKey: 'guide.platform' as const,
-    title_eng: 'Platform / Deck',
-    steps: [
-      'Deck must overhang the frame by minimum 150mm on both sides.',
-      'Check for cracks, warping, or oil contamination before placing.',
-      'Secure with deck locks; platform should not shift when kicked.',
-      'Max load: 250kg evenly distributed. Mark load limit visibly.',
-    ],
-  },
-  guardrail: {
-    titleKey: 'guide.guardrail' as const,
-    title_eng: 'Guardrails',
-    steps: [
-      'Top rail height: 1.0–1.2m from platform surface.',
-      'Mid-rail required. Toe-board required if objects can fall.',
-      'Install guardrails BEFORE ascending to platform height.',
-      'Check all rail clips are fully closed and locked.',
-    ],
-  },
-  wheels: {
-    titleKey: 'guide.wheels' as const,
-    title_eng: 'Casters / Wheels',
-    steps: [
-      'Brakes must be engaged before anyone steps onto the scaffold.',
-      'Wheels rated for hard flat surfaces only - never gravel slopes.',
-      'If scaffold height > 3m, replace wheels with base plates.',
-      'Inspect wheel locks daily; replace worn casters immediately.',
-    ],
-  },
+  frame_left: { titleKey: 'guide.frameLeft', stepsKey: 'guide.frameLeftSteps' },
+  frame_right: { titleKey: 'guide.frameRight', stepsKey: 'guide.frameRightSteps' },
+  cross_brace: { titleKey: 'guide.crossBrace', stepsKey: 'guide.crossBraceSteps' },
+  platform: { titleKey: 'guide.platform', stepsKey: 'guide.platformSteps' },
+  guardrail: { titleKey: 'guide.guardrail', stepsKey: 'guide.guardrailSteps' },
+  wheels: { titleKey: 'guide.wheels', stepsKey: 'guide.wheelsSteps' },
 } as const;
 
 type PartKey = keyof typeof PARTS_DATA;
@@ -90,8 +40,8 @@ const HOTSPOTS: { key: PartKey; x: number; y: number; w: number; h: number }[] =
 ];
 
 export default function GuideScreen() {
-  const router = useRouter();
   const { t } = useTranslation();
+  const { theme } = useTheme();
   const [selected, setSelected] = useState<PartKey | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -125,19 +75,14 @@ export default function GuideScreen() {
   });
 
   const data = selected ? PARTS_DATA[selected] : null;
+  const rawSteps = data ? t(data.stepsKey, { returnObjects: true }) : [];
+  const steps: string[] = Array.isArray(rawSteps) ? (rawSteps as string[]) : [];
 
-  const styles = useMemo(() => getStyles(), []);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <ChevronLeft size={24} color="#cbd5e1" strokeWidth={1.5} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t('guide.title')}</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader title={t('guide.title')} />
 
       <View style={styles.inner}>
         {/* Hint pill */}
@@ -192,10 +137,9 @@ export default function GuideScreen() {
             <View style={styles.panelHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.titleGeo}>{t(data.titleKey)}</Text>
-                <Text style={styles.titleEng}>{data.title_eng}</Text>
               </View>
               <Pressable onPress={closePanel} style={styles.closeBtn} hitSlop={8}>
-                <X size={22} color="#94a3b8" strokeWidth={1.5} />
+                <X size={22} color={theme.colors.inkSoft} strokeWidth={1.5} />
               </Pressable>
             </View>
 
@@ -204,7 +148,7 @@ export default function GuideScreen() {
               contentContainerStyle={{ paddingBottom: 8 }}
               showsVerticalScrollIndicator={false}
             >
-              {data.steps.map((step, idx) => (
+              {steps.map((step, idx) => (
                 <View key={idx} style={styles.stepRow}>
                   <View style={styles.stepNumber}>
                     <Text style={styles.stepNumberText}>{idx + 1}</Text>
@@ -216,34 +160,16 @@ export default function GuideScreen() {
           </View>
         )}
       </Animated.View>
-    </SafeAreaView>
+    </View>
   );
 }
 
-function getStyles() {
+function getStyles(theme: Theme) {
+  const c = theme.colors;
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#0f172a',
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 10,
-    },
-    backBtn: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerTitle: {
-      flex: 1,
-      color: '#ffffff',
-      fontSize: 17,
-      fontWeight: '700',
-      textAlign: 'center',
+      backgroundColor: c.background,
     },
     inner: {
       flex: 1,
@@ -251,17 +177,17 @@ function getStyles() {
       paddingTop: 12,
     },
     hintPill: {
-      backgroundColor: '#1e293b',
+      backgroundColor: c.surfaceSecondary,
       borderRadius: 999,
       paddingHorizontal: 16,
       paddingVertical: 8,
       marginHorizontal: 20,
       marginBottom: 12,
       borderWidth: 1,
-      borderColor: '#334155',
+      borderColor: c.border,
     },
     hintText: {
-      color: '#cbd5e1',
+      color: c.inkSoft,
       fontSize: 12,
       textAlign: 'center',
       lineHeight: 17,
@@ -283,8 +209,8 @@ function getStyles() {
     },
     hotspotActive: {
       borderWidth: 2,
-      borderColor: 'rgba(59,130,246,0.6)',
-      backgroundColor: 'rgba(59,130,246,0.15)',
+      borderColor: withOpacity(c.accent, 0.6),
+      backgroundColor: withOpacity(c.accent, 0.15),
     },
     panel: {
       position: 'absolute',
@@ -292,17 +218,15 @@ function getStyles() {
       right: 0,
       bottom: 0,
       maxHeight: SCREEN_H * 0.45,
-      backgroundColor: '#1e293b',
+      backgroundColor: c.surfaceElevated,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       paddingHorizontal: 20,
       paddingTop: 20,
       paddingBottom: 16,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
-      elevation: 10,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border,
+      ...theme.shadows.lg,
     },
     panelHeader: {
       flexDirection: 'row',
@@ -310,21 +234,15 @@ function getStyles() {
       marginBottom: 16,
     },
     titleGeo: {
-      color: '#ffffff',
+      color: c.ink,
       fontSize: 17,
       fontWeight: '700',
-      marginBottom: 2,
-    },
-    titleEng: {
-      color: '#94a3b8',
-      fontSize: 13,
-      fontWeight: '500',
     },
     closeBtn: {
       width: 36,
       height: 36,
       borderRadius: 18,
-      backgroundColor: '#334155',
+      backgroundColor: c.surfaceSecondary,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -338,19 +256,19 @@ function getStyles() {
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: '#3b82f6',
+      backgroundColor: c.accent,
       alignItems: 'center',
       justifyContent: 'center',
       marginTop: 1,
     },
     stepNumberText: {
-      color: '#ffffff',
+      color: '#FFFFFF',
       fontSize: 12,
       fontWeight: '700',
     },
     stepText: {
       flex: 1,
-      color: '#cbd5e1',
+      color: c.inkSoft,
       fontSize: 14,
       lineHeight: 20,
     },

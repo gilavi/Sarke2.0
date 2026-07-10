@@ -5,7 +5,8 @@
 // animated CTA button. Designed to feel encouraging, not depressing.
 
 import { useEffect, useCallback , useMemo} from 'react';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { A11yText as Text } from './primitives/A11yText';
 import Animated, {
   FadeInUp,
   useAnimatedStyle,

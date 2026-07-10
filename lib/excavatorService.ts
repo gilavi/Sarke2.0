@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type {
   ExcavatorInspection,
   ExcavatorChecklistItemState,
@@ -99,26 +100,26 @@ type ExcavatorPatch = Partial<{
   inspectorSignature: string | null;
 }>;
 
-function toDb(patch: ExcavatorPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('serialNumber'       in patch) db.serial_number        = patch.serialNumber;
-  if ('registrationNumber' in patch) db.registration_number  = patch.registrationNumber;
-  if ('inventoryNumber'    in patch) db.inventory_number     = patch.inventoryNumber;
-  if ('projectName'        in patch) db.project_name         = patch.projectName;
-  if ('department'         in patch) db.department           = patch.department;
-  if ('inspectionDate'     in patch) db.inspection_date      = patch.inspectionDate;
-  if ('motoHours'          in patch) db.moto_hours           = patch.motoHours;
-  if ('inspectorName'      in patch) db.inspector_name       = patch.inspectorName;
-  if ('lastInspectionDate' in patch) db.last_inspection_date = patch.lastInspectionDate;
-  if ('engineItems'        in patch) db.engine_items         = patch.engineItems;
-  if ('undercarriageItems' in patch) db.undercarriage_items  = patch.undercarriageItems;
-  if ('cabinItems'         in patch) db.cabin_items          = patch.cabinItems;
-  if ('safetyItems'        in patch) db.safety_items         = patch.safetyItems;
-  if ('maintenanceItems'   in patch) db.maintenance_items    = patch.maintenanceItems;
-  if ('verdict'            in patch) db.verdict              = patch.verdict;
-  if ('notes'              in patch) db.notes                = patch.notes;
-  return db;
-}
+// Mechanical camel→snake writes; `inspectorPosition`/`inspectorSignature` are
+// intentionally absent (ephemeral, memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<ExcavatorPatch>({
+  serialNumber: 'serial_number',
+  registrationNumber: 'registration_number',
+  inventoryNumber: 'inventory_number',
+  projectName: 'project_name',
+  department: 'department',
+  inspectionDate: 'inspection_date',
+  motoHours: 'moto_hours',
+  inspectorName: 'inspector_name',
+  lastInspectionDate: 'last_inspection_date',
+  engineItems: 'engine_items',
+  undercarriageItems: 'undercarriage_items',
+  cabinItems: 'cabin_items',
+  safetyItems: 'safety_items',
+  maintenanceItems: 'maintenance_items',
+  verdict: 'verdict',
+  notes: 'notes',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

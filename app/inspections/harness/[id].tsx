@@ -30,7 +30,7 @@ import {
   templatesApi,
 } from '../../../lib/services';
 import { friendlyError } from '../../../lib/errorMap';
-import { logError, toErrorMessage } from '../../../lib/logError';
+import { logError } from '../../../lib/logError';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { recordCompletion } from '../../../lib/calendarSchedule';
@@ -292,7 +292,7 @@ export default function HarnessInspectionScreen() {
       });
     } catch (e) {
       logError(e, 'harness.patchAnswer');
-      toast.error(`პასუხი ვერ შეინახა: ${toErrorMessage(e)}`);
+      toast.error(friendlyError(e, 'პასუხი ვერ შეინახა'));
     }
   }, [inspection, answers, offline, toast]);
 
@@ -357,7 +357,7 @@ export default function HarnessInspectionScreen() {
       pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, path).catch(() => undefined);
       toast.success('ფოტო აიტვირთა');
     } catch (e) {
-      toast.error(`ფოტო ვერ აიტვირთა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
     } finally {
       setPhotoUploadCount(c => Math.max(0, c - 1));
     }
@@ -389,7 +389,7 @@ export default function HarnessInspectionScreen() {
       });
       toast.success('ფოტო წაიშალა');
     } catch (e) {
-      toast.error(`ფოტო ვერ წაიშალა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      toast.error(friendlyError(e, 'ფოტო ვერ წაიშალა'));
     }
   }, [toast]);
 
@@ -445,7 +445,7 @@ export default function HarnessInspectionScreen() {
       router.replace(`/inspections/${inspection.id}/done` as any);
     } catch (e) {
       haptic.error();
-      toast.error(`შეცდომა: ${toErrorMessage(e, 'ქსელის შეცდომა')}`);
+      toast.error(friendlyError(e, 'ქსელის შეცდომა'));
       setCompleting(false);
     }
   }, [inspection, completing, harnessName, verdict, conclusion, offline, queryClient, router, toast]);

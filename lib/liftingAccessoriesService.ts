@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type {
   LiftingAccessoriesInspection,
   LAItemState,
@@ -120,28 +121,28 @@ type LiftingAccessoriesPatch = Partial<{
   summaryPhotos: string[];
 }>;
 
-function toDb(patch: LiftingAccessoriesPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'             in patch) db.company               = patch.company;
-  if ('address'             in patch) db.address               = patch.address;
-  if ('inspectorName'       in patch) db.inspector_name        = patch.inspectorName;
-  if ('inspectionDate'      in patch) db.inspection_date       = patch.inspectionDate;
-  if ('equipmentTypes'      in patch) db.equipment_types       = patch.equipmentTypes;
-  if ('equipmentTypeOther'  in patch) db.equipment_type_other  = patch.equipmentTypeOther;
-  if ('serialNumber'        in patch) db.serial_number         = patch.serialNumber;
-  if ('manufacturer'        in patch) db.manufacturer          = patch.manufacturer;
-  if ('yearOfManufacture'   in patch) db.year_of_manufacture   = patch.yearOfManufacture;
-  if ('markingStatus'       in patch) db.marking_status        = patch.markingStatus;
-  if ('wllKg'               in patch) db.wll_kg                = patch.wllKg;
-  if ('unitCount'           in patch) db.unit_count            = patch.unitCount;
-  if ('nextInspectionDate'  in patch) db.next_inspection_date  = patch.nextInspectionDate;
-  if ('items'               in patch) db.items                 = patch.items;
-  if ('removedRows'         in patch) db.removed_rows          = patch.removedRows;
-  if ('verdict'             in patch) db.verdict               = patch.verdict;
-  if ('verdictComment'      in patch) db.verdict_comment       = patch.verdictComment;
-  if ('summaryPhotos'       in patch) db.summary_photos        = patch.summaryPhotos;
-  return db;
-}
+// Mechanical camel→snake writes; `signatures` is intentionally absent
+// (ephemeral, memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<LiftingAccessoriesPatch>({
+  company: 'company',
+  address: 'address',
+  inspectorName: 'inspector_name',
+  inspectionDate: 'inspection_date',
+  equipmentTypes: 'equipment_types',
+  equipmentTypeOther: 'equipment_type_other',
+  serialNumber: 'serial_number',
+  manufacturer: 'manufacturer',
+  yearOfManufacture: 'year_of_manufacture',
+  markingStatus: 'marking_status',
+  wllKg: 'wll_kg',
+  unitCount: 'unit_count',
+  nextInspectionDate: 'next_inspection_date',
+  items: 'items',
+  removedRows: 'removed_rows',
+  verdict: 'verdict',
+  verdictComment: 'verdict_comment',
+  summaryPhotos: 'summary_photos',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

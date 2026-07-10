@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type { BobcatInspection, BobcatItemState } from '../types/bobcat';
 import {
   buildDefaultItems,
@@ -77,20 +78,20 @@ type BobcatPatch = Partial<{
   inspectorSignature: string | null;
 }>;
 
-function toDb(patch: BobcatPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'            in patch) db.company             = patch.company;
-  if ('address'            in patch) db.address             = patch.address;
-  if ('equipmentModel'     in patch) db.equipment_model     = patch.equipmentModel;
-  if ('registrationNumber' in patch) db.registration_number = patch.registrationNumber;
-  if ('inspectionDate'     in patch) db.inspection_date     = patch.inspectionDate;
-  if ('inspectionType'     in patch) db.inspection_type     = patch.inspectionType;
-  if ('inspectorName'      in patch) db.inspector_name      = patch.inspectorName;
-  if ('items'              in patch) db.items               = patch.items;
-  if ('verdict'            in patch) db.verdict             = patch.verdict;
-  if ('notes'              in patch) db.notes               = patch.notes;
-  return db;
-}
+// Mechanical camel→snake writes; `inspectorSignature` is intentionally absent
+// (ephemeral, memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<BobcatPatch>({
+  company: 'company',
+  address: 'address',
+  equipmentModel: 'equipment_model',
+  registrationNumber: 'registration_number',
+  inspectionDate: 'inspection_date',
+  inspectionType: 'inspection_type',
+  inspectorName: 'inspector_name',
+  items: 'items',
+  verdict: 'verdict',
+  notes: 'notes',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

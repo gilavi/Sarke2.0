@@ -1,5 +1,6 @@
 import React, {ReactNode, useEffect, useRef, useMemo} from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

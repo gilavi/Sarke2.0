@@ -112,12 +112,16 @@ export const CREW_ROLE_KEYS: CrewRoleKey[] = [
   'other',
 ];
 
-export const CREW_ROLE_LABEL: Record<CrewRoleKey, string> = {
-  expert: 'შრომის უსაფრთხოების სპეციალისტი',
-  xaracho_supervisor: 'ხარაჩოს ზედამხედველი',
-  xaracho_assembler: 'ხარაჩოს ამწყობი',
-  other: 'სხვა',
-};
+/**
+ * Georgian labels for the four crew-role slots.
+ *
+ * `CrewRoleKey` is structurally identical to `SignerRole` and the labels are
+ * the same, so this re-exports the canonical {@link SIGNER_ROLE_LABEL} rather
+ * than keeping a second copy that can drift independently (the pdf_language /
+ * label-map bug class — see docs/primitives.md). If the two role sets ever
+ * diverge, split them then — TypeScript will flag the key mismatch right here.
+ */
+export const CREW_ROLE_LABEL: Record<CrewRoleKey, string> = SIGNER_ROLE_LABEL;
 
 export interface CrewMember {
   /** Stable client-generated id (uuid). Used for React keys + removal. */

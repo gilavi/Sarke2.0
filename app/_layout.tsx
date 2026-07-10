@@ -227,14 +227,12 @@ function AuthGate() {
 }
 
 export default function RootLayout() {
-  // One registration per physical font file. The weight-suffixed aliases
-  // (Inter-Medium/SemiBold/Bold, SpaceGrotesk-*) used to register the same
-  // TTFs under 8 names — 8 native font loads for 3 files — and no style ever
-  // referenced them (an alias can't render a true weight anyway: all names
-  // pointed at the same glyph outlines). Only these two are consumed:
-  // Inter-Regular (FloatingLabelInput) + JetBrainsMono-Regular (theme mono).
+  // Only ONE bundled font is still consumed: JetBrainsMono-Regular (theme mono).
+  // The UI now renders in the OS system font on both platforms (lib/theme.ts
+  // GEO_FONT), which covers Georgian + Latin coherently, so Inter/SpaceGrotesk
+  // are gone (Inter had no Georgian glyphs and only styled floating labels).
+  // That removes ~1 MB of TTF loading from the cold-start critical path.
   const [fontsLoaded] = useFonts({
-    'Inter-Regular': require('../assets/fonts/Inter.ttf'),
     'JetBrainsMono-Regular': require('../assets/fonts/JetBrainsMono-Regular.ttf'),
   });
 

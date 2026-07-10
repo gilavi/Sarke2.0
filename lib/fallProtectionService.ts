@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type {
   FallProtectionInspection,
   FPDeviceRow,
@@ -103,19 +104,19 @@ type FallProtectionPatch = Partial<{
   deviceData: FPDeviceData[];
 }>;
 
-function toDb(patch: FallProtectionPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'             in patch) db.company              = patch.company;
-  if ('address'             in patch) db.address              = patch.address;
-  if ('inspectionDate'      in patch) db.inspection_date      = patch.inspectionDate;
-  if ('safetyLeaderName'    in patch) db.safety_leader_name   = patch.safetyLeaderName;
-  if ('safetyLeaderPhone'   in patch) db.safety_leader_phone  = patch.safetyLeaderPhone;
-  if ('inspectionType'      in patch) db.inspection_type      = patch.inspectionType;
-  if ('nextInspectionDate'  in patch) db.next_inspection_date = patch.nextInspectionDate;
-  if ('devices'             in patch) db.devices              = patch.devices;
-  if ('deviceData'          in patch) db.device_data          = patch.deviceData;
-  return db;
-}
+// Mechanical camel→snake writes; the ephemeral `signature` is intentionally
+// absent (memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<FallProtectionPatch>({
+  company: 'company',
+  address: 'address',
+  inspectionDate: 'inspection_date',
+  safetyLeaderName: 'safety_leader_name',
+  safetyLeaderPhone: 'safety_leader_phone',
+  inspectionType: 'inspection_type',
+  nextInspectionDate: 'next_inspection_date',
+  devices: 'devices',
+  deviceData: 'device_data',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 // Note: this table has no inspector_name column (uses safety_leader_name), so

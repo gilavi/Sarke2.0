@@ -26,6 +26,7 @@ import { haptic } from '../../lib/haptics';
 import { usePhotoPicker } from '../../hooks/usePhotoPicker';
 import { useOffline, stripServerFields } from '../../lib/offline';
 import { logError, toErrorMessage } from '../../lib/logError';
+import { friendlyError } from '../../lib/errorMap';
 import { useToast } from '../../lib/toast';
 import { recordCompletion } from '../../lib/calendarSchedule';
 import { qk, invalidateRecordLists } from '../../lib/apiHooks';
@@ -503,7 +504,7 @@ export function useWizardState(id: string | undefined) {
     } catch (e) {
       setDeleting(false);
       haptic.error();
-      toast.error(toErrorMessage(e, t('certificates.deleteError')));
+      toast.error(friendlyError(e, t('certificates.deleteError')));
       return false;
     }
   }, [id, router, toast]);

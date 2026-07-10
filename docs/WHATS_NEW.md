@@ -1,6 +1,85 @@
 # What's New — Hubble Changelog
 
-**Updated:** 2026-07-08 | Branch: `main`
+**Updated:** 2026-07-10 | Branch: `main`
+
+---
+
+## batch-7 cleanup
+
+Audit-driven dead-weight removal and consistency pass — no user-facing feature
+changes, but a smaller bundle, one data path instead of two, and several
+polish fixes. Themes:
+
+- **Orphaned source files deleted (arch-code #4)** — removed three lib files
+  with zero importers anywhere under `app/`, `features/`, `components/`,
+  `lib/`, `hooks/`, `tests/`: `lib/cargoPlatformPdfTemplate.ts` (537 lines, the
+  legacy hand-written builder that `lib/inspection/schemas/cargoPlatform.ts`
+  replaced), `lib/googleCalendar.ts` (261), and `lib/notifications.ts` (108) —
+  ~906 lines of dead code. Their now-unused deps (`expo-auth-session`,
+  `expo-notifications` + its config plugin) were **left in place** (no
+  `package.json` / `app.config.ts` changes this pass); if push notifications
+  stay off the roadmap they can be dropped in a later dependency sweep.
+- **Mock-services dispatcher retired (arch-code #5)** —
+  [lib/services/index.ts](../lib/services/index.ts) was a module-load dispatcher
+  that statically imported **both** `./real` and `./mock` and picked via
+  `expo.extra.useMockData`. That flag is statically `false` and never
+  env-driven, so the ~1,000-line in-memory mock shipped into every production
+  Hermes bundle but never executed — and the toggle only ever covered part of
+  the app (briefings/orders, all nine equipment services, breathalyzer,
+  risk-assessment already bypass it), so flipping it produced a half-mocked app
+  that still wrote to prod Supabase. `index.ts` is now a plain re-export of
+  `./real`; `lib/services/mock/` stays as a **test-only fixture** imported
+  directly by `tests/unit/mockServices.test.ts`, so it no longer enters the app
+  import graph (Metro drops it from the bundle).
+- **Equipment `toDb` mappers de-duplicated (arch-code #6)** — new
+  [lib/inspection/rowMapper.ts](../lib/inspection/rowMapper.ts) `makeToDb<P>(fieldMap)`
+  replaces the hand-written `if ('camelKey' in patch) db.snake_col = …` chains
+  in all nine `lib/<type>Service.ts` files with a declarative
+  `{ camelKey: 'snake_column' }` map. The mechanical camel→snake write loop now
+  lives once, and the map's **keys are typed against the patch type**, so the
+  "typo silently drops a column from saves" hazard becomes a compile error. The
+  custom `toModel` direction (null-coalescing, enum casts, array-length guards,
+  signatory normalization) stays hand-written per type to preserve full
+  field-level type safety.
+- **`friendlyError` sweep + new lint rule (arch-code #8)** — the remaining
+  raw-error `toast.error(e)` / `toast.error(String(e))` leaks (harness flow and
+  a handful of others) now route through `friendlyError()`
+  ([lib/errorMap.ts](../lib/errorMap.ts)) so users never see a raw DB/network
+  string in the Georgian UI; `t()`-keyed toasts were left as-is. A new
+  `check-primitives` rule bans `toast.error(<bare error>)` going forward.
+- **Raw `<Text>` sweep + new lint rule (ui #12)** — all remaining files under
+  `app/`/`features/`/`components/` rendering React Native's `<Text>` migrated to
+  the `A11yText` primitive (consistent Dynamic-Type capping + theme ink); a new
+  `check-primitives` rule bans raw `react-native` `Text` imports there (the
+  toast host in `lib/` and `A11yText`'s own impl are the documented allow-list).
+- **check-primitives actually runs on Windows now (blocking bug)** — the guard
+  computed its root via `decodeURIComponent(new URL('..', import.meta.url).pathname)`,
+  which yields `/C:/…/` on Windows; `path.join` then produced the invalid
+  `\C:\…`, every `readdirSync` threw ENOENT, and the walker **silently scanned
+  zero files** — so `npm run lint`'s primitive guard was a no-op on the dev
+  machine (it only ever ran on Linux CI). Switched to `fileURLToPath`; the guard
+  now scans for real (and the whole tree still passes it clean).
+- **Georgian fonts render honestly (ui #2 remainder)** — the declared iOS
+  `fontFamily` was `HelveticaNeue`, which has no Georgian glyphs, so ქართული
+  silently fell back to the system font. `GEO_FONT` is now `undefined` on both
+  platforms so text renders in the real OS system face (San Francisco / Roboto,
+  both cover Georgian) — the declaration now matches what actually paints. (The
+  8→2 startup font-load cut already landed in batch 1.)
+- **`guide.tsx` re-skinned onto tokens (ui #7)** — the 3D-guide screen was a
+  fixed slate/blue Tailwind palette with hardcoded English that rendered dark in
+  light mode; it now uses `theme.colors.*` (correct in both light and dark) and
+  routes all copy through `t()` with natural Georgian + English parity.
+- **Payment colors + one brand orange (ui #8)** — the More-tab payment map of
+  raw Apple system hexes (`#34C759` etc.) now resolves through a canonical
+  `PAYMENT_STATUS_COLORS` in [lib/statusColors.ts](../lib/statusColors.ts) onto
+  `theme.colors.semantic.*`. The stray second brand-orange in UI was unified to
+  the `accent` token; the `#FF6D2E` used in PDF/illustration line-art is a
+  documented per-surface variant and was left as-is.
+- **Duplicate role-label maps deduped (arch-code #11)** — `SIGNER_ROLE_LABEL`
+  and `CREW_ROLE_LABEL` in `types/models.ts` were byte-identical 4-entry Georgian
+  maps; consolidated to one canonical constant (the other re-exports it for
+  compat). The full per-domain split of the 747-line `types/models.ts` is
+  deferred (imported almost everywhere; too much churn this late).
 
 ---
 

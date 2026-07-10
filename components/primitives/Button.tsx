@@ -1,5 +1,6 @@
 import React, {useMemo} from 'react';
-import { ActivityIndicator, Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, PressableProps, StyleSheet, View } from 'react-native';
+import { A11yText as Text } from './A11yText';
 import Animated from 'react-native-reanimated';
 import type { LucideIcon } from 'lucide-react-native';
 import { a11y } from '../../lib/accessibility';

@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 
 export function Label({ children, style }: { children: ReactNode; style?: any }) {

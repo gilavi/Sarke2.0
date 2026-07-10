@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
+import { A11yText as Text } from '../../components/primitives/A11yText';
 import { Tabs } from 'expo-router';
 import { House, Folder, BookOpen } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';

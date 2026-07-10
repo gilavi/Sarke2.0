@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type { ForkliftInspection, ForkliftItemState } from '../types/forklift';
 import { buildDefaultForkliftItems } from '../types/forklift';
 
@@ -83,22 +84,22 @@ type ForkliftPatch = Partial<{
   signerSignature: string | null;
 }>;
 
-function toDb(patch: ForkliftPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'         in patch) db.company          = patch.company;
-  if ('address'         in patch) db.address          = patch.address;
-  if ('inventoryNumber' in patch) db.inventory_number = patch.inventoryNumber;
-  if ('brandModel'      in patch) db.brand_model      = patch.brandModel;
-  if ('engineType'      in patch) db.engine_type      = patch.engineType;
-  if ('inspectionDate'  in patch) db.inspection_date  = patch.inspectionDate;
-  if ('inspectorName'   in patch) db.inspector_name   = patch.inspectorName;
-  if ('items'           in patch) db.items            = patch.items;
-  if ('verdict'         in patch) db.verdict          = patch.verdict;
-  if ('notes'           in patch) db.notes            = patch.notes;
-  if ('summaryPhotos'   in patch) db.summary_photos   = patch.summaryPhotos;
-  if ('qualDocPath'     in patch) db.qual_doc_path    = patch.qualDocPath;
-  return db;
-}
+// Mechanical camel→snake writes; the ephemeral `signer*` fields are
+// intentionally absent (memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<ForkliftPatch>({
+  company: 'company',
+  address: 'address',
+  inventoryNumber: 'inventory_number',
+  brandModel: 'brand_model',
+  engineType: 'engine_type',
+  inspectionDate: 'inspection_date',
+  inspectorName: 'inspector_name',
+  items: 'items',
+  verdict: 'verdict',
+  notes: 'notes',
+  summaryPhotos: 'summary_photos',
+  qualDocPath: 'qual_doc_path',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

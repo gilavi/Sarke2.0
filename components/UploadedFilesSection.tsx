@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { A11yText as Text } from './primitives/A11yText';
 import { Folder, ChevronUp, ChevronDown, CloudUpload, File, Trash2, Plus } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { formatShortDateTime } from '../lib/formatDate';

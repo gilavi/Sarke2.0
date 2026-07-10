@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { A11yText as Text } from './primitives/A11yText';
 import { useTranslation } from 'react-i18next';
 import { useBottomSheet } from './BottomSheet';
 import { QuestionAvatar } from './QuestionAvatar';

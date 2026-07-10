@@ -106,8 +106,8 @@
   --border: #2A2A2A;
   --border-strong: #3A3A3A;
   --accent: #FF8A57;
-  --accent-soft: rgba(255,109,46,0.15);
-  --accent-ghost: rgba(255,109,46,0.08);
+  --accent-soft: rgba(254,122,67,0.15);
+  --accent-ghost: rgba(254,122,67,0.08);
   --highlight: #E6FF4D;
   --highlight-soft: rgba(230,255,77,0.16);
   --overlay: rgba(0,0,0,0.65);

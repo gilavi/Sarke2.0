@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type {
   GeneralEquipmentInspection,
   EquipmentItem,
@@ -82,20 +83,20 @@ type GeneralEquipmentPatch = Partial<{
   inspectorSignature: string | null;
 }>;
 
-function toDb(patch: GeneralEquipmentPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('objectName'         in patch) db.object_name     = patch.objectName;
-  if ('address'            in patch) db.address         = patch.address;
-  if ('activityType'       in patch) db.activity_type   = patch.activityType;
-  if ('inspectionDate'     in patch) db.inspection_date = patch.inspectionDate;
-  if ('actNumber'          in patch) db.act_number      = patch.actNumber;
-  if ('inspectionType'     in patch) db.inspection_type = patch.inspectionType;
-  if ('inspectorName'      in patch) db.inspector_name  = patch.inspectorName;
-  if ('equipment'          in patch) db.equipment       = patch.equipment;
-  if ('conclusion'         in patch) db.conclusion      = patch.conclusion;
-  if ('summaryPhotos'      in patch) db.summary_photos  = patch.summaryPhotos;
-  return db;
-}
+// Mechanical camel→snake writes; the ephemeral `signer*`/`inspectorSignature`
+// fields are intentionally absent (memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<GeneralEquipmentPatch>({
+  objectName: 'object_name',
+  address: 'address',
+  activityType: 'activity_type',
+  inspectionDate: 'inspection_date',
+  actNumber: 'act_number',
+  inspectionType: 'inspection_type',
+  inspectorName: 'inspector_name',
+  equipment: 'equipment',
+  conclusion: 'conclusion',
+  summaryPhotos: 'summary_photos',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

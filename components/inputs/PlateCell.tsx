@@ -2,11 +2,11 @@ import React, { useEffect } from 'react';
 import {
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   type NativeSyntheticEvent,
   type TextInputKeyPressEventData,
 } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import Animated, {
   FadeIn,
   interpolateColor,

@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type { SafetyNetInspection, SNItemState, SNPostTestState, SNLoadTestRow, SNSignatory } from '../types/safetyNet';
 import {
   buildDefaultSNItems,
@@ -121,31 +122,31 @@ type SafetyNetPatch = Partial<{
   summaryPhotos: string[];
 }>;
 
-function toDb(patch: SafetyNetPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'          in patch) db.company           = patch.company;
-  if ('address'          in patch) db.address           = patch.address;
-  if ('inspectorName'    in patch) db.inspector_name    = patch.inspectorName;
-  if ('inspectionDate'   in patch) db.inspection_date   = patch.inspectionDate;
-  if ('manufacturer'     in patch) db.manufacturer      = patch.manufacturer;
-  if ('netSize'          in patch) db.net_size          = patch.netSize;
-  if ('postSize'         in patch) db.post_size         = patch.postSize;
-  if ('postCount'        in patch) db.post_count        = patch.postCount;
-  if ('postAnchorCount'  in patch) db.post_anchor_count = patch.postAnchorCount;
-  if ('anchorPointCount' in patch) db.anchor_point_count = patch.anchorPointCount;
-  if ('edgeRopeCount'    in patch) db.edge_rope_count   = patch.edgeRopeCount;
-  if ('cellSide'         in patch) db.cell_side         = patch.cellSide;
-  if ('workingDistance'  in patch) db.working_distance  = patch.workingDistance;
-  if ('certificate'      in patch) db.certificate       = patch.certificate;
-  if ('items'            in patch) db.items             = patch.items;
-  if ('loadTestRows'     in patch) db.load_test_rows    = patch.loadTestRows;
-  if ('postTestItems'    in patch) db.post_test_items   = patch.postTestItems;
-  if ('verdict'          in patch) db.verdict           = patch.verdict;
-  if ('verdictComment'   in patch) db.verdict_comment   = patch.verdictComment;
-  if ('qualDocPath'      in patch) db.qual_doc_path     = patch.qualDocPath;
-  if ('summaryPhotos'    in patch) db.summary_photos    = patch.summaryPhotos;
-  return db;
-}
+// Mechanical camel→snake writes; `signatures` is intentionally absent
+// (ephemeral, memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<SafetyNetPatch>({
+  company: 'company',
+  address: 'address',
+  inspectorName: 'inspector_name',
+  inspectionDate: 'inspection_date',
+  manufacturer: 'manufacturer',
+  netSize: 'net_size',
+  postSize: 'post_size',
+  postCount: 'post_count',
+  postAnchorCount: 'post_anchor_count',
+  anchorPointCount: 'anchor_point_count',
+  edgeRopeCount: 'edge_rope_count',
+  cellSide: 'cell_side',
+  workingDistance: 'working_distance',
+  certificate: 'certificate',
+  items: 'items',
+  loadTestRows: 'load_test_rows',
+  postTestItems: 'post_test_items',
+  verdict: 'verdict',
+  verdictComment: 'verdict_comment',
+  qualDocPath: 'qual_doc_path',
+  summaryPhotos: 'summary_photos',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

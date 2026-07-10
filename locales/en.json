@@ -1879,11 +1879,46 @@
     "title": "Scaffold 3D Guide",
     "hint": "Tap a part to see instructions",
     "frameLeft": "Left Vertical Frame",
+    "frameLeftSteps": [
+      "Place on firm, level surface. No dirt or debris under legs.",
+      "Check all spring clips / pins are locked and seated fully.",
+      "Use a level - frame must be plumb (vertical) within 1°.",
+      "Ensure coupling pins are greased and slide freely."
+    ],
     "frameRight": "Right Vertical Frame",
+    "frameRightSteps": [
+      "Mirror the left frame exactly. Both must be parallel.",
+      "Brace connection holes must align perfectly before inserting braces.",
+      "Never climb until both frames are independently stable."
+    ],
     "crossBrace": "Cross Bracing (X-brace)",
+    "crossBraceSteps": [
+      "Install braces BEFORE climbing or loading the platform.",
+      "Hook one end first, then stretch and lock the opposite end.",
+      "Never omit braces - they provide 70% of lateral stability.",
+      "Check tension: brace should not rattle or bow under hand pressure."
+    ],
     "platform": "Working Platform / Deck",
+    "platformSteps": [
+      "Deck must overhang the frame by minimum 150mm on both sides.",
+      "Check for cracks, warping, or oil contamination before placing.",
+      "Secure with deck locks; platform should not shift when kicked.",
+      "Max load: 250kg evenly distributed. Mark load limit visibly."
+    ],
     "guardrail": "Guardrails",
-    "wheels": "Casters / Wheels"
+    "guardrailSteps": [
+      "Top rail height: 1.0–1.2m from platform surface.",
+      "Mid-rail required. Toe-board required if objects can fall.",
+      "Install guardrails BEFORE ascending to platform height.",
+      "Check all rail clips are fully closed and locked."
+    ],
+    "wheels": "Casters / Wheels",
+    "wheelsSteps": [
+      "Brakes must be engaged before anyone steps onto the scaffold.",
+      "Wheels rated for hard flat surfaces only - never gravel slopes.",
+      "If scaffold height > 3m, replace wheels with base plates.",
+      "Inspect wheel locks daily; replace worn casters immediately."
+    ]
   },
   "templates": {
     "title": "Templates",

@@ -24,9 +24,9 @@ import {
   ScrollView,
   ScrollViewProps,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { A11yText as Text } from './primitives/A11yText';
 import {
   Gesture,
   GestureDetector,

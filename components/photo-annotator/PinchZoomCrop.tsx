@@ -14,7 +14,8 @@
 // through expo-image-manipulator (not captureRef), so this chrome never bakes in.
 
 import { forwardRef, useImperativeHandle } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ZoomIn } from 'lucide-react-native';

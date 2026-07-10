@@ -1,4 +1,5 @@
 import { makeInspectionService } from './inspection/service';
+import { makeToDb } from './inspection/rowMapper';
 import type {
   MobileLadderInspection,
   MLItemState,
@@ -107,27 +108,27 @@ type MobileLadderPatch = Partial<{
   signature: MLSignatory;
 }>;
 
-function toDb(patch: MobileLadderPatch): Record<string, unknown> {
-  const db: Record<string, unknown> = {};
-  if ('company'             in patch) db.company              = patch.company;
-  if ('address'             in patch) db.address              = patch.address;
-  if ('inspectorName'       in patch) db.inspector_name       = patch.inspectorName;
-  if ('inspectionDate'      in patch) db.inspection_date      = patch.inspectionDate;
-  if ('ladderType'          in patch) db.ladder_type          = patch.ladderType;
-  if ('ladderTypeUnknown'   in patch) db.ladder_type_unknown  = patch.ladderTypeUnknown;
-  if ('model'               in patch) db.model                = patch.model;
-  if ('modelUnknown'        in patch) db.model_unknown        = patch.modelUnknown;
-  if ('heightM'             in patch) db.height_m             = patch.heightM;
-  if ('heightUnknown'       in patch) db.height_unknown       = patch.heightUnknown;
-  if ('maxLoadKg'           in patch) db.max_load_kg          = patch.maxLoadKg;
-  if ('maxLoadUnknown'      in patch) db.max_load_unknown     = patch.maxLoadUnknown;
-  if ('nextInspectionDate'  in patch) db.next_inspection_date = patch.nextInspectionDate;
-  if ('items'               in patch) db.items                = patch.items;
-  if ('verdict'             in patch) db.verdict              = patch.verdict;
-  if ('verdictComment'      in patch) db.verdict_comment      = patch.verdictComment;
-  if ('summaryPhotos'       in patch) db.summary_photos       = patch.summaryPhotos;
-  return db;
-}
+// Mechanical camel→snake writes; the ephemeral `signature` is intentionally
+// absent (memory-only). See lib/inspection/rowMapper.ts.
+const toDb = makeToDb<MobileLadderPatch>({
+  company: 'company',
+  address: 'address',
+  inspectorName: 'inspector_name',
+  inspectionDate: 'inspection_date',
+  ladderType: 'ladder_type',
+  ladderTypeUnknown: 'ladder_type_unknown',
+  model: 'model',
+  modelUnknown: 'model_unknown',
+  heightM: 'height_m',
+  heightUnknown: 'height_unknown',
+  maxLoadKg: 'max_load_kg',
+  maxLoadUnknown: 'max_load_unknown',
+  nextInspectionDate: 'next_inspection_date',
+  items: 'items',
+  verdict: 'verdict',
+  verdictComment: 'verdict_comment',
+  summaryPhotos: 'summary_photos',
+});
 
 // ── API ───────────────────────────────────────────────────────────────────────
 

@@ -25,11 +25,11 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   UIManager,
   View,
 } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import { useTranslation } from 'react-i18next';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';

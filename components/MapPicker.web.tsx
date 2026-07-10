@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
+import { A11yText as Text } from './primitives/A11yText';
 import { MapPin, Map } from 'lucide-react-native';
 import { useTheme } from '../lib/theme';
 

@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import { useTheme } from '../../lib/theme';
 
 interface SectionHeaderAction {

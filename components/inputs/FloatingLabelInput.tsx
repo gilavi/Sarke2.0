@@ -4,11 +4,11 @@ import {
   KeyboardTypeOptions,
   Pressable,
   ReturnKeyTypeOptions,
-  Text,
   TextInput,
   TextInputProps,
   View,
 } from 'react-native';
+import { A11yText as Text } from '../primitives/A11yText';
 import type { LucideIcon } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 import { useAccessibilitySettings } from '../../lib/accessibility';

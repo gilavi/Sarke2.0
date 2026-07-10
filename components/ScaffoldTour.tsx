@@ -6,9 +6,9 @@ import {
   NativeSyntheticEvent,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { A11yText as Text } from './primitives/A11yText';
 import { FlatList } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, BookOpen } from 'lucide-react-native';

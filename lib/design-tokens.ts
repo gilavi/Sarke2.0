@@ -190,8 +190,11 @@ export const semanticDark = {
   border: '#2A2A2A',
   borderStrong: '#3A3A3A',
   accent: primary[400],
-  accentSoft: 'rgba(255,109,46,0.15)',
-  accentGhost: 'rgba(255,109,46,0.08)',
+  // Washes of the canonical brand orange primary[500] (#FE7A43 = 254,122,67) —
+  // NOT the stray #FF6D2E (255,109,46) they used before, so the dark-mode accent
+  // tints derive from the same orange as every other brand surface.
+  accentSoft: 'rgba(254,122,67,0.15)',
+  accentGhost: 'rgba(254,122,67,0.08)',
   highlight,
   highlightSoft: 'rgba(230,255,77,0.16)',
   overlay: 'rgba(0,0,0,0.65)',

@@ -3,10 +3,10 @@ import {
   TextInput,
   TextInputProps,
   View,
-  Text,
   StyleSheet,
   Pressable,
 } from 'react-native';
+import { A11yText as Text } from './A11yText';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

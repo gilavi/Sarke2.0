@@ -16,7 +16,10 @@ export const styles = StyleSheet.create({
     left: 14,
     zIndex: 1,
     backgroundColor: 'transparent',
-    fontFamily: 'Inter-Regular',
+    // No explicit fontFamily: the label renders in the OS system font, matching
+    // the input text below it (which sets none) and the rest of the app. The old
+    // 'Inter-Regular' had no Georgian glyphs, so ქართული labels fell back to the
+    // system font while Latin stayed Inter — a mismatch with the field's value.
   },
   asterisk: {
     // danger color applied inline via theme in render
