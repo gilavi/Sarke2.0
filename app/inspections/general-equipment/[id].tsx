@@ -27,6 +27,8 @@ import { generalEquipmentSchema } from '../../../lib/inspection/schemas/generalE
 import { useInspectionFlow } from '../../../lib/inspection/useInspectionFlow';
 import { useEquipmentPhotos } from '../../../lib/inspection/useEquipmentPhotos';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
+import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
+import { friendlyError } from '../../../lib/errorMap';
 import { a11y } from '../../../lib/accessibility';
 import { STORAGE_BUCKETS } from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -346,6 +348,7 @@ export default function GeneralEquipmentScreen() {
         canGoNext={canGoNext}
         isLastStep={step === CONCLUSION_STEP}
         completing={completing}
+        banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
         onNext={handleNext}
         onPrev={handlePrev}
         onBlockedNext={markAttempted}

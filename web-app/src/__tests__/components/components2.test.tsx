@@ -136,10 +136,10 @@ describe('AppShell', () => {
 describe('navItems', () => {
   it('exposes the canonical top + more nav items', () => {
     expect(topNavItems.map((i) => i.to)).toEqual([
-      '/home', '/projects', '/calendar', '/regulations', '/history',
+      '/home', '/projects', '/history', '/calendar',
     ]);
     expect(moreNavItems.map((i) => i.to)).toEqual([
-      '/certificates', '/templates', '/safety',
+      '/regulations', '/certificates', '/templates', '/safety',
     ]);
     expect(topNavItems.find((i) => i.to === '/home')?.shortcut).toBe('G H');
   });

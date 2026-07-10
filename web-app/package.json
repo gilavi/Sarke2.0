@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/check-no-shadows.mjs && eslint .",
+    "lint:inspection-guard": "node scripts/check-inspection-mirror.mjs",
     "lint:fix": "eslint . --fix",
     "check:shadows": "node scripts/check-no-shadows.mjs",
     "format": "prettier --write .",

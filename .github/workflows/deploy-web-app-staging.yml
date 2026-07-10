@@ -23,8 +23,12 @@ on:
 permissions:
   contents: write
 
+# Per-destination group (writes /app-staging/). Same-destination pushes
+# serialize; other gh-pages writers run in parallel. NOT one shared group —
+# GitHub cancels older pending runs in a group, which would silently drop
+# sibling deploys when several coincide. See deploy-web.yml for the rationale.
 concurrency:
-  group: gh-pages-deploy-staging
+  group: gh-pages-app-staging
   cancel-in-progress: false
 
 jobs:

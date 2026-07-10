@@ -9,9 +9,9 @@
  * Photo resolution lives in lib/inspection/photos.ts; the mobile convenience
  * wrapper that ties them together is lib/inspection/renderMobile.ts.
  */
+import i18n from '../i18n';
 import { escapeHtml, fmtDate } from './escape';
 import { BASE_PDF_CSS } from './pdfStyles';
-import { INTERNAL_DOC_BADGE } from './schema';
 import { renderSignaturesSection, type SignaturesSectionData } from '../pdf/inspection/renderSignaturesSection';
 import type {
   ChecklistSection,
@@ -36,7 +36,7 @@ export function buildInspectionPdf<T>(
   const docTitle = resolveField(schema.docTitle, inspection) ?? '';
   const docSubtitle = resolveField(schema.docSubtitle, inspection);
   const footerLabel = resolveField(schema.pdfFooterLabel, inspection) ?? '';
-  const badge = resolveField(schema.internalBadge, inspection) ?? INTERNAL_DOC_BADGE;
+  const badge = resolveField(schema.internalBadge, inspection) ?? i18n.t('inspections.pdfInternalBadge');
   const metaLines = schema.headerMetaLines ? schema.headerMetaLines(inspection) : [];
 
   const body = schema.blocks
@@ -211,7 +211,7 @@ function renderItemPhotos(paths: string[] | undefined, photos: PhotoMap): string
   const imgs = paths
     .map((p) => {
       const url = photos[p];
-      return url ? `<span class="item-photo"><img src="${escapeHtml(url)}" alt="ფოტო" /></span>` : '';
+      return url ? `<span class="item-photo"><img src="${escapeHtml(url)}" alt="${escapeHtml(i18n.t('inspections.pdfPhotoAlt'))}" /></span>` : '';
     })
     .join('');
   return imgs ? `<div style="margin-top:4px;">${imgs}</div>` : '';
@@ -224,12 +224,12 @@ function renderChecklist<T>(
 ): string {
   const opts = block.resultOptions;
   const colCount = 2 + opts.length;
-  const itemHeader = 'შემოწმების პუნქტი';
+  const itemHeader = i18n.t('inspections.pdfItemHeader');
 
   const headCols =
     block.layout === 'checks'
       ? opts.map((o) => `<th class="col-check">${escapeHtml(o.short ?? o.label)}</th>`).join('')
-      : '<th class="col-result">შედეგი</th>';
+      : `<th class="col-result">${escapeHtml(i18n.t('inspections.pdfResultHeader'))}</th>`;
 
   let rows = '';
   for (const sec of sections) {
@@ -311,7 +311,7 @@ function renderMaintenance<T>(
       <thead>
         <tr>
           <th class="col-num">#</th>
-          <th>${escapeHtml('შემოწმების პუნქტი')}</th>
+          <th>${escapeHtml(i18n.t('inspections.pdfItemHeader'))}</th>
           <th class="col-maint-check">${escapeHtml(block.yesLabel)}</th>
           <th class="col-maint-check">${escapeHtml(block.noLabel)}</th>
           <th class="col-maint-date">${escapeHtml(block.dateLabel)}</th>
@@ -340,16 +340,16 @@ function renderVerdict<T>(
 
   const notesText = block.notes ? block.notes(d) : null;
   const notesHtml = notesText
-    ? `<div class="notes-label" style="margin-top:14px;">${escapeHtml(block.notesLabel ?? 'შენიშვნები / ხარვეზები')}</div>
+    ? `<div class="notes-label" style="margin-top:14px;">${escapeHtml(block.notesLabel ?? i18n.t('inspections.pdfNotesLabel'))}</div>
        <div class="notes-block">${escapeHtml(notesText)}</div>`
     : '';
 
   const summaryPaths = block.summaryPhotos ? block.summaryPhotos(d) : [];
   const summaryImgs = summaryPaths
-    .map((p) => (photos[p] ? `<img src="${escapeHtml(photos[p])}" alt="ფოტო" />` : ''))
+    .map((p) => (photos[p] ? `<img src="${escapeHtml(photos[p])}" alt="${escapeHtml(i18n.t('inspections.pdfPhotoAlt'))}" />` : ''))
     .join('');
   const summaryHtml = summaryImgs
-    ? `<div class="notes-label" style="margin-top:14px;">${escapeHtml('ფოტოები')}</div>
+    ? `<div class="notes-label" style="margin-top:14px;">${escapeHtml(i18n.t('inspections.pdfPhotosLabel'))}</div>
        <div class="summary-photos">${summaryImgs}</div>`
     : '';
 
@@ -365,7 +365,7 @@ function renderSignatures(title: string, lines: SignatureLine[]): string {
   const cells = lines
     .map((l) => {
       const img = l.pngDataUrl
-        ? `<img class="sig-img" src="${escapeHtml(l.pngDataUrl)}" alt="ხელმოწერა" />`
+        ? `<img class="sig-img" src="${escapeHtml(l.pngDataUrl)}" alt="${escapeHtml(i18n.t('inspections.pdfSignatureAlt'))}" />`
         : '<div style="height:48px;border-bottom:1px dashed var(--hairline);"></div>';
       return `
       <div class="sig-cell">

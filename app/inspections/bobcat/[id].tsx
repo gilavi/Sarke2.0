@@ -15,6 +15,7 @@ import { SerialKeypad } from '../../../components/inputs/SerialKeypad';
 import { InspectionShell, InspectionShellSkeleton, ChecklistStep, ConclusionStep } from '../../../components/inspection-steps';
 import type { VerdictOption } from '../../../components/inspection-steps';
 import { EquipmentResultScreen } from '../../../features/inspection-result';
+import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import type { ChecklistSection, ResultOption } from '../../../lib/inspection/schema';
 import { shortCode } from '../../../lib/shared/documentName';
 import { useTheme, type Theme } from '../../../lib/theme';
@@ -30,6 +31,7 @@ import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSession } from '../../../lib/session';
+import { useLegacySummaryPhotoRecovery } from '../../../lib/inspection/useLegacySummaryPhotoRecovery';
 import {
   BOBCAT_ITEMS,
   BOBCAT_CATEGORY_LABELS,
@@ -90,7 +92,9 @@ export default function BobcatInspectionScreen() {
   const plateRef = useRef<PlateInputHandle>(null);
   const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
 
-  const summaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
+  // Legacy AsyncStorage key older builds wrote summary photos to (instead of
+  // the summary_photos DB column) — only read for one-time recovery below.
+  const legacySummaryPhotosKey = useMemo(() => `bobcat-wizard:${id}:summaryPhotos`, [id]);
 
   // ── Shared orchestration via useInspectionFlow ────────────────────────────
 
@@ -122,6 +126,7 @@ export default function BobcatInspectionScreen() {
       items: insp.items,
       verdict: insp.verdict,
       notes: insp.notes,
+      summaryPhotos: insp.summaryPhotos,
     }),
     validateMissing: (insp) => {
       const missing: string[] = [];
@@ -185,7 +190,25 @@ export default function BobcatInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling (shared quartet; summary strip lives in AsyncStorage) ───
+  // ── Photo handling (shared quartet) ────────────────────────────────────────
+  // Summary strip now persists to the summary_photos DB column: with no
+  // summaryStorageKey the hook routes it through scheduleSave (→ the outbox, so
+  // it also queues offline). Legacy AsyncStorage lists are migrated once below.
+
+  // Older builds persisted the summary-photo list only to AsyncStorage (never
+  // to the summary_photos column), so the files sat orphaned in storage while
+  // the detail view and PDF showed nothing. Recover that list into the DB once.
+  useLegacySummaryPhotoRecovery({
+    inspectionId: inspection?.id ?? null,
+    dbPhotos: inspection?.summaryPhotos,
+    legacyKey: legacySummaryPhotosKey,
+    persist: async (photos) => {
+      const insp = inspectionRef.current;
+      if (insp) await bobcatApi.patch(insp.id, { summaryPhotos: photos });
+    },
+    apply: (photos) => setInspection(prev =>
+      prev && !prev.summaryPhotos?.length ? { ...prev, summaryPhotos: photos } : prev),
+  });
 
   const {
     handleAddItemPhoto: handleAddPhoto,
@@ -195,7 +218,7 @@ export default function BobcatInspectionScreen() {
   } = useEquipmentPhotos<BobcatInspection, number>({
     inspectionRef, setInspection, scheduleSave,
     pickPhotos: pickPhotosWithAnnotation,
-    uploadItemPhoto: (inspectionId, itemId, uri) => bobcatApi.uploadPhoto(inspectionId, itemId, uri),
+    uploadItemPhoto: (inspectionId, itemId, uri) => bobcatApi.uploadPhotoAt(`${inspectionId}/${itemId}`, uri),
     uploadSummaryPhoto: bobcatApi.uploadSummaryPhoto,
     deletePhoto: bobcatApi.deletePhoto,
     updateItemPaths: (insp, itemId, update) => ({
@@ -204,7 +227,6 @@ export default function BobcatInspectionScreen() {
         i.id === itemId ? { ...i, photo_paths: update(i.photo_paths ?? []) } : i,
       ),
     }),
-    summaryStorageKey: summaryPhotosKey,
   });
 
   // ── Step navigation ────────────────────────────────────────────────────────
@@ -342,6 +364,7 @@ export default function BobcatInspectionScreen() {
       canGoNext={canGoNext}
       isLastStep={step === CONCLUSION_STEP}
       completing={completing}
+      banner={pdfLocked ? <PdfLockedBanner onDetails={() => setLimitNoticeVisible(true)} /> : undefined}
       onBlockedNext={markAttempted}
       onNext={handleNext}
       onPrev={handlePrev}

@@ -73,9 +73,9 @@ export default {
         danger: '#EF4444',
       },
       fontSize: {
-        'heading-1': ['28px', { lineHeight: '1.2', fontWeight: '700' }],
-        'heading-2': ['20px', { lineHeight: '1.3', fontWeight: '600' }],
-        'heading-3': ['16px', { lineHeight: '1.4', fontWeight: '600' }],
+        'heading-1': ['22px', { lineHeight: '1.25', fontWeight: '700' }],
+        'heading-2': ['17px', { lineHeight: '1.35', fontWeight: '650' }],
+        'heading-3': ['15px', { lineHeight: '1.4', fontWeight: '600' }],
       },
       fontFamily: {
         sans: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],

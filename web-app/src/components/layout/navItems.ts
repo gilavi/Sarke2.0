@@ -30,13 +30,13 @@ export interface NavItemDef {
 export const topNavItems: NavItemDef[] = [
   { to: '/home',         label: 'მთავარი',       icon: House,        shortcut: 'G H', tint: 'var(--brand-500)' },
   { to: '/projects',     label: 'პროექტები',     icon: FolderOpen,   shortcut: 'G P', tint: '#3D7EE6' },
-  { to: '/calendar',     label: 'კალენდარი',     icon: CalendarBlank, shortcut: 'G C', tint: '#6B6DF0' },
-  { to: '/regulations',  label: 'რეგულაციები',   icon: BookOpen,     shortcut: 'G L', tint: '#1FB6A6' },
   { to: '/history',      label: 'ისტორია',       icon: Clock,        shortcut: 'G Y', tint: '#8A93A6' },
+  { to: '/calendar',     label: 'კალენდარი',     icon: CalendarBlank, shortcut: 'G C', tint: '#6B6DF0' },
 ];
 
 export const moreNavItems: NavItemDef[] = [
-  { to: '/certificates', label: 'სერთიფიკატები', icon: Certificate,  shortcut: 'G F', tint: '#F0A52E' },
-  { to: '/templates',   label: 'შაბლონები',     icon: SquaresFour,   shortcut: 'G T', tint: '#E866A0' },
-  { to: '/safety',      label: '3D უსაფრთხოება', icon: Cube, tint: '#2FB6CC' },
+  { to: '/regulations',  label: 'რეგულაციები',   icon: BookOpen,     shortcut: 'G L', tint: '#1FB6A6' },
+  { to: '/certificates', label: 'სერტიფიკატები', icon: Certificate,  shortcut: 'G F', tint: '#F0A52E' },
+  { to: '/templates',    label: 'შაბლონები',     icon: SquaresFour,  shortcut: 'G T', tint: '#E866A0' },
+  { to: '/safety',       label: '3D უსაფრთხოება', icon: Cube, tint: '#2FB6CC' },
 ];

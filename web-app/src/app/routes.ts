@@ -61,10 +61,20 @@ export const routePattern = {
   safetyStandalone: '/safety-standalone',
 
   // Generic questionnaire acts (harness / scaffold) - created via the wizard
-  // modal. `inspectionDetail` is the completed-act result page (signature + PDF);
-  // `inspectionPrint` renders the PDF.
+  // modal. `inspectionNew` is the full-page act picker/creator; `inspectionDetail`
+  // is the completed-act result page (signature + PDF); `inspectionPrint`
+  // renders the PDF.
+  inspectionNew: `${inspection}/new`,
   inspectionDetail: '/inspections/:id',
   inspectionPrint: '/inspections/:id/print',
+
+  // Orders (ბრძანებები) - full-page creation wizard (reads `?project=`).
+  orderNew: '/orders/new',
+
+  // Photo reports (რეპორტები) - full-page creation wizard (reads `?project=`);
+  // `reportDetail` branches on status: draft → editor, completed → read-only view.
+  reportNew: '/reports/new',
+  reportDetail: '/reports/:id',
 
   // Structured equipment acts (restored on branch): create/edit via
   // StructuredActPage, PDF via StructuredInspectionPrint.
@@ -132,8 +142,18 @@ export const routes = {
   // surviving list, so `list()` points there (used by structured back-nav).
   inspections: {
     list: (_projectId?: string | null) => '/history',
+    new: `${inspection}/new`,
     detail: (id: string) => `${inspection}/${id}`,
     print: (id: string) => `${inspection}/${id}/print`,
+  },
+
+  orders: {
+    new: '/orders/new' as const,
+  },
+
+  reports: {
+    new: '/reports/new' as const,
+    detail: (id: string) => `/reports/${id}`,
   },
 
   // Structured equipment acts (restored on branch).

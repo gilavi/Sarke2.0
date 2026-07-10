@@ -41,7 +41,7 @@ describe('NotFound', () => {
   it('renders the 404 screen', () => {
     renderPage(<NotFound />);
     expect(screen.getByText('404')).toBeInTheDocument();
-    expect(screen.getByText('Back to Home')).toBeInTheDocument();
+    expect(screen.getByText('მთავარ გვერდზე დაბრუნება')).toBeInTheDocument();
   });
 });
 

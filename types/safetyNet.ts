@@ -1,3 +1,5 @@
+import i18n from '../lib/i18n';
+
 export const SAFETY_NET_TEMPLATE_ID = '88888888-8888-8888-8888-888888888888';
 
 export type SNResult     = 'good' | 'fix' | 'na';
@@ -76,40 +78,45 @@ export interface SafetyNetInspection {
 
 export interface SNChecklistEntry {
   id: number;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey?: string;
 }
 
 export interface SNPostTestEntry {
   id: number;
-  label: string;
+  labelKey: string;
 }
 
+/** Resolve a catalog entry's label/description at call time (render or PDF-generation), never at module load — the CMS overlay may not have arrived yet at import time. */
+export const snItemLabel = (entry: { labelKey: string }): string => i18n.t(entry.labelKey);
+export const snItemDescription = (entry: { descriptionKey?: string }): string =>
+  entry.descriptionKey ? i18n.t(entry.descriptionKey) : '';
+
 export const SN_VISUAL_ITEMS: SNChecklistEntry[] = [
-  { id: 1,  label: 'ბადის ქსოვილის მდგომარეობა',    description: 'ჭრა, გახეთქვა, წყვეტა' },
-  { id: 2,  label: 'ბადის უჯრედი - მაქს. 15სმ',     description: '' },
-  { id: 3,  label: 'ბადის კვანძების მდგრადობა',      description: 'გახსნა, კოროზია, დაზიანება' },
-  { id: 4,  label: 'ბადი სამაგრი კიდეები',           description: 'კონსტრუქციისგან დაშორება' },
-  { id: 5,  label: 'სამაგრი ბაგირების მდგომარეობა',  description: 'გახსნა, კოროზია, გაჭრა' },
-  { id: 6,  label: 'კიდის ბაგირის მდგომარეობა',      description: 'გჭრილი, წყვეტილი' },
-  { id: 7,  label: 'დგარების ვიზუალური მდგ.',        description: 'ბზარი, დაღუნული, კოროზია' },
-  { id: 8,  label: 'დგარის სამაგრი ფეხი',            description: 'დაღუნული, ბზარი' },
-  { id: 9,  label: 'სამაგრი ჭანჭიკები / ანკერები',  description: 'კოროზია, გაცვეთა, გახსნა' },
-  { id: 10, label: 'დგარის სტაბილიზატორი',           description: 'მოშვებული, მოხსნილი, დაზიანება' },
+  { id: 1,  labelKey: 'inspections.snVisualItem1Label',  descriptionKey: 'inspections.snVisualItem1Desc' },
+  { id: 2,  labelKey: 'inspections.snVisualItem2Label' },
+  { id: 3,  labelKey: 'inspections.snVisualItem3Label',  descriptionKey: 'inspections.snVisualItem3Desc' },
+  { id: 4,  labelKey: 'inspections.snVisualItem4Label',  descriptionKey: 'inspections.snVisualItem4Desc' },
+  { id: 5,  labelKey: 'inspections.snVisualItem5Label',  descriptionKey: 'inspections.snVisualItem5Desc' },
+  { id: 6,  labelKey: 'inspections.snVisualItem6Label',  descriptionKey: 'inspections.snVisualItem6Desc' },
+  { id: 7,  labelKey: 'inspections.snVisualItem7Label',  descriptionKey: 'inspections.snVisualItem7Desc' },
+  { id: 8,  labelKey: 'inspections.snVisualItem8Label',  descriptionKey: 'inspections.snVisualItem8Desc' },
+  { id: 9,  labelKey: 'inspections.snVisualItem9Label',  descriptionKey: 'inspections.snVisualItem9Desc' },
+  { id: 10, labelKey: 'inspections.snVisualItem10Label', descriptionKey: 'inspections.snVisualItem10Desc' },
 ];
 
 export const SN_POST_TEST_ITEMS: SNPostTestEntry[] = [
-  { id: 1, label: 'დგარის სამაგრი ფეხის მდგომარეობა' },
-  { id: 2, label: 'დგარების მდგომარეობა' },
-  { id: 3, label: 'სამაგრი ჭანჭიკის/ანკერის მდგ.' },
-  { id: 4, label: 'ბადის ვიზუალური მდგომარეობა' },
-  { id: 5, label: 'სამაგრი ბაგირების მდგომარეობა' },
+  { id: 1, labelKey: 'inspections.snPostItem1Label' },
+  { id: 2, labelKey: 'inspections.snPostItem2Label' },
+  { id: 3, labelKey: 'inspections.snPostItem3Label' },
+  { id: 4, labelKey: 'inspections.snPostItem4Label' },
+  { id: 5, labelKey: 'inspections.snPostItem5Label' },
 ];
 
-export const SN_VERDICT_LABEL: Record<SNVerdict, string> = {
-  pass: 'ტესტირება წარმატებულია',
-  fail: 'ტესტირება წარუმატებელია',
-};
+/** Resolve at call time (never at module load) — see snItemLabel. */
+export function snVerdictLabel(v: SNVerdict): string {
+  return i18n.t(v === 'pass' ? 'inspections.snVerdictPass' : 'inspections.snVerdictFail');
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -42,6 +42,12 @@ const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
 const InspectionPrint = lazy(() => import('@/pages/print/InspectionPrint'));
 // Generic (harness / scaffold) completed-act result page: signature capture + PDF.
 const InspectionResult = lazy(() => import('@/pages/InspectionResult'));
+// Full-page "new act" picker (all act types) + the orders creation wizard.
+const NewActPage = lazy(() => import('@/pages/NewActPage'));
+const NewOrder = lazy(() => import('@/features/orders/components/NewOrder'));
+// Photo reports (რეპორტი): full-page creation + draft-editor/read-only detail.
+const NewReportPage = lazy(() => import('@/pages/NewReportPage'));
+const ReportPage = lazy(() => import('@/pages/ReportPage'));
 // Structured equipment acts (restored): one engine for create/edit/result + PDF.
 const StructuredActPage = lazy(() => import('@/features/inspections/structured/StructuredActPage'));
 const StructuredInspectionPrint = lazy(() => import('@/pages/print/StructuredInspectionPrint'));
@@ -183,8 +189,12 @@ export function AppRouter() {
             <Route path={routePattern.projectEdit} element={<EditProject />} />
             <Route path={routePattern.projectDetail} element={<ProjectDetail />} />
             <Route path={routePattern.projectFiles} element={<ProjectFiles />} />
+            <Route path={routePattern.inspectionNew} element={<NewActPage />} />
             <Route path={routePattern.inspectionDetail} element={<InspectionResult />} />
             <Route path={routePattern.inspectionPrint} element={<InspectionPrint />} />
+            <Route path={routePattern.orderNew} element={<NewOrder />} />
+            <Route path={routePattern.reportNew} element={<NewReportPage />} />
+            <Route path={routePattern.reportDetail} element={<ReportPage />} />
 
             {/* Structured equipment acts (restored) — view/edit + PDF per type.
                 Creation happens in the wizard modal (project required), which

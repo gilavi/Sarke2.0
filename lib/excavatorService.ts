@@ -37,6 +37,7 @@ type DbRow = {
   maintenance_items: ExcavatorMaintenanceItemState[];
   verdict: string | null;
   notes: string | null;
+  summary_photos: string[];
   inspector_position: string | null;
   inspector_signature: string | null;
   completed_at: string | null;
@@ -69,6 +70,7 @@ function toModel(row: DbRow): ExcavatorInspection {
     maintenanceItems:   Array.isArray(row.maintenance_items)   && row.maintenance_items.length   === 3  ? row.maintenance_items   : defaults.maintenanceItems,
     verdict: (row.verdict ?? null) as ExcavatorInspection['verdict'],
     notes: row.notes,
+    summaryPhotos: Array.isArray(row.summary_photos) ? row.summary_photos : [],
     inspectorPosition: row.inspector_position,
     inspectorSignature: row.inspector_signature,
     completedAt: row.completed_at,
@@ -96,12 +98,15 @@ type ExcavatorPatch = Partial<{
   maintenanceItems: ExcavatorMaintenanceItemState[];
   verdict: ExcavatorVerdict | null;
   notes: string | null;
+  summaryPhotos: string[];
   inspectorPosition: string | null;
   inspectorSignature: string | null;
 }>;
 
 // Mechanical camel→snake writes; `inspectorPosition`/`inspectorSignature` are
-// intentionally absent (ephemeral, memory-only). See lib/inspection/rowMapper.ts.
+// intentionally absent (ephemeral, memory-only). `summaryPhotos` persists to
+// the DB (origin/main moved bobcat/excavator summary photos off AsyncStorage).
+// See lib/inspection/rowMapper.ts.
 const toDb = makeToDb<ExcavatorPatch>({
   serialNumber: 'serial_number',
   registrationNumber: 'registration_number',
@@ -119,6 +124,7 @@ const toDb = makeToDb<ExcavatorPatch>({
   maintenanceItems: 'maintenance_items',
   verdict: 'verdict',
   notes: 'notes',
+  summaryPhotos: 'summary_photos',
 });
 
 // ── API ───────────────────────────────────────────────────────────────────────
@@ -139,6 +145,7 @@ const base = makeInspectionService<ExcavatorInspection, ExcavatorPatch>({
       cabin_items: d.cabinItems,
       safety_items: d.safetyItems,
       maintenance_items: d.maintenanceItems,
+      summary_photos: [],
     };
   },
 });
@@ -151,8 +158,7 @@ export const excavatorApi = {
   complete: base.complete,
   reopen: base.reopen,
   deletePhoto: base.deletePhoto,
-  uploadPhoto: (inspectionId: string, section: string, itemId: number, photoUri: string) =>
-    base.uploadPhotoAt(`${inspectionId}/${section}/${itemId}`, photoUri),
+  uploadPhotoAt: base.uploadPhotoAt,
   uploadSummaryPhoto: (inspectionId: string, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/summary`, photoUri),
 };

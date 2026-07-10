@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { fadeUp, stagger } from './shared';
+import { fadeUp, stagger, Kicker, SectionHeading } from './shared';
 import { features, subModules, audiences } from './marketing-data';
 
 // ─── Features grid ────────────────────────────────────────────────────────────
@@ -7,12 +7,10 @@ export function FeaturesGrid() {
   return (
     <section id="features" className="py-24 px-5 bg-offwhite">
       <div className="mx-auto max-w-5xl">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="text-center text-3xl sm:text-4xl font-bold text-neutral-900 mb-14"
-        >
-          ყველაფერი რაც გჭირდება
-        </motion.h2>
+        <div className="mb-14 text-center">
+          <Kicker>ფუნქციები</Kicker>
+          <SectionHeading className="mt-4">ყველაფერი რაც გჭირდება — ერთ აპში</SectionHeading>
+        </div>
 
         <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -37,8 +35,8 @@ export function FeaturesGrid() {
           className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {subModules.map(({ Icon, title, desc }) => (
-            <div key={title} className="rounded-2xl border border-safety-100 bg-safety-50/40 p-6">
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-safety-500">
+            <div key={title} className="group rounded-2xl border border-safety-100 bg-safety-50/40 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-safety-200 hover:bg-safety-50">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-safety-500 transition-transform duration-300 group-hover:-rotate-6">
                 <Icon size={20} className="text-white" />
               </div>
               <h3 className="font-bold text-neutral-900 mb-1">{title}</h3>

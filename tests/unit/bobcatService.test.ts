@@ -46,6 +46,7 @@ function baseRow(over: Partial<any> = {}): any {
     items: [],
     verdict: null,
     notes: null,
+    summary_photos: ['s1.jpg'],
     inspector_signature: null,
     completed_at: null,
     created_at: '2026-05-20T10:00:00Z',
@@ -70,6 +71,11 @@ describe('bobcatService config registration', () => {
   it('createColumns nulls inspector_name when not provided', () => {
     const cols = captured!.createColumns({ templateId: 't1' });
     expect(cols.inspector_name).toBeNull();
+  });
+
+  it('createColumns seeds empty summary_photos', () => {
+    const cols = captured!.createColumns({ inspectorName: 'Gio', templateId: 't1' });
+    expect(cols.summary_photos).toEqual([]);
   });
 
   it('createColumns uses large-loader catalog when templateId matches', () => {
@@ -113,6 +119,16 @@ describe('bobcatService toModel', () => {
     expect(model.verdict).toBeNull();
     expect(model.inspectionType).toBeNull();
   });
+
+  it('maps summary_photos → summaryPhotos', () => {
+    const model = captured!.toModel(baseRow({ summary_photos: ['a.jpg', 'b.jpg'] }));
+    expect(model.summaryPhotos).toEqual(['a.jpg', 'b.jpg']);
+  });
+
+  it('defaults summaryPhotos to [] when summary_photos is not an array', () => {
+    expect(captured!.toModel(baseRow({ summary_photos: null as any })).summaryPhotos).toEqual([]);
+    expect(captured!.toModel(baseRow({ summary_photos: undefined as any })).summaryPhotos).toEqual([]);
+  });
 });
 
 describe('bobcatService toDb', () => {
@@ -146,6 +162,10 @@ describe('bobcatService toDb', () => {
     const out = captured!.toDb({ inspectorSignature: 'data:image/png;base64,X' } as any);
     expect('inspector_signature' in out).toBe(false);
     expect(out).toEqual({});
+  });
+
+  it('maps summaryPhotos → summary_photos', () => {
+    expect(captured!.toDb({ summaryPhotos: ['a.jpg'] })).toEqual({ summary_photos: ['a.jpg'] });
   });
 
   it('maps all writable fields together', () => {

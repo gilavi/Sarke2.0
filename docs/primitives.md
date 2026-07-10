@@ -107,10 +107,6 @@ Three patterns, documented in detail in [README.md](../README.md#keyboard-handli
 
 **Don't** wrap a sheet in `KeyboardAvoidingView` — the inner `KeyboardAwareScrollView` already lifts content, and stacking the two causes the overshoot bug. **Don't** roll a hand-listener `keyboardWillShow`/`Hide` — both have happened in this repo and both broke the keyboard sync.
 
-## PDF language preference
-
-One file: [lib/pdfLanguagePref.ts](../lib/pdfLanguagePref.ts). Exports `savePdfLanguage`, `loadStoredPdfLanguage`. Don't `AsyncStorage.setItem('pdf_language', ...)` directly — there used to be a duplicate writer in `lib/i18n.ts` that drifted. The check script blocks direct AsyncStorage access to that key.
-
 ## Date formatting
 
 One file: [lib/formatDate.ts](../lib/formatDate.ts). `lib/locale.ts` was deleted on 2026-05-02; do not resurrect it. `app/(tabs)/home.tsx` and `app/(tabs)/more.tsx` have small i18n-aware inline formatters for relative-time labels — that's intentional, they're tied to the i18n hook in those screens. If you need a generic absolute-date formatter, use `formatShortDateTime` here.
@@ -155,6 +151,8 @@ One file: [`lib/inspection/rowMapper.ts`](../lib/inspection/rowMapper.ts). Expor
 Every `lib/<type>Service.ts` (bobcat, excavator, forklift, cargoPlatform, safetyNet, mobileLadder, fallProtection, liftingAccessories, generalEquipment) used to hand-write its `toDb(patch)` as a long `if ('camelKey' in patch) db.snake_col = patch.camelKey` chain — mechanical boilerplate replicated across nine files, and the one place a typo silently dropped a column from saves. `makeToDb<XPatch>({ camelKey: 'snake_column', … })` centralizes that loop once and constrains the map's **keys** to `keyof XPatch`, so a mistyped camel key is now a compile error. It emits a column only when the key is physically present in the patch (`in`), so an explicit `null` is written through (clears the field) and absent keys are skipped.
 
 **Only the mechanical `toDb` direction is generated.** `toModel` stays hand-written per type: its per-field transforms (null-coalescing to `''`, enum casts, array-length guards, signatory normalization) are the genuinely custom parts, and folding them into a generic reader would require casting whole rows to the model type — reintroducing the untyped drift this removes. **Don't** re-inline a `toDb` `if`-chain in a new equipment service — pass a `fieldMap` to `makeToDb`, and omit ephemeral/never-persisted keys (signatures, `inspectorSignature`, `signer*`) from the map.
+
+**Summary (conclusion-step) photos live in the `summary_photos` DB column**, not AsyncStorage. Every equipment service maps it (`toModel`: `Array.isArray(row.summary_photos) ? … : []`, `toDb`: `summaryPhotos → summary_photos`, `createColumns`: `summary_photos: []`); the route persists via `scheduleSave` and lists `summaryPhotos` in `toPatch`. Bobcat/excavator used to write the list only to AsyncStorage and lost it (see [BUG_REPORT.md](reports/BUG_REPORT.md), 2026-07-07) — **don't** reintroduce a per-route `AsyncStorage` summary-photo store. The transitional [`lib/inspection/useLegacySummaryPhotoRecovery.ts`](../lib/inspection/useLegacySummaryPhotoRecovery.ts) hook is a one-time migration shim that rescues orphaned pre-fix AsyncStorage lists into the column on next open; it can be deleted once pre-2026-07 installs age out.
 
 ## Inspection PDF template palette (generic/template-based PDFs)
 
@@ -227,6 +225,20 @@ The four equipment inspection detail pages (bobcat, excavator, general-equipment
 ## Web dashboard separation — no shadows (web-app)
 
 The web-app uses **borders and backgrounds** for separation, never box-shadows. Don't add Tailwind `shadow-*` / `drop-shadow-*` utility classes in `web-app/src` — [`scripts/check-no-shadows.mjs`](../web-app/scripts/check-no-shadows.mjs) (run by `npm run lint`) blocks them. Modals/popovers get a `border`; cards rely on their existing `border`; hover affordance is a border-color change, not `hover:shadow-*`. The `shadow-*` light props on three.js elements in `Scene3D.tsx` are exempt — they're three.js config, not CSS.
+
+## Web dashboard redesign kit (web-app)
+
+The 2026-07 redesign (branch `gio-web-redesign`) added five reusable owners in [`web-app/src/components/ui/`](../web-app/src/components/ui/). Reach for these before styling a row/section/flow inline:
+
+| Use case | Owner |
+|---|---|
+| Tinted square icon chip leading a row/widget (tone = record family) | `IconChip` — [icon-chip.tsx](../web-app/src/components/ui/icon-chip.tsx) |
+| Record/list row (chip + title/sub + trailing meta + always-visible `actions` outside the link) | `ListRow` — [list-row.tsx](../web-app/src/components/ui/list-row.tsx) |
+| Section heading (title + count + trailing link/button) | `SectionHeader` — [section-header.tsx](../web-app/src/components/ui/section-header.tsx) |
+| Mobile-parity creation-verb row (Home + project page) | `QuickActionsRow` — [quick-actions.tsx](../web-app/src/components/ui/quick-actions.tsx) |
+| Full-page split creation flow: form left, live document preview right (Stripe invoice-editor pattern) | `SplitWizard` + `DocPreviewFrame` — [split-wizard.tsx](../web-app/src/components/ui/split-wizard.tsx) |
+
+Rules: row actions are **never** hover-only (touch has no hover — History's old `opacity-0 group-hover` delete was invisible on tablets); every document flow gets the split layout with `DocPreviewFrame` fed by the real PDF engine (`buildInspectionPdf` HTML), so the preview can't drift from the signed artifact; `ListRow.actions` renders outside the navigation target so a delete tap never also navigates.
 
 ## Web dashboard inspection create/edit wizard (web-app)
 

@@ -16,12 +16,40 @@ on:
 permissions:
   contents: write
 
+# Per-destination group (writes /docs/). Same-destination pushes serialize;
+# other gh-pages writers run in parallel. NOT one shared group — GitHub cancels
+# older pending runs in a group, which would silently drop sibling deploys when
+# several coincide (docs.yml + deploy-web-app.yml both fire on lib/** changes).
+# See deploy-web.yml for the full rationale.
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-docs
   cancel-in-progress: false
 
 jobs:
+  # Gate: a red typecheck blocks the deploy. Docusaurus `build` does not run a
+  # full tsc, so this job is where the docs site is typechecked before it ships.
+  # No test suite exists, so typecheck is the check.
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
   build-and-deploy:
+    needs: checks
     runs-on: ubuntu-latest
     defaults:
       run:

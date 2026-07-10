@@ -15,12 +15,48 @@ on:
 permissions:
   contents: write
 
+# One group PER gh-pages destination. Same-destination pushes serialize (no
+# self-race); different destinations run in parallel. Do NOT fold all writers
+# into one shared group: GitHub keeps only one running + one pending run per
+# group and CANCELS older pending runs, so 3+ deploys coinciding (e.g. a
+# workflow-file or lib/** change firing several at once, or concurrent pushes)
+# would silently drop sibling deploys. A rare cross-destination push race on the
+# gh-pages ref surfaces as a visible, re-runnable failure — the lesser evil.
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-web
   cancel-in-progress: false
 
 jobs:
+  # Gate: a red typecheck blocks the deploy. The signer app has no test suite,
+  # so typecheck is the check; the build below also runs `tsc -b`, but a
+  # dedicated job surfaces the failure as its own required status.
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
   build-deploy:
+    needs: checks
     runs-on: ubuntu-latest
     defaults:
       run:

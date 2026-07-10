@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
 /** Must match the v_limit constant in the increment_pdf_count Postgres function. */
-export const PDF_FREE_LIMIT = 30;
+export const PDF_FREE_LIMIT = 1000;
 
 export interface PdfGateResult {
   allowed: boolean;

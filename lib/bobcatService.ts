@@ -25,6 +25,7 @@ type DbRow = {
   items: BobcatItemState[];
   verdict: string | null;
   notes: string | null;
+  summary_photos: string[];
   inspector_signature: string | null;
   completed_at: string | null;
   created_at: string;
@@ -56,6 +57,7 @@ function toModel(row: DbRow): BobcatInspection {
       : buildDefaultItems(catalog),
     verdict: (row.verdict ?? null) as BobcatInspection['verdict'],
     notes: row.notes,
+    summaryPhotos: Array.isArray(row.summary_photos) ? row.summary_photos : [],
     inspectorSignature: row.inspector_signature,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -75,11 +77,14 @@ type BobcatPatch = Partial<{
   items: BobcatItemState[];
   verdict: BobcatInspection['verdict'];
   notes: string | null;
+  summaryPhotos: string[];
   inspectorSignature: string | null;
 }>;
 
 // Mechanical camel→snake writes; `inspectorSignature` is intentionally absent
-// (ephemeral, memory-only). See lib/inspection/rowMapper.ts.
+// (ephemeral, memory-only). `summaryPhotos` persists to the DB (origin/main
+// moved bobcat/excavator summary photos off AsyncStorage). See
+// lib/inspection/rowMapper.ts.
 const toDb = makeToDb<BobcatPatch>({
   company: 'company',
   address: 'address',
@@ -91,6 +96,7 @@ const toDb = makeToDb<BobcatPatch>({
   items: 'items',
   verdict: 'verdict',
   notes: 'notes',
+  summaryPhotos: 'summary_photos',
 });
 
 // ── API ───────────────────────────────────────────────────────────────────────
@@ -104,6 +110,7 @@ const base = makeInspectionService<BobcatInspection, BobcatPatch>({
   createColumns: (args) => ({
     inspector_name: args.inspectorName ?? null,
     items: buildDefaultItems(catalogFor(args.templateId)),
+    summary_photos: [],
   }),
 });
 
@@ -115,8 +122,7 @@ export const bobcatApi = {
   complete: base.complete,
   reopen: base.reopen,
   deletePhoto: base.deletePhoto,
-  uploadPhoto: (inspectionId: string, itemId: number, photoUri: string) =>
-    base.uploadPhotoAt(`${inspectionId}/${itemId}`, photoUri),
+  uploadPhotoAt: base.uploadPhotoAt,
   uploadSummaryPhoto: (inspectionId: string, photoUri: string) =>
     base.uploadPhotoAt(`${inspectionId}/summary`, photoUri),
 };

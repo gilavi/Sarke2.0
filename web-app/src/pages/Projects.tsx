@@ -2,14 +2,13 @@ import { motion } from 'framer-motion';
 import { useState, lazy, Suspense, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { Text } from 'react-native';
-import { Plus, List, Map as MapIcon, Pencil, Trash2, Building2 } from 'lucide-react-native';
+import { Plus, List, Map as MapIcon, Pencil, Trash2 } from 'lucide-react-native';
+import { FolderOpen } from 'lucide-react';
 // Shared component library — the SAME primitives the Expo app renders, via
 // react-native-web. Page-level responsive scaffolding (CSS grid, the Radix
 // confirm dialog, the Leaflet map) stays web-specific; every UI atom on the
 // screen is the shared primitive.
 import { Button, IconButton } from '@root/components/primitives';
-import { useTheme } from '@root/lib/theme';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,9 +57,9 @@ function ProjectCard({
         type="button"
         onClick={() => navigate(routes.projects.detail(p.id))}
         aria-label={`პროექტი: ${title}`}
-        className="block w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        className="block w-full rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
       >
-        <div className="relative flex h-[155px] w-full flex-col justify-between overflow-hidden rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-neutral-900">
+        <div className="relative flex h-[148px] w-full flex-col justify-between overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 transition-colors group-hover:border-[var(--text-muted)]">
           {tileUrl ? (
             <>
               <img
@@ -80,13 +79,11 @@ function ProjectCard({
               <span className="absolute left-[80%] top-[30%] h-2 w-2 animate-pulse rounded-full bg-brand-500 ring-2 ring-white dark:ring-neutral-900" />
             </>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
-              <Building2 size={28} color="#a3a3a3" />
-            </div>
+            <div className="absolute inset-0 bg-gradient-to-br from-brand-50 to-[var(--bg-hover)] dark:from-brand-950/30 dark:to-[var(--bg-hover)]" />
           )}
 
           {/* Avatar (top-left) */}
-          <div className="relative z-10 flex h-[60px] w-[60px] items-center justify-center overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/40">
+          <div className="relative z-10 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-brand-100 dark:bg-brand-900/40">
             {p.logo ? (
               <img src={p.logo} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -98,11 +95,11 @@ function ProjectCard({
 
           {/* Name + address (bottom-left) */}
           <div className="relative z-10 min-w-0">
-            <p className="truncate text-[18px] font-medium leading-tight text-neutral-900 dark:text-neutral-100">
+            <p className="truncate text-[15px] font-semibold leading-tight text-[var(--text-primary)]">
               {title}
             </p>
             {p.address ? (
-              <p className="mt-0.5 truncate text-[11px] text-neutral-500 dark:text-neutral-400">
+              <p className="mt-0.5 truncate text-[11px] text-[var(--text-secondary)]">
                 {p.address}
               </p>
             ) : null}
@@ -132,7 +129,6 @@ const itemVariants = {
 
 export default function Projects() {
   const qc = useQueryClient();
-  const { theme } = useTheme();
   const { data: items, error, isLoading } = useQuery({
     queryKey: projectKeys.lists(),
     queryFn: listProjects,
@@ -187,9 +183,13 @@ export default function Projects() {
       )}
 
       {items && view === 'list' && items.length === 0 && (
-        <Text style={{ fontSize: 14, color: theme.colors.inkSoft }}>
-          პროექტები ჯერ არ არის. დააჭირეთ „ახალი" - ახალი პროექტის შესაქმნელად.
-        </Text>
+        <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-neutral-200 py-12 text-center dark:border-neutral-800">
+          <FolderOpen size={24} className="mb-2 text-neutral-300 dark:text-neutral-600" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">პროექტები ჯერ არ არის</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            დააჭირეთ „ახალი პროექტი"-ს შესაქმნელად.
+          </p>
+        </div>
       )}
 
       {items && view === 'list' && items.length > 0 && (

@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Trash2, Upload } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth';
@@ -134,16 +135,11 @@ export function FilesSection({ projectId, onError }: Props) {
                     <Download size={14} className="mr-1" />
                     {opening === f.id ? 'იხსნება…' : 'გახსნა'}
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void remove(f)}
-                    disabled={deleting === f.id}
-                    className="text-red-600 hover:border-red-300 hover:bg-red-50"
-                  >
-                    <Trash2 size={14} />
-                  </Button>
+                  <DeleteButton
+                    iconOnly
+                    onDelete={() => void remove(f)}
+                    isPending={deleting === f.id}
+                  />
                 </div>
               </li>
             ))}

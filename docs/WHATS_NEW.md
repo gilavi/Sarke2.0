@@ -390,6 +390,71 @@ No changes to `app/(tabs)/home.tsx` or the interactive maps
 
 ---
 
+## 2026-07-08 — Web dashboard UX redesign, phase 1 (branch `gio-web-redesign`, unshipped)
+
+Ground-up UX pass on `web-app/` toward the approved "Stripe register" direction
+(prototype iterated with gilavi 2026-07-08; see the design-notes artifact).
+Structural fixes, all previously confirmed against source:
+
+- **Creation flow is one full-page split view** — flow on the left, a **live
+  preview of the act on the right**, rendered by the real PDF engine
+  (`buildInspectionPdf`) so the preview is the signed document. New unified
+  picker at `/inspections/new` (all 12 act types from `STRUCTURED_ACT_LIST` +
+  generic templates); the modal→page teleport for structured templates is gone.
+- **Orders un-orphaned** — the fully-built order wizard finally has a route
+  (`/orders/new`) and entry points (Home + project page + project Orders
+  section). Previously zero routes pointed at it.
+- **Project page is a record hub** — quick-action verbs (project preselected),
+  stats strip, newest acts section, orders section. Previously a project's own
+  inspections were invisible on its page.
+- **History lists every act type** — merged via new `lib/data/recordRows.ts`
+  (`useActRows`); previously 5 of ~11 sources were queried and 6 structured
+  types vanished from every list once created. Row delete is always visible
+  (was hover-only → unreachable on touch) and orders join the list with a
+  type filter row.
+- **Reusable kit** — `IconChip`, `ListRow`, `SectionHeader`, `QuickActionsRow`,
+  `SplitWizard`/`DocPreviewFrame` in `web-app/src/components/ui/` (see
+  [primitives.md](primitives.md)); warm v3 tokens in `index.css`; mesh-gradient
+  blobs and the double page-transition removed from the shell.
+- **Bug-fix + reports pass (same day, evening)** — confirm dialogs now
+  portal to `<body>` (they rendered invisibly under an overflow-hidden +
+  transformed ancestor — project delete looked dead); Home CTA replaced by
+  card-style creation verbs with mobile's icons/tones; the exact mobile
+  illustrations now lead the act picker and every act row; NEW რეპორტი flow
+  (`/reports/new`, `/reports/:id`) — slide editor in the SplitWizard with a
+  live presentation preview, cover thumbnails on project page + History
+  (PDF generation deferred).
+- **Polish pass (same day)** — per-route tab titles (every tab used to be just
+  "Hubble"); Georgian 404 with a safe public destination (was English +
+  auth-gated link); certificate label typo fixed to mobile's spelling
+  (სერტიფიკატები); mobile-parity date line on Home; Calendar now shows **all**
+  act types via `useActRows` (7 types used to be missing) and, with Projects /
+  Account / auth pages, is retuned to the warm CSS-var tokens; radius + empty-
+  state copy normalized.
+
+---
+
+## 2026-07-07 — Bobcat/excavator summary photos no longer vanish
+
+Conclusion-step "summary photos" on **bobcat** and **excavator** inspections
+were written to on-device AsyncStorage instead of the `summary_photos` DB
+column. Bobcat never read them back, so the photos disappeared from the detail
+view, the conclusion step, and the PDF after a reload; excavator kept them on
+one device only (invisible to other devices + the web dashboard). Both services
+(`lib/bobcatService.ts`, `lib/excavatorService.ts`) now map the column that the
+six other equipment types already used, and both routes autosave summary photos
+to the DB. A one-time recovery hook
+([`lib/inspection/useLegacySummaryPhotoRecovery.ts`](../lib/inspection/useLegacySummaryPhotoRecovery.ts))
+migrates any orphaned AsyncStorage lists into the column on next open, so no
+already-captured photos are lost on upgrade. The DB column already existed
+(migration `0037`), so no schema change was required. Dead, never-wired per-item
+photo handlers (leftovers from when per-row checklist photos were removed) were
+also deleted from **both** the bobcat and excavator routes, along with the now-
+orphaned `uploadPhoto` method on each service's API. See
+[docs/reports/BUG_REPORT.md](reports/BUG_REPORT.md).
+
+---
+
 ## 2026-07-07 — More-tab polish + PDF share from the signatures modal (v1.2.1)
 
 Shipped two ways: OTA update group `8db79d95` on the `production` channel

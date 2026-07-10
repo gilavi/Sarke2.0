@@ -18,8 +18,8 @@ beforeEach(() => {
 
 describe('pdfGate', () => {
   describe('PDF_FREE_LIMIT', () => {
-    it('matches the documented value (30)', () => {
-      expect(PDF_FREE_LIMIT).toBe(30);
+    it('matches the documented value (1000)', () => {
+      expect(PDF_FREE_LIMIT).toBe(1000);
     });
   });
 

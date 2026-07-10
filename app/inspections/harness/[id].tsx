@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Redirect, Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { A11yText as Text } from '../../../components/primitives/A11yText';
 import { FloatingLabelInput } from '../../../components/inputs/FloatingLabelInput';
@@ -30,7 +31,7 @@ import {
   templatesApi,
 } from '../../../lib/services';
 import { friendlyError } from '../../../lib/errorMap';
-import { logError } from '../../../lib/logError';
+import { logError, toErrorMessage } from '../../../lib/logError';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { recordCompletion } from '../../../lib/calendarSchedule';
@@ -60,11 +61,6 @@ const TOTAL_STEPS     = 3;
 // ── Verdict helpers ───────────────────────────────────────────────────────────
 type HarnessVerdict = 'safe' | 'unsafe';
 
-const VERDICT_OPTIONS: VerdictOption<HarnessVerdict>[] = [
-  { value: 'safe',   label: 'უსაფრთხოა' },
-  { value: 'unsafe', label: 'არ არის უსაფრთხო' },
-];
-
 function verdictToSafe(v: HarnessVerdict | null): boolean | null {
   if (v === 'safe')   return true;
   if (v === 'unsafe') return false;
@@ -80,6 +76,7 @@ function safeToVerdict(safe: boolean | null): HarnessVerdict | null {
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export default function HarnessInspectionScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -88,6 +85,11 @@ export default function HarnessInspectionScreen() {
   const offline = useOffline();
   const queryClient = useQueryClient();
   const { pickPhotosWithAnnotation } = usePhotoPicker();
+
+  const verdictOptions = useMemo<VerdictOption<HarnessVerdict>[]>(() => [
+    { value: 'safe',   label: t('inspections.harnessSafeLabel') },
+    { value: 'unsafe', label: t('inspections.harnessUnsafeLabel') },
+  ], [t]);
 
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -196,7 +198,7 @@ export default function HarnessInspectionScreen() {
     } catch (e) {
       if (!ctrl.cancelled) {
         logError(e, 'harness.load');
-        toast.error(friendlyError(e, 'ჩატვირთვა ვერ მოხერხდა'));
+        toast.error(friendlyError(e, t('errors.loadFailed')));
         router.back();
       }
     } finally {
@@ -292,7 +294,7 @@ export default function HarnessInspectionScreen() {
       });
     } catch (e) {
       logError(e, 'harness.patchAnswer');
-      toast.error(friendlyError(e, 'პასუხი ვერ შეინახა'));
+      toast.error(t('inspections.harnessPatchAnswerError', { detail: toErrorMessage(e) }));
     }
   }, [inspection, answers, offline, toast]);
 
@@ -341,7 +343,7 @@ export default function HarnessInspectionScreen() {
           address: null,
         });
         setPhotos(prev => ({ ...prev, [answerId]: [...(prev[answerId] ?? []), optimistic] }));
-        toast.success('ფოტო შენახულია - აიტვირთება ქსელის დაბრუნებისას');
+        toast.success(t('inspections.harnessPhotoSaved'));
         return;
       }
       await storageApi.uploadFromUri(STORAGE_BUCKETS.answerPhotos, path, uri, 'image/jpeg', 'inspection');
@@ -355,9 +357,9 @@ export default function HarnessInspectionScreen() {
       });
       setPhotos(prev => ({ ...prev, [answer.id]: [...(prev[answer.id] ?? []), photo] }));
       pdfPhotoEmbed(STORAGE_BUCKETS.answerPhotos, path).catch(() => undefined);
-      toast.success('ფოტო აიტვირთა');
+      toast.success(t('inspections.harnessPhotoUploaded'));
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ აიტვირთა'));
+      toast.error(t('inspections.harnessPhotoUploadError', { detail: toErrorMessage(e, t('errors.network')) }));
     } finally {
       setPhotoUploadCount(c => Math.max(0, c - 1));
     }
@@ -387,9 +389,9 @@ export default function HarnessInspectionScreen() {
         }
         return next;
       });
-      toast.success('ფოტო წაიშალა');
+      toast.success(t('inspections.harnessPhotoDeleted'));
     } catch (e) {
-      toast.error(friendlyError(e, 'ფოტო ვერ წაიშალა'));
+      toast.error(t('inspections.harnessPhotoDeleteError', { detail: toErrorMessage(e, t('errors.network')) }));
     }
   }, [toast]);
 
@@ -398,18 +400,18 @@ export default function HarnessInspectionScreen() {
     if (!inspection || completing) return;
     if (!harnessName.trim()) {
       haptic.validationError();
-      toast.error('შეავსეთ ღვედის დასახელება');
+      toast.error(t('inspections.harnessMissingName'));
       setStep(INFO_STEP);
       return;
     }
     if (verdict === null) {
       haptic.validationError();
-      toast.error('შეავსეთ: დასკვნა');
+      toast.error(t('inspections.harnessMissingVerdict'));
       return;
     }
     if (!conclusion.trim()) {
       haptic.validationError();
-      toast.error('შეავსეთ: კომენტარი');
+      toast.error(t('inspections.harnessMissingComment'));
       return;
     }
     // The footer Button (InspectionShell) already fired the press beat; below we
@@ -445,7 +447,7 @@ export default function HarnessInspectionScreen() {
       router.replace(`/inspections/${inspection.id}/done` as any);
     } catch (e) {
       haptic.error();
-      toast.error(friendlyError(e, 'ქსელის შეცდომა'));
+      toast.error(t('inspections.harnessCompleteError', { detail: toErrorMessage(e, t('errors.network')) }));
       setCompleting(false);
     }
   }, [inspection, completing, harnessName, verdict, conclusion, offline, queryClient, router, toast]);
@@ -482,7 +484,7 @@ export default function HarnessInspectionScreen() {
   if (loading) {
     return (
       <InspectionShellSkeleton
-        title="დამცავი ქამრები"
+        title={t('inspections.harnessLoadingTitle')}
         projectName={project?.company_name || project?.name || ''}
         step={step}
         totalSteps={TOTAL_STEPS}
@@ -521,14 +523,14 @@ export default function HarnessInspectionScreen() {
             <View style={uploadPillStyles.pill}>
               <ActivityIndicator size="small" color={theme.colors.surface} />
               <Text style={[uploadPillStyles.text, { color: theme.colors.white }]}>
-                {photoUploadCount > 1 ? `ფოტოები იტვირთება (${photoUploadCount})…` : 'ფოტო იტვირთება…'}
+                {photoUploadCount > 1 ? t('inspections.photoUploading', { count: photoUploadCount }) : t('inspections.photoUploadingSingle')}
               </Text>
             </View>
           </View>
         )}
         <HarnessListFlow
           inspectionId={id}
-          template={{ category: 'harness', name: 'დამცავი ქამრები' } as any}
+          template={{ category: 'harness', name: t('inspections.harnessLoadingTitle') } as any}
           project={{ name: project?.company_name || project?.name || '' }}
           questions={questions}
           answers={answers}
@@ -576,13 +578,13 @@ export default function HarnessInspectionScreen() {
         >
           <FloatingLabelInput
             ref={harnessNameRef}
-            label="ღვედის სახელი / N *"
+            label={t('inspections.harnessNameFieldLabel')}
             value={harnessName}
             onChangeText={setHarnessName}
             required
           />
           <Text style={[styles.hint, { color: theme.colors.inkFaint }]}>
-            მიუთითეთ ღვედის სერიული ნომერი, პარტია ან სხვა იდენტიფიკატორი.
+            {t('inspections.harnessNameHint')}
           </Text>
         </KeyboardAwareScrollView>
       )}
@@ -591,7 +593,7 @@ export default function HarnessInspectionScreen() {
       {step === CONCLUSION_STEP && (
         <ConclusionStep
           verdict={verdict}
-          verdictOptions={VERDICT_OPTIONS}
+          verdictOptions={verdictOptions}
           verdictError={attempted && verdict === null}
           onVerdictChange={setVerdict}
           notes={conclusion}

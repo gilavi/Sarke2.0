@@ -12,13 +12,10 @@ vi.mock('@/lib/documentNames', () => ({
   equipmentInspectionName: (t: string) => `eq-${t}`,
 }));
 vi.mock('@/lib/data/projects', async (io) => ({ ...(await io<object>()), listProjects: vi.fn() }));
-vi.mock('@/lib/data/inspections', async (io) => ({ ...(await io<object>()), listInspections: vi.fn() }));
-vi.mock('@/lib/data/bobcat', async (io) => ({ ...(await io<object>()), listBobcatInspections: vi.fn() }));
-vi.mock('@/lib/data/excavator', async (io) => ({ ...(await io<object>()), listExcavatorInspections: vi.fn() }));
-vi.mock('@/lib/data/generalEquipment', async (io) => ({
-  ...(await io<object>()),
-  listGeneralEquipmentInspections: vi.fn(),
-}));
+// Calendar consumes acts through the merged useActRows hook — mock it directly
+// so the test never depends on the per-type list modules (unmocked ones hit
+// the network and hang in CI).
+vi.mock('@/lib/data/recordRows', () => ({ useActRows: vi.fn() }));
 vi.mock('@/lib/data/briefings', async (io) => ({
   ...(await io<object>()),
   listBriefings: vi.fn(),
@@ -27,10 +24,7 @@ vi.mock('@/lib/data/briefings', async (io) => ({
 vi.mock('@/lib/data/incidents', async (io) => ({ ...(await io<object>()), listIncidents: vi.fn() }));
 
 import { listProjects } from '@/lib/data/projects';
-import { listInspections } from '@/lib/data/inspections';
-import { listBobcatInspections } from '@/lib/data/bobcat';
-import { listExcavatorInspections } from '@/lib/data/excavator';
-import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
+import { useActRows } from '@/lib/data/recordRows';
 import { listBriefings } from '@/lib/data/briefings';
 import { listIncidents } from '@/lib/data/incidents';
 import Calendar from '@/pages/Calendar';
@@ -54,10 +48,7 @@ beforeEach(() => {
       contact_phone: null, logo: null, crew: null, latitude: null, longitude: null,
       created_at: todayISO },
   ]);
-  vi.mocked(listInspections).mockResolvedValue([]);
-  vi.mocked(listBobcatInspections).mockResolvedValue([]);
-  vi.mocked(listExcavatorInspections).mockResolvedValue([]);
-  vi.mocked(listGeneralEquipmentInspections).mockResolvedValue([]);
+  vi.mocked(useActRows).mockReturnValue({ rows: [], isLoading: false, isError: false });
   vi.mocked(listBriefings).mockResolvedValue([]);
   vi.mocked(listIncidents).mockResolvedValue([]);
 });
@@ -101,10 +92,14 @@ describe('Calendar - with events', () => {
     vi.mocked(listIncidents).mockResolvedValue([
       { id: 'inc1', project_id: 'p1', type: 'minor', date_time: todayISO, status: 'completed' } as never,
     ]);
-    vi.mocked(listInspections).mockResolvedValue([
-      { id: 'i1', project_id: 'p1', template_id: 't1', status: 'completed',
-        created_at: todayISO, signatories: [], conclusion_photo_paths: [] } as never,
-    ]);
+    vi.mocked(useActRows).mockReturnValue({
+      rows: [
+        { id: 'i1', label: 'tpl', projectId: 'p1', actKey: null, type: 'harness',
+          status: 'completed', date: todayISO, href: '/inspections/i1' },
+      ],
+      isLoading: false,
+      isError: false,
+    });
     renderPage(<Calendar />);
     // Wait for legend text "ინციდენტი" to appear (only present when events are loaded).
     expect(await screen.findByText('ინციდენტი')).toBeInTheDocument();

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,15 +137,11 @@ export function SignersSection({ projectId, onError }: Props) {
                     {s.phone ? ` · ${s.phone}` : ''}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void remove(s)}
-                  disabled={removingId === s.id}
-                  className="text-neutral-400 hover:text-red-500 disabled:opacity-50"
-                  title="წაშლა"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <DeleteButton
+                  iconOnly
+                  onDelete={() => void remove(s)}
+                  isPending={removingId === s.id}
+                />
               </li>
             ))}
           </ul>

@@ -34,7 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { SubscriptionNotice } from '../../../components/SubscriptionNotice';
 import { PdfLockedBanner } from '../../../components/PdfLockedBanner';
 import { a11y } from '../../../lib/accessibility';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLegacySummaryPhotoRecovery } from '../../../lib/inspection/useLegacySummaryPhotoRecovery';
 import { SuggestionPills } from '../../../components/SuggestionPills';
 import { useFieldHistory } from '../../../hooks/useFieldHistory';
 import { usePhotoPicker } from '../../../hooks/usePhotoPicker';
@@ -134,8 +134,9 @@ export default function ExcavatorInspectionScreen() {
   const plateRef = useRef<PlateInputHandle>(null);
   const [activeSlotKind, setActiveSlotKind] = useState<'letter' | 'digit'>('letter');
 
-  // summaryPhotos are stored locally in AsyncStorage (excavator-specific)
-  const summaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
+  // Legacy AsyncStorage key older builds wrote summary photos to (instead of
+  // the summary_photos DB column) — only read for one-time recovery below.
+  const legacySummaryPhotosKey = useMemo(() => `excavator-wizard:${id}:summaryPhotos`, [id]);
 
   // ── Shared orchestration ──────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ export default function ExcavatorInspectionScreen() {
       maintenanceItems: insp.maintenanceItems,
       verdict: insp.verdict,
       notes: insp.notes,
+      summaryPhotos: insp.summaryPhotos,
     }),
     validateMissing: (insp) => {
       const missing: string[] = [];
@@ -203,21 +205,20 @@ export default function ExcavatorInspectionScreen() {
     loadingTitle: 'ექსკავატორის შემოწმება',
   });
 
-  // ── Load summaryPhotos from AsyncStorage after inspection loads ───────────
-
-  useEffect(() => {
-    if (!inspection || inspection.summaryPhotos?.length) return;
-    AsyncStorage.getItem(summaryPhotosKey).then(saved => {
-      if (!saved) return;
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setInspection(prev => prev ? { ...prev, summaryPhotos: parsed } : prev);
-        }
-      } catch {}
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summaryPhotosKey, !!inspection]);
+  // Older builds persisted the summary-photo list only to AsyncStorage, so the
+  // photos existed on one device only (and were invisible to the web dashboard
+  // + other devices). Recover that list into the summary_photos column once.
+  useLegacySummaryPhotoRecovery({
+    inspectionId: inspection?.id ?? null,
+    dbPhotos: inspection?.summaryPhotos,
+    legacyKey: legacySummaryPhotosKey,
+    persist: async (photos) => {
+      const insp = inspectionRef.current;
+      if (insp) await excavatorApi.patch(insp.id, { summaryPhotos: photos });
+    },
+    apply: (photos) => setInspection(prev =>
+      prev && !prev.summaryPhotos?.length ? { ...prev, summaryPhotos: photos } : prev),
+  });
 
   // ── Checklist item update (flat → section mapping) ─────────────────────────
 
@@ -250,7 +251,11 @@ export default function ExcavatorInspectionScreen() {
     });
   }, [scheduleSave, setInspection]);
 
-  // ── Photo handling (shared quartet; summary strip lives in AsyncStorage) ───
+  // ── Photo handling (shared quartet) ────────────────────────────────────────
+  // Summary strip now persists to the summary_photos DB column: with no
+  // summaryStorageKey the hook routes it through scheduleSave (→ the outbox, so
+  // it also queues offline). Legacy AsyncStorage lists are migrated to the
+  // column once by useLegacySummaryPhotoRecovery above.
 
   const {
     handleAddItemPhoto: handleAddPhoto,
@@ -261,7 +266,7 @@ export default function ExcavatorInspectionScreen() {
     inspectionRef, setInspection, scheduleSave,
     pickPhotos: pickPhotosWithAnnotation,
     uploadItemPhoto: (inspectionId, key, uri) =>
-      excavatorApi.uploadPhoto(inspectionId, key.section, key.itemId, uri),
+      excavatorApi.uploadPhotoAt(`${inspectionId}/${key.section}/${key.itemId}`, uri),
     uploadSummaryPhoto: excavatorApi.uploadSummaryPhoto,
     deletePhoto: excavatorApi.deletePhoto,
     updateItemPaths: (insp, key, update) => {
@@ -271,7 +276,6 @@ export default function ExcavatorInspectionScreen() {
       );
       return { ...insp, [k]: arr };
     },
-    summaryStorageKey: summaryPhotosKey,
   });
 
   // ── Help sheet ─────────────────────────────────────────────────────────────

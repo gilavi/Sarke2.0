@@ -20,10 +20,17 @@ vi.mock('@/lib/data/bobcat', async (io) => ({ ...(await io<object>()), listBobca
 vi.mock('@/lib/data/generalEquipment', async (io) => ({ ...(await io<object>()), listGeneralEquipmentInspections: vi.fn(), deleteGeneralEquipmentInspection: vi.fn() }));
 vi.mock('@/lib/data/excavator', async (io) => ({ ...(await io<object>()), listExcavatorInspections: vi.fn(), deleteExcavatorInspection: vi.fn() }));
 vi.mock('@/lib/data/cargoPlatform', async (io) => ({ ...(await io<object>()), listCargoPlatformInspections: vi.fn(), deleteCargoPlatformInspection: vi.fn() }));
+vi.mock('@/lib/data/safetyNet', async (io) => ({ ...(await io<object>()), listSafetyNetInspections: vi.fn(), deleteSafetyNetInspection: vi.fn() }));
+vi.mock('@/lib/data/mobileLadder', async (io) => ({ ...(await io<object>()), listMobileLadderInspections: vi.fn(), deleteMobileLadderInspection: vi.fn() }));
+vi.mock('@/lib/data/forklift', async (io) => ({ ...(await io<object>()), listForkliftInspections: vi.fn(), deleteForkliftInspection: vi.fn() }));
+vi.mock('@/lib/data/liftingAccessories', async (io) => ({ ...(await io<object>()), listLiftingAccessoriesInspections: vi.fn(), deleteLiftingAccessoriesInspection: vi.fn() }));
+vi.mock('@/lib/data/fallProtection', async (io) => ({ ...(await io<object>()), listFallProtectionInspections: vi.fn(), deleteFallProtectionInspection: vi.fn() }));
+vi.mock('@/lib/data/orders', async (io) => ({ ...(await io<object>()), listOrders: vi.fn(), deleteOrder: vi.fn() }));
 vi.mock('@/lib/data/incidents', async (io) => ({ ...(await io<object>()), listIncidents: vi.fn() }));
 vi.mock('@/lib/data/briefings', async (io) => ({ ...(await io<object>()), listBriefings: vi.fn() }));
 vi.mock('@/lib/data/certificates', async (io) => ({ ...(await io<object>()), listCertificates: vi.fn() }));
 vi.mock('@/lib/data/qualifications', async (io) => ({ ...(await io<object>()), listQualifications: vi.fn() }));
+vi.mock('@/lib/data/reports', async (io) => ({ ...(await io<object>()), listReports: vi.fn(), deleteReport: vi.fn() }));
 
 import { useAuth } from '@/lib/auth';
 import { usePaymentHistory } from '@/lib/subscription';
@@ -34,10 +41,17 @@ import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listExcavatorInspections } from '@/lib/data/excavator';
 import { listCargoPlatformInspections } from '@/lib/data/cargoPlatform';
+import { listSafetyNetInspections } from '@/lib/data/safetyNet';
+import { listMobileLadderInspections } from '@/lib/data/mobileLadder';
+import { listForkliftInspections } from '@/lib/data/forklift';
+import { listLiftingAccessoriesInspections } from '@/lib/data/liftingAccessories';
+import { listFallProtectionInspections } from '@/lib/data/fallProtection';
+import { listOrders } from '@/lib/data/orders';
 import { listIncidents } from '@/lib/data/incidents';
 import { listBriefings } from '@/lib/data/briefings';
 import { listCertificates } from '@/lib/data/certificates';
 import { listQualifications } from '@/lib/data/qualifications';
+import { listReports } from '@/lib/data/reports';
 
 import Home from '@/pages/Home';
 import History from '@/pages/History';
@@ -52,8 +66,10 @@ beforeEach(() => {
   } as never);
   for (const fn of [
     listProjects, listInspections, listBobcatInspections, listGeneralEquipmentInspections,
-    listExcavatorInspections, listCargoPlatformInspections, listIncidents, listBriefings,
-    listCertificates, listQualifications,
+    listExcavatorInspections, listCargoPlatformInspections, listSafetyNetInspections,
+    listMobileLadderInspections, listForkliftInspections, listLiftingAccessoriesInspections,
+    listFallProtectionInspections, listOrders, listIncidents, listBriefings,
+    listCertificates, listQualifications, listReports,
   ]) {
     vi.mocked(fn).mockResolvedValue([] as never);
   }

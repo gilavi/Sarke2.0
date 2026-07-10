@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import DeleteButton from '@/components/DeleteButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -126,14 +127,7 @@ export function CrewSection({ project, onError }: Props) {
                     {CREW_ROLE_LABEL[m.roleKey] ?? m.role}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void remove(m.id)}
-                  className="text-neutral-400 hover:text-red-500"
-                  title="წაშლა"
-                >
-                  <Trash2 size={14} />
-                </button>
+                <DeleteButton iconOnly onDelete={() => void remove(m.id)} />
               </li>
             ))}
           </ul>

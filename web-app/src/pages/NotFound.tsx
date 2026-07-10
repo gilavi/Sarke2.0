@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, HardHat } from 'lucide-react';
-import { routes } from '@/app/routes';
 
 const BRICKS = Array.from({ length: 6 });
 
@@ -65,7 +64,7 @@ export default function NotFound() {
         transition={{ delay: 1.1 }}
         className="mb-1 font-display text-xl font-semibold text-neutral-800 dark:text-neutral-100"
       >
-        Wrong site.
+        არასწორი ობიექტი.
       </motion.p>
       <motion.p
         initial={{ opacity: 0 }}
@@ -73,7 +72,7 @@ export default function NotFound() {
         transition={{ delay: 1.2 }}
         className="mb-8 text-sm text-neutral-400 dark:text-neutral-500"
       >
-        This page is under construction - or just doesn't exist.
+        ეს გვერდი მშენებარეა — ან უბრალოდ არ არსებობს.
       </motion.p>
 
       <motion.div
@@ -81,12 +80,14 @@ export default function NotFound() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.3 }}
       >
+        {/* "/" is safe for everyone: the marketing layout bounces signed-in
+            users to /home, while routes.home would bounce guests to login. */}
         <Link
-          to={routes.home}
+          to="/"
           className="inline-flex items-center gap-2 rounded-xl border border-brand-200 bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-600 dark:border-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
           <Home size={16} />
-          Back to Home
+          მთავარ გვერდზე დაბრუნება
         </Link>
       </motion.div>
     </div>

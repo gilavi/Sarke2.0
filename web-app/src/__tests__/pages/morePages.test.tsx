@@ -33,8 +33,13 @@ vi.mock('@/lib/data/cargoPlatform', async (io) => ({
 }));
 vi.mock('@/lib/data/incidents', async (io) => ({ ...(await io<object>()), listIncidents: vi.fn() }));
 vi.mock('@/lib/data/briefings', async (io) => ({ ...(await io<object>()), listBriefings: vi.fn() }));
+// Calendar reads acts through the merged useActRows hook; mock it directly so
+// the test never depends on unmocked per-type list modules (network → CI hang).
+// ProjectActivityWidget still queries the per-type modules above.
+vi.mock('@/lib/data/recordRows', () => ({ useActRows: vi.fn() }));
 
 import { listProjects } from '@/lib/data/projects';
+import { useActRows } from '@/lib/data/recordRows';
 import { listInspections } from '@/lib/data/inspections';
 import { listBobcatInspections } from '@/lib/data/bobcat';
 import { listExcavatorInspections } from '@/lib/data/excavator';
@@ -76,19 +81,21 @@ beforeEach(() => {
   vi.mocked(listCargoPlatformInspections).mockResolvedValue([]);
   vi.mocked(listIncidents).mockResolvedValue([]);
   vi.mocked(listBriefings).mockResolvedValue([]);
+  vi.mocked(useActRows).mockReturnValue({ rows: [], isLoading: false, isError: false });
 });
 
 describe('Calendar (with events)', () => {
-  it('builds events from all four inspection lists, briefings, and incidents', async () => {
-    vi.mocked(listInspections).mockResolvedValue([
-      { id: 'i1', project_id: 'p1', template_id: 't', status: 'completed', created_at: todayISO, signatories: [], conclusion_photo_paths: [] } as never,
-    ]);
-    vi.mocked(listBobcatInspections).mockResolvedValue([
-      { id: 'b1', projectId: 'p1', status: 'completed', createdAt: todayISO, completedAt: todayISO } as never,
-    ]);
-    vi.mocked(listGeneralEquipmentInspections).mockResolvedValue([
-      { id: 'g1', projectId: 'p1', status: 'completed', createdAt: todayISO, completedAt: todayISO } as never,
-    ]);
+  it('builds events from merged act rows, briefings, and incidents', async () => {
+    vi.mocked(useActRows).mockReturnValue({
+      rows: [
+        { id: 'i1', label: 'tpl', projectId: 'p1', actKey: null, type: 'harness',
+          status: 'completed', date: todayISO, href: '/inspections/i1' },
+        { id: 'b1', label: 'eq-bobcat', projectId: 'p1', actKey: 'bobcat', type: 'bobcat',
+          status: 'completed', date: todayISO, href: '/bobcat/b1' },
+      ],
+      isLoading: false,
+      isError: false,
+    });
     vi.mocked(listIncidents).mockResolvedValue([
       { id: 'inc1', project_id: 'p1', type: 'minor', date_time: todayISO, status: 'completed' } as never,
     ]);

@@ -1,7 +1,8 @@
 import { memo } from 'react';
 import { HeroSection } from '@/components/marketing/HeroSection';
 import { MessSection } from '@/components/marketing/MessSection';
-import { PainSection, Transition, HowItWorks } from './landing/home';
+import { PainSection, Transition } from './landing/home';
+import { FlowSection } from './landing/home-flow';
 import { LogoCloud, StatsBand, Testimonials } from './landing/home-proof';
 import { ValueShowcase } from './landing/home-showcase';
 import { FeaturesGrid, ForWho } from './landing/home-features';
@@ -24,7 +25,7 @@ export default memo(function Landing() {
       <StatsBand />
       <PainSection />
       <Transition />
-      <HowItWorks />
+      <FlowSection />
       <ValueShowcase />
       <FeaturesGrid />
       <TrustSecurity />

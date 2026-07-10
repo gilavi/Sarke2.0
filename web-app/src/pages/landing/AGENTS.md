@@ -45,16 +45,28 @@ and positions them absolutely inside a `relative overflow-hidden` section.
 ## Public API (section exports, consumed by the page wrappers)
 - `chrome.tsx` → `Navbar`, `Footer` — route-link navbar (NavLink) + footer; used by `MarketingLayout`.
 - `faq.tsx` → `FAQ({ items, title? })` — reusable accordion; each page passes its own array.
-- `home.tsx` → `Hero`, `PainSection`, `Transition`, `HowItWorks`.
+- `home.tsx` → `Hero`, `PainSection`, `Transition`, `HowItWorks`. (`HowItWorks` — the old
+  3-step grid — is superseded by `FlowSection` in the Home composition but kept exported.)
+- `home-flow.tsx` → `FlowSection` — the pinned "ქაღალდიდან PDF-მდე — ოთხ ნაბიჯში" scroll-through:
+  a sticky device (screens in the local `FlowScreen`) driven by per-step `IntersectionObserver`
+  sentinels (`rootMargin: -45% 0 -45%`); collapses to a stacked list below `md`. Owns
+  `id="how-it-works"` — the Hero's "ნახე როგორ მუშაობს" button scrolls to it.
 - `home-features.tsx` → `FeaturesGrid` (incl. the 4 product pillars), `ForWho`.
-- `home-cta.tsx` → `PriceTeaser`, `DownloadCTA`, `RegulationsTeaser`.
+- `home-cta.tsx` → `PriceTeaser` (owns `id="pricing"`), `RegulationsTeaser`.
 - `home-statement.tsx` → `BrandStatement` — editorial graphite band ("safety isn't a slogan…") with the orbital motif + a hazard sticker.
 - `about.tsx` → `Mission`, `WhoWeAre`, `Team`, `Social`.
 - `pricing.tsx` → `Pricing` (cards), `PricingComparison` (table).
 - `legislation.tsx` → `LegislationHero`, `ArticleList` (reuses `REGULATIONS` from `lib/data/regulations`).
 - `contact.tsx` → `ContactHero`, `ContactInfo` (the AI chat lives in `components/marketing/ChatWidget`).
 - `marketing-data.ts` → all Georgian copy + `FAQItem` type. Edit content here, not in components.
-- `shared.tsx` → `HubbleLogo` (brand mark), `fadeUp`, `stagger`, `AppStoreBadge`, `PlayStoreBadge`, `PhoneMockup`, `appleIcon`, `APP_STORE_URL`.
+- `shared.tsx` → `HubbleLogo` (brand mark), `fadeUp`, `stagger`, `Kicker` (mono eyebrow + bar),
+  `SectionHeading` (mask-wipe reveal `<h2>`), `AppStoreBadge`, `PlayStoreBadge`, `PhoneMockup`,
+  `appleIcon`, `APP_STORE_URL`. Use `Kicker` + `SectionHeading` for new section headers so the
+  editorial rhythm stays consistent.
+- Hero: `components/marketing/HeroSection.tsx` owns the copy + rotation timer; the rotating device
+  (orbital ring, cross-fading "living" screens, floating chips) is `HeroPhone.tsx`, with the four
+  screen renderers + chip data in the sibling `HeroPhoneScenes.tsx`. The flip-word headline and the
+  phone share the parent's `scene` index so they stay in lockstep.
 - `overlays.tsx` → `StickyMobileBar`, `ExitIntentPopup`, `CookieBanner` (mounted by the layout).
 
 ## Internal files

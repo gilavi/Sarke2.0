@@ -51,7 +51,7 @@ export function SafetyNetLoadTest({ model, disabled, save }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 dark:bg-neutral-900/40 text-xs uppercase text-neutral-500">
             <tr>
-              <th className="px-3 py-2 text-left">დასახელება</th>
+              <th className="px-3 py-2 text-left">ტვირთის აღწერა</th>
               <th className="px-3 py-2 text-right">ერთ. წ. (კგ)</th>
               <th className="px-3 py-2 text-right">რ-ბა</th>
               <th className="px-3 py-2 text-right">სულ (კგ)</th>

@@ -11,16 +11,12 @@ import {
   AlertTriangle,
   X,
 } from 'lucide-react';
-import { listInspections } from '@/lib/data/inspections';
-import { listBobcatInspections } from '@/lib/data/bobcat';
-import { listExcavatorInspections } from '@/lib/data/excavator';
-import { listGeneralEquipmentInspections } from '@/lib/data/generalEquipment';
 import { listBriefings, topicLabel } from '@/lib/data/briefings';
 import { listIncidents } from '@/lib/data/incidents';
 import { listProjects } from '@/lib/data/projects';
+import { useActRows, type ActRow } from '@/lib/data/recordRows';
 import { SkeletonList } from '@/components/SkeletonCard';
-import { useInspectionName, equipmentInspectionName } from '@/lib/documentNames';
-import { projectKeys, inspectionKeys, bobcatKeys, excavatorKeys, generalEquipmentKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
+import { projectKeys, briefingKeys, incidentKeys } from '@/app/queryKeys';
 import { ErrorMessage } from '@/components/ui/error-message';
 import { humanizeError } from '@/lib/errors';
 
@@ -83,14 +79,10 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 function buildItems(
-  inspections: Awaited<ReturnType<typeof listInspections>>,
-  bobcats: Awaited<ReturnType<typeof listBobcatInspections>>,
-  excavators: Awaited<ReturnType<typeof listExcavatorInspections>>,
-  generalEq: Awaited<ReturnType<typeof listGeneralEquipmentInspections>>,
+  acts: ActRow[],
   briefings: Awaited<ReturnType<typeof listBriefings>>,
   incidents: Awaited<ReturnType<typeof listIncidents>>,
   projectMap: Map<string, { name: string }>,
-  resolveInspectionName: (templateId?: string | null) => string,
 ): CalendarEvent[] {
   const out: CalendarEvent[] = [];
 
@@ -108,67 +100,20 @@ function buildItems(
     });
   }
 
-  for (const i of inspections) {
-    const dateStr = i.completed_at || i.created_at;
-    if (!dateStr) continue;
-    const date = new Date(dateStr);
+  // Every act type (generic + all structured acts) comes pre-merged from
+  // useActRows — one loop replaces the old per-table loops.
+  for (const row of acts) {
+    if (!row.date) continue;
+    const date = new Date(row.date);
     if (Number.isNaN(date.getTime())) continue;
     out.push({
-      id: `insp-${i.id}`,
-      href: `/inspections/${i.id}`,
-      title: resolveInspectionName(i.template_id),
-      projectName: projectMap.get(i.project_id)?.name ?? '-',
+      id: `act-${row.id}`,
+      href: row.href,
+      title: row.label,
+      projectName: (row.projectId && projectMap.get(row.projectId)?.name) || '-',
       date,
       kind: 'inspection',
-      status: i.status,
-    });
-  }
-
-  for (const i of bobcats) {
-    const dateStr = i.completedAt || i.createdAt;
-    if (!dateStr) continue;
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) continue;
-    out.push({
-      id: `bobcat-${i.id}`,
-      href: `/bobcat/${i.id}`,
-      title: equipmentInspectionName('bobcat'),
-      projectName: projectMap.get(i.projectId)?.name ?? '-',
-      date,
-      kind: 'inspection',
-      status: i.status,
-    });
-  }
-
-  for (const i of excavators) {
-    const dateStr = i.completedAt || i.createdAt;
-    if (!dateStr) continue;
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) continue;
-    out.push({
-      id: `exc-${i.id}`,
-      href: `/excavator/${i.id}`,
-      title: equipmentInspectionName('excavator'),
-      projectName: projectMap.get(i.projectId)?.name ?? '-',
-      date,
-      kind: 'inspection',
-      status: i.status,
-    });
-  }
-
-  for (const i of generalEq) {
-    const dateStr = i.completedAt || i.createdAt;
-    if (!dateStr) continue;
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) continue;
-    out.push({
-      id: `ge-${i.id}`,
-      href: `/general-equipment/${i.id}`,
-      title: equipmentInspectionName('general'),
-      projectName: projectMap.get(i.projectId)?.name ?? '-',
-      date,
-      kind: 'inspection',
-      status: i.status,
+      status: row.status,
     });
   }
 
@@ -224,31 +169,21 @@ export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [dayModal, setDayModal] = useState<{ date: Date; events: CalendarEvent[] } | null>(null);
 
-  const inspectionsQ = useQuery({ queryKey: inspectionKeys.lists(), queryFn: () => listInspections() });
-  const bobcatQ = useQuery({ queryKey: bobcatKeys.lists(), queryFn: () => listBobcatInspections() });
-  const excavatorQ = useQuery({ queryKey: excavatorKeys.lists(), queryFn: () => listExcavatorInspections() });
-  const generalQ = useQuery({ queryKey: generalEquipmentKeys.lists(), queryFn: () => listGeneralEquipmentInspections() });
+  // Acts (generic + every structured type) come pre-merged from the canonical
+  // useActRows hook — the old 4-table subset silently dropped 7 act types.
+  const actsQ = useActRows();
   const briefingQ = useQuery({ queryKey: briefingKeys.lists(), queryFn: () => listBriefings() });
   const incidentQ = useQuery({ queryKey: incidentKeys.lists(), queryFn: () => listIncidents() });
   const projectsQ = useQuery({ queryKey: projectKeys.lists(), queryFn: () => listProjects() });
 
   const isLoading =
-    inspectionsQ.isLoading ||
-    bobcatQ.isLoading ||
-    excavatorQ.isLoading ||
-    generalQ.isLoading ||
-    briefingQ.isLoading ||
-    incidentQ.isLoading ||
-    projectsQ.isLoading;
+    actsQ.isLoading || briefingQ.isLoading || incidentQ.isLoading || projectsQ.isLoading;
 
   const error =
-    inspectionsQ.error ??
-    bobcatQ.error ??
-    excavatorQ.error ??
-    generalQ.error ??
     briefingQ.error ??
     incidentQ.error ??
-    projectsQ.error;
+    projectsQ.error ??
+    (actsQ.isError ? new Error('ჩანაწერების ჩატვირთვა ვერ მოხერხდა') : null);
 
   const projectMap = useMemo(() => {
     const map = new Map<string, { name: string }>();
@@ -256,20 +191,10 @@ export default function Calendar() {
     return map;
   }, [projectsQ.data]);
 
-  const inspectionName = useInspectionName();
   const allEvents = useMemo(() => {
     if (isLoading) return [];
-    return buildItems(
-      inspectionsQ.data ?? [],
-      bobcatQ.data ?? [],
-      excavatorQ.data ?? [],
-      generalQ.data ?? [],
-      briefingQ.data ?? [],
-      incidentQ.data ?? [],
-      projectMap,
-      inspectionName,
-    );
-  }, [inspectionsQ.data, bobcatQ.data, excavatorQ.data, generalQ.data, briefingQ.data, incidentQ.data, projectMap, isLoading, inspectionName]);
+    return buildItems(actsQ.rows, briefingQ.data ?? [], incidentQ.data ?? [], projectMap);
+  }, [actsQ.rows, briefingQ.data, incidentQ.data, projectMap, isLoading]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -318,11 +243,11 @@ export default function Calendar() {
         <div className="flex items-center gap-2">
           <button
             onClick={goToday}
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+            className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-hover)]"
           >
             დღეს
           </button>
-          <div className="flex items-center rounded-lg border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="flex items-center rounded-lg border border-[var(--border-default)] bg-[var(--bg-card)]">
             <button
               onClick={goPrev}
               className="rounded-l-lg p-2 text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
@@ -351,14 +276,14 @@ export default function Calendar() {
       {isLoading && <SkeletonList />}
 
       {!isLoading && allEvents.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-200 bg-white py-16 text-center dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--border-default)] bg-[var(--bg-card)] py-16 text-center">
           <CalendarDays size={32} className="text-neutral-300 dark:text-neutral-600" />
           <p className="text-sm text-neutral-500 dark:text-neutral-400">ჩანაწერები ჯერ არ არის.</p>
         </div>
       )}
 
       {!isLoading && allEvents.length > 0 && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900 sm:p-4">
+        <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-3 sm:p-4">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1">
             {WEEKDAYS.map((wd) => (
@@ -390,7 +315,7 @@ export default function Calendar() {
                     className={`relative flex min-h-[80px] flex-col gap-0.5 rounded-lg border p-1.5 transition-colors sm:min-h-[100px] sm:p-2 ${
                       isToday
                         ? 'border-brand-300 bg-brand-50/60 dark:border-brand-800 dark:bg-brand-950/20'
-                        : 'border-neutral-100 bg-white hover:bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:bg-neutral-800/60'
+                        : 'border-[var(--border-subtle)] bg-[var(--bg-card)] hover:bg-[var(--bg-hover)]'
                     }`}
                   >
                     <span
@@ -466,7 +391,7 @@ export default function Calendar() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="w-full max-w-md overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+              className="w-full max-w-md overflow-hidden rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4 dark:border-neutral-800">

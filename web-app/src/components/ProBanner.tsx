@@ -32,7 +32,7 @@ export function ProBanner() {
       type="button"
       onClick={() => navigate(routes.subscribe.index)}
       aria-label={copy.title}
-      className="flex w-full items-center gap-4 rounded-2xl p-4 text-left text-white transition-transform hover:scale-[1.01]"
+      className="flex w-full items-center gap-4 rounded-xl p-4 text-left text-white transition-transform hover:scale-[1.01]"
       style={{ background: 'linear-gradient(135deg, #FF7A47 0%, #E84709 100%)' }}
     >
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20">

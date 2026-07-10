@@ -1,11 +1,34 @@
 import { useEffect, useState, memo, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { HubbleLogo } from '@/components/HubbleLogo';
 import SettingsModal from '@/components/SettingsModal';
+
+/** Per-route tab titles (M10: every tab used to be just "Hubble"). Longest
+ *  prefix wins so /inspections/new beats /inspections. */
+const ROUTE_TITLES: [prefix: string, label: string][] = [
+  ['/inspections/new', 'ახალი შემოწმება'],
+  ['/orders/new', 'ახალი ბრძანება'],
+  ['/home', 'მთავარი'],
+  ['/projects', 'პროექტები'],
+  ['/history', 'ისტორია'],
+  ['/calendar', 'კალენდარი'],
+  ['/regulations', 'რეგულაციები'],
+  ['/certificates', 'სერტიფიკატები'],
+  ['/qualifications', 'კვალიფიკაციები'],
+  ['/templates', 'შაბლონები'],
+  ['/safety', '3D უსაფრთხოება'],
+  ['/account', 'პროფილი'],
+];
+
+function routeTitle(pathname: string): string {
+  const hit = ROUTE_TITLES.filter(([p]) => pathname.startsWith(p)).sort(
+    (a, b) => b[0].length - a[0].length,
+  )[0];
+  return hit ? `${hit[1]} — Hubble` : 'Hubble';
+}
 
 export const AppShell = memo(function AppShell({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,22 +38,20 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
   const location = useLocation();
   const isSafety = location.pathname === '/safety';
 
-  // Focus main content on route change for keyboard/screen-reader users
+  // On route change: close the mobile drawer, reset scroll, and focus main
+  // content for keyboard/screen-reader users.
   useEffect(() => {
     setSidebarOpen(false);
+    document.title = routeTitle(location.pathname);
     const main = document.getElementById('main-content');
-    if (main) main.focus();
+    if (main) {
+      main.scrollTop = 0;
+      main.focus();
+    }
   }, [location.pathname]);
 
   return (
-    <div className="flex h-full min-h-screen bg-[var(--bg-card)]">
-      {/* Ambient mesh background - desktop only */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden hidden sm:block">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-brand-500/5 blur-3xl animate-mesh-1" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-brand-400/5 blur-3xl animate-mesh-2" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-brand-300/3 blur-3xl animate-mesh-3" />
-      </div>
-
+    <div className="flex h-full min-h-screen bg-[var(--bg-body)]">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div
@@ -43,8 +64,8 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
       <Sidebar open={sidebarOpen} onClose={handleCloseSidebar} />
 
       {/* Content sits flush on the canvas; the sidebar's right divider is the
-          only separation between nav and content (no floating-card gutter). */}
-      <div className="flex flex-1 flex-col overflow-hidden bg-[var(--bg-card)]">
+          only separation between nav and content. Cards inside stay --bg-card. */}
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile top bar */}
         <header className="flex items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900 lg:hidden">
           <div className="flex items-center gap-3">
@@ -82,38 +103,18 @@ export const AppShell = memo(function AppShell({ children }: { children: ReactNo
         </a>
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-transparent outline-none">
-          {/*
-            `mode="wait"` is REQUIRED here. Without it, the previous attempt
-            (concurrent crossfade with two ternary branches sharing
-            `key={location.pathname}`) caused exit animations to never
-            complete - old pages piled up in the DOM, one per navigation,
-            until the app became visually broken (BUG-20). Wait-mode runs the
-            outgoing exit before the incoming enter; with the short 0.15s
-            duration below the gap is barely perceptible and the DOM stays
-            clean.
-
-            Use a SINGLE motion.div (not a ternary): two motion.div branches
-            with the same key confuse AnimatePresence's reconciliation.
-            We pick the className/initial/exit values from `isSafety` so the
-            3D Safety page still gets its full-width container and a plain
-            opacity fade (no y-shift on a fullscreen 3D scene).
-          */}
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={location.pathname}
-              initial={isSafety ? { opacity: 0 } : { opacity: 0, y: 12 }}
-              animate={isSafety ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              exit={isSafety ? { opacity: 0 } : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.15, ease: 'easeOut' }}
-              className={
-                isSafety
-                  ? 'h-full w-full'
-                  : 'mx-auto w-full max-w-screen-2xl px-4 py-6 sm:px-12 lg:px-24 sm:py-8 dark:text-neutral-100'
-              }
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {/* Page transitions live in router.tsx's ProtectedShellLayout — a second
+              AnimatePresence here caused a double enter animation, so the shell
+              renders a plain, calm content column. */}
+          <div
+            className={
+              isSafety
+                ? 'h-full w-full'
+                : 'mx-auto w-full max-w-5xl px-4 py-6 sm:px-8 sm:py-8 dark:text-neutral-100'
+            }
+          >
+            {children}
+          </div>
         </main>
       </div>
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />

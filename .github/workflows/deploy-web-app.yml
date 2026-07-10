@@ -18,8 +18,12 @@ on:
 permissions:
   contents: write
 
+# Per-destination group (writes /app/). Same-destination pushes serialize;
+# other gh-pages writers run in parallel. NOT one shared group — GitHub cancels
+# older pending runs in a group, which would silently drop sibling deploys when
+# several coincide. See deploy-web.yml for the full rationale.
 concurrency:
-  group: gh-pages-deploy
+  group: gh-pages-app
   cancel-in-progress: false
 
 jobs:
@@ -66,6 +70,12 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      # Guard 0b: the inspection engine is hand-mirrored from the mobile app; a
+      # direct @root/lib/inspection import would silently desync web ↔ mobile.
+      # Blocks the deploy. See scripts/check-inspection-mirror.mjs.
+      - name: Inspection-mirror guard
+        run: npm run lint:inspection-guard
 
       - name: Build
         env:
