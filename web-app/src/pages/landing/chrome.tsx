@@ -139,6 +139,7 @@ export function Footer() {
               <Link to={routes.contact} className="text-neutral-600 hover:text-safety-600 transition-colors">კონტაქტი</Link>
               <Link to={routes.terms} className="text-neutral-600 hover:text-safety-600 transition-colors">პირობები</Link>
               <Link to={routes.privacy} className="text-neutral-600 hover:text-safety-600 transition-colors">კონფიდენციალურობა</Link>
+              <Link to={routes.deleteAccount} className="text-neutral-600 hover:text-safety-600 transition-colors">ანგარიშის წაშლა</Link>
             </div>
           </nav>
         </div>

@@ -54,3 +54,11 @@ export async function updateUserName(
   if (metaErr) throw metaErr;
   if (rowErr) throw rowErr;
 }
+
+/** Permanently deletes the currently authenticated Supabase user. */
+export async function deleteAccount(): Promise<void> {
+  const { error } = await supabase.functions.invoke('delete-account', { body: {} });
+  if (error) throw error;
+  // Clear the local browser session after the server has deleted the account.
+  await supabase.auth.signOut({ scope: 'local' });
+}
