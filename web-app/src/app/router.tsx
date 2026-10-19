@@ -36,6 +36,7 @@ const Qualifications = lazy(() => import('@/pages/Qualifications'));
 const Templates = lazy(() => import('@/pages/Templates'));
 const Terms = lazy(() => import('@/pages/Terms'));
 const Privacy = lazy(() => import('@/pages/Privacy'));
+const DeleteAccount = lazy(() => import('@/pages/DeleteAccount'));
 const SafetyGuidePage = lazy(() => import('@/pages/SafetyGuidePage'));
 const History = lazy(() => import('@/pages/History'));
 const ProjectFiles = lazy(() => import('@/pages/ProjectFiles'));
@@ -170,6 +171,7 @@ export function AppRouter() {
             <Route path={routePattern.safetyStandalone} element={<SafetyGuidePage standalone />} />
             <Route path={routePattern.terms} element={<Terms />} />
             <Route path={routePattern.privacy} element={<Privacy />} />
+            <Route path={routePattern.deleteAccount} element={<DeleteAccount />} />
           </Route>
 
           {/* Protected - full app shell */}

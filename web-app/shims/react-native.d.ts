@@ -279,6 +279,17 @@ declare module 'react-native' {
 
   export const Pressable: React.ForwardRefExoticComponent<PressableProps & React.RefAttributes<any>>;
 
+  // Shared app source uses the native spinner. On web Vite resolves this to
+  // react-native-web; this declaration keeps the web-only TS shim in sync.
+  export interface ActivityIndicatorProps extends ViewProps {
+    animating?: boolean;
+    color?: ColorValue;
+    hidesWhenStopped?: boolean;
+    size?: number | 'small' | 'large';
+  }
+
+  export const ActivityIndicator: React.ComponentType<ActivityIndicatorProps>;
+
   // ── ScrollView ─────────────────────────────────────────────────────────────
   export interface ScrollViewProps extends ViewProps {
     horizontal?: boolean;

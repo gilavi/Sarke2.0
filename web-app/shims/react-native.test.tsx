@@ -38,6 +38,17 @@ export const Pressable = React.forwardRef<HTMLButtonElement, RNProps & { onPress
 );
 Pressable.displayName = 'Pressable';
 
+export const ActivityIndicator = ({
+  animating = true,
+  color,
+  size: _size,
+  hidesWhenStopped: _hidesWhenStopped,
+  style,
+  ...props
+}: RNProps & { animating?: boolean; color?: string; size?: number | 'small' | 'large'; hidesWhenStopped?: boolean }) => (
+  animating ? <div {...props as object} role="progressbar" style={{ color, ...flattenStyle(style) }} /> : null
+);
+
 export const ScrollView = React.forwardRef<HTMLDivElement, RNProps & { contentContainerStyle?: unknown }>(
   ({ style, contentContainerStyle: _ignored, ...props }, ref) =>
     <div {...props as object} style={{ overflow: 'auto', ...flattenStyle(style) }} ref={ref} />
